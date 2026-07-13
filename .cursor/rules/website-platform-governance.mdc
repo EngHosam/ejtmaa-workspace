@@ -27,7 +27,7 @@ Current website constraints:
 - Respect the current folder ownership split: `resources/`, `services/`, `ui/base/`, `ui/components/`, `ui/layouts/`, `ui/pages/`, and `types/`.
 - `ui/base/` is infrastructure bound to the shared framework/tooling layer; product/business reusable UI belongs in `ui/components/`.
 - Use `ui/base/components/Utils.tsx` plus `resources/configs/theme.ts` and `resources/configs/utils.ts` as the web UI foundation instead of inventing a parallel styling system.
-- Brand colors: navy `#0B2057`, orange `#EC6901` from `theme.ts`. Use `SemanticColors.primary` / `SemanticColors.accent` and `SemanticGradients.primary` / `SemanticGradients.accent` from `theme.ts`.
+- Brand colors: navy `#0B2057`, orange `#EC6901` from `theme.ts`. Use `SemanticColors.primary` / `SemanticColors.accent` from `theme.ts`.
 - When composing through `Utils`, prefer existing component props over `baseCssStyle`/`cssStyle`; use raw style escapes only for behavior the primitive props do not already expose.
 - Drawer/header-launched authed subpages (no `showBottomBar`) MUST declare route `breadcrumb` before ship — `.cursor/rules/website-authed-drawer-subpage-governance.mdc`, `docs/invariants/website.md`.
 - `Loadable` inside a filled action control MUST derive `lightBackground` from the resolved tone — `.cursor/rules/website-action-control-loader-contrast.mdc`.

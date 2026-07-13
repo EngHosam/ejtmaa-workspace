@@ -58,7 +58,7 @@ Authoritative guide: `docs/platforms/website/flow-auth.md`.
 ### Components
 - Reusable primitives live in `ui/components/` with generic names (`Checkbox`, `SelectableCard`).
 - Auth-specific wrappers stay in `ui/components/auth/`.
-- Primary tone uses `SemanticGradients.primary`.
+- Primary tone uses `SemanticColors.primary` (solid navy).
 
 ### Social auth (Google)
 - Google only; GIS via `SocialAuthHelpers.ts`.

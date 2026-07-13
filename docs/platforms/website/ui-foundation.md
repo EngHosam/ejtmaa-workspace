@@ -24,18 +24,6 @@ From `theme.ts` `SemanticColors`:
 - `accent` → orange `#EC6901`
 - `secondary` → navy 900 `#071638`
 
-## Gradients
-
-Use `SemanticGradients` helpers:
-- `primary` / `accent` — action and hero surfaces
-- `hero` — landing/auth hero backgrounds
-- `surfaceDepth` — card/section depth
-
-```ts
-getSemanticGradient("primary", colorScheme)
-getGradientBackground(gradient)
-```
-
 ## Theme map
 
 `ThemeMap.light` / `ThemeMap.dark` provide semantic paths for:

@@ -1,0 +1,64 @@
+---
+description: Ejtmaa uses solid semantic colors only — no gradients anywhere. theme.ts exports no gradient API; use semanticColor.* solid tokens via getColor, never linear-gradient/radial-gradient/conic-gradient or gradient helpers.
+globs:
+  - website/src/resources/configs/theme.ts
+  - website/src/resources/configs/utils.ts
+  - website/src/app/ui/**/*.tsx
+  - website/src/resources/emotion/styles/**/*.ts
+  - docs/design-color-system.md
+  - docs/design-system/colors.md
+  - docs/platforms/website/ui-foundation.md
+  - docs/platforms/website/brand-identity-alignment.md
+  - docs/platforms/website/page-error.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# No gradients — solid semantic colors only
+
+Applies to all `website/` UI and its `theme.ts` color authority. The project deliberately uses **only solid semantic colors**; gradients are removed project-wide and must not be reintroduced.
+
+## Source of truth
+
+- `website/src/resources/configs/theme.ts` is the brand authority and **exports no gradient API**. There is no `GradientDef`, `Gradients`, `SemanticGradients`, `SemanticGradientKey`, `getSemanticGradient`, or `getGradientBackground`. Do not re-add any of them.
+- `website/src/resources/configs/utils.ts` exposes the solid `semanticColor.*` vocabulary. Resolve a token to a CSS string with `getColor(semanticColor.<key>)` from `useThemeManager()` (or via Utils `bg` / `clr` / `color` props, which resolve internally).
+
+## Rule
+
+1. **No gradient CSS.** `linear-gradient(...)`, `radial-gradient(...)`, and `conic-gradient(...)` are forbidden in `baseCssStyle`, `cssStyle`, emotion styles, and inline styles — including decorative overlays, clipped text, and scrollbar thumbs.
+2. **No gradient clipped text.** Do not use `backgroundImage` + `WebkitBackgroundClip: "text"` + transparent fill to fake gradient text. Use a solid `clr` / `color` semantic token.
+3. **Primary/accent fills are solid.** Use `semanticColor.primaryActionBackground` (navy `#0B2057`) and `semanticColor.accentActionBackground` (orange `#EC6901`), resolved via `getColor`. These replace the former `segmentedSelected` / `accentDepth` gradients.
+4. **Scrollbar thumbs are solid.** Use a solid neutral color (e.g. `rgba(120,131,156,0.9)`) for `::-webkit-scrollbar-thumb` and a darker solid for `:hover`. No gradient thumbs.
+5. **Decorative surface tints are solid or absent.** If a card needs a subtle tint, use a solid `semanticColor` surface token; do not layer a `linear-gradient` overlay. If no token fits, prefer omitting the decoration (YAGNI) over adding a gradient.
+
+## Forbidden
+
+- Re-introducing `Gradients`, `SemanticGradients`, `getSemanticGradient`, `getGradientBackground`, or `GradientDef` in `theme.ts`.
+- Any `linear-gradient` / `radial-gradient` / `conic-gradient` value in website source.
+- Gradient clipped-text tricks (`WebkitBackgroundClip: "text"` driven by a gradient `backgroundImage`).
+- Gradient scrollbar thumbs.
+
+## Why
+
+Solid semantic tokens keep the brand palette deterministic, type-guarded (`ThemeMapPath`), and theme-scheme-correct through one resolution path (`getColor` / Utils props). Gradients bypass the semantic token system, are not scheme-aware without per-branch code, and drift from brand identity. `yarn type-check` guards `semanticColor` path validity; this rule guards the absence of gradients.
+
+## Canonical solid pairings
+
+- `FormActionButton.tsx` primary: `getColor(semanticColor.primaryActionBackground)` + `semanticColor.primaryActionText`.
+- `ThemeModeSwitch.tsx` selected: `getColor(semanticColor.primaryActionBackground)` + `semanticColor.primaryActionText`.
+- `Error.tsx` primary CTA: `getColor(semanticColor.primaryActionBackground)` + `semanticColor.primaryActionText`.
+- `Error.tsx` error code + accent underline: `semanticColor.accentActionBackground` (solid orange).
+- `Drawer.tsx` scrollbar thumb: solid `rgba(120,131,156,0.9)` / hover `rgba(100,116,139,0.96)`.
+
+## Verification
+
+- `yarn type-check` in `website/` proves `semanticColor` paths resolve and no dangling gradient-API import remains.
+- Grep `gradient|Gradient|linear-gradient|radial-gradient|conic-gradient` under `website/src` — must return no matches (the only allowed project-wide mention is the explicit "No gradients are used" statement in `docs/platforms/website/page-error.md` and this rule).
+
+## Authority
+
+- `website/src/resources/configs/theme.ts`
+- `website/src/resources/configs/utils.ts` (`semanticColor`, `getColor`)
+- `docs/design-color-system.md` § Solid colors only
+- `docs/invariants/website.md` (no-gradients invariant)
+- `.cursor/skills/website-semantic-color-audit/SKILL.md` (audit step)

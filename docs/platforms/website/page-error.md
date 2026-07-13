@@ -28,30 +28,29 @@ The page renders `<Helmet><title>{t("title")}</title></Helmet>` inside `Main()`,
 Flex (minH calc(100vh - 8rem), center, page padding)
 └── Container maxW="40rem"
     └── Box (card) relative, clp, card padding, cardBackground, shellBorder,
-            crn=semanticDims.card.radius, shd=4, brand surface gradient
+            crn=semanticDims.card.radius, shd=4
         ├── Box (top-right corner bracket) absolute, navy, L-shape
         ├── Box (bottom-left corner bracket) absolute, orange, L-shape
         └── Col relative, as_c, maxW="28rem", ta_c
             ├── Box as_c → Logo preset="hero"
             ├── Col (code group)
-            │   ├── Text (error code) — orange accent gradient clipped text
-            │   ├── Box (accent underline) — orange gradient bar
+            │   ├── Text (error code) — orange accent solid text
+            │   ├── Box (accent underline) — orange solid bar
             │   └── Text variant="pageLead" — lead description
-            └── Row (As=button) — primary CTA, navy gradient
+            └── Row (As=button) — primary CTA, navy solid fill
 ```
 
 ## Brand treatment
 
-Brand pair is navy `#0B2057` (primary) + orange `#EC6901` (accent), resolved through `theme.ts` helpers — no off-brand hues.
+Brand pair is navy `#0B2057` (primary) + orange `#EC6901` (accent), resolved through `theme.ts` helpers — no off-brand hues. No gradients are used; all surfaces are solid semantic fills.
 
-- **Surface gradient** — subtle navy tint: light `rgba(11,32,87,0.06→0.02)`, dark `rgba(255,255,255,0.05→0.01)`. Applied via `baseCssStyle.backgroundImage` on the card (decoration, not a semantic fill).
 - **Corner brackets** — two crisp L-shaped marks replacing earlier blurred corner halos:
   - Top-right: `br_t` + `br_r` in `semanticColor.primaryActionBackground` (navy), inner corner `crn_tr="0.35rem"`.
   - Bottom-left: `br_b` + `br_l` in `semanticColor.accentActionBackground` (orange), inner corner `crn_bl="0.35rem"`.
   - Scheme-aware opacity (`opc` 0.55 dark / 0.45 light).
-- **Error code** — `fw="black"`, ~5rem, clipped gradient text using `getGradientBackground(getSemanticGradient("accentDepth", colorScheme))` via `WebkitBackgroundClip: "text"` + transparent fill.
-- **Accent underline** — short `3rem × 3px` bar, same orange gradient, `crn={999}`.
-- **Primary CTA** — `Row As="button"` with `background: actionGradient` where `actionGradient = getGradientBackground(getSemanticGradient("segmentedSelected", colorScheme))` (navy), text `semanticColor.primaryActionText`, radius `semanticDims.card.radius`, `minH={semanticDims.control.height}`, `shd={3}`. On click → `redirect({ identify: "Home", replace: true })`.
+- **Error code** — `fw="black"`, ~5rem, solid orange text via `clr={semanticColor.accentActionBackground}`.
+- **Accent underline** — short `3rem × 3px` bar, same solid orange (`getColor(semanticColor.accentActionBackground)`), `crn={999}`.
+- **Primary CTA** — `Row As="button"` with `background: actionBackground` where `actionBackground = getColor(semanticColor.primaryActionBackground)` (navy), text `semanticColor.primaryActionText`, radius `semanticDims.card.radius`, `minH={semanticDims.control.height}`, `shd={3}`. On click → `redirect({ identify: "Home", replace: true })`.
 - **Logo** — `Logo preset="hero"` (27 × 7.95rem), bare (no frame). See `brand-identity-alignment.md` § Logo.
 
 ## Radius + tokens used

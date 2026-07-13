@@ -40,7 +40,7 @@ Shared header behavior (both components):
 
 ## 5) Shared primitives
 
-- **Button**: `Utils`-composed; `actionPrimary` semantic gradient for primary CTAs; RTL-safe arrow mirroring via CSS `dir`; loading state via `Loadable` overlay.
+- **Button**: `Utils`-composed; `actionPrimary` solid navy (`semanticColor.primaryActionBackground`) for primary CTAs; RTL-safe arrow mirroring via CSS `dir`; loading state via `Loadable` overlay.
 - **SegmentedPills**: tab/scope semantics; a11y label per option.
 - **Loadable**: spinner/progress surface for initial loading, submit-busy, and overlay loaders.
 - **Toast**: success/error notifications; translation-backed copy.

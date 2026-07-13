@@ -33,8 +33,8 @@ Applies when authoring or reviewing website UI that resolves colors through `sem
 
 ## Canonical cases
 
-- `FormActionButton.tsx`: primary text = `semanticColor.primaryActionText` over the `segmentedSelected` (navy) gradient; neutral text = `semanticColor.textPrimary` over `semanticColor.cardBackground`.
-- `ThemeModeSwitch.tsx`: selected icon = `semanticColor.primaryActionText` over the `segmentedSelected` (navy) gradient; unselected = `semanticColor.iconPrimary`.
+- `FormActionButton.tsx`: primary text = `semanticColor.primaryActionText` over `semanticColor.primaryActionBackground` (navy); neutral text = `semanticColor.textPrimary` over `semanticColor.cardBackground`.
+- `ThemeModeSwitch.tsx`: selected icon = `semanticColor.primaryActionText` over `semanticColor.primaryActionBackground` (navy); unselected = `semanticColor.iconPrimary`.
 - `UiMockup.tsx` status badge `reviewed`: `bg = semanticColor.secondaryActionBackground` (navy[50]) pairs with `clr = semanticColor.secondaryActionText` (navy).
 
 ## Audit procedure

@@ -19,13 +19,6 @@ Source of truth: `website/src/resources/configs/theme.ts`
 - **CTA / highlight** → `SemanticColors.accent` (`#EC6901` orange)
 - **Accent text on light** → `SemanticColors.accentText` (`#B94700`)
 
-## Gradients
-
-Prefer semantic gradient keys over raw hex:
-- Auth/hero backgrounds → `SemanticGradients.hero`
-- Primary buttons → `SemanticGradients.primary` or solid `SemanticColors.primary`
-- Accent CTAs → `SemanticGradients.accent`
-
 ## Theme paths
 
 Resolve colors through `ThemeMap` paths via `utils.ts`:

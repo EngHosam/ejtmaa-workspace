@@ -26,7 +26,7 @@ Backend `AuthRequester.ts` gates auth subs for `["website"]` (`visitor` role).
 ## 3) UI components
 
 - `AuthPageShell`, `AuthTextField`, `FormActionButton`, `FormTextField`, `SelectableCard`, `Checkbox`, `Logo`, `Loadable`.
-- Primary actions use `SemanticGradients.primary`; Google button uses neutral tone.
+- Primary actions use `SemanticColors.primary` (solid navy); Google button uses neutral tone.
 
 ## 4) Web-native behavior
 

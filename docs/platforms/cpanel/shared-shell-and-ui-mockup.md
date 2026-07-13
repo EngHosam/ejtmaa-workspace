@@ -97,7 +97,7 @@ Desktop scrollbar behavior:
 - Firefox gets `scrollbarWidth: "thin"` plus a thumb/track color pair,
 - WebKit gets a thin `0.45rem` scrollbar width,
 - the track remains visually transparent,
-- the thumb uses a quiet neutral gradient with a small border and a darker hover state.
+- the thumb uses a quiet neutral solid color with a small border and a darker hover state.
 
 The viewport remains the scroll owner; there is no parallel overlay scrollbar implementation.
 

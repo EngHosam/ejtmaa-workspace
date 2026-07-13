@@ -8,7 +8,7 @@ Ejtmaa brand tokens are defined in `website/src/resources/configs/theme.ts`:
 - navy: `#0B2057`
 - orange: `#EC6901`
 
-When `cpanel/src/resources/configs/theme.ts` is absent from the checkout, treat `website/src/resources/configs/theme.ts` as the reference for brand colors, gradients, and semantic paths.
+When `cpanel/src/resources/configs/theme.ts` is absent from the checkout, treat `website/src/resources/configs/theme.ts` as the reference for brand colors and semantic paths.
 
 ## UI primitives
 
@@ -23,7 +23,6 @@ Compose through Utils props first. No parallel styling system.
 
 - Primary actions: `SemanticColors.primary` (navy)
 - Accent highlights: `SemanticColors.accent` (orange)
-- Gradients: `SemanticGradients.primary`, `SemanticGradients.accent`
 
 Use `theme.ts` tokens — do not hardcode hex when a semantic path exists.
 

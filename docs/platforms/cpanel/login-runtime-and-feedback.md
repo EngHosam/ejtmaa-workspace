@@ -75,7 +75,7 @@ The route page stays orchestration-oriented by composing shared project UI:
 
 - `AuthPageShell.tsx` -> auth card shell with logo/title/action/footer slots plus the shared login-width boundary (`w="100%"`, `maxW="34rem"`, `minW={0}`) and compact `xs` padding
 - `AuthTextField.tsx` -> form-bound input with autofill-safe styling and field errors
-- `FormActionButton.tsx` -> shared gradient action button with inline loading state
+- `FormActionButton.tsx` -> shared solid-fill action button with inline loading state
 - `FormInputWrapper.tsx` -> shared project field frame for title/subtitle/error/action areas
 
 ### Responsive width ownership
@@ -196,13 +196,10 @@ Loadable/toast review behavior:
 
 ## Theme and Type System Adjustments
 
-### Theme typing and gradients
+### Theme typing and reset styles
 
-`cpanel/src/resources/configs/theme.ts` (when present in cpanel checkout) provides shared gradient and element-reset surfaces for auth/button/theme-switch work:
+`cpanel/src/resources/configs/theme.ts` (when present in cpanel checkout) provides shared element-reset surfaces for auth/button/theme-switch work:
 
-- semantic gradient key `segmentedSelected`
-- `getSemanticGradient(...)`
-- `getGradientBackground(...)`
 - `ElementStyles.buttonReset`
 
 It keeps `ThemeMapPath` derived from `FullNestedPaths` while typing `DarkSchema` through `FixTypes<typeof LightSchema>`.
@@ -256,7 +253,7 @@ The table below accounts for the broader cumulative surface documented by this p
 | `cpanel/src/app/ui/components/DataTable.tsx` | Generic shared table surface used by the review route | `# Theme and Type System Adjustments` / `### Generic DataTable row typing`; `# Visual Review Route` |
 | `cpanel/src/app/ui/components/GlobalLoadable.tsx` | Store-backed global loading overlay | `# Shared Feedback Surfaces` / `### GlobalLoadable` |
 | `cpanel/src/app/ui/components/Loadable.tsx` | Shared Lottie loading surface | `# Shared Feedback Surfaces` / `### Loadable` |
-| `cpanel/src/app/ui/components/ThemeModeSwitch.tsx` | Shared theme-mode switch using gradient-selected state | `# Theme and Type System Adjustments` / `### Theme typing and gradients`; `# Visual Review Route` |
+| `cpanel/src/app/ui/components/ThemeModeSwitch.tsx` | Shared theme-mode switch using solid-selected state | `# Theme and Type System Adjustments` / `### Theme typing and reset styles`; `# Visual Review Route` |
 | `cpanel/src/app/ui/components/Toast.tsx` | Shared cpanel toast UI with success animation | `# Shared Feedback Surfaces` / `### Toast` |
 | `cpanel/src/app/ui/components/form/FormInputWrapper.tsx` | Shared auth/project field wrapper with errors/title/action area | `# Login Flow` / `### Shared auth UI` |
 | `cpanel/src/app/ui/components/auth/AuthPageShell.tsx` | Shared auth shell card | `# Login Flow` / `### Shared auth UI` |
@@ -266,7 +263,7 @@ The table below accounts for the broader cumulative surface documented by this p
 | `cpanel/src/app/ui/pages/Login.tsx` | Route-owned supervisor login orchestration | `# Login Flow` / `### Route page` |
 | `cpanel/src/app/ui/pages/UiMockup.tsx` | Visual-review route for shell, loadable, toast, and table states | `# Visual Review Route` |
 | `cpanel/src/resources/configs/axios/api.ts` | Truthful frontend cpanel requester/custom endpoint map | `# Backend Contract` / `### Requester` |
-| `cpanel/src/resources/configs/theme.ts` | Shared gradients, reset styles, typed theme map, and dimension authority (when present in cpanel checkout) | `# Theme and Type System Adjustments` / `### Theme typing and gradients` |
+| `cpanel/src/resources/configs/theme.ts` | Shared reset styles, typed theme map, and dimension authority (when present in cpanel checkout) | `# Theme and Type System Adjustments` / `### Theme typing and reset styles` |
 | `cpanel/src/resources/configs/web-core.ts` | Central runtime config authority; middleware placement and version `0.2` | `# Runtime Ownership` / `### Router middleware timing fix`; `# Contract inventory` |
 | `cpanel/src/resources/translations/ar.ts` | Centralized login/mockup/toast/loadable Arabic copy | `# Login Flow` / `### Shared auth UI`; `# Visual Review Route` |
 | `cpanel/src/types/requesters/requesters.cpanel.ts` | Truthful cpanel requester type map for visitor/supervisor scopes | `# Backend Contract` / `### Requester` |

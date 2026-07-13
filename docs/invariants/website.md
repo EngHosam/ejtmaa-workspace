@@ -44,7 +44,7 @@ Mandatory foundation:
 3. `resources/configs/utils.ts`
 4. Shared components under `ui/components/`
 
-Use `SemanticGradients.primary` / `SemanticGradients.accent` from `theme.ts`.
+Use `SemanticColors.primary` / `SemanticColors.accent` from `theme.ts`.
 
 ## W5. Base vs Product UI
 
@@ -68,7 +68,7 @@ Customer router only. Fixed URL segments before parametric routes on the same pr
 
 Customer auth on `/website`: Login, Register, ResetPassword.
 Role home redirect: authed customer → customer home; visitor → public home.
-Auth gradients use `SemanticGradients.primary` / `SemanticGradients.accent`.
+Auth primary surfaces use `SemanticColors.primary` / `SemanticColors.accent`.
 
 ## W10. Locale and Theme
 
@@ -192,6 +192,12 @@ See `.cursor/rules/website-logo-no-frame.mdc` and `docs/platforms/website/brand-
 Corner radius is centralized in `Dims` (`website/src/resources/configs/theme.ts`): `corner` `8px`, `smallCorner` `6px`, `largeCorner` `12px`, `pillCorner` `999px`. Consumers read the default card corner via `semanticDims.card.radius` (points to `Dims.corner`), not by re-typing the literal. Hardcoded `crn` rem/px literals for card/button corners are forbidden. Pills/circles use `crn={999}`. Per-corner radius uses `crn_tr` / `crn_tl` / `crn_br` / `crn_bl` (not `br_tr` / `br_bl`, which do not exist). A project-wide radius change is a single `Dims` edit, not a consumer sweep.
 
 See `.cursor/rules/website-corner-radius-tokens.mdc` and `docs/platforms/website/ui-foundation.md` § Corner radius tokens.
+
+## W47. No Gradients — Solid Semantic Colors Only
+
+The website UI uses **only solid semantic colors**. `theme.ts` exports no gradient API (no `GradientDef` / `Gradients` / `SemanticGradients` / `getSemanticGradient` / `getGradientBackground`). `linear-gradient` / `radial-gradient` / `conic-gradient` are forbidden in every style path — including decorative overlays, clipped text, and scrollbar thumbs. Primary/accent fills use the solid tokens `semanticColor.primaryActionBackground` (navy `#0B2057`) and `semanticColor.accentActionBackground` (orange `#EC6901`), resolved via `getColor` / Utils props. `yarn type-check` guards `semanticColor` path validity; a grep for `gradient|Gradient|linear-gradient|radial-gradient|conic-gradient` under `website/src` must return no matches.
+
+See `.cursor/rules/website-no-gradients.mdc` and `docs/design-color-system.md` § Solid colors only.
 
 ## Related
 

@@ -47,7 +47,7 @@ Behavior:
 - reads the route param through `useCurrentParams(...)`,
 - binds `useTranslator(...)` to `t.ui.pages.error`,
 - reads the color scheme through `useThemeManager()`,
-- derives a surface gradient plus the existing semantic selected gradient from `theme.ts`,
+- derives solid semantic action fills (`semanticColor.primaryActionBackground`, `semanticColor.accentActionBackground`) from `theme.ts`,
 - shows the actual error code as the page title,
 - renders the translated error description below the code,
 - redirects to `Home` through `useRouter().redirect(...)` when the primary action is clicked.
@@ -60,10 +60,10 @@ Page-owned composition includes:
 
 - a centered `Container`,
 - a card shell using semantic backgrounds, borders, shadows, and spacing,
-- two blurred decorative gradient circles,
+- two blurred decorative solid-color circles,
 - a pill-shaped logo holder,
 - a large display treatment for the numeric code,
-- a single primary action button using the existing gradient/reset helpers.
+- a single primary action button using the existing solid/reset helpers.
 
 This is still route-owned UI, not a shared multi-screen error component.
 

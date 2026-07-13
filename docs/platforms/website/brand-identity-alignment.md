@@ -32,13 +32,13 @@ Guarantees:
 
 | file | surface | text/icon |
 |---|---|---|
-| `website/src/app/ui/components/form/FormActionButton.tsx` | primary: `segmentedSelected` navy gradient | `semanticColor.primaryActionText` |
+| `website/src/app/ui/components/form/FormActionButton.tsx` | primary: `semanticColor.primaryActionBackground` (navy) | `semanticColor.primaryActionText` |
 | `website/src/app/ui/components/form/FormActionButton.tsx` | neutral: `semanticColor.cardBackground` | `semanticColor.textPrimary` |
-| `website/src/app/ui/components/ThemeModeSwitch.tsx` | selected: `segmentedSelected` navy gradient | `semanticColor.primaryActionText` |
+| `website/src/app/ui/components/ThemeModeSwitch.tsx` | selected: `semanticColor.primaryActionBackground` (navy) | `semanticColor.primaryActionText` |
 | `website/src/app/ui/components/ThemeModeSwitch.tsx` | unselected: transparent over `inputBackground` | `semanticColor.iconPrimary` |
 | `website/src/app/ui/pages/UiMockup.tsx` `reviewed` badge | `semanticColor.secondaryActionBackground` (navy[50]) | `semanticColor.secondaryActionText` (navy) |
-| `website/src/app/ui/pages/Error.tsx` primary CTA | `segmentedSelected` navy gradient (`actionGradient`) | `semanticColor.primaryActionText` |
-| `website/src/app/ui/pages/Error.tsx` error code | `accentDepth` orange gradient (clipped text) | transparent fill (gradient clip) |
+| `website/src/app/ui/pages/Error.tsx` primary CTA | `semanticColor.primaryActionBackground` (navy) (`actionBackground`) | `semanticColor.primaryActionText` |
+| `website/src/app/ui/pages/Error.tsx` error code | `semanticColor.accentActionBackground` (orange) solid text | `semanticColor.accentActionBackground` |
 | `website/src/app/ui/pages/Error.tsx` corner brackets | navy top-right (`primaryActionBackground`) / orange bottom-left (`accentActionBackground`) | `2px` border edges |
 
 ## Logo

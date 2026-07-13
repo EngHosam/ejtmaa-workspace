@@ -23,7 +23,7 @@ Applies when rendering a `Loadable` Lottie spinner inside a filled action contro
 
 ## Canonical cases
 
-- `website/src/app/ui/components/form/FormActionButton.tsx`: `<Loadable loading size={"2rem"} lightBackground={!isPrimary}/>` — primary uses the gradient/solid fill, neutral uses `cardBackground`.
+- `website/src/app/ui/components/form/FormActionButton.tsx`: `<Loadable loading size={"2rem"} lightBackground={!isPrimary}/>` — primary uses the solid `primaryActionBackground` fill, neutral uses `cardBackground`.
 - `website/src/app/ui/components/form/FormActionChip.tsx`: `<Loadable loading size={"1.1rem"} lightBackground={resolvedTone !== "primary" && resolvedTone !== "danger"}/>` — `neutral` uses `canvasBackground`, `primary`/`danger` use filled backgrounds.
 
 ## Size

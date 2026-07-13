@@ -103,27 +103,28 @@ Source of truth: `website/src/resources/configs/theme.ts` (read-only reference f
 
 Backward-compatible aliases: `primary`, `secondary`, `accent`, `accentText`, `danger`, `warning`, `success`, `info`, `light`, `dark`, `white`, `black`, `cloud`, `smoke`, `steel`, `space`, `graphite`, `arsenic`, `phantom`, `ink`, plus soft/muted/scrim variants.
 
-## Gradients
+## Solid colors only (no gradients)
 
-| Key | Colors | Angle |
+The project uses **only solid semantic colors**. `theme.ts` exports no gradient API (`GradientDef`, `Gradients`, `SemanticGradients`, `getSemanticGradient`, `getGradientBackground` are absent). Resolve every fill/text color through `semanticColor.<key>` (`website/src/resources/configs/utils.ts`) via `getColor(...)` from `useThemeManager()` or via Utils `bg` / `clr` / `color` props.
+
+Forbidden: `linear-gradient(...)`, `radial-gradient(...)`, `conic-gradient(...)` in any style path (including decorative overlays, clipped text, and scrollbar thumbs), and gradient clipped-text tricks (`backgroundImage` + `WebkitBackgroundClip: "text"` + transparent fill).
+
+Primary/accent fills are solid:
+- Primary: `semanticColor.primaryActionBackground` (navy `#0B2057` in both schemes).
+- Accent: `semanticColor.accentActionBackground` (orange `#EC6901` in both schemes).
+
+See `.cursor/rules/website-no-gradients.mdc` and `docs/invariants/website.md`.
+
+### Traceability — solid-color consumers
+
+| Source file | Solid surface | Described in |
 |---|---|---|
-| surfaceLight | `#FFFFFF` → `#F7F9FC` | 135deg |
-| surfaceDark | `#040D22` → `#141D2B` | 135deg |
-| primary | `#16366D` → `#0B2057` | 135deg |
-| primaryDark | `#0B2057` → `#040D22` | 135deg |
-| accent | `#EC6901` → `#FF8738` | 135deg |
-| accentDark | `#B94700` → `#EC6901` | 135deg |
-| heroLight | `#FFFFFF` → navy 50 → orange 50 | 120deg |
-| heroDark | `#040D22` → `#0B2057` | 120deg |
-
-### SemanticGradients
-
-| Key | light | dark |
-|---|---|---|
-| segmentedSelected | primary | primaryDark |
-| surfaceDepth | surfaceLight | surfaceDark |
-| hero | heroLight | heroDark |
-| accentDepth | accent | accentDark |
+| `website/src/resources/configs/theme.ts` | No gradient API; brand + semantic scales only | `docs/design-color-system.md` (this page); `docs/platforms/website/ui-foundation.md` |
+| `website/src/resources/configs/utils.ts` | `semanticColor.*` solid tokens; `getColor` resolution | `docs/platforms/website/ui-foundation.md` § Semantic color audit & type guard |
+| `website/src/app/ui/components/form/FormActionButton.tsx` | primary: `semanticColor.primaryActionBackground`; neutral: `semanticColor.cardBackground` | `docs/platforms/website/brand-identity-alignment.md` § Canonical consumer pairings |
+| `website/src/app/ui/components/ThemeModeSwitch.tsx` | selected: `semanticColor.primaryActionBackground`; unselected: transparent over `inputBackground` | `docs/platforms/website/brand-identity-alignment.md` § Canonical consumer pairings |
+| `website/src/app/ui/pages/Error.tsx` | CTA: `semanticColor.primaryActionBackground`; error code + underline: `semanticColor.accentActionBackground`; no card overlay | `docs/platforms/website/page-error.md` § Brand treatment |
+| `website/src/app/ui/components/Drawer.tsx` | scrollbar thumb: solid neutral `rgba(120,131,156,0.9)` / hover `rgba(100,116,139,0.96)` | `docs/platforms/website/shared-ui-and-shell.md` § Shared primitives |
 
 ## ThemeMap
 
