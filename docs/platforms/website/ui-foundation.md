@@ -43,6 +43,15 @@ getGradientBackground(gradient)
 
 Access via utils theme path helpers — do not hardcode hex in components when a path exists.
 
+## Semantic color audit & type guard
+
+`semanticColor` in `resources/configs/utils.ts` is a flat vocabulary of `ColorType` path strings pointing into `ThemeMap`. Two guarantees:
+
+1. **Path validity is type-checked.** `ColorType` includes `ThemeMapPath` (a string-literal union derived from `ThemeMapType` via `FullNestedPaths`). A path string that is not a real `ThemeMap` leaf is rejected by `tsc` at the `as ColorType` cast. `yarn type-check` is the path-validity guard.
+2. **Token over hardcoded shortcut.** Prefer `semanticColor.<key>` over `@white` / `@<BaseColor>` hardcodes, and pair text/icon color against the resolved surface fill (W43). Do not add `semanticColor` tokens without a consumer (YAGNI); do not edit `theme.ts` to satisfy consumers.
+
+Full audit procedure and the 48-key → `theme.ts` line map: `.cursor/skills/website-semantic-color-audit/SKILL.md`. Shipped alignment outcome: `brand-identity-alignment.md`.
+
 ## Typography
 
 - Arabic: IBM Plex Sans Arabic

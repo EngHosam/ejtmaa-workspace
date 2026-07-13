@@ -1,0 +1,49 @@
+---
+description: Website semantic color token discipline — prefer semanticColor.<key> over @white/@<BaseColor> hardcodes, pair text/icon against the resolved surface fill, and rely on the ThemeMapPath type guard for path validity
+globs:
+  - website/src/resources/configs/utils.ts
+  - website/src/resources/configs/theme.ts
+  - website/src/app/ui/components/**
+  - website/src/app/ui/pages/**
+  - website/src/app/ui/layouts/**
+  - docs/platforms/website/ui-foundation.md
+  - docs/platforms/website/brand-identity-alignment.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website Semantic Color Token Discipline
+
+Applies when authoring or reviewing website UI that resolves colors through `semanticColor` (`website/src/resources/configs/utils.ts`) and `ThemeMap` (`website/src/resources/configs/theme.ts`). Authority: `docs/platforms/website/brand-identity-alignment.md`, W43.
+
+## Non-negotiables
+
+1. **Prefer `semanticColor.<key>` over `@white` / `@<BaseColor>` hardcodes** whenever a semantic token exists. A hardcoded `@white` on a primary/navy control must be `semanticColor.primaryActionText`; a hardcoded `@white` on an accent control must be `semanticColor.accentActionText`.
+2. **Pair text/icon color against the resolved surface fill, not against the page color scheme.** White text is valid on a primary/dark fill and wrong on a light fill. Before writing `clr`/`color`, resolve `bg` to its `ThemeMap` leaf value in the active scheme and confirm contrast.
+3. **`theme.ts` is brand authority — do not edit it to satisfy a consumer.** If a token seems missing, first check whether an existing `semanticColor` key already covers the case; only add a new key when a real consumer needs it (YAGNI — no dead tokens).
+4. **Path validity is type-guarded.** `semanticColor` entries are typed `as ColorType`, and `ColorType` includes `ThemeMapPath` (a string-literal union derived from `ThemeMapType` via `FullNestedPaths`). `yarn type-check` (`tsc --noEmit`) rejects any path string that is not a real `ThemeMap` leaf. A passing `type-check` is proof that all `semanticColor` paths resolve.
+
+## Forbidden
+
+- `@white` / `@<BaseColor>` literals where a `semanticColor` action-text/icon token already expresses the intent.
+- Pairing `textInverted` (white) with a light surface such as `secondaryActionBackground` (navy[50]) — invisible text.
+- Adding `semanticColor` tokens for hypothetical future consumers (dead code).
+- Editing `theme.ts` to work around a consumer contrast bug — fix the consumer pairing instead.
+- Bypassing the `ThemeMapPath` guard with `as any` / `as string` to silence a path error — the error means the path is wrong.
+
+## Canonical cases
+
+- `FormActionButton.tsx`: primary text = `semanticColor.primaryActionText` over the `segmentedSelected` (navy) gradient; neutral text = `semanticColor.textPrimary` over `semanticColor.cardBackground`.
+- `ThemeModeSwitch.tsx`: selected icon = `semanticColor.primaryActionText` over the `segmentedSelected` (navy) gradient; unselected = `semanticColor.iconPrimary`.
+- `UiMockup.tsx` status badge `reviewed`: `bg = semanticColor.secondaryActionBackground` (navy[50]) pairs with `clr = semanticColor.secondaryActionText` (navy).
+
+## Audit procedure
+
+To re-verify alignment after any `theme.ts` or `semanticColor` change, run the audit in `.cursor/skills/website-semantic-color-audit/SKILL.md` (consumer inventory + 48-key line map + `yarn type-check`).
+
+## Related
+
+- `docs/platforms/website/ui-foundation.md` (semantic color audit & type guard)
+- `docs/platforms/website/brand-identity-alignment.md` (shipped outcome)
+- `docs/invariants/website.md` W10, W43
+- `.cursor/rules/website-action-control-loader-contrast.mdc` (spinner contrast on filled controls — sibling concern)

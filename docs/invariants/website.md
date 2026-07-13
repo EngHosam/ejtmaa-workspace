@@ -169,6 +169,18 @@ Presentational components accept translated label strings from callers. Callers 
 
 See `.cursor/rules/website-presentational-label-props.mdc`.
 
+## W43. Semantic Color Token Discipline
+
+Prefer `semanticColor.<key>` (`website/src/resources/configs/utils.ts`) over `@white` / `@<BaseColor>` hardcodes whenever a semantic token exists. Pair text/icon color against the **resolved surface fill** (e.g. white text belongs on a primary/dark fill, not on `secondaryActionBackground` = navy[50]). `semanticColor` path strings are type-guarded by `ThemeMapPath` (derived from `ThemeMapType`), so `yarn type-check` rejects any path that is not a real `ThemeMap` leaf. Do not add `semanticColor` tokens without a consumer (YAGNI). `theme.ts` is brand authority and is not edited to satisfy consumers.
+
+See `.cursor/rules/website-semantic-color-token-discipline.mdc` and `docs/platforms/website/brand-identity-alignment.md`.
+
+## W44. URL Config Brand Alignment
+
+`website/src/resources/configs/urls.ts` production URLs use the `ejtmaa.live` / `backend.ejtmaa.live` domain and the `/website` mount (W7). `ME_URL` production is `https://ejtmaa.live`. The test-mode `BASE_URL` branch uses the same `/website` mount segment as production.
+
+See `docs/platforms/website/brand-identity-alignment.md`.
+
 ## Related
 
 - `docs/platforms/website/overview.md`

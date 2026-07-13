@@ -8,6 +8,7 @@
 | [`repository-inventory.md`](repository-inventory.md) | Repo file inventory |
 | [`component-structure.md`](component-structure.md) | Folder and layer ownership |
 | [`ui-foundation.md`](ui-foundation.md) | Utils + theme.ts contract |
+| [`brand-identity-alignment.md`](brand-identity-alignment.md) | URL rebrand + semanticColor audit outcome |
 | [`data-flow-and-gql.md`](data-flow-and-gql.md) | Adapters, requesters, GQL |
 | [`graphql-mirror-and-tooling.md`](graphql-mirror-and-tooling.md) | GQL mirror sync |
 | [`route-registry-contract.md`](route-registry-contract.md) | Customer route registry |
