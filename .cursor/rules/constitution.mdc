@@ -1,0 +1,53 @@
+---
+description: Enterprise Mega Platform Architecture & Governance Constitution — authoritative laws for boundaries, invariants, transactions, security, and knowledge
+alwaysApply: true
+---
+
+# Constitution Core
+
+This file is the always-on operational digest for every request.
+The full reference is preserved in `docs/governance/constitution-full.md`.
+
+## Source of Truth
+
+- The repository, active code, and persisted docs are authoritative.
+- Extend prevailing patterns instead of redefining them.
+- Do not invent architecture, contracts, or workflows when intent is unclear.
+- If certainty is not high, escalate or ask instead of assuming.
+- Persisted authoritative docs under `/docs` must remain in English.
+
+## Boundaries and Direction
+
+- Respect architectural boundaries, ownership, and dependency direction.
+- Reverse dependencies and cross-boundary shortcuts are forbidden.
+- Cross-domain interaction must happen through explicit public contracts.
+- Do not bypass invariants, authorization boundaries, or consistency ownership.
+
+## Determinism and Safety
+
+- Preserve deterministic behavior; hidden side effects are forbidden.
+- Keep one explicit consistency owner and one transaction owner per operation.
+- Retries, webhooks, background jobs, fulfillment, and similar external flows must remain idempotent and concurrency-safe.
+- Financial, fulfillment, and other material state transitions must stay atomic, auditable, and safe against duplication.
+- Tenant isolation, sensitive-data protection, and abuse protections are non-negotiable.
+- Maintain observability; silent failure and untracked destructive behavior are prohibited.
+
+## Contracts and Evolution
+
+- Public contracts must not drift or break without versioning, migration planning, impact analysis, and ADR-level governance.
+- Data evolution must preserve integrity and avoid uncontrolled drift.
+- Refactoring must preserve observable behavior unless change is explicitly intended.
+
+## Verification Discipline
+
+- Run only verification scripts that already exist in `package.json`.
+- If an existing required check fails, the task is incomplete.
+- Skip checks only when the script does not exist.
+- Do not invent verification tooling or build steps without explicit governance.
+- When applicable, keep TypeScript, GraphQL/codegen, and existing tests passing.
+
+## Escalation and Change Control
+
+- High-risk or production-impacting changes must keep failure handling, rollback or recovery thinking, and observability in place.
+- If architectural certainty is below high confidence, escalation is mandatory.
+- Constitutional or structural deviations require explicit approval and documented governance.

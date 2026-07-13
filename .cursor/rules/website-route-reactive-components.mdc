@@ -1,0 +1,56 @@
+﻿---
+description: Guard Ejtmaa website route-reactive components against withMemo-no-props staleness (breadcrumb, route-derived UI)
+globs:
+  - website/src/app/ui/components/LandingSubHeader.tsx
+  - website/src/app/ui/components/Breadcrumb.tsx
+  - website/src/app/ui/components/LandingDrawer.tsx
+  - website/src/app/ui/components/customer/CustomerDrawer.tsx
+  - website/src/app/ui/components/customer/CustomerBottomBar.tsx
+  - website/src/app/ui/components/customer/CustomerHeader.tsx
+  - website/src/app/ui/components/customer/CustomerSubHeader.tsx
+  - website/src/app/ui/components/customer/CustomerFooter.tsx
+  - website/src/app/ui/layouts/CustomerMainLayout.tsx
+  - website/src/app/ui/components/LandingHeader.tsx
+  - website/src/app/ui/components/LandingFooter.tsx
+  - website/src/app/ui/layouts/LandingLayout.tsx
+  - website/src/app/ui/base/components/Utils.tsx
+  - docs/platforms/website/flow-customer-shell.md
+alwaysApply: false
+---
+
+# Website Route-Reactive Component Memoization
+
+Applies when authoring or editing website components/layouts that read the current route at render time (`myInstance.getRouter().currentPage.identify`, `getRouter().isRTL`, `getRouter().locale`, or any `currentPage`/route-derived value used to shape rendered output).
+
+## Rule
+
+A component that derives rendered output from the current route MUST NOT be wrapped in `withMemo` (`React.memo`) with **no props**.
+
+`withMemo` (`website/src/app/ui/base/components/Utils.tsx`) is `React.memo` with a shallow comparator that strips `extra`/`motion`/`hideAt`/`showAt`/`rotateAt` then `shallowEqual`s the rest. For a no-props component the remaining props are `{}` → `shallowEqual({}, {})` is true → the comparator returns "skip re-render" on every parent re-render. The component then renders exactly once (on mount) and is never re-rendered by its parent again — so any route-derived UI freezes on the first route seen after mount and goes stale on every subsequent navigation.
+
+## How to comply
+
+When a component depends on the current route, do one of:
+
+1. **Export it without `withMemo`** — it re-renders whenever its layout parent re-renders (which happens on route change because the layout's `children` prop changes). This is the correct choice for header/breadcrumb-style components that are cheap to re-render.
+2. **Pass the route-derived value as an explicit prop** (e.g. `identify`) so `withMemo`'s comparator sees it change and re-renders only when it actually changes.
+
+## Canonical case
+
+`LandingSubHeader` (and the customer-side `CustomerSubHeader`) build their breadcrumb via `useBreadcrumbs`, which reads `myInstance.getRouter().currentPage.identify` to walk the route's `breadcrumb` metadata (`Home -> Section -> Item`). Both are exported without `withMemo`. Wrapping either in `withMemo` with no props would freeze the breadcrumb: navigating between subpages re-renders the layout (its `children` changed) but would skip the sub-header, leaving the trail stuck on the first subpage.
+
+Customer-shell canonical cases: `CustomerDrawer` (reads `getRouter().isRTL` for the drawer open side) and `CustomerBottomBar` (reads `currentPage.identify` for active nav state + `isRTL` for nav alignment) are exported **without** `withMemo`. `CustomerSubHeader` (reads `currentPage.identify` via `useBreadcrumbs`) is exported **without** `withMemo`. `CustomerMainLayout` keeps `withMemo` and derives sub-header from `routes[identify]?.breadcrumb`, with `useCurrentPage()` for route-reactive identify. `CustomerHeader` and `CustomerFooter` keep `withMemo`. See `docs/platforms/website/flow-customer-shell.md` §11.
+
+## What is NOT route-reactive (withMemo is fine)
+
+Static components that do not read the route at render time (e.g. `LandingFooter`, `LandingHeader` with only anchor-scroll nav, presentational cards) may keep `withMemo` — their output does not change with the route, so skipping re-renders is a safe optimization.
+
+## Why this is not obvious
+
+`useMyInstance` / `useNav` / `useTranslator` return stable refs and do NOT subscribe to route changes — they do not trigger a re-render on navigation. Route-reactive components therefore rely entirely on parent-driven re-renders, which `withMemo`-no-props silently blocks.
+
+## Authority
+
+- `docs/invariants/website.md` W24
+- `docs/platforms/website/flow-customer-shell.md`
+- `docs/platforms/website/flow-customer-shell.md` §11

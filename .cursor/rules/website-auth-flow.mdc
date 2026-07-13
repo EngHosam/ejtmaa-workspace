@@ -1,0 +1,79 @@
+﻿---
+description: Guard Ejtmaa website auth flow (Login/Register/ResetPassword + Google social) on the SSR web platform
+globs:
+  - website/src/app/ui/pages/Login.tsx
+  - website/src/app/ui/pages/Register.tsx
+  - website/src/app/ui/pages/ResetPassword.tsx
+  - website/src/app/ui/components/auth/**
+  - website/src/app/ui/components/Checkbox.tsx
+  - website/src/app/ui/components/SelectableCard.tsx
+  - website/src/app/ui/components/form/FormTextField.tsx
+  - website/src/app/ui/components/form/FormActionButton.tsx
+  - website/src/app/helpers/SocialAuthHelpers.ts
+  - website/src/app/services/router.ts
+  - website/src/app/services/auth.ts
+  - website/src/resources/configs/routes.ts
+  - website/src/resources/configs/theme.ts
+  - website/src/resources/configs/web-core.ts
+  - website/src/resources/translations/*.ts
+  - website/src/types/requesters/requesters.website.ts
+  - backend/src/app/orchestrator/requesters/AuthRequester.ts
+  - docs/platforms/website/flow-auth.md
+alwaysApply: false
+---
+
+# Website Auth Flow
+
+Applies when editing website authentication (Login / Register / ResetPassword + Google social) under `website/`.
+
+Authoritative guide: `docs/platforms/website/flow-auth.md`.
+
+## Hard rules
+
+### Routes and forms
+- Auth routes are `/login`, `/register`, `/reset-password` on `BASIC`.
+- Each auth page uses route-scoped `useShallowForm({ initProps: { api: API.FORMS.VISITOR.R("auth") } })`. Do not introduce mobile shared form identities on website.
+- `publicRoutes` must include `Login`, `Register`, `ResetPassword`, and `Home`.
+
+### Role-based home redirect
+- Customer role home: `CustomerHome` → `/customer` on `CUSTOMER_MAIN`.
+- All customer workspace paths use `customerRouter("/…")`.
+- `getMyHomeIdentify` returns `CustomerHome` for `authedAs === "CUSTOMER"`, else `Home`.
+- Authed on public routes → redirect to `CustomerHome`. Unauthed on `/customer/*` → redirect to `Home`.
+- Post-login landing is owned by middleware after `auth.login` reload.
+- Requires `/website/custom/start` auth payload under the `auth` key.
+
+### Navigation
+- Auth-internal links use `useNav().push({ identify })`.
+- Full reload reserved for `auth.login` and `auth.logout` only.
+
+### Copy and i18n
+- Email-only auth copy in `ar.ts` and `en.ts` together.
+- No placeholders on auth fields.
+
+### Form injection and Loadable
+- Keep `readOnly: !input.onChangeHandler` on `FormTextField`.
+- No page-level `Loadable` during injection; submit button spinner only.
+
+### Components
+- Reusable primitives live in `ui/components/` with generic names (`Checkbox`, `SelectableCard`).
+- Auth-specific wrappers stay in `ui/components/auth/`.
+- Primary tone uses `SemanticGradients.primary`.
+
+### Social auth (Google)
+- Google only; GIS via `SocialAuthHelpers.ts`.
+- Forward ID token to `loginSocial` / `registerCustomerSocial`.
+- Cache token in form values for retry; clear on provider switch.
+- SSR-safe: invoke only from click handlers.
+
+### Backend gating
+- Auth subs gated `@sub(["website", "app"], ["visitor"])` in `AuthRequester.ts`.
+- `requesters.website.ts` lists every auth sub under `visitor.auth`.
+
+### Register payload
+- Email register sends `email` + `password`; require terms `accepted`.
+- Social register deletes email/password; uses cached `social`.
+
+### Post-success
+- Login/register/social success → `auth.login` → cookie + reload.
+- ResetPassword success → `nav.push({ identify: "Login" })`.

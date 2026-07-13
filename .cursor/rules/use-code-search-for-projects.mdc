@@ -1,0 +1,205 @@
+---
+description: Use the code-search MCP for cross-project memory, prior implementations, guides, docs, Cursor rules, and repository-wide evidence.
+globs: .cursor/**/*.md,.cursor/**/*.mdc,docs/**/*.md,AGENTS.md
+alwaysApply: false
+---
+
+# Code Search MCP Usage Policy
+
+Use the current workspace and local files when the request can be answered fully from the currently open project.
+
+Use the `code-search` MCP server when the answer depends on indexed knowledge outside the current workspace, including:
+- prior implementations
+- similar features from other projects
+- cross-project comparisons
+- patterns used elsewhere
+- repository-wide examples
+- project guides, docs, Cursor rules, conventions, setup notes, deployment notes, or architecture notes
+
+Do not wait for the user to explicitly name the MCP server. Infer retrieval intent from the request.
+
+## Valid Tools
+
+Use only these exact tool names when they are exposed by the `code-search` MCP server:
+
+- `list_projects`
+- `search_code`
+- `search_guides`
+- `find_symbol`
+- `find_callers`
+- `find_imports`
+- `open_file`
+
+Never invent, prefix, rename, rewrite, or reconstruct tool names.
+
+## Source Selection
+
+Choose the source based on where the evidence must come from:
+
+- Current workspace only -> use local workspace search, local file reading, and local reasoning.
+- Prior work, other projects, examples, comparisons, or portfolio memory -> use `code-search`.
+- Docs, `.cursor` rules, project rules, conventions, setup, deployment, architecture notes, or instructions -> use `search_guides` if available.
+- If `search_guides` is unavailable, use `search_code` with `types: ["guide"]`.
+- Implementation, business logic, configs, constants, SQL, GraphQL, schemas, routes, services, handlers, or integrations -> use `search_code`.
+
+Do not use `code-search` for purely local questions unless local context is insufficient or the user asks for prior/cross-project evidence.
+
+## High-Level Intent Triggers
+
+Treat the request as cross-project retrieval when the user asks or implies any of the following:
+
+- whether something was built before
+- how a similar problem was solved elsewhere
+- examples from previous projects
+- comparison with another repository
+- reuse of an existing pattern
+- real evidence from the user's indexed projects instead of generic advice
+
+Examples:
+- `Did I do this before?`
+- `Bring me something similar from another project.`
+- `Compare this with how I handled it elsewhere.`
+- `Show me a real example from my projects.`
+- `Look across my projects for the closest implementation.`
+
+## Query Formulation
+
+Start with compact, high-signal queries. Prefer terms likely to overlap with indexed payloads:
+
+- symbols
+- file names
+- imports
+- calls
+- keywords
+- guide headings
+- schema names
+- SQL identifiers
+- GraphQL identifiers
+- config names
+- route names
+- domain terms
+
+Default query shape:
+
+`entity + action + qualifier`
+
+Good examples:
+- `customer notification list`
+- `supervisor customerStats total_count`
+- `customer auth login`
+- `supervisor customers filter`
+- `website settings requester`
+- `backend cursor rules`
+- `deployment guide`
+- `dto validation convention`
+- `socket OnCustomerEvent`
+- `user sessions table`
+- `customer me bridge`
+
+Avoid starting with long prose queries:
+- `find where the code handles customer notification list filtering`
+- `show me the logic responsible for supervisor customerStats total_count`
+- `look for the implementation that loads customer me bridge fields`
+
+If the first query is weak, retry by changing only the core domain term instead of rewriting the whole query as prose.
+
+Synonym retries:
+- `customer` -> `actor` -> `profile`
+- `supervisor` -> `admin` -> `cpanel`
+- `notification` -> `notify` -> `alert`
+- `stats` -> `total_count` -> `aggregate`
+- `rule` -> `guide` -> `convention` -> `instruction`
+- `auth` -> `authentication` -> `permission` -> `access`
+- `schema` -> `dto` -> `validation` -> `joi`
+
+## Execution Order
+
+For cross-project retrieval, use this default order unless the request clearly suggests otherwise:
+
+1. Use local workspace context first only when it is enough.
+2. For docs, `.cursor`, rules, conventions, setup, deployment, or architecture notes, start with `search_guides`.
+3. For implementation or code evidence, start with `search_code` using `mode: "auto"`.
+4. Use `projects`, `repos`, `prefer_projects`, `prefer_repos`, `types`, or `prefer_types` only when scope is likely known.
+5. Keep the initial `limit` small, usually 5 to 8, unless the user asks for broad exploration.
+6. If results are weak, retry with compact synonyms and stronger domain terms.
+7. If results reveal a likely symbol, use `find_symbol`.
+8. If dependency/package/module usage matters, use `find_imports`.
+9. If usage tracing matters, use `find_callers`.
+10. Use `open_file` on the strongest candidates before making implementation claims.
+11. Use `list_projects` only when scope discovery is necessary or search results are too weak to proceed confidently.
+
+Do not conclude from result titles, symbols, or snippets alone when implementation understanding is required.
+
+## Tool Selection Details
+
+Use `search_code` for:
+- business logic
+- services, handlers, controllers, resolvers, jobs, commands
+- constants, config objects, maps, route definitions, permission maps
+- SQL migrations, tables, indexes, views, functions, triggers
+- GraphQL schemas, operations, fragments, mutations, queries
+- TypeScript or TSX implementation patterns
+
+Use `search_guides` for:
+- `/docs` content
+- `.cursor` rules
+- project conventions
+- setup or deployment instructions
+- architecture notes
+- coding standards
+- repository-specific instructions
+
+When using `search_guides`, use `source: "docs"` only for docs-specific requests and `source: "cursor"` only for Cursor-rule-specific requests. Leave `source` unset when both are relevant.
+
+Use `find_symbol` for exact or symbol-like names.
+
+Use `find_callers` when the question is about who uses, invokes, calls, triggers, or depends on a symbol.
+
+Use `find_imports` when the question is about package, module, dependency, import path, or library usage.
+
+Use `open_file` before final claims when the task requires precise behavior, implementation details, or code changes. Prefer opening only the relevant line range when enough context is known.
+
+## Current Workspace Policy
+
+If the request is only about fixing, editing, understanding, or refactoring the current workspace, use local tools first.
+
+Use `code-search` for the current task only if:
+- the user asks for prior implementations
+- the user asks for cross-repository comparison
+- the user asks for real examples from their projects
+- local context is insufficient
+- the answer depends on docs/guides indexed outside the current workspace context
+
+## Evidence Discipline
+
+When using MCP results:
+- mention the project, repo, and path that support the answer
+- distinguish code evidence from guide/docs evidence
+- open files before claiming exact implementation behavior
+- do not invent paths, implementations, prior work, or tool names
+- state uncertainty when results are weak, conflicting, or incomplete
+- prefer real project evidence over generic advice when indexed evidence exists
+
+## Performance Discipline
+
+Avoid unnecessary broad searches.
+
+Prefer:
+- compact queries
+- small initial limits
+- targeted filters when scope is known
+- `search_guides` for guides instead of scanning all code types
+- `find_symbol`, `find_imports`, and `find_callers` after an initial candidate is found
+- `open_file` with line ranges when possible
+
+Do not call `list_projects` before every search. Use it only for genuine scope discovery.
+
+## Important Behavior
+
+- Do not wait for the user to name a tool.
+- Infer retrieval intent from the request.
+- Prefer main-agent MCP retrieval over sub-agent MCP retrieval.
+- Do not delegate retrieval before the main agent has attempted the needed search.
+- Do not use long prose queries as the first search attempt.
+- Do not stop at search results alone when real implementation understanding is required.
+- Do not treat the MCP as code-only; it also contains guides, docs, Cursor rules, SQL, GraphQL, configs, constants, and file-level knowledge.

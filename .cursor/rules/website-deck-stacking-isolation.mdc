@@ -1,0 +1,39 @@
+---
+description: Website deck sliders with high intra-deck zIndex must isolate stacking so portaled drawers/modals stay on top
+globs: website/src/app/ui/components/**/home/*Hero*.tsx,docs/platforms/website/flow-customer-shell.md
+alwaysApply: false
+---
+
+# Website Deck Stacking Isolation
+
+Applies when a website component uses intra-deck `zIndex` values on `position: absolute` slides with `transform` (e.g. `DECK_Z = [300, 200, 100, 50]`).
+
+## Rule
+
+1. **Scope deck depth inside the slider host.** The deck host `Box` (`position: relative`, parent of the absolute slide stack) MUST set `isolation: "isolate"` in `baseCssStyle` (or an equivalent scoped stacking context). Deck `zIndex` values order slides **only inside** that host.
+2. **Do not compete with portaled overlays.** Authed shell drawers (`CustomerDrawer`, `CustomerDrawer`), visitor `LandingDrawer`, and modals use `zIndex.modals` (150) / `zIndex.modals + 1` (151) on `document.body`. Unscoped deck `zIndex` up to 300 paints above the drawer on mobile (reported defect on `/customer`).
+3. **Prefer isolation over retuning `DECK_Z`.** Keep existing `DECK_Z` depth values when isolation fixes global stacking. Lowering `DECK_Z` to small integers is an acceptable alternative only when isolation is impossible.
+4. **Do not raise drawer z-index** above arbitrary page content without auditing all overlays (`zIndex.loadable` 200, etc.).
+
+## Canonical case
+
+`CustomerHeroSlider` (`website/src/app/ui/components/customer/home/CustomerHeroSlider.tsx`) — deck host `Box`:
+
+```tsx
+baseCssStyle={{
+    isolation: "isolate",
+    overflow: "visible",
+    // ...
+}}
+```
+
+## Defects this prevents
+
+- Customer drawer/backdrop visible **under** hero banner cards when opening the menu on mobile `/customer`.
+- Future deck/banner sliders repeating the same global z-index leak over portaled UI.
+
+## Authority
+
+- `docs/platforms/website/flow-customer-shell.md`
+- `docs/invariants/website.md` W40
+- `website/src/resources/configs/theme.ts` (`zIndex.modals`)

@@ -1,0 +1,36 @@
+﻿---
+description: Govern Ejtmaa website route registry — customerRouter, public/customer/base sections, MPagesRoutes parity, registration order
+globs:
+  - website/src/resources/configs/routes.ts
+  - docs/platforms/website/route-registry-contract.md
+alwaysApply: false
+---
+
+# Website Route Registry Governance
+
+Applies when adding, reordering, or changing paths in `website/src/resources/configs/routes.ts` or `MPagesRoutes` in the same file.
+
+Authority: `docs/platforms/website/route-registry-contract.md`.
+
+## Hard rules
+
+### Path helper
+- Declare `customerRouter` at the top of `routes.ts`; do not duplicate `/customer` string literals on workspace routes.
+- `mustAuthedAs: ["CUSTOMER"]` paths → `customerRouter("/…")`.
+- Public routes (`Login`, `Home`, `Register`, `ResetPassword`, `UiMockup`) and `Error` → absolute paths, no helper.
+
+### Section blocks (routes + types)
+- Both `const routes` and `export interface MPagesRoutes` MUST use the same three comment sections in order: **public → customer → base**.
+- New route identifies go in the matching section in **both** structures.
+
+### Registration order
+- **Public block first**, then customer, then `Error` last.
+- **Fixed before parametric on the same prefix:** register `/prefix/new`, `/prefix/review`, etc. **before** `/prefix/:id`. See `.cursor/rules/website-route-static-before-parametric.mdc`.
+
+### Navigation vs hard-coded URLs
+- In-app navigation → `nav.push({ identify, … })` (typed `PagesRoutes`).
+- Hard-coded paths (external redirects, share URLs, callbacks) MUST match `route-registry-contract.md` §5.
+
+### Docs
+- Update `docs/platforms/website/route-registry-contract.md` §5 path table when paths change.
+- Update affected `flow-*.md` path columns in the same task.

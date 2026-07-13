@@ -1,0 +1,43 @@
+---
+description: Website Loadable spinner contrast on filled action controls — pick lightBackground from the control's actual fill, not from the page color scheme
+globs:
+  - website/src/app/ui/components/form/FormActionChip.tsx
+  - website/src/app/ui/components/form/FormActionButton.tsx
+  - website/src/app/ui/components/Loadable.tsx
+  - website/src/app/ui/components/form/**
+  - docs/platforms/website/flow-form-foundation.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website Action Control Loader Contrast
+
+Applies when rendering a `Loadable` Lottie spinner inside a filled action control (button / chip) on `website/`. Authority: `website/src/app/ui/components/Loadable.tsx` + the `FormActionChip` danger-tone defect.
+
+## Non-negotiables
+
+1. **Pick `lightBackground` from the control's actual fill, not from the page color scheme.** `Loadable` selects the Lottie file from `lightBackground` (`true` → dark spinner for light surfaces; `false`/omitted → light spinner). The default `lightBackground ?? (colorScheme === "light")` is correct for page-level overlays, **not** for spinners inside colored buttons.
+2. **Filled primary / danger surfaces MUST pass `lightBackground={false}`** so the light spinner renders on the colored fill. A dark spinner on a red/blue button in light mode is low-contrast and often invisible.
+3. **Neutral / `cardBackground` / `canvasBackground` surfaces pass `lightBackground={true}`** so the dark spinner renders on the light surface.
+4. **Derive the prop from the resolved tone, not from a boolean that ignores tone.** For a multi-tone control, write `lightBackground={resolvedTone !== "primary" && resolvedTone !== "danger"}` (chip) or `lightBackground={!isPrimary}` (button) — not a constant.
+
+## Canonical cases
+
+- `website/src/app/ui/components/form/FormActionButton.tsx`: `<Loadable loading size={"2rem"} lightBackground={!isPrimary}/>` — primary uses the gradient/solid fill, neutral uses `cardBackground`.
+- `website/src/app/ui/components/form/FormActionChip.tsx`: `<Loadable loading size={"1.1rem"} lightBackground={resolvedTone !== "primary" && resolvedTone !== "danger"}/>` — `neutral` uses `canvasBackground`, `primary`/`danger` use filled backgrounds.
+
+## Size
+
+The spinner `size` MUST fit the control's height and label font, not the `Loadable` default (`4.25rem`). Chip (`smallButtonHeight`, label `0.78rem`) → `1.1rem`. Button (`control.height`, action label) → `2rem`.
+
+## Defects this prevents
+
+- Danger/primary chip showing a dark spinner on a red/blue fill in light mode (reported on notifications `Delete all`).
+- Spinner overflowing the chip height because the `4.25rem` default was not overridden.
+- Hardcoding `lightBackground` from `colorScheme` instead of the resolved tone, so the spinner flips wrongly when the page theme changes but the button fill does not.
+
+## Related
+
+- `.cursor/rules/website-platform-governance.mdc`
+- `docs/platforms/website/flow-notifications.md` (`FormActionChip` danger tone + `Loadable` contrast)
+- `docs/invariants/website.md` W11 (Utils-props-over-baseCssStyle — `lightBackground` is a behavioral prop, not a style escape)

@@ -1,0 +1,42 @@
+﻿---
+description: Explicit prepare* parent payloads (me/id/filter) vs thin bridges; no duplicate base logic
+globs: backend/src/app/gql/bridges/**/*.ts,backend/src/app/gql/schemas/*Schema.ts
+alwaysApply: false
+---
+
+# GQL root parent payload and thin bridge contract (Ejtmaa)
+
+Use when editing **customer (and similar) role bridges**, **`CustomerSchema` / `SupervisorSchema` resolvers**, or any **`prepareManyGQLModels` / `prepareOneGQLModel`** root wiring.
+
+## 1. Why the resolver passes explicit flags (`me`, `id`, `filter`, …)
+
+- **Contract, not magic:** The object passed into `prepareManyGQLModels` / `prepareOneGQLModel` documents the **intended read mode** for reviewers and for bridges that branch on that mode (for example supervisor `CustomerBridge` list filters).
+- **Consistency:** Match the same schema's existing patterns (customer owner roots use `me: true`; supervisor list/detail roots pass `id` and filter/pagination parents where required). Do not drop the flag because a thin bridge happens to inherit identical SQL from the role base today.
+
+## 2. Role bridge base is the single place for default root SQL shape
+
+- **`CustomerBridgeBase`** and **`SupervisorBridgeBase`** already implement default root **`many`** (`withListable`, `withReplacements`, `order: [["updated_at","desc"]]`) and root **`one`** with **`id`** (`withReplacements`, `where: { id }`), and **`getRootOrmParent`** for non-`me` payloads resolves to **`"STATIC"`** as appropriate.
+- **Do not re-implement** that same `getOrmFindOptions` block in an entity bridge **only** to rebuild the same `FindOptions` the base already returns.
+
+## 3. When an entity bridge *should* override `getOrmFindOptions`
+
+Override **only** when the bridge adds **real, entity-owned policy** that the role base does not provide, for example:
+
+- Extra **`where`** (status sets, tenancy, visibility rules).
+- **Filter** mapping from GQL args to Sequelize.
+- **Order** or **includes** that differ from the role default.
+
+If removing the override changes nothing observable against the role base, the override is **forbidden** as dead duplication.
+
+## 4. Same idea for adjacent concerns (do not duplicate the role base)
+
+- Principal / owner guards align with `getRootOrmParent` for the active parent mode (see `gql-schemas-bridges-general.mdc` Ejtmaa addendum).
+- **`public` in `getOrmFindOptions`:** Role bases do **not** read `parent.public`. Ejtmaa customer and supervisor schemas do not use a `public` root parent today; keep explicit parent flags that match the active schema contract.
+
+## 5. Quick checklist before merging
+
+- [ ] Resolver passes the **correct explicit parent** for this schema (`me`, `id`, `filter`, and pagination args as required by sibling fields).
+- [ ] Entity bridge `GetManyParent` / `GetOneParent` types **reflect** that payload.
+- [ ] No **copy-paste** `getOrmFindOptions` that only mirrors **`CustomerBridgeBase` / `SupervisorBridgeBase`** defaults.
+
+Related: `gql-schemas-bridges-general.mdc`, `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`.

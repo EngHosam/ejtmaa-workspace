@@ -1,0 +1,17 @@
+---
+description: Enforce Cursor skill location and SKILL.md format compatibility
+globs: .cursor/rules/**/*.mdc,.cursor/skills/**/SKILL.md,AGENTS.md
+alwaysApply: false
+---
+
+# Skills Location and Format Rule
+
+- Project skills must live in:
+  - `.cursor/skills/<skill-name>/SKILL.md`
+- `name` in SKILL frontmatter must match the parent folder name exactly.
+- `SKILL.md` must include:
+  - `When to Use`
+  - `Instructions`
+- Keep description explicit about what and when.
+- Keep skill docs concise and reference project documents by path.
+- If root `AGENTS.md` exists, keep it concise and non-duplicative; detailed task contracts belong in `.cursor/skills/` or `.cursor/rules/`.

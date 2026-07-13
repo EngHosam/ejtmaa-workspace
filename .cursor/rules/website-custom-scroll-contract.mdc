@@ -1,0 +1,42 @@
+---
+description: Website vertical scroll containers must render a themed thin custom scrollbar via customScroll, never the native scrollbar, and the scroll Col must own the scroll with minH 0
+globs:
+  - website/**
+alwaysApply: false
+---
+
+# Website Custom Scroll Contract
+
+Every website **vertical** scroll container (sheet/drawer/filter-modal scroll panels, and any future vertical scroll body) MUST render the shared themed thin **custom** scrollbar — never the OS native scrollbar.
+
+## Mandatory shape
+
+The scroll owner is a `Col` (from `ui/base/components/Utils`) with:
+
+- `flx_1` (it fills the available flex space), AND
+- `minH={0}` (mandatory — without it the flex child keeps `min-height: auto`, never becomes the scroll owner, and the overflow bubbles to an ancestor that renders the native scrollbar), AND
+- `baseCssStyle={{overflowY: "auto", ...customScroll(thumb)}}` where `thumb = getColor(semanticColor.iconSecondary, colorScheme)` from `useThemeManager()`.
+
+`customScroll` lives at `website/src/resources/emotion/styles/scroll.ts` and returns a `CSSObject` (NOT `CSSInterpolation` — a union type that breaks `{...customScroll(...)}` spreads). It styles the thumb via Firefox `scrollbar-width: thin` + `scrollbar-color` and Chromium `&::-webkit-scrollbar` / `::-webkit-scrollbar-thumb`.
+
+## Why `minH={0}` is non-negotiable
+
+`customScroll` only paints when attached to the element that actually scrolls. A `flx_1` Col without `minH={0}` grows to its content size, so `overflowY: "auto"` never engages on it; the scroll (and the native scrollbar) appears on an ancestor. Symptom: "I applied `customScroll` but the scrollbar is still native." Fix: add `minH={0}` to the scroll Col.
+
+## Where it applies today (exhaustive)
+
+- `src/app/ui/components/LandingDrawer.tsx` (landing drawer scroll body)
+- `src/app/ui/components/customer/CustomerDrawer.tsx` (customer drawer scroll body)
+
+Horizontal scroll strips (`Carousel`) are out of scope — they intentionally hide the scrollbar (`scrollbarWidth: "none"` + `::-webkit-scrollbar { display: "none" }`).
+
+## Forbidden
+
+- Using the `ovr_y` Utils prop for sheet/drawer scroll panels (it sets `overflowY: "auto"` but renders the native scrollbar).
+- Attaching `customScroll` to a Col that lacks `minH={0}` (no effect; native scrollbar remains).
+- Inlining per-component `::-webkit-scrollbar` styles instead of reusing `customScroll`.
+- Returning `CSSInterpolation` from `customScroll` (use `CSSObject` so callers can spread it).
+
+## Padding rule
+
+Put the horizontal padding (`ph`) on the scroll container itself, not a wrapping padded Col, so the custom scrollbar paints at the sheet/drawer edge and the content is padded inside (matches the Drawer pattern).

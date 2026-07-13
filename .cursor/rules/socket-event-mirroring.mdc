@@ -1,0 +1,38 @@
+﻿---
+description: Mirror backend user-facing socket events into website and cpanel socket contracts
+globs: backend/src/app/types/Events.ts,backend/src/app/notify/events/**/*.ts,backend/src/app/orchestrator/requesters/**/*.ts,backend/src/app/helpers/**/*.ts,website/src/types/events.ts,website/src/resources/configs/socket/events.ts,cpanel/src/types/events.ts,cpanel/src/resources/configs/socket/events.ts,docs/platforms/backend/contracts/socket-event-mirroring.md
+alwaysApply: false
+---
+
+# Socket Event Mirroring
+
+When a backend event is added, removed, or changed for customer website users or supervisors, mirror it in the same task.
+
+## Source of truth
+
+- Backend event names and payload unions are owned by:
+  - `backend/src/app/types/Events.ts`
+  - `backend/src/app/notify/events/**/*.ts`
+
+## Required mirrors
+
+- `CUSTOMER` user-facing events must be mirrored to:
+  - `website/src/types/events.ts`
+  - `website/src/resources/configs/socket/events.ts`
+- `SUPERVISOR` user-facing events must be mirrored to:
+  - `cpanel/src/types/events.ts`
+  - `cpanel/src/resources/configs/socket/events.ts`
+
+Note: customer events mirror into `website/` only, never into `cpanel/`.
+
+## Hard rules
+
+1. Event names must match backend exactly.
+2. Payload union members must match backend exactly.
+3. Do not leave placeholder/example event names when the real project event exists.
+4. If an old mirrored event is no longer used by the current project, remove it from the frontend mirror in the same task.
+5. Update `docs/platforms/backend/contracts/socket-event-mirroring.md` whenever the contract changes.
+
+## Verification
+
+- Run existing `type-check` scripts for every touched frontend/backend package.

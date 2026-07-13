@@ -1,0 +1,18 @@
+﻿---
+description: Ejtmaa ORM model authoring standard for non-actor and shared model structure
+globs: backend/src/app/orm/models/**/*.ts,backend/src/app/gql/**/*.ts,docs/platforms/backend/patterns/orm-*.md
+alwaysApply: false
+---
+
+# ORM Models General Standard
+
+- Follow `docs/platforms/backend/patterns/orm-model-authoring-standard.md`.
+- Start from `docs/platforms/backend/patterns/orm-constitution-map.md`.
+- Keep Ejtmaa style only; do not import foreign project conventions.
+- Require `Attrs` + `attributes()` + `initOptions()` + `boot()` + factory export pattern.
+- Keep naming consistent: `XModel`, `modelName`, `tableName`, typed relation mixins.
+- Ensure field parity between `Attrs` and `attributes()`, including virtual fields used by callers.
+- Add indexes/scopes only for actual query needs; no dead scopes.
+- Keep helper methods deterministic, typed, and domain-focused.
+- No resolver-only mutation security; requester/model contract remains source of truth.
+- Before finalizing, pass `docs/platforms/backend/patterns/orm-model-compliance-checklists.md`.

@@ -1,0 +1,45 @@
+---
+description: Website Utils physical positioning flips in RTL — use l/r/t/b props, not isRTL layout branching
+globs:
+  - website/src/app/ui/components/**/*.tsx
+  - website/src/app/ui/layouts/**/*.tsx
+  - website/src/app/ui/pages/**/*.tsx
+alwaysApply: false
+---
+
+# Website Utils RTL Physical Positioning
+
+Applies when positioning overlays, floating CTAs, or fixed corners on website UI via `Box`/`Fixed`/`Row`/`Col` from `website/src/app/ui/base/components/Utils.tsx`.
+
+## Rule
+
+For **physical edge positioning** (which side of the viewport an element hugs), use Utils layout props:
+
+- `l`, `r`, `t`, `b` (and spacing `pl`/`pr`/`ml`/`mr` where appropriate)
+
+The website emotion/RTL pipeline mirrors these when `<html dir="rtl">`. Example: `r={"1rem"}` on `Fixed` places the element on the **right in LTR** and on the **left in RTL** automatically.
+
+## Forbidden for layout positioning
+
+- `baseCssStyle` objects branching on `myInstance.getRouter().isRTL` to pick `"left"` vs `"right"`.
+- CSS logical properties invented ad hoc (`insetInlineStart`, `paddingInline`, etc.) when Utils props already express the intent.
+- Dynamic prop keys like `[isRTL ? "right" : "left"]: "1rem"`.
+
+## Allowed uses of `isRTL`
+
+- Behaviors CSS/props cannot express alone: drawer slide-in side (`CustomerDrawer`), breadcrumb separator icon direction (`Breadcrumb`), bottom-bar nav alignment — see `website-route-reactive-components.mdc`.
+
+## Canonical case (floating mobile CTA)
+
+Floating action chip pinned to the viewport edge:
+
+```tsx
+<Fixed r={"1rem"} b={`calc(${Dims.bottomBarHeight} + 1.25rem)`} z={zIndex.modals}>
+```
+
+Do not replace with `isRTL` ternaries or `left`/`right` in `baseCssStyle`.
+
+## Authority
+
+- `website/src/app/ui/base/components/Utils.tsx` (`l`/`r` layout props)
+- `.cursor/rules/website-icon-rtl-flip.mdc` (directional **icons** — separate concern from edge positioning)

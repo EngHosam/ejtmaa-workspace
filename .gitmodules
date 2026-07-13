@@ -1,0 +1,6 @@
+[submodule "backend"]
+	path = backend
+	url = git@github.com:EngHosam/ejtmaa-backend.git
+[submodule "website"]
+	path = website
+	url = git@github.com:EngHosam/ejtmaa-website.git

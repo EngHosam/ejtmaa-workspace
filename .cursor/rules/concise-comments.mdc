@@ -1,0 +1,43 @@
+---
+description: Keep code comments minimal — only useful intent, no narration or essays
+globs:
+alwaysApply: true
+---
+
+# Concise Comments
+
+Code comments must be short and carry only useful information that the code cannot convey.
+
+## Rule
+
+- No narration of what the code does. No "Import X", "Define Y", "Return Z", "Handle the error".
+- No essays, no restating the task, no explaining the change you're making.
+- No invented comment tag prefixes (e.g. `ponytail:`, `NOTE:`, `HACK:`). Plain prose only, and only when it earns the line.
+- No copying long explanations from other platforms into web ports.
+- If a comment isn't earning its line, delete it.
+
+## Why
+
+Verbose comments are noise. They drift from the code, hide real intent, and waste review time.
+
+## Examples
+
+Bad:
+
+```ts
+// website `useMe` reads `state.auth`.
+// (website store exposes `state.auth`, no useSensor) and LoadCurrentCustomer (website
+// has no Adapter class, so it uses $$_dataAdapter directly).
+```
+
+Good:
+
+```ts
+// website `useMe` reads `state.auth`.
+```
+
+Best: no comment if the code is obvious.
+
+## Scope
+
+Applies to every file under the workspace, all platforms (website, cpanel, backend, docs).

@@ -1,0 +1,41 @@
+---
+description: Website list and home dashboard adapters must use FORCE_RELOAD_ON_MOUNT so SPA return navigation does not show stale LOADED cache
+globs:
+  - website/src/app/ui/components/**/hooks/useCustomerDashboard.ts
+  - website/src/app/ui/components/**/hooks/useCustomerNotifications*.ts
+  - docs/platforms/website/data-flow-and-gql.md
+  - docs/platforms/website/flow-*.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website List & Home Adapter enterMode
+
+Applies to **paginated list routes** and **home/dashboard surfaces** on `website/` -- screens backed by `useShallowAdapter` with a deterministic `adapterIdentify`.
+
+## Rule
+
+- Use `enterMode: "FORCE_RELOAD_ON_MOUNT"`.
+- Do **not** use `enterMode: "LOAD_ON_MOUNT"` on those adapters.
+
+## Why (SPA)
+
+Route navigation unmounts the screen. Hooks keep stable adapter identities in `state.data_adapters` (`removeOnExit: false` on dashboard lanes, and stable ids elsewhere). On remount, `LOAD_ON_MOUNT` skips `d.load` when status is already `LOADED`, so returning from another tab/route shows stale data until manual refresh.
+
+`FORCE_RELOAD_ON_MOUNT` always calls `d.load({reload: true, ...enterOptions})` on first active mount.
+
+## In scope
+
+- **Home / dashboard:** visitor landing and customer home surfaces backed by `useShallowAdapter` with stable adapter identities.
+- **Customer lists:** notifications and other paginated customer routes documented in `data-flow-and-gql.md`.
+
+Lazy pane activation via `shouldLoadStatus` + `useEffect` remains valid alongside `FORCE_RELOAD_ON_MOUNT` on the adapter hook.
+
+## Out of scope (keep LOAD_ON_MOUNT or existing contract)
+
+- Detail/id lookups and `useMe` — own contracts (`LOAD_ON_MOUNT` / `updateOnEnter`).
+
+## References
+
+- `docs/platforms/website/data-flow-and-gql.md` list enterMode section
+- `docs/invariants/website.md`

@@ -1,0 +1,59 @@
+---
+description: Website form success main-message toast is auto-shown by ResMainMessageMiddleware + pre-messages; form afterSentSuccess funnels must NOT call toast.showToast(mainMessage) manually (it double-shows). Opt out only via autoMainMessage:false.
+globs:
+  - website/src/app/ui/components/**/*.tsx
+  - website/src/app/ui/components/**/hooks/use*.ts
+  - website/src/app/ui/components/**/hooks/use*.tsx
+  - website/src/app/ui/pages/*.tsx
+  - website/src/resources/configs/axios.ts
+  - website/src/app/services/pre-messages.ts
+  - docs/platforms/website/flow-*.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website form success toast is automatic
+
+## Rule
+
+The website axios layer installs `ResMainMessageMiddleware` (`website/src/resources/configs/axios.ts`) which calls `preMessages.showOrSaveMessages(myInstance, res)` on every response. That helper (`website/src/app/services/pre-messages.ts`) shows **every** `res.messages.main` entry as a toast automatically (or saves them as pre-messages for SSR, shown on browser hydration).
+
+Therefore a form `afterSentSuccess` funnel **must not** manually call `toast.showToast(mainMessage)` for the backend success/error main message — it is already shown, and calling it again produces a **duplicate toast**.
+
+## Required pattern
+
+`afterSentSuccess` should only do side effects the framework does NOT already own: navigation, value reset, adapter reload, reading a payload (e.g. a payment URL). Match the canonical forms:
+
+```ts
+await form.d.send({
+    sub: "create",
+    funnels: {
+        afterSentSuccess: async () => {
+            nav.back();
+        }
+    }
+});
+```
+
+Canonical references: `website/src/app/ui/components/customer/settings/CustomerSettingsScreen.tsx`, `website/src/app/ui/components/customer/hooks/useCustomerNotifications.ts` (resets values + reloads, no toast).
+
+## Opt-out is explicit
+
+The framework auto-shows main messages by default. To suppress it for a specific send, pass `autoMainMessage: false` to `d.send(...)` and show your own toast.
+
+## Forbidden
+
+- `await toast.showToast(mainMessage)` / `toast.showToast(res?.data?.mainMessages?.[0])` inside a form `afterSentSuccess` (or `afterSentError`) funnel without `autoMainMessage: false`.
+- Keeping a `toast` import in a form screen only for this redundant call.
+
+## Legitimate manual toasts (NOT form main messages)
+
+These are NOT the backend main message and stay manual:
+
+- Social-auth provider failure before `d.send` (`pages/Login.tsx`, `pages/Register.tsx`).
+- Network-error fallback in the axios reject handler (`resources/configs/axios.ts`).
+
+## Reference
+
+- Flow doc: `docs/platforms/website/flow-form-foundation.md`.
+- Sibling rule: `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc` (`removeOnExit` default + `submittingRef` double-submit guard).

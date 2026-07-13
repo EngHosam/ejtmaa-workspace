@@ -1,0 +1,56 @@
+﻿---
+description: Website multi-path create+update form route contract (one identify, path.create/path.update)
+globs:
+  - website/src/resources/configs/routes.ts
+  - website/src/app/ui/pages/**/*
+  - website/src/app/ui/components/**/*
+  - docs/platforms/website/flow-form-foundation.md
+alwaysApply: false
+---
+
+# Website Multi-Path Form Routes
+
+Applies when adding or refactoring a website form route that has both **create** and **update** modes (customer). Authority: `docs/platforms/website/flow-form-foundation.md`.
+
+## Rule
+
+A create+update form route MUST be **one identify** with `path: { create, update }` — never split into `*Create` / `*Update` identifies.
+
+### Required shape
+
+- **Route** (`resources/configs/routes.ts`):
+  ```ts
+  CustomerXForm: {
+      path: {
+          create: customerRouter("/…/form"),
+          update: customerRouter("/…/form/:id"),
+      },
+      breadcrumb: {
+          parent: <parent identify>,
+          label: (tr, params) => params?.id ? tr.ui.pages.<ns>.editTitle : tr.ui.pages.<ns>.createTitle,
+      },
+  }
+  ```
+  - One `breadcrumb` with a **param-aware** `label(tr, params)`.
+  - If the parent crumb needs different params than the child route exposes, add `parentNavParams: (params) => ({ id: params.id })` on the child's `breadcrumb`.
+
+- **`MPagesRoutes`**: one entry, `{ id?: string }` (`id` present ⇒ update).
+
+- **Thin page**: one `MyPage` file, not two. `Main()` returns only the shared screen.
+
+- **Screen**: derive `isUpdate = !!id` from `useCurrentParams<"CustomerXForm">`. **Never** branch on `useCurrentPage().identify` to detect create vs update.
+
+- **Callers**: use typed href builders from `resources/configs/customer/formRoute.ts` when available. Do not write `nav.push({ identify: "CustomerXForm", sub, params } as never)`.
+
+- **Form identify**: stable create-only `formIdentify` + `removeOnExit: false` when the create draft must survive SPA nav; update uses auto `GenerateIdentify` + default `removeOnExit` and re-hydrates via `read`.
+
+## Forbidden
+
+- `*Create` / `*Update` identify pairs for the same form.
+- Two `MyPage` files for one create+update form.
+- `breadcrumb.label` that ignores `params` on a multi-path route.
+- `useCurrentPage().identify === "XUpdate"` mode detection — use the `id` param.
+
+## When a single path is fine
+
+A form with only one mode uses a plain string `path` and a `label(tr)` without `params`.

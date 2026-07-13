@@ -1,0 +1,179 @@
+﻿---
+name: orm-model-generator
+description: Generates and updates Ejtmaa ORM models with actor/non-actor contracts and ORM-to-GQL integration rules. Use when creating a new model, modifying model attrs/options/relations/can ability logic, or wiring model fields into GraphQL bridges and schemas.
+---
+
+# ORM Model Generator
+
+## When to Use
+
+- Use when creating a new ORM model in `backend/src/app/orm/models`.
+- Use when modifying model `Attrs`, `attributes()`, `initOptions()`, `boot()`, or helper functions.
+- Use when adding actor abilities (`Ability` + `can()`).
+- Use when a model change must remain compatible with GQL bridges/schemas.
+
+## Inputs
+
+Required:
+
+- target model name
+- business purpose
+- actor or non-actor classification
+- required fields
+- required relations
+
+Optional but recommended:
+
+- requester touchpoints
+- bridge/schema touchpoints
+- ability matrix for actor paths
+- sorting/filtering requirements
+
+## Required References
+
+Read these before implementation:
+
+- `docs/platforms/backend/patterns/orm-constitution-map.md`
+- `docs/platforms/backend/patterns/orm-model-baseline-audit.md`
+- `docs/platforms/backend/patterns/orm-model-authoring-standard.md`
+- `docs/platforms/backend/patterns/orm-model-compliance-checklists.md`
+- `docs/platforms/backend/patterns/orm-model-worked-examples.md`
+- `docs/platforms/backend/patterns/models-owners-abilities-security.md`
+- `docs/platforms/backend/patterns/graphql-and-bridges.md`
+
+## Instructions
+
+Use this checklist and keep exactly one step in progress:
+
+```text
+Task Progress:
+- [ ] Step 1: Classify model path (actor/non-actor)
+- [ ] Step 2: Domain/function mapping for model responsibilities
+- [ ] Step 3: Design Attrs/options/relations and ability contract
+- [ ] Step 4: Map ORM fields to GQL touchpoints
+- [ ] Step 5: Validate with checklist and security gates
+```
+
+## Step 1: Classify Model Path
+
+Choose **actor path** if one or more are true:
+
+- model represents owner identity domain,
+- model enforces permissioned business actions,
+- model requires polymorphic owner semantics,
+- requester/bridge needs `can(...)` decisions.
+
+Else choose **non-actor path**.
+
+## Step 2: Design Structure
+
+Required model structure:
+
+1. `type Attrs`.
+2. `static attributes()`.
+3. `static initOptions()`.
+4. `static async boot()`.
+5. Factory export: `export const X = () => ormModel(m => m.X) as typeof XModel;`.
+
+Rules:
+
+- Include virtual fields used by callers in `Attrs`.
+- Keep indexes/scopes minimal and purposeful.
+- Keep relations aligned with expected requester/bridge traversal paths.
+
+## Step 3: Ability Contract (Actor Only)
+
+Actor models must include:
+
+- explicit `type Ability`,
+- overridden `can()` with branch-level validation,
+- `this.iCan(...)` wrapper usage.
+
+Branch contract:
+
+- validate ownership/facts,
+- throw stable denial keys,
+- avoid side effects inside permission checks.
+
+## Step 4: ORM to GQL Mapping
+
+If GraphQL touches the model:
+
+- identify all bridge fields used in sort/filter/extras/unions,
+- ensure fields are loaded by ORM (`requiredOrmAttrs` or includes),
+- keep list queries bounded and ordered,
+- keep depth and include controls active.
+
+## Step 5: Validation
+
+Run through:
+
+- `docs/platforms/backend/patterns/orm-model-compliance-checklists.md`
+
+Reject and revise if any mandatory item fails.
+
+## Templates
+
+### Actor Model Template (Skeleton)
+
+```typescript
+type Attrs = { id: number };
+type Ability = { ACTION: { sub: "x" } };
+
+export default class XModel extends Model<Attrs, Omit<Attrs, "id">, Ability> {
+  static attributes() { return {}; }
+  static initOptions() { return { modelName: "x", tableName: "xs" }; }
+  static async boot() {}
+
+  async can<To extends keyof Ability, CanProps extends CanPropsBase<Ability[To]>>(to: To, props: CanProps): Promise<Able> {
+    return this.iCan(async () => {
+      // branch checks
+    }, props);
+  }
+}
+```
+
+### Non-Actor Model Template (Skeleton)
+
+```typescript
+type Attrs = { id: number };
+
+export default class XModel extends Model<Attrs, Omit<Attrs, "id">> {
+  static attributes() { return {}; }
+  static initOptions() { return { modelName: "x", tableName: "xs" }; }
+  static async boot() {}
+}
+```
+
+## Refusal Conditions
+
+Refuse to finalize and ask for clarification if:
+
+- actor/non-actor classification is ambiguous,
+- bridge relies on attrs not mapped in ORM loading strategy,
+- ownership semantics are unclear for a permissioned operation,
+- requested style conflicts with Ejtmaa baseline.
+
+## Outputs
+
+- Return changed file list and short rationale for each file.
+- Include short change rationale with rejected alternatives when a structural choice matters.
+- Explicitly state actor/non-actor classification decision.
+- Explicitly state ORM-to-GQL mapping checks performed.
+
+## Quality Gates
+
+- style gate: Ejtmaa conventions only
+- security gate: permission checks stay in requester/model boundaries
+- mapping gate: no bridge field depends on an unloaded ORM attr
+- relation gate: ownership and traversal direction remain consistent
+- acceptance gate: mandatory checklist items pass before finalization
+
+## Failure Handling
+
+If partially blocked:
+
+1. return the completed portion
+2. list the exact missing inputs
+3. provide the smallest follow-up question set
+4. do not invent unresolved architecture decisions

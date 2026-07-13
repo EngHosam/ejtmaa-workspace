@@ -1,0 +1,42 @@
+﻿---
+description: Guardrails for complex GQL problems in Ejtmaa
+globs: backend/src/app/gql/**/*.ts,backend/src/app/orm/models/**/*.ts,website/src/types/gql/**/*.ts,website/src/types/gql/**/*.graphql,website/src/types/gql/**/*.ts,website/src/types/gql/**/*.graphql,docs/platforms/backend/patterns/gql-*.md,docs/platforms/backend/contracts/graphql-and-types.md
+alwaysApply: false
+---
+
+# GQL Complex Problems and Guardrails
+
+- Enforce playbooks from `docs/platforms/backend/patterns/gql-complex-problems-cookbook.md`.
+- Enforce anti-pattern blocklist from `docs/platforms/backend/patterns/gql-anti-patterns-blacklist.md`.
+- Enforce refusal behavior from `docs/platforms/backend/patterns/gql-refusal-matrix.md`.
+
+## Hard Gates
+
+- No unbounded root-many query.
+- No missing principal guard in scoped root parent resolution.
+- No bridge logic depending on non-loaded ORM attrs.
+- No relaxed depth/include protection without replacement.
+- No polymorphic union logic without discriminator mapping.
+- No user-input interpolation inside `sequelize.literal(...)`.
+- No actor-bound root-one query without ownership scope when using `STATIC`.
+- No enum output contract drift (`_X` wrapper output vs `_XValue` filter input).
+- No role bridge base without `loadAttr` override (MultiLang/enum resolution is mandatory).
+
+## Checklist Before Final Output
+
+- [ ] security gate passed
+- [ ] mapping gate passed
+- [ ] pagination gate passed
+- [ ] depth/perf gate passed
+- [ ] compatibility gate passed
+- [ ] enum-wrapper gate passed
+- [ ] backend->frontend mirror sync passed (website for customer; cpanel for supervisor)
+- [ ] role bridge base contract passed (loadAttr + trans + toEnum + willPrepare)
+
+## Ejtmaa Supervisor/Customer Guardrails
+
+- Supervisor customer list/detail reads stay in `CustomerBridge` with deterministic sort and filter mapping.
+- `customerStats.total_count` stays in `CustomerStatsBridge.loadExtra`.
+- Customer and supervisor `MeBridge` enforce actor presence in `willPrepare`.
+- Enum output uses `_X` wrappers; filter inputs use `_XValue`.
+- Reference: `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts`, `CustomerStatsBridge.ts`.

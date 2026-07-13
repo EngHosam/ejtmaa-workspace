@@ -1,0 +1,57 @@
+---
+description: Website presentational components receive explicit label strings, not a t translator prop
+globs:
+  - website/src/app/ui/components/**/*.tsx
+alwaysApply: false
+---
+
+# Website Presentational Label Props
+
+Applies when authoring or reviewing a presentational component (blocks, cards, rows, sections) under `website/src/app/ui/components/`.
+
+Authority: `docs/invariants/website.md` W42.
+
+## Rule
+
+Presentational components MUST NOT accept a `t: (key: string) => string` (or any `Translator`) prop. The screen owns translation; the component receives **already-resolved label strings** as explicit props.
+
+The screen binds `useTranslator` at its nested node (W14) and builds the label object; the component renders pure data.
+
+## Required pattern
+
+```tsx
+// presentational component -- explicit labels, no t
+type NotificationRowLabels = {
+    titleLabel: string;
+    timeLabel: string;
+};
+
+export const CustomerNotificationCard: React.FC<{
+    labels: NotificationRowLabels;
+}> = ({labels}) => (
+    <Row>
+        <Text>{labels.titleLabel}</Text>
+        <Text>{labels.timeLabel}</Text>
+    </Row>
+);
+
+// screen -- builds labels from its typed translator
+const t = useTranslator(tr => tr.ui.pages.customer.notifications);
+const labels: NotificationRowLabels = {
+    titleLabel: t("titleLabel"),
+    timeLabel: t("timeLabel"),
+};
+<CustomerNotificationCard labels={labels} />
+```
+
+## Forbidden
+
+- `t: (key: string) => string` as a prop type on a presentational component.
+- Passing a `Translator` instance into a presentational component.
+- Calling `t("someKey")` inside a presentational component instead of receiving the resolved string.
+
+## Reference
+
+- Invariant: `docs/invariants/website.md` W42
+- Flow: `docs/platforms/website/flow-notifications.md`
+- Sibling rule: `.cursor/rules/website-platform-governance.mdc` (nested-translator binding, W14)

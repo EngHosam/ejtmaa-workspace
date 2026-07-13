@@ -1,0 +1,56 @@
+﻿---
+description: Guard Ejtmaa website per-page document title — set <title> via react-helmet-async <Helmet> inside the page screen, keyed off a page-scoped translation
+globs:
+  - website/src/app/ui/pages/**/*.tsx
+  - website/src/app/ui/components/customer/home/*HomeScreen.tsx
+  - website/src/app/ui/base/core/MyApp.tsx
+  - website/src/resources/translations/ar.ts
+  - website/src/resources/translations/en.ts
+  - docs/platforms/website/flow-customer-shell.md
+alwaysApply: false
+---
+
+# Website Page Title via react-helmet-async
+
+Applies when authoring or editing a website route page (`website/src/app/ui/pages/**/*.tsx`) or its top-level screen component.
+
+## Rule
+
+Every website route page that has a meaningful screen MUST set a per-page document `<title>` by rendering `<Helmet><title>{...}</title></Helmet>` inside the page's screen component, using a **page-scoped translation key**.
+
+`react-helmet-async` is already installed and wired in `MyApp` (`website/src/app/ui/base/core/MyApp.tsx`):
+
+```tsx
+<Helmet defaultTitle={t("title")} titleTemplate={`${t("title")} | %s`}/>
+```
+
+So a page that renders `<title>مرحبًا بك في اجتماع</title>` produces a browser tab title of `<app title> | مرحبًا بك في اجتماع`. Pages that render no `<Helmet><title>` fall back to `defaultTitle` (the app title) — acceptable for stubs, but real screens should set their own.
+
+## How to comply
+
+1. Add a `title` key to the page's scoped translation namespace in **both** `ar.ts` and `en.ts` (W14: mirror every key or `yarn type-check` fails).
+2. In the screen component, bind the translator at the page namespace node and render:
+
+```tsx
+import {Helmet} from "react-helmet-async";
+const t = useTranslator(t => t.ui.pages.<area>.<page>);
+// ...
+<Helmet><title>{t("title")}</title></Helmet>
+```
+
+3. Do not hardcode the title literal in JSX — it must come from the scoped translator (W14 item 5: bound nested translator, no dotted runtime strings, no raw product copy).
+
+## Canonical case
+
+`CustomerHomeScreen` (`website/src/app/ui/components/customer/home/CustomerHomeScreen.tsx`) reads `t.ui.pages.customer.home.title` = "مرحبًا بك في اجتماع" / "Welcome to Ejtmaa" and renders `<Helmet><title>{t("title")}</title></Helmet>`. See `docs/platforms/website/flow-customer-shell.md`.
+
+## What is NOT required
+
+A `null`-stub page (`Main()` returns `null`) does not need a title — `defaultTitle` covers it. Add the title in the same task that ships the screen composition.
+
+## Authority
+
+- `website/src/app/ui/base/core/MyApp.tsx` (`<Helmet defaultTitle ... titleTemplate ...>`)
+- `website/src/app/ui/components/customer/home/CustomerHomeScreen.tsx` (canonical case)
+- `website/src/resources/translations/ar.ts` / `en.ts` (`ui.pages.customer.home.title`)
+- `docs/platforms/website/flow-customer-shell.md`

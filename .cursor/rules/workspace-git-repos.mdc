@@ -1,0 +1,25 @@
+---
+description: Workspace root is a repo and some platform folders are separate repos
+alwaysApply: true
+---
+
+# Workspace Git Repos
+
+The workspace has a **root git repository** and also contains platform folders that are their **own** git repositories.
+Never assume the root repo owns files inside a nested platform repo.
+
+Known repo ownership:
+- **Root repo**: shared docs, `.cursor/`, and other files that are not owned by a nested platform repo.
+- **Backend**: `backend/`
+- **CPanel**: `cpanel/`
+- **Website**: `website/`
+
+Platform roles:
+- `website/` — SSR **Customer** portal on backend mount `/website` (visitor + customer actors).
+- `cpanel/` — SSR **Supervisor** control panel on backend mount `/cpanel`.
+
+When reviewing changes, running git history, or checking what was modified, use the repo that contains the file:
+- Paths under `backend/` -> use `backend/` as git working directory.
+- Paths under `cpanel/` -> use `cpanel/` as git working directory.
+- Paths under `website/` -> use `website/` as git working directory.
+- Paths outside nested platform repos -> use the workspace root git repository.

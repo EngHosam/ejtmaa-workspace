@@ -1,0 +1,53 @@
+---
+description: Govern SSR control-panel work under cpanel using the documented foundation
+globs:
+  - cpanel/**
+alwaysApply: false
+---
+
+# CPanel Platform Governance
+
+Use the documented cpanel foundation before changing `cpanel/`:
+- `docs/platforms/cpanel/overview.md`
+- `docs/platforms/cpanel/repository-inventory.md`
+- `docs/platforms/cpanel/component-structure.md`
+- `docs/platforms/cpanel/ui-foundation.md`
+- `docs/platforms/cpanel/data-flow-and-gql.md`
+- `docs/invariants/cpanel.md`
+- `.cursor/skills/cpanel-platform-governance/SKILL.md` for repeatable implementation and review workflow guidance
+
+Current cpanel constraints:
+- `cpanel/` is its own git repository.
+- The platform is an SSR scaffold built around `src/client/*`, `src/server/*`, and `src/resources/configs/web-core.ts`.
+- Respect the current folder ownership split: `resources/`, `services/`, `ui/base/`, `ui/components/`, `ui/layouts/`, `ui/pages/`, and `types/`.
+- `ui/base/` is infrastructure bound to the shared framework/tooling layer; product/business reusable UI belongs in `ui/components/`.
+- Use `ui/base/components/Utils.tsx` plus `resources/configs/theme.ts` and `resources/configs/utils.ts` as the control-panel UI foundation instead of inventing a parallel styling system.
+- When composing through `Utils`, prefer existing component props (`bg`, `flt`, spacing, layout, typography, etc.) over `baseCssStyle`/`cssStyle`; use raw style escapes only for behavior that the primitive props do not already expose.
+- When a helper module belongs to one shared layout only, colocate it under that layout (for example `ui/layouts/main-layout/*`) instead of placing it in a generic component file; use existing project shell terms such as `Drawer` rather than importing foreign naming like `Sidebar`.
+- For `MainLayout` responsive shell work, keep one shared shell tree and let CSS/media queries own desktop-vs-mobile presentation; do not branch the full shell into separate desktop/mobile layouts or add layout-wide viewport-mode state when CSS can express the behavior.
+- Extend cpanel-specific `@my-ssr/web-core` route metadata only through `src/types/extends/global.ts`; do not invent route/layout fields in ad-hoc local typings.
+- Do not place cpanel auth-routing middleware in `web-core.router.beforePageLoading`; keep router middleware invocation in the page lifecycle layer (`src/app/ui/base/core/MyPage.tsx`) because the earlier hook can run before `services.boot.server(...)` finishes `/custom/start` hydration during SSR prepare flow.
+- For nested translation objects, bind `useTranslator` at the nested object node and read direct keys from that bound translator; do not fall back to dotted runtime key strings or mixed nested access styles.
+- For list-launched single-record pages, prefer the adopted route pattern `/:formType(show)/:id` when the feature follows the existing cpanel form-page flow.
+- For return navigation from those pages, prefer `useNav().back()` over reconstructing list query state inside the detail page unless a proven requirement says otherwise.
+- Keep route pages orchestration-first: extract only truly reusable UI into `ui/components/`, and do not create feature-specific wrapper components when shared primitives are the real reusable layer.
+- For auth-like routes that use `ui/components/auth/AuthPageShell.tsx`, keep width/max-width/responsive padding ownership in that shared shell and avoid page-local wrappers unless they add proven behavior.
+- For larger route-owned surfaces, prefer section-level extraction over both extremes:
+  - do extract route-shared or module-shared sections into `ui/components/`,
+  - but do not split one route/module into file-per-private-helper when those helpers are only used inside a single section.
+- Prefer requester/form-boundary submission with shared action components; do not add HTML-form wrapper semantics on cpanel route pages unless an existing page pattern truly requires native form submission behavior.
+- For route-scoped cpanel forms, prefer returning UI-ready flags like `isLoading` / `saving` from `mapState(...)` instead of exposing raw internal form sub-state such as `currentSub` to the page body, unless the page truly needs the raw value.
+- Reuse the mature organizational lessons from `website/` where concepts overlap (shared UI foundation, adapters for reads, forms for writes, thin route pages, predictable usability). Use the SSR web bootstrap (`MyPage` + `web-core`).
+- Backend integration must stay aligned with the backend `/cpanel` surface and the cpanel requester typing/config files.
+- Future backend-owned reads should center on adapters and the GQL path; backend-owned writes should center on forms/requesters.
+- Backend GraphQL SDL and generated type mirrors consumed by `cpanel/` belong under `src/types/gql/**`, with backend remaining the source of truth and sync happening by command-based copy rather than hand-editing copied mirrors.
+- `supervisor` GraphQL mirrors are a cpanel concern; do not sync `supervisor` SDL/types into `website/` unless that client explicitly starts consuming supervisor role contracts.
+- Local `graphql.config.yml` helper files belong only in UI subtrees that actually host GraphQL-aware code (currently `src/app/ui/pages/` and `src/app/ui/components/`), and they must point at the mirrored cpanel schema under `src/types/gql/`.
+- Supervisor modules: `Home`, `Customers`, `Customer`, `AccountSettings` — extend by documented patterns in `supervisor-admin-modules.md`.
+- Starter shared registries (`FORM1`, `ADAPTER1`) are foundation placeholders for future features.
+
+Interpretation rule:
+- Document current behavior only when it is directly evidenced by current cpanel files.
+- Treat architecture/usability/data-flow guidance as governance for future implementation unless the repo already proves the behavior.
+
+When making material cpanel architecture or contract changes, update the cpanel docs in the same task.

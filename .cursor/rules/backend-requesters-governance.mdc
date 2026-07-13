@@ -1,0 +1,82 @@
+﻿---
+description: Enforce Ejtmaa backend requester, joi_rules, Ability, Able, can, routing, transaction, and side-effect governance.
+globs: backend/src/app/orchestrator/requesters/**/*.ts,backend/src/app/validation/joi_rules.ts,backend/src/app/orm/models/**/*.ts,backend/src/app/http/controllers/**/*RequesterController.ts,backend/src/app/orchestrator/Orchestrator.ts
+alwaysApply: false
+---
+
+# Backend Requesters Governance
+
+This rule is a self-contained Ejtmaa requester contract. Do not mention, cite, compare against, or defer to external project names.
+
+## Required Shape
+
+- Requester files live only in `backend/src/app/orchestrator/requesters/`.
+- Each requester uses `export namespace I<Name>Requester`, `@requester("ident")`, `export class Requester extends RequesterBase`, and `export default I<Name>Requester.Requester`.
+- Every callable public requester method must have `@sub(platforms, actors)`.
+- Requester controllers route with `requesterHandle(platform, actor)` and must not manually register requester classes.
+- Method signatures must accept `FormBody<Props>` and `SimpleJsonBuilder<FormResult<...>>`, return `Promise<SJsonResult>`, and never return raw data.
+
+## Required Method Order
+
+- Validate first with `withJoiFirewall(..., await this.joiOptions()).asyncValidate(body.values, { outPropsType })`.
+- Check validation errors immediately with `throwIfNotValid`.
+- Extract `props` only after validation succeeds.
+- Start transactions only after validation succeeds.
+- Run `can(..., { throwMode: true, transaction })` before the mutation it protects.
+- Build output through `result.setData(...)`, `result.addMainMessages(...)`, and `result.done()`.
+- When a requester-backed form action returns non-field data (for example `paymentURL`, created ids, or redirect metadata), place it under `FormResult.data.other`. Use `values` only for actual form values and never flatten extra payload fields at the response root.
+- No mutation, side effect, notification, email, or external call may run before validation and applicable permission checks.
+
+## Validation Gates
+
+- `facts` is actor context from requester orchestration and must exist for routed requester methods.
+- Single actor uses `isByActorFacts(joi)`.
+- Multiple actors use `joi.alt(isByActor1Facts(joi), isByActor2Facts(joi))`; actor branching is allowed only after validation.
+- Existing record references use `Model().Opt(joi, "prop")` or a `joi_rules.ts` helper built on it.
+- When an Opt-backed field is intentionally optional or nullable, pass `optional: true` into `Model().Opt(joi, "prop", true)` or the matching `joi_rules.ts` helper's `optional` argument. Do not rely on chaining `.optional()` / `.allow(null)` on the helper return value alone; `Model.Opt` enforces required-vs-absent inside its own `external` handler.
+- Chained helper `.external(...)` handlers must start with `if (optional && !value) return;` before business checks.
+- Repeated actor facts, model reference resolution, ownership checks, and access validation belong in `backend/src/app/validation/joi_rules.ts`.
+- `joi_rules.ts` helpers use `smartHelpers.set(...)` for resolved values and `smartHelpers.get(...)` for previously resolved context.
+- Use `danger("NOT_PERMIT")` and `danger("404")` for authorization/domain validation failures; use `error("field.code")` for field-specific validation failures.
+- `withJoiFirewall` already validates with `presence: "required"`; do not add `.required()` to normal requester fields. Use Joi `.optional()` / `.allow(null)` only for plain Joi fields. Opt-backed model references must use the helper/`Model.Opt` `optional` flag instead.
+- Type requester Joi helper parameters as `JoiFirewallRoot`; do not leave helper signatures as untyped `(joi)`.
+- Numeric form values may arrive as strings from HTML form inputs. Define a typed numeric Joi helper for reused numeric fields, normalize valid numeric strings there, and apply conditional requiredness through Joi instead of leaving prices/deposits optional by accident.
+- `outPropsType` must describe validated output, not raw client input. Use `Modify<Props, {...}>` only for fields whose type actually changes after validation, such as model references, files, enums, or normalized nullable values.
+- Do not list unchanged fields inside `Modify<Props, {...}>`. If `name: string` remains `string`, keep it in `Props`; add extra resolved values with an intersection such as `Props & { customer: CustomerModel }`.
+
+## Authorization Gates
+
+- Authorization is three-layered: `@sub`, facts validation, then `model.can(...)`.
+- Domain permission and state-transition rules belong in model `can`, not copied into requester methods.
+- Model permissions define `type Ability`, pass it to `Model<Attrs, CreationAttrs, Ability>`, and implement `can(...)` by returning `this.iCan(...)`.
+- `can` throws stable message codes inside its test body and never returns booleans.
+- `Able` is not boolean: success is `"CAN"`; `throwMode` throws failures; `visualMode` returns displayable ability output for read/GraphQL/UI surfaces.
+- Mutation requesters use `throwMode: true`; read/UI ability surfaces use `visualMode` when they need descriptions.
+
+## Transaction And Side-Effect Gates
+
+- `ControllerBase.exe()` owns normal commit/rollback.
+- Requesters call `startTransaction()` only when DB mutation or transaction-bound permission checks require it.
+- All writes and operation-related `can` queries must share the same transaction.
+- Manual transaction close inside a requester is forbidden unless the reason is documented and the user explicitly approved it.
+- Side effects must be timed deliberately. Prefer `transaction.afterCommit(...)` for requester composition/shared transaction paths.
+- Requesters must not create domain notifications directly with `Notification().create(...)`. Emit the appropriate `notify<...>(...)` event after commit and let the notify event/listener own notification creation and broadcasting.
+- Manual commit before side effects requires a documented reason and explicit user approval.
+- Also apply `.cursor/rules/backend-requester-whitespace-normalization.mdc`; human/business text must not lose internal spaces.
+
+## Forbidden Patterns
+
+- requester outside the orchestrator requester folder
+- callable public method without `@sub`
+- manual requester maps in controllers
+- raw id validation followed by requester-owned `find(...)`
+- reusable ownership or access logic duplicated across requesters
+- reusable domain permission logic inside requester instead of `can`
+- treating `Able` as boolean
+- using `visualMode` to enforce mutation permission
+- mutation before validation or permission
+- side effects hidden inside transactions
+- direct notification row creation from requesters instead of the notify event flow
+- manual commit/rollback without approval
+- chaining Joi `.optional()` / `.allow(null)` on Opt-backed `joi_rules.ts` helpers instead of passing `optional: true` through to `Model.Opt`
+- external project names in requester guidance, comments, docs, or final explanations

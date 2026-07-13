@@ -1,0 +1,39 @@
+﻿---
+description: Guard Ejtmaa website flex-child text truncation against -webkit-box/maxLi misuse in growing flex rows
+globs:
+  - website/src/app/ui/components/LandingDrawer.tsx
+  - website/src/app/ui/base/components/Utils.tsx
+  - docs/platforms/website/flow-customer-shell.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website Flex-Child Text Truncation
+
+Applies when a `Text` (or any element) is placed as a direct child of a flex row (`Row` / `display: flex`) and must both **grow to fill the remaining space** AND **truncate to a single line** — e.g. a drawer row label between a fixed icon circle and a trailing chevron, a list-row title, a header title between icons.
+
+## Rule
+
+A growing flex-child label MUST be a normal block flex item:
+
+- `flx_1` (so it takes the remaining space)
+- `minWidth: 0` (so flex is allowed to shrink below content size — without this the overflow/ellipsis does not engage)
+- `whiteSpace: "nowrap"`, `overflow: "hidden"`, `textOverflow: "ellipsis"`
+- `textAlign: "start"` for direction-aware alignment (RTL flips automatically via `<html dir>`)
+
+It MUST NOT use `maxLi` (`-webkit-box` + `-webkit-line-clamp`) as the growing flex child.
+
+## Why
+
+`maxLi` sets `display: -webkit-box`, a legacy display mode that does **not** behave as a normal flex item. A `-webkit-box` element placed as a direct `flx_1` child of a `Row` does not reliably take the remaining space — the label can render centered or fail to fill the row instead of aligning to the start. The symptom is a silent visual misalignment that is hard to trace back to the display mode.
+
+`maxLi` is still correct for **multi-line clamping inside a fixed-width / block-flow container** (e.g. a card title that wraps to ≤2 lines). It is only wrong when the element is a flex child that must grow.
+
+## Canonical case
+
+`LandingDrawer` row labels (`DrawerRow` / `UtilityRow` in `website/src/app/ui/components/LandingDrawer.tsx`): the label is a direct `flx_1` flex item with `textAlign: "start", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0` — not a `maxLi` element. The earlier `maxLi` version left the label not filling the row.
+
+## Authority
+
+- `docs/invariants/website.md` W25
+- `docs/platforms/website/flow-customer-shell.md` (drawer item rows)

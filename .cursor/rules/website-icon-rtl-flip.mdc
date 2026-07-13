@@ -1,0 +1,50 @@
+﻿---
+description: Guard Ejtmaa website directional icon mirroring — use Icn `flp` so arrows/directional glyphs flip in RTL via the global no-flip rule
+globs:
+  - website/src/app/ui/base/components/Utils.tsx
+  - website/src/resources/emotion/styles/global.ts
+  - website/src/app/ui/components/customer/**/*.tsx
+  - website/src/app/ui/components/static/**/*.tsx
+  - website/src/app/ui/pages/**/*.tsx
+  - docs/platforms/website/flow-customer-shell.md
+alwaysApply: false
+---
+
+# Website Icon RTL Flip (`Icn` `flp`)
+
+Applies when authoring or editing website UI that renders a directional icon (arrow, chevron pointing a way, play, back, forward, etc.) via `Icn` (`website/src/app/ui/base/components/Utils.tsx`).
+
+## Rule
+
+`Icn` adds the CSS class `no-flip` by **default** (when `flp` is falsy). The global stylesheet (`website/src/resources/emotion/styles/global.ts`) mirrors icons in RTL only when `no-flip` is **absent**:
+
+```css
+html[dir=rtl] { .me-icon:not(.no-flip) { transform: scaleX(-1) !important; } }
+```
+
+`react-icons` get the `me-icon` class via `MyApp`'s `IconContext.Provider` (`className: "me-icon"`).
+
+Therefore:
+- A **directional** icon that must point the reading-forward direction (e.g. `FiArrowRight`, `FiChevronRight` used as "next/forward/explore") MUST pass `flp` so `no-flip` is dropped and the icon mirrors in Arabic. In LTR it keeps its native direction; in RTL it flips.
+- A **non-directional** icon (`FiMapPin`, `FiBriefcase`, `FiBell`, `FiUser`, …) MUST **not** pass `flp` — the default `no-flip` keeps it unmirrored (a pin or bell flipping in RTL is wrong).
+
+## Why
+
+Without `flp`, a forward-arrow stays right-pointing in Arabic, contradicting the RTL reading direction — a silent, hard-to-spot visual bug. The opt-in (`flp`) keeps non-directional icons correct by default and makes mirroring explicit for directional ones.
+
+## Canonical case
+
+`CustomerHeroSlider` slide CTA chip arrow (`website/src/app/ui/components/customer/home/CustomerHeroSlider.tsx`):
+
+```tsx
+<Icn As={FiArrowRight} size={"0.8rem"} color={"@white"} flp/>
+```
+
+The `flp` makes `FiArrowRight` point left in Arabic (RTL) and right in English (LTR).
+
+## Authority
+
+- `website/src/app/ui/base/components/Utils.tsx` (`Icn` → `classNames({"no-flip": !flp}, ...)`)
+- `website/src/resources/emotion/styles/global.ts` (`html[dir=rtl] .me-icon:not(.no-flip)`)
+- `website/src/app/ui/base/core/MyApp.tsx` (`IconContext.Provider` `className: "me-icon"`)
+- `docs/platforms/website/flow-customer-shell.md` (hero CTA arrow)

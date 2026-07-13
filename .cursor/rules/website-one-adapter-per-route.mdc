@@ -1,0 +1,30 @@
+---
+description: A website route must trigger exactly one mount-private data adapter for its primary load. A shared screen that branches by a route-level discriminator must split into variant-specific child components that each call only their own hook.
+globs:
+  - website/src/app/ui/components/customer/**
+  - website/src/app/ui/pages/**
+alwaysApply: false
+---
+
+# One mount-private adapter per route
+
+A website route MUST trigger exactly **one** mount-private data adapter for its primary load. A shared screen that branches by a route-level discriminator MUST NOT call both variant hooks unconditionally -- that fires multiple GQL requests and injects multiple adapters per route.
+
+## Required
+
+- **Branch via inner wrapper components**, not conditional hook calls. The shared screen delegates to discriminator-specific child components that each call only their own hook, then render a shared presentational body.
+- **Hooks cannot be conditionally called** (Rules of Hooks). The split is at the component level: `variant === "a" ? <VariantAScreen/> : <VariantBScreen/>`, where each wrapper calls its own `useShallowAdapter`-backed hook.
+- **One adapter injection per route.** Each variant hook uses `useShallowAdapter({ inheritedAdapterIdentify: DATA_ADAPTERS.CUSTOMER_GQL, enterMode: "LOAD_ON_MOUNT" })`; only the variant matching the route actually mounts.
+- **Keep the presentational body shared.** The discriminator-specific wrappers extract the hook result into a plain `data` prop and pass it to one shared presentational component — no JSX duplication.
+
+## Forbidden
+
+- Calling two variant hooks in the same component and selecting between them with a discriminator. The rejected hook still fires its GQL and injects its adapter.
+- Wrapping a hook call in `if (variant === "a") useVariantA(...)` -- breaks the Rules of Hooks.
+- Duplicating the entire render tree across the variant wrappers — extract a shared body component instead.
+
+## Reference
+
+- Canonical case: customer settings screen delegates to one adapter hook; shared body component receives plain `data` props.
+- Invariant: `docs/invariants/website.md` W36.
+- Flow doc: `docs/platforms/website/flow-customer-shell.md` (screen composition patterns).

@@ -1,0 +1,125 @@
+﻿---
+description: All code (TS/JS/JSX/GQL and similar) must be vertically readable — no crammed dense one-liners.
+alwaysApply: true
+---
+
+# Readable code layout
+
+Code must expose its structure at a glance. Prefer vertical clarity over saving lines. Do not cram unrelated members, arguments, fields, or clauses onto one line when readability suffers.
+
+Applies to every platform and language in this workspace: `backend/`, `website/`, `cpanel/`, shared `docs/` examples, and generated mirrors when you touch them.
+
+## Required (all languages)
+
+- **Two or more siblings** (properties, arguments, fields, variables, imports of the same group) → one per line with normal indentation.
+- **Nested structures** (`query`, `params`, config blocks, SDL field groups, selection sets) → nested block; one member per line.
+- **Contract maps** (`MPagesRoutes`, `PagesRoutes`, `BreadcrumbMeta`, route tables, enum maps) → always multi-line shapes; bare `{}` may stay on one line.
+- **Long generics or unions** → named `type` alias instead of splitting `Record<...>` / `Pick<...>` across awkward lines.
+- **Logical sections** → blank line between unrelated groups (imports vs code, SDL sections, hook blocks).
+
+## TypeScript / JavaScript
+
+- Object types, literals, destructuring, and `return` objects with 2+ keys → multi-line.
+- Function calls with 2+ named arguments or 3+ positional arguments → break across lines.
+- Chained calls (`.map().filter().reduce()`, fluent builders) → break when the chain is hard to scan; one meaningful step per line.
+- JSX: 2+ props on a component → one prop per line unless the element is a trivial leaf with two short props.
+- Import lists: do not pack many symbols on one line; group and break by source module.
+
+Forbidden:
+
+```ts
+CustomerSettings: {
+    id?: string;
+};
+
+nav.push("CustomerSettings", {
+    id,
+});
+const x = useMemo(() => ({ a, b, c, d }), [a, b, c, d]);
+```
+
+Good:
+
+```ts
+CustomerSettings: {
+    id?: string;
+};
+
+nav.push("CustomerSettings", {
+    id,
+});
+```
+
+## GraphQL SDL (`.graphql`)
+
+- One field, argument, or directive per line.
+- Group related fields with comments and blank lines (`# info`, `# relations`, `# pagination`) — match existing schema style.
+- Type definitions, `implements`, and interfaces: members listed vertically, not inline.
+- Input types and argument lists: one argument per line.
+
+Forbidden:
+
+```graphql
+type _Foo { id: ID! name: String status: _Status customer: _Customer notifications: [_Notification] }
+query customers($filter: _CustomerFilter, $sort: _CustomerSort) { customers(filter: $filter, sort: $sort) { id name } }
+```
+
+Good:
+
+```graphql
+type _Foo {
+    id: ID!
+    name: String
+    status: _Status
+    customer: _Customer
+    notifications: [_Notification]
+}
+
+query customers($filter: _CustomerFilter, $sort: _CustomerSort) {
+    customers(filter: $filter, sort: $sort) {
+        id
+        name
+    }
+}
+```
+
+## GraphQL operations (client `.graphql` / embedded query strings)
+
+- Selection sets: one field per line; nested selections indented.
+- Variables and arguments: one per line when there are 2+.
+- Fragments and operation names stay on their own lines.
+
+Forbidden:
+
+```graphql
+query LoadCustomer($id: ID!) { customer(id: $id) { id name email status { value label } } }
+```
+
+Good:
+
+```graphql
+query LoadCustomer($id: ID!) {
+    customer(id: $id) {
+        id
+        name
+        email
+        status {
+            value
+            label
+        }
+    }
+}
+```
+
+## Allowed compact forms
+
+- Empty shape: `Login: {}`
+- Single-member shape when the name already explains it and the value is short (when unsure, expand).
+- One-line `return` only when the object or expression has a **single** short element.
+- Single short statement with no nested structure (e.g. `const id = params.id;`).
+
+## Forbidden everywhere
+
+- “Writer style” dense one-liners that hide structure to save vertical space.
+- Stacking unrelated fields, args, or clauses on one line.
+- Minified or golfed style in hand-written source (not build output).

@@ -1,0 +1,71 @@
+﻿---
+description: Arabic chat - LTR code first in ltr div; Arabic prose and tables in rtl div (Cursor bidi)
+alwaysApply: true
+---
+
+# Arabic replies - LTR code first, RTL prose second
+
+## When this applies
+
+- User message is **primarily Arabic** -> layout below (RTL-only if no technical content).
+- User message is **English only** (or user asks for English) -> normal LTR; no rtl wrapper.
+- **Mixed** -> technical content in Zone LTR; Arabic in Zone RTL.
+
+## Problem (Cursor chat)
+
+`dir="rtl"` on a parent makes **later** fenced code and citations render RTL even after `</div>`. Backtick lines **inside** the rtl div are also corrupted. When the reply includes code, Zone LTR must be **first** and wrap all technical content.
+
+## Zone LTR (first, when needed)
+
+Use only if the reply includes **any** of: code citations, fenced code, backtick tokens, paths, env vars, step keys, shell commands, JSON, or a table whose cells are mostly Latin/code.
+
+```html
+<div dir="ltr" lang="en" style="direction: ltr; unicode-bidi: isolate;">
+```
+
+Close with `</div>`.
+
+**Tables with paths, step keys, or code in cells** -> markdown table in Zone LTR, not Zone RTL.
+
+## Zone RTL (second, or only zone)
+
+When the user message is primarily Arabic:
+
+```html
+<div dir="rtl" lang="ar">
+```
+
+**Allowed:** Arabic prose, Arabic **markdown pipe tables**, Arabic lists.
+
+**Not allowed:** backticks, fenced code, code citations, file paths, env lines.
+
+Close with `</div>`.
+
+If the reply has **no** technical content, use **only** Zone RTL (do not open an empty Zone LTR).
+
+## Referring to code
+
+In Zone RTL, point to the block **above** (e.g. see code block above). Paths and citations live only in Zone LTR.
+
+## Arabic tables
+
+- Use **markdown pipe tables** in Zone RTL for Arabic data.
+- **Accepted:** cell text may still read LTR in Cursor chat — **ignore**; keep the markdown table unless the user asks for another format.
+- No backticks in Arabic cells; code-heavy tables belong in Zone LTR.
+
+## Quick reference
+
+| Content | Zone |
+|---------|------|
+| Code citations, fences, backticks, paths | LTR first |
+| Arabic prose, Arabic markdown tables | RTL |
+| Latin/code table | LTR |
+| Arabic only, no code | RTL only |
+
+## Prohibited
+
+- Code or backticks inside `dir="rtl"`.
+- Technical lines after rtl `</div>` without a preceding ltr wrapper.
+- Arabic-primary replies without `<div dir="rtl" lang="ar">`.
+- Forcing Arabic on English-only messages.
+- List/card/HTML table workarounds instead of markdown tables unless the user requests them.

@@ -1,0 +1,60 @@
+---
+description: Website useShallowForm/useShallowAdapter default removeOnExit true (don't redeclare it), and async form submit that awaits setValues before send must guard double-submit with a ref because saving (SENDING) does not cover the pre-send await window.
+globs:
+  - website/src/app/ui/components/**/hooks/use*.ts
+  - website/src/app/ui/components/**/hooks/use*.tsx
+  - website/src/app/ui/base/hooks/useShallowForm.tsx
+  - website/src/app/ui/base/hooks/useShallowAdapter.tsx
+  - docs/platforms/website/flow-*.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website shallow form/adapter cleanup + async submit guard
+
+Applies to `useShallowForm` and `useShallowAdapter` consumers under `website/`.
+
+## `removeOnExit` is already true by default
+
+Both `useShallowForm` and `useShallowAdapter` pass `removeOnExit: removeOnExit !== false` to their injector. The default is **true**.
+
+- Do **not** add `removeOnExit: true` — it is redundant noise.
+- Only pass `removeOnExit` when you need `false` (e.g. a create draft that must survive SPA nav, per `website-multi-path-form-routes.mdc`).
+
+## Double-submit guard for async form submit
+
+`mapState` exposes `saving` (`status === "SENDING"`) for button `loading`/`disabled`. `SENDING` is only set once `d.send` runs. If a submit handler awaits `d.setValues(...)` before `d.send(...)`, there is a pre-send await window where `saving` is still false and the submit button is not yet disabled — a second click can fire a duplicate write (`create*`, `update*`, payment-start).
+
+Guard the whole submit body with a `submittingRef` so the second call returns early regardless of form status timing:
+
+```ts
+const submittingRef = useRef(false);
+
+const submit = React.useCallback(async (arg) => {
+    if (submittingRef.current || !form.d || <arg-invalid>) return undefined;
+    submittingRef.current = true;
+    try {
+        await form.d.setValues({...});
+        let result;
+        await form.d.send({sub, funnels: {afterSentSuccess: async res => { result = readResult(res); }}});
+        return result;
+    } finally {
+        submittingRef.current = false;
+    }
+}, [form.d, /* ... */]);
+```
+
+- The ref closes the `setValues`→`send` window; `saving` still drives the button's `loading`/`disabled` UX.
+- `try/finally` resets the ref so a failed submit can be retried; a successful redirect navigates away.
+- This is the website counterpart of the app's `if (!d || formLoading) return` guard — the website needs the ref because it awaits `setValues`, widening the race beyond what `saving` alone covers.
+
+## Forbidden
+
+- Redundant `removeOnExit: true` on `useShallowForm` / `useShallowAdapter`.
+- Relying only on `saving`/`continueDisabled` to prevent double-submit when the submit handler awaits `setValues` before `send`.
+- Awaiting `setValues` without any double-submit guard at all.
+
+## Reference
+
+- Canonical case: any website form hook that awaits `setValues` before `send` must guard with `submittingRef` (see `flow-form-foundation.md`).
+- Flow doc: `docs/platforms/website/flow-form-foundation.md`.

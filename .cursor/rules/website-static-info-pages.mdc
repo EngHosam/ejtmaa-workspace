@@ -1,0 +1,42 @@
+﻿---
+description: Authed drawer static info pages (help, about, terms) on website
+globs:
+  - website/**
+alwaysApply: false
+---
+
+# Website Static Info Pages
+
+Applies when adding or editing authed drawer static info pages (help guide, about, terms) on `website/`. Authority: `docs/platforms/website/flow-static-info-pages.md`.
+
+## Non-negotiables
+
+1. **Drawer-owned authed routes only.** Register on `CUSTOMER_MAIN` with `mustAuthedAs: ["CUSTOMER"]`, mandatory `breadcrumb` (`parent: CustomerHome`), **no** `showBottomBar`. No public `LANDING` routes.
+
+2. **No backend surface.** Static info pages are i18n-only — no GQL adapters, forms, requesters, or API calls.
+
+3. **Translation namespaces:**
+   - Customer help: `ui.pages.customer.helpGuide`
+   - About + Terms: `ui.pages.shared.aboutEjtmaa`, `ui.pages.shared.termsConditions`
+   - Drawer labels: `ui.layouts.customerMainLayout.drawer`
+
+4. **Help guide split:**
+   - `components/static/HelpGuideScreen.tsx` — presentational only
+   - `components/customer/static/CustomerHelpGuideScreen.tsx` — wiring from i18n
+
+5. **About / Terms:** shared screens under `components/static/` bound to `ui.pages.shared.*`
+
+6. **Quick-link tiles are informational.** No `nav.push` from help guide tiles.
+
+7. **Copy truthfulness.** Describe only documented website surfaces. Update `ar.ts` and `en.ts` together.
+
+8. **Directional icons:** forward bullets use `Icn` `flp`. See `.cursor/rules/website-icon-rtl-flip.mdc`.
+
+## Forbidden
+
+- Backend reads without explicit governance approval
+- About page keys use the `aboutEjtmaa` namespace.
+
+## Reference
+
+- `docs/platforms/website/flow-static-info-pages.md`

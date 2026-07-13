@@ -1,0 +1,39 @@
+---
+description: Enforce deterministic GraphQL union routing through BridgeBase contracts
+globs: backend/src/app/gql/**/*.ts,backend/src/app/orm/models/**/*.ts,website/src/types/gql/**/*.ts,website/src/types/gql/**/*.graphql,website/src/types/gql/**/*.ts,website/src/types/gql/**/*.graphql,docs/platforms/backend/patterns/gql-union-routing-reference.md,docs/platforms/backend/contracts/graphql-and-types.md
+alwaysApply: false
+---
+
+# GQL Union Routing Governance
+
+For backend GraphQL union/polymorphic read paths, enforce this contract.
+
+## Required Pattern
+
+1. SDL defines a union field with explicit members.
+2. Entity bridge declares `static unions` with:
+   - union field ident,
+   - concrete include idents,
+   - `requiredOrmAttrs` containing discriminator attrs.
+3. Bridge implements deterministic `getUnionGQLIncludeIdent(...)`.
+4. Concrete member relations remain ORM-backed relations.
+5. Schema stays root-only for model-backed union fields.
+
+Reference:
+- `docs/platforms/backend/patterns/gql-union-routing-reference.md`
+
+## Hard Gates
+
+- No polymorphic union path without discriminator mapping.
+- No union routing without discriminator attrs loaded.
+- No fake ORM relation created only to match union field name.
+- No schema-level manual union-member resolvers for model-backed paths unless a framework-level exception is explicitly documented.
+- No non-deterministic routing branches.
+
+## Verification Before Finalizing
+
+- [ ] mixed discriminator rows resolve expected union members
+- [ ] union field resolves via bridge routing and member `__typename`
+- [ ] codegen reflects union contract
+- [ ] backend->frontend mirror sync is complete (website for customer; cpanel for supervisor)
+- [ ] affected docs are updated

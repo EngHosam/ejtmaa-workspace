@@ -1,0 +1,24 @@
+---
+description: Actor model and ORM-to-GQL integration guardrails for Ejtmaa
+globs: backend/src/app/orm/models/**/*.ts,backend/src/app/gql/**/*.ts,docs/platforms/backend/patterns/models-owners-abilities-security.md,docs/platforms/backend/patterns/orm-*.md,docs/platforms/backend/patterns/gql-*.md
+alwaysApply: false
+---
+
+# Actor and GQL Integration Rules
+
+Ejtmaa actors: **Customer** and **Supervisor**.
+
+Current domain models (see `backend/src/app/orm/models/`):
+- `Customer`, `Supervisor`, `User`, `Token`, `Notification`, `SystemSetting`
+
+- For actor-sensitive models, require explicit `Ability` type and `can()` override using `iCan()`.
+- Enforce owner safety: validate ownership facts and deny with stable message keys.
+- For polymorphic ownership, require explicit discriminator strategy (`owner_type`/`owner_id`) and safe relations.
+- Any field used by bridge sort/filter/extras/unions must be loaded (`requiredOrmAttrs` or include attrs).
+- Keep GraphQL list retrieval bounded and ordered; no unbounded root-many queries.
+- Keep depth guards active in bridge paths (`maxLevel`, `deepInclude`).
+- Never copy drifted patterns that conflict with Ejtmaa contracts.
+- Use worked examples from `docs/platforms/backend/patterns/orm-model-worked-examples.md`.
+- Validate final output against:
+  - `docs/platforms/backend/patterns/orm-model-authoring-standard.md`
+  - `docs/platforms/backend/patterns/orm-model-compliance-checklists.md`

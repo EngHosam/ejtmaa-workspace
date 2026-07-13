@@ -1,0 +1,26 @@
+---
+description: Mandatory breadcrumb sub-header for authed drawer/header-launched subpages on website
+globs:
+  - website/src/resources/configs/routes.ts
+  - website/src/app/ui/pages/customer/**
+  - website/src/app/ui/components/customer/notifications/**
+  - docs/platforms/website/route-registry-contract.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Authed Drawer / Header Subpage Governance
+
+Applies when shipping or reviewing an authed customer route reached from the **drawer** or **header bell** (not a primary bottom-tab destination).
+
+## Non-negotiables
+
+1. **Drawer/header-launched subpages MUST declare `breadcrumb` on the route.** Routes on `CUSTOMER_MAIN` without `showBottomBar: true` and not the role home (`CustomerHome`) must add `breadcrumb: { parent, label }` in `resources/configs/routes.ts`.
+2. **Parent crumb default:** `parent: "CustomerHome"` unless a flow doc specifies a deeper parent.
+3. **List subpages keep `SectionHeading`.** Drawer-launched list pages (notifications, settings) render `SectionHeading` inside `pt={2}` alongside the breadcrumb bar.
+4. **No identify-list sub-header hacks.** One `breadcrumb` entry on the route is the only registration surface.
+5. **Docs in the same task.** Update the feature flow doc and `route-registry-contract.md` when paths change.
+
+## Canonical case
+
+- `CustomerNotifications` → `breadcrumb: { parent: "CustomerHome", label: tr => tr.ui.pages.customer.notifications.title }`

@@ -1,0 +1,52 @@
+﻿---
+description: Govern Ejtmaa website customer list-card layout, spacing parity, honest data, and Utils-props-over-baseCssStyle discipline
+globs:
+  - website/src/app/ui/components/customer/**/Card*.tsx
+  - website/src/app/ui/components/customer/notifications/**
+  - website/src/app/ui/components/NotificationRowSkeleton.tsx
+  - website/src/app/ui/base/components/Utils.tsx
+  - docs/platforms/website/flow-customer-*.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website Card Layout & Spacing Parity
+
+Target customer portal contract. Applies when implementing or reviewing customer list cards as notification UI lands in `website/`.
+
+Authority: `docs/invariants/website.md` W28 (card layout/spacing) + W29 (Utils-props-over-baseCssStyle).
+
+## Non-negotiables
+
+1. **No fixed card height.** Cards are content-driven.
+2. **One responsive shell.** Image cards use `Col rotateAt={{maxW: SW.max_sm}}` when an image column exists.
+3. **Shared spacing tokens.** Use `semanticDims.card.padding` / `semanticDims.card.compactPadding` for card padding and `semanticDims.page.sectionGap` for intra-content groups unless a card-specific token is added to `utils.ts`.
+4. **Honest data only.** Show `metaUnavailable` or omit the row when the website GQL type has no real field for that data.
+5. **`maxLi` needs a bounded width.** Give `Text` `w 100%` when centering via `ai_c` so line-clamp engages.
+6. **Two-group pattern.** Separate primary content (title + chips) from trailing meta (time/summary) with distinct vertical spacing.
+
+## Icon-row list cards (notifications)
+
+Horizontal `Row` cards with a leading icon + text column use the two-group pattern inside the text column:
+
+1. Text `Col` with two children when trailing meta exists — inner group for title + chips, trailing time/meta sibling below.
+2. Trailing time/meta is not a chip sibling in the same inner group row.
+3. Prefer `semanticDims` tokens over hardcoded rem literals when a token exists.
+4. Loading skeleton mirrors the same grouping as the target card.
+
+## Mandatory pre-ship checklist (any list card)
+
+- [ ] Padding comes from `semanticDims.card` where applicable.
+- [ ] Trailing meta uses separate spacing from chips/title groups.
+- [ ] Loading skeleton matches the card grouping.
+
+## baseCssStyle discipline (W29)
+
+Use Utils props first. Reserve `baseCssStyle` for responsive overrides, media queries, and values with no Utils equivalent.
+
+## Canonical references
+
+- Target components: `customer/notifications/CustomerNotificationCard.tsx`, `NotificationRowSkeleton.tsx` (land with notification list UI).
+- Tokens: `semanticDims` in `website/src/resources/configs/utils.ts`.
+- Flow: `docs/platforms/website/flow-notifications.md`.
+- Invariants: `docs/invariants/website.md` W28, W29, W30.

@@ -1,0 +1,24 @@
+---
+description: ORM relation and GraphQL nested field naming for Ejtmaa models (camelCase associations; snake_case tables/FKs; bridge ident aligns with modelName).
+globs:
+  - backend/src/app/orm/models/**/*.ts
+  - backend/src/app/gql/definitions/*.graphql
+  - backend/src/app/gql/bridges/**/*.ts
+alwaysApply: false
+---
+
+# ORM and GQL relation naming (Ejtmaa)
+
+## Rules
+
+- **Sequelize `modelName`** for multi-word entities must use **lower camelCase** (not `snake_case`). Default association keys on model instances follow Sequelize pluralization from this name (for example `notifications`).
+- **Do not** add `as` on `belongsTo` / `hasMany` / `hasOne` unless the alias is **intentionally custom** (for example two relations to the same target with different semantics).
+- **`tableName` and foreign key column names** remain **snake_case**; this rule governs **relation accessors and GraphQL nested fields**, not database identifiers.
+- **GraphQL SDL** nested fields must match association keys expected by bridge auto-relations (for example `notifications` on `_Customer`).
+- **Bridge `static ident`** must match the target model `modelName` string so `BridgeBase.bootRelations` resolves the correct registered bridge.
+- After SDL changes: run `yarn generate-types` in `backend/`, then mirror SDL and generated types to client platforms per `.cursor/rules/gql-schemas-bridges-general.mdc`.
+
+## Reference
+
+- `.cursor/rules/orm-models-general.mdc`
+- `.cursor/rules/gql-schemas-bridges-general.mdc`

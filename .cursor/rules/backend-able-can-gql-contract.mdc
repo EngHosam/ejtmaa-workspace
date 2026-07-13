@@ -1,0 +1,43 @@
+﻿---
+description: Enforce Ejtmaa Ability, Able, can, iCan, requester enforcement, and GraphQL ability exposure contracts.
+globs: backend/src/app/orm/models/**/*.ts,backend/src/app/orchestrator/requesters/**/*.ts,backend/src/app/gql/**/*.ts,backend/src/app/gql/definitions/**/*.graphql,website/src/types/gql/**/*.ts,website/src/types/gql/**/*.graphql,website/src/types/gql/**/*.ts,website/src/types/gql/**/*.graphql
+alwaysApply: false
+---
+
+# Backend Able Can GQL Contract
+
+This rule is a self-contained Ejtmaa permission contract. Do not mention, cite, compare against, or defer to external project names.
+
+## Model Permission Gates
+
+- Domain permission rules belong in the owning actor model as `type Ability`, not in requesters or GraphQL.
+- Models with permissions must pass `Ability` into `Model<Attrs, CreationAttrs, Ability>`.
+- `Ability` keys are domain nouns; each domain includes a mandatory `sub` union and only the target props needed by that permission.
+- `can(...)` must return `this.iCan(...)`, throw stable message keys inside the test body, and never return booleans.
+- `Able` is not boolean: success is `"CAN"`; denial is a code string or `{value, description}` when `visualMode` is used.
+- Any query inside `can` that participates in an active mutation must receive the same transaction passed from the requester.
+
+## Requester Enforcement Gates
+
+- State-changing requesters must call `actor.can(..., {throwMode: true, transaction})` before the protected mutation when domain permission applies.
+- Do not use `visualMode` for mutation enforcement.
+- Do not duplicate reusable domain permission checks inline after calling `can`.
+- Do not treat `await actor.can(...)` as a truthy/falsey boolean.
+
+## GraphQL Exposure Gates
+
+- Use GraphQL ability output when the UI needs backend-owned action availability or denial reasons.
+- GQL/UI ability exposure must call the same model `can(...)` with `visualMode`.
+- For current-actor action gates that depend on entity identity, expose the ability from `me` with explicit entity args and keep the entity read model separate. Do not move the same gate into an entity field unless the user explicitly approves an entity-owned ability surface.
+- Prefer `me.abilities` or direct `me.*` ability fields for current-actor capabilities; use entity bridge extras only for bounded entity-specific ability fields that are not really `me` decisions.
+- Ability fields must be side-effect free and must not perform writes.
+- Avoid unbounded per-row `can` calls on root-many lists; if entity ability extras are added, the list must be bounded and required attrs/performance must be explicit.
+- Ability SDL should use a shared `_Able { value: String!, description: String }` shape unless a local equivalent already exists.
+- When SDL changes, keep generated backend types and frontend GraphQL mirrors (`website/` for customer, `cpanel/` for supervisor) synchronized through existing repo scripts/processes.
+
+## Consistency Gates
+
+- Requester `throwMode` enforcement and GraphQL `visualMode` display must use the same `can` rule.
+- If GraphQL says an action is allowed but the requester denies it, the implementation is incomplete.
+- If an action is always allowed and no UI decision/reason is needed, do not add a GQL ability field.
+- Do not expose ability details for records outside the role/principal scope.

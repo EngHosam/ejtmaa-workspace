@@ -1,0 +1,35 @@
+---
+description: Enforce requester whitespace normalization and Joi validation policy for human/business text fields.
+globs: backend/src/app/orchestrator/requesters/**/*.ts,docs/platforms/backend/patterns/requesters-and-orchestration.md,docs/platforms/backend/contracts/http-and-requesters.md
+alwaysApply: false
+---
+
+# Backend Requester Whitespace Normalization
+
+Applies to requester/input-validation work under `backend/`.
+
+## Hard Rules
+
+1. For human/business text fields (`name`, `commercial_name`, labels, notes):
+- use `joi.string().trim()` and keep internal spaces.
+- never use `prepareCleanString(..., { cleanWhiteSpaces: true })`.
+
+2. `cleanWhiteSpaces: true` is allowed only for machine-safe fields where spaces are invalid by definition (for example `email`, `mobile`).
+
+3. Prefer simple Joi composition:
+- `trim().min(...).required()` for text constraints.
+- use `.external(...)` only when async checks are required.
+- avoid unnecessary `.custom(...)` for cases covered by built-in Joi operators.
+
+4. If normalization happens in `.external(...)`, all uniqueness checks must use normalized values (not raw input).
+
+5. For single-input fields persisted as `MultiLangString`:
+- keep client payload as one string.
+- map inline inside requester to `{ ar, en }`.
+- do not add generic helper for this copy.
+
+## Verification
+
+- Search for `cleanWhiteSpaces: true` and verify usage context.
+- Confirm no human text field loses internal spaces.
+- Confirm requester validation remains deterministic and minimal.

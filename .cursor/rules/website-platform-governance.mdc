@@ -1,0 +1,50 @@
+﻿---
+description: Govern SSR Customer web work under website using the documented foundation
+globs:
+  - website/**
+alwaysApply: false
+---
+
+# Website Platform Governance
+
+Use the documented website foundation before changing `website/`:
+- `docs/platforms/website/overview.md`
+- `docs/platforms/website/repository-inventory.md`
+- `docs/platforms/website/component-structure.md`
+- `docs/platforms/website/ui-foundation.md`
+- `docs/platforms/website/data-flow-and-gql.md`
+- `docs/platforms/website/graphql-mirror-and-tooling.md`
+- `docs/platforms/website/shared-ui-and-shell.md`
+- `docs/platforms/website/ssr-boot-and-startup.md`
+- `docs/platforms/website/flow-auth.md`
+- `docs/platforms/website/route-registry-contract.md`
+- `docs/invariants/website.md`
+- `.cursor/skills/website-platform-governance/SKILL.md`
+
+Current website constraints:
+- `website/` is its own git repository.
+- The platform is an SSR scaffold built around `src/client/*`, `src/server/*`, and `src/resources/configs/web-core.ts` — the same `@my-ssr/web-core` scaffold family as `cpanel/`.
+- Respect the current folder ownership split: `resources/`, `services/`, `ui/base/`, `ui/components/`, `ui/layouts/`, `ui/pages/`, and `types/`.
+- `ui/base/` is infrastructure bound to the shared framework/tooling layer; product/business reusable UI belongs in `ui/components/`.
+- Use `ui/base/components/Utils.tsx` plus `resources/configs/theme.ts` and `resources/configs/utils.ts` as the web UI foundation instead of inventing a parallel styling system.
+- Brand colors: navy `#0B2057`, orange `#EC6901` from `theme.ts`. Use `SemanticColors.primary` / `SemanticColors.accent` and `SemanticGradients.primary` / `SemanticGradients.accent` from `theme.ts`.
+- When composing through `Utils`, prefer existing component props over `baseCssStyle`/`cssStyle`; use raw style escapes only for behavior the primitive props do not already expose.
+- Drawer/header-launched authed subpages (no `showBottomBar`) MUST declare route `breadcrumb` before ship — `.cursor/rules/website-authed-drawer-subpage-governance.mdc`, `docs/invariants/website.md`.
+- `Loadable` inside a filled action control MUST derive `lightBackground` from the resolved tone — `.cursor/rules/website-action-control-loader-contrast.mdc`.
+- Extend website-specific `@my-ssr/web-core` route metadata only through `src/types/extends/global.ts`.
+- `.cursor/rules/website-route-registry-governance.mdc` + `docs/platforms/website/route-registry-contract.md` — customer router only; fixed-before-`:id` on same prefix.
+- Do not place website auth-routing middleware in `web-core.router.beforePageLoading`; keep router middleware invocation in the page lifecycle layer (`src/app/ui/base/core/MyPage.tsx`).
+- Locale switching is cookie + full reload only via `changeLocale(myInstance)(newLocale)`.
+- Generic presentational components belong at top-level `src/app/ui/components/`.
+- Prefer requester/form-boundary submission with shared action components.
+
+Actor and backend coupling:
+- **Target:** typed website actor model is **CUSTOMER + visitor** on `/website`.
+- Backend integration aligns with `/website` surface: `FORMS.R` (visitor), `FORMS.CUSTOMER.R`, `DATA_ADAPTERS.GQL`, `CUSTOM.START`.
+- GQL mirrors: `base` + `customer` only under `src/types/gql/**`. Supervisor mirrors are a **cpanel** concern.
+- Requesters: `auth`, `customer`, `notification` on website platform (see `backend/requesters.website.ts`).
+
+Web-native authoring:
+- Author for SSR web using documented `cpanel/` patterns where applicable.
+
+When making material website architecture or contract changes, update the website docs in the same task.

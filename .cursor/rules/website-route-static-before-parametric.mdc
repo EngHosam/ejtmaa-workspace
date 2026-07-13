@@ -1,0 +1,55 @@
+---
+description: Website first-match router — register fixed path segments before :param routes on the same prefix
+globs:
+  - website/src/resources/configs/routes.ts
+  - docs/platforms/website/route-registry-contract.md
+alwaysApply: false
+---
+
+# Website Route Static-Before-Parametric Order
+
+Applies when adding or reordering routes in `website/src/resources/configs/routes.ts` where a **fixed** URL segment shares a prefix with a **parametric** route (`:id`, `:formType`, multi-path `create`/`update`).
+
+Authority: `docs/platforms/website/route-registry-contract.md` section 4, invariant W41.
+
+## Rule
+
+`@my-ssr/web-core` resolves routes by **first match** in `routes` object key order. A parametric route registered **before** a fixed sibling captures the fixed segment as the param value.
+
+**Within the same URL prefix, register every fixed segment route BEFORE the parametric catch-all.**
+
+## Required pattern
+
+```ts
+// fixed segments first
+CustomerFormRoute: { path: customerRouter("/feature/new"), ... },
+// parametric last
+CustomerDetailRoute: { path: customerRouter("/feature/:id"), ... },
+```
+
+Same rule applies to any customer prefix that mixes fixed segments (`/new`, `/review`, `/return`) with `:id` siblings. See `route-registry-contract.md` for registered examples.
+
+## Symptom -> cause
+
+| URL visited | Wrong match | Param captured | Typical backend error |
+|-------------|-------------|----------------|------------------------|
+| `/customer/feature/new` | `CustomerDetailRoute` | `id = "new"` | bigint cast failure |
+
+Wrong screen loads (detail instead of form); detail query receives a slug, not a numeric id.
+
+## Forbidden
+
+- Registering `/prefix/:id` before `/prefix/new`, `/prefix/review`, `/prefix/return`, or any other fixed segment on the same prefix.
+- Relying on backend validation, reserved-slug lists, or regex on `:id` instead of correct registry order.
+- Assuming `nav.push({ identify })` bypasses first-match -- the URL path still resolves through the registry.
+
+## Pre-ship checklist
+
+- [ ] List all routes sharing a path prefix; fixed segments are registered **above** `:param` in `routes` key order.
+- [ ] After adding a fixed segment under an existing `:id` route, move the fixed route(s) before the parametric entry.
+- [ ] Path table in `route-registry-contract.md` section 5 lists fixed siblings before the parametric row when order matters.
+
+## Reference
+
+- Skill: `.cursor/skills/website-route-static-before-parametric/SKILL.md`
+- Sibling rule: `.cursor/rules/website-route-registry-governance.mdc`

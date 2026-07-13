@@ -1,0 +1,32 @@
+﻿---
+description: useBreadcrumbs must prefer a descendant route's rootLabel/rootNavParams over the parent route's own static label when the descendant's parent resolves to the current traversal target, then stop. Keeps entry-source breadcrumb truthful when a detail route carries its parent's dynamic label in the URL query.
+globs:
+  - website/src/app/ui/base/hooks/useBreadcrumbs.ts
+  - website/src/app/ui/base/helpers/breadcrumbMeta.ts
+  - website/src/types/extends/global.ts
+  - website/src/resources/configs/routes.ts
+alwaysApply: false
+---
+
+# Breadcrumb descendant `rootLabel` precedence
+
+When a detail route's `breadcrumb` meta provides `rootLabel` (+ optional `rootIcon` / `rootNavParams`) and its resolved `parent` equals the current traversal target, `useBreadcrumbs` MUST render that crumb using the **descendant's** `rootLabel` (and `rootIcon` / `rootNavParams`), NOT the target route's own `label`, and then **stop** the walk.
+
+## Required
+
+- **Dynamic parent label carried in the child query wins.** A detail route reached from a list route carries the parent's display name in its own URL query (`parent`, `parentLabel`). The child's `rootLabel(tr, op)` reads that query; the walker prefers it over the parent route's static i18n label.
+- **Stop after using the descendant root label.** Once `useChildRootLabel` is true for a crumb, `break` -- do not keep walking the parent chain.
+- **Click target uses `rootNavParams` when `useChildRootLabel` is true**, and does not forward `parentNavQuery`. Otherwise use `parentNavParams` + `parentNavQuery` as before.
+- **`useBreadcrumbs` stays a generic walker.** No domain-specific parent resolution inside the hook; precedence is driven entirely by `BreadcrumbMeta` function fields on the descendant.
+
+## Forbidden
+
+- Falling back to the target route's static `label` when a descendant provides a `rootLabel` that resolves to the current target.
+- Continuing the parent walk after a descendant `rootLabel` crumb has been emitted.
+- Domain-specific label reads inside `useBreadcrumbs` -- those belong to the route contract's `rootLabel` function.
+
+## Reference
+
+- Canonical case (route contract): detail route reached from list route with `parent` + `parentLabel` query params -- root crumb shows the parent label from the child query.
+- Invariant: `docs/invariants/website.md` W35.
+- Flow doc: `docs/platforms/website/route-registry-contract.md` (entry-source `parent` query contract).

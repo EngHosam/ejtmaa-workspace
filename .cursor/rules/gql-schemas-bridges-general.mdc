@@ -1,0 +1,66 @@
+---
+description: Ejtmaa GQL schema and bridge constitution
+globs: backend/src/app/gql/**/*.ts,backend/src/app/orm/models/**/*.ts,website/src/types/gql/**/*.ts,website/src/types/gql/**/*.graphql,cpanel/src/types/gql/**/*.ts,cpanel/src/types/gql/**/*.graphql,website/src/types/gql/**/*.ts,website/src/types/gql/**/*.graphql,docs/platforms/backend/patterns/gql-*.md,docs/platforms/backend/contracts/graphql-and-types.md
+alwaysApply: false
+---
+
+# GQL Schemas and Bridges General Rule
+
+- Follow `docs/platforms/backend/patterns/gql-schema-bridge-authoring-standard.md`.
+- Start from `docs/platforms/backend/patterns/gql-constitution-map.md`.
+- Use corpus and atlas:
+  - `docs/platforms/backend/patterns/gql-source-corpus.md`
+  - `docs/platforms/backend/patterns/gql-pattern-atlas.md`
+- Keep schema resolvers thin; model-backed paths go through bridges.
+- Root `prepare*` parent payloads (`me`, `id`, `filter`, …) vs thin bridges: do not duplicate role-base `getOrmFindOptions`; do pass explicit flags where the schema contract requires them. See `gql-root-parent-payload-contract.mdc`.
+- Require explicit `registeredBridges` and role ownership consistency.
+- Keep root-many bounded and ordered.
+- Rule: for bridge-derived scalar fields on root-many list rows that can be expressed in SQL at load time, prefer `static registeredAttrs` over `static extras` / `loadExtra`.
+  - Reason: `registeredAttrs` lets the list query project the value once inside the DB plan, while `loadExtra` on a list can devolve into per-row extra queries and degrade performance.
+- Rule: reserve `static extras` / `loadExtra` for root-one fields, static-flow fields, or values too complex/unsafe to load directly in the base query projection.
+  - Example: `MeBridge` profile fields.
+  - Example: `CustomerStatsBridge.total_count` on root-one `customerStats`.
+- Ensure every sort/filter/extra field has ORM load path.
+- Keep context contract explicit (`principal`, `lang`, list controls, `by`).
+- Prefer typed resolvers; `resolvers(): any` is temporary drift, not target style.
+- Keep enum output contract:
+  - output fields use wrapper object types (`_X` with `value` + `label`)
+  - filter inputs use enum value wrappers (`_XValue`)
+- Validate framework contract invariants (provider/schema/bridge boot consistency) before structural changes.
+- Reject style drift from non-compatible sources.
+- Every role bridge base must implement `loadAttr` override (MultiLang JSONB → localized string, enum → `{value, label, icon}`), `trans`, `toEnum`, `toManyEnums`, and `willPrepare`.
+  - Without `loadAttr`, JSONB fields declared as `String` in SDL cause serialization errors that abort entire queries via `GQLSchemaBase.execute`.
+  - Reference: `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`.
+- After backend SDL changes, sync mirror by command copy to:
+  - `website/src/types/gql/definitions/*.graphql`
+  - `website/src/types/gql/gql-types/*.ts`
+  - `cpanel/src/types/gql/definitions/*.graphql`
+  - `cpanel/src/types/gql/gql-types/*.ts`
+- Role-boundary mirror rule:
+  - sync only the role contracts actually consumed by the target frontend,
+  - `supervisor` mirrors belong to `cpanel/` only,
+  - `customer` mirrors belong to `website/` only,
+  - `supervisor` SDL/types mirror into `cpanel/` only; `website/` mirrors `customer` only.
+
+## Ejtmaa Supervisor/Customer Addendum (Mandatory)
+
+Current Ejtmaa GQL surfaces:
+
+- Customer schema: `me`, `notifications`
+- Supervisor schema: `me`, `notifications`, `customers`, `customer`, `customerStats`
+
+Reference bridges:
+
+- `backend/src/app/gql/bridges/customer/MeBridge.ts`
+- `backend/src/app/gql/bridges/customer/NotificationBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/MeBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/NotificationBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/CustomerStatsBridge.ts`
+
+Rules:
+
+- `CustomerStatsBridge.loadExtra` serves `total_count` on root `customerStats`.
+- `CustomerBridge` owns list/detail filter mapping for supervisor customer reads.
+- Role bridge bases: `CustomerBridgeBase`, `SupervisorBridgeBase`.
+- Keep resolvers thin; ORM query policy lives in bridges.
