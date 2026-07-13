@@ -34,8 +34,7 @@ Guarantees:
 |---|---|---|
 | `website/src/app/ui/components/form/FormActionButton.tsx` | primary: `semanticColor.primaryActionBackground` (navy) | `semanticColor.primaryActionText` |
 | `website/src/app/ui/components/form/FormActionButton.tsx` | neutral: `semanticColor.cardBackground` | `semanticColor.textPrimary` |
-| `website/src/app/ui/components/ThemeModeSwitch.tsx` | selected: `semanticColor.primaryActionBackground` (navy) | `semanticColor.primaryActionText` |
-| `website/src/app/ui/components/ThemeModeSwitch.tsx` | unselected: transparent over `inputBackground` | `semanticColor.iconPrimary` |
+| `website/src/app/ui/components/ThemeModeSwitch.tsx` | single toggle button: `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius` | `semanticColor.iconPrimary` (moon when light → switch to dark; sun when dark → switch to light) |
 | `website/src/app/ui/pages/UiMockup.tsx` `reviewed` badge | `semanticColor.secondaryActionBackground` (navy[50]) | `semanticColor.secondaryActionText` (navy) |
 | `website/src/app/ui/pages/Error.tsx` primary CTA | `semanticColor.primaryActionBackground` (navy) (`actionBackground`) | `semanticColor.primaryActionText` |
 | `website/src/app/ui/pages/Error.tsx` error code | `semanticColor.accentActionBackground` (orange) solid text | `semanticColor.accentActionBackground` |
@@ -45,16 +44,16 @@ Guarantees:
 
 `website/src/app/ui/components/Logo.tsx` renders the brand mark as a bare `Image` and swaps the source by color scheme: `dark_logo.png` on light scheme, `light_logo.png` on dark scheme. Assets live at `website/public/images/{dark,light}_logo.png`.
 
-Size contract is the `preset` prop — the only way to size the logo. No call-site width/height overrides.
+Size contract is the `preset` prop — the only way to size the logo. `LOGO_SIZES` sets **height only**; width is never hardcoded and is derived from the image's intrinsic ~3.4:1 aspect ratio (`width: auto`). No call-site width/height overrides.
 
-| Preset | Size (w × h) | Consumer |
+| Preset | Height | Consumer |
 |---|---|---|
-| `header` | `11rem × 3.25rem` | `Header.tsx` main variant brand slot |
-| `drawer` | `13rem × 3.85rem` | `Drawer.tsx` hero identity zone |
-| `footer` | `11rem × 3.25rem` | `Footer.tsx` brand slot |
-| `hero` | `27rem × 7.95rem` | `Error.tsx` centered hero card |
+| `header` | `4.875rem` | `Header.tsx` main variant brand slot |
+| `drawer` | `7.7rem` | `Drawer.tsx` hero identity zone |
+| `footer` | `3.25rem` | `Footer.tsx` brand slot |
+| `hero` | `7.95rem` | `Error.tsx` centered hero card |
 
-Aspect ratio across presets is ~3.4:1, matching the logo image. Add a new preset when a new size context appears (e.g. `hero` for the Error card) instead of overriding `w`/`h` at the call site.
+Add a new preset when a new size context appears (e.g. `hero` for the Error card) instead of overriding `h` at the call site.
 
 **No frame around the logo.** Consumers render the bare `Logo` element with alignment only (`as_fs` / `as_c` / direct flex placement). The previous pill wrappers (`br` + `bg` + `p` + `crn={999}`) were removed from `Header.tsx`, `Footer.tsx`, `Drawer.tsx`, and `Error.tsx`. Do not reintroduce a border/background/padding container around `Logo`. Enforcement: `.cursor/rules/website-logo-no-frame.mdc`, invariant W45.
 
@@ -71,6 +70,9 @@ Aspect ratio across presets is ~3.4:1, matching the logo image. Add a new preset
 ## Related
 
 - `docs/platforms/website/ui-foundation.md` — `theme.ts` / `semanticColor` foundation
-- `docs/invariants/website.md` — W7 (mount), W10 (theme paths), W43, W44
+- `docs/platforms/website/shared-ui-and-shell.md` — drawer hero centering, theme toggle placement
+- `docs/invariants/website.md` — W7 (mount), W10 (theme paths), W43, W44, W45 (logo), W46 (corner radius), W47 (no gradients)
 - `.cursor/rules/website-semantic-color-token-discipline.mdc`
+- `.cursor/rules/website-logo-no-frame.mdc`
+- `.cursor/rules/website-no-gradients.mdc`
 - `.cursor/skills/website-semantic-color-audit/SKILL.md`

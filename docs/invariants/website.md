@@ -183,7 +183,7 @@ See `docs/platforms/website/brand-identity-alignment.md`.
 
 ## W45. Logo No-Frame + Preset Sizing
 
-The brand `Logo` (`website/src/app/ui/components/Logo.tsx`) renders a bare `Image`. Consumers MUST NOT wrap it in a border/background/padding pill — render it with alignment only (`as_fs` / `as_c` / direct flex placement). Size is selected exclusively by the `preset` prop (`header` / `drawer` / `footer` / `hero`), backed by `LOGO_SIZES`; no call-site `w`/`h` overrides. Add a new preset when a new size context appears, preserving the ~3.4:1 aspect ratio.
+The brand `Logo` (`website/src/app/ui/components/Logo.tsx`) renders a bare `Image`. Consumers MUST NOT wrap it in a border/background/padding pill — render it with alignment only (`as_fs` / `as_c` / direct flex placement). Size is selected exclusively by the `preset` prop (`header` / `drawer` / `footer` / `hero`), backed by `LOGO_SIZES`; no call-site `w`/`h` overrides. `LOGO_SIZES` sets **height only** — width is never hardcoded and is derived from the image's intrinsic ~3.4:1 aspect ratio (`width: auto`); do not re-introduce a fixed `w`. Add a new preset when a new size context appears.
 
 See `.cursor/rules/website-logo-no-frame.mdc` and `docs/platforms/website/brand-identity-alignment.md` § Logo.
 

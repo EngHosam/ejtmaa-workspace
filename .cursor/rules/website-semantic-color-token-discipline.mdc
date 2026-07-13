@@ -34,7 +34,7 @@ Applies when authoring or reviewing website UI that resolves colors through `sem
 ## Canonical cases
 
 - `FormActionButton.tsx`: primary text = `semanticColor.primaryActionText` over `semanticColor.primaryActionBackground` (navy); neutral text = `semanticColor.textPrimary` over `semanticColor.cardBackground`.
-- `ThemeModeSwitch.tsx`: selected icon = `semanticColor.primaryActionText` over `semanticColor.primaryActionBackground` (navy); unselected = `semanticColor.iconPrimary`.
+- `ThemeModeSwitch.tsx`: single toggle button — icon `semanticColor.iconPrimary` over `semanticColor.inputBackground` (with `inputBorder`, corner `semanticDims.card.radius`); icon shows the **target** mode (`FiMoon` when light, `FiSun` when dark), click toggles to that scheme.
 - `UiMockup.tsx` status badge `reviewed`: `bg = semanticColor.secondaryActionBackground` (navy[50]) pairs with `clr = semanticColor.secondaryActionText` (navy).
 
 ## Audit procedure

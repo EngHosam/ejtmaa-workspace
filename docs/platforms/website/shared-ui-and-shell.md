@@ -36,7 +36,7 @@ Shared header behavior (both components):
 - Profile payload from `useMe()`: `name`, `avatar_url`.
 - UX order: hero identity zone -> action cluster -> navigation blocks -> utility footer (language, theme, sign-out). Footer stays outside scroll body.
 - Motion via `framer-motion`. Drawer actions are close-first.
-- Brand slot in the hero identity zone: `Logo preset="drawer"` rendered bare inside `<Box as_fs>` (alignment only, no frame). See `brand-identity-alignment.md` § Logo.
+- Brand slot in the hero identity zone: `Logo preset="drawer"` rendered bare inside `<Box as_c>` (alignment only, no frame). The drawer hero column is centered horizontally and vertically (`ai_c` + `ta_c` + `jc_c`): brand slot, title, subtitle, and the theme toggle all align to the center. See `brand-identity-alignment.md` § Logo.
 
 ## 5) Shared primitives
 
@@ -45,7 +45,7 @@ Shared header behavior (both components):
 - **Loadable**: spinner/progress surface for initial loading, submit-busy, and overlay loaders.
 - **Toast**: success/error notifications; translation-backed copy.
 - **Empty / Guest / LaneFailed / Able**: shared `Utils`-built primitives with stacking rules documented in `ui-foundation.md`.
-- **LanguageSegmentedBar** / **ThemeModeSegmentedBar**: drawer footer controls.
+- **LanguageSegmentedBar**: drawer footer control. The theme-mode control is a single toggle button (`ThemeModeSwitch`), rendered in the drawer hero identity zone — icon shows the **target** mode (`FiMoon` when light, `FiSun` when dark), click switches to that scheme; corner `semanticDims.card.radius` (not a pill). See `brand-identity-alignment.md` § Canonical consumer pairings.
 
 ## 6) Navigation stabilization
 

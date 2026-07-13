@@ -23,16 +23,16 @@ Applies when placing the brand `Logo` (`website/src/app/ui/components/Logo.tsx`)
 
 ## Size via preset only
 
-The logo is sized exclusively by the `preset` prop, backed by `LOGO_SIZES`:
+The logo is sized exclusively by the `preset` prop, backed by `LOGO_SIZES` (height only — width is derived from the image's intrinsic aspect ratio, never hardcoded):
 
-| Preset | Size | Consumer |
+| Preset | Height | Consumer |
 |---|---|---|
-| `header` | `11rem × 3.25rem` | `Header` main brand slot |
-| `drawer` | `13rem × 3.85rem` | `Drawer` hero identity zone |
-| `footer` | `11rem × 3.25rem` | `Footer` brand slot |
-| `hero` | `27rem × 7.95rem` | `Error` centered hero card |
+| `header` | `4.875rem` | `Header` main brand slot |
+| `drawer` | `7.7rem` | `Drawer` hero identity zone |
+| `footer` | `3.25rem` | `Footer` brand slot |
+| `hero` | `7.95rem` | `Error` centered hero card |
 
-Do not override `w`/`h` at the call site. Add a new preset in `LOGO_SIZES` when a new size context appears (e.g. a landing hero), preserving the ~3.4:1 aspect ratio.
+Do not override `w`/`h` at the call site. `LOGO_SIZES` sets height only; the `<img>` keeps its natural ~3.4:1 aspect ratio (width = auto). Add a new preset in `LOGO_SIZES` when a new size context appears (e.g. a landing hero).
 
 ## Why
 
@@ -42,7 +42,7 @@ A border/background/padding pill around the logo adds visual weight that compete
 
 - `Header.tsx` main variant: `{isMain && resolvedBrandSlot}` — direct render in the trailing row.
 - `Footer.tsx`: `<Box as_fs>{resolvedBrandSlot}</Box>` — alignment only.
-- `Drawer.tsx` hero zone: `<Box as_fs>{resolvedBrandSlot}</Box>` — alignment only.
+- `Drawer.tsx` hero zone: `<Box as_c>{resolvedBrandSlot}</Box>` — alignment only (hero content is centered).
 - `Error.tsx`: `<Box as_c><Logo preset="hero"/></Box>` — alignment only.
 
 ## Forbidden

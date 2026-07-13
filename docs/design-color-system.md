@@ -122,7 +122,7 @@ See `.cursor/rules/website-no-gradients.mdc` and `docs/invariants/website.md`.
 | `website/src/resources/configs/theme.ts` | No gradient API; brand + semantic scales only | `docs/design-color-system.md` (this page); `docs/platforms/website/ui-foundation.md` |
 | `website/src/resources/configs/utils.ts` | `semanticColor.*` solid tokens; `getColor` resolution | `docs/platforms/website/ui-foundation.md` § Semantic color audit & type guard |
 | `website/src/app/ui/components/form/FormActionButton.tsx` | primary: `semanticColor.primaryActionBackground`; neutral: `semanticColor.cardBackground` | `docs/platforms/website/brand-identity-alignment.md` § Canonical consumer pairings |
-| `website/src/app/ui/components/ThemeModeSwitch.tsx` | selected: `semanticColor.primaryActionBackground`; unselected: transparent over `inputBackground` | `docs/platforms/website/brand-identity-alignment.md` § Canonical consumer pairings |
+| `website/src/app/ui/components/ThemeModeSwitch.tsx` | single toggle button: `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius`; icon `semanticColor.iconPrimary` (moon when light, sun when dark — target mode) | `docs/platforms/website/brand-identity-alignment.md` § Canonical consumer pairings |
 | `website/src/app/ui/pages/Error.tsx` | CTA: `semanticColor.primaryActionBackground`; error code + underline: `semanticColor.accentActionBackground`; no card overlay | `docs/platforms/website/page-error.md` § Brand treatment |
 | `website/src/app/ui/components/Drawer.tsx` | scrollbar thumb: solid neutral `rgba(120,131,156,0.9)` / hover `rgba(100,116,139,0.96)` | `docs/platforms/website/shared-ui-and-shell.md` § Shared primitives |
 

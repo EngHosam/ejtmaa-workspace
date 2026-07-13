@@ -45,7 +45,7 @@ Solid semantic tokens keep the brand palette deterministic, type-guarded (`Theme
 ## Canonical solid pairings
 
 - `FormActionButton.tsx` primary: `getColor(semanticColor.primaryActionBackground)` + `semanticColor.primaryActionText`.
-- `ThemeModeSwitch.tsx` selected: `getColor(semanticColor.primaryActionBackground)` + `semanticColor.primaryActionText`.
+- `ThemeModeSwitch.tsx` toggle: `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius`, icon `semanticColor.iconPrimary` (moon when light, sun when dark — shows the target mode).
 - `Error.tsx` primary CTA: `getColor(semanticColor.primaryActionBackground)` + `semanticColor.primaryActionText`.
 - `Error.tsx` error code + accent underline: `semanticColor.accentActionBackground` (solid orange).
 - `Drawer.tsx` scrollbar thumb: solid `rgba(120,131,156,0.9)` / hover `rgba(100,116,139,0.96)`.

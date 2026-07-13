@@ -51,7 +51,7 @@ Brand pair is navy `#0B2057` (primary) + orange `#EC6901` (accent), resolved thr
 - **Error code** — `fw="black"`, ~5rem, solid orange text via `clr={semanticColor.accentActionBackground}`.
 - **Accent underline** — short `3rem × 3px` bar, same solid orange (`getColor(semanticColor.accentActionBackground)`), `crn={999}`.
 - **Primary CTA** — `Row As="button"` with `background: actionBackground` where `actionBackground = getColor(semanticColor.primaryActionBackground)` (navy), text `semanticColor.primaryActionText`, radius `semanticDims.card.radius`, `minH={semanticDims.control.height}`, `shd={3}`. On click → `redirect({ identify: "Home", replace: true })`.
-- **Logo** — `Logo preset="hero"` (27 × 7.95rem), bare (no frame). See `brand-identity-alignment.md` § Logo.
+- **Logo** — `Logo preset="hero"` (height `7.95rem`, width auto from intrinsic ratio), bare (no frame). See `brand-identity-alignment.md` § Logo.
 
 ## Radius + tokens used
 
