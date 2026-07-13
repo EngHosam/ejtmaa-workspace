@@ -12,6 +12,19 @@ Authoritative contract for `website/src/resources/configs/routes.ts` and the mir
 
 Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRouterMiddleware`, `getMyHomeIdentify`).
 
+## 1.1) Shipped state
+
+`routes.ts` currently ships **four** identifies only. The `customerRouter` helper, the `/customer/*` workspace, `Register`, `ResetPassword`, `CustomerHome`, and the `public → customer → base` section split are **planned** (see §2–§6 for the target contract).
+
+| Identify | Path | Layout |
+|---|---|---|
+| `Login` | `/login` | `BASIC` |
+| `Home` | `/` | `MAIN` |
+| `UiMockup` | `/ui-mockup` | `MAIN` |
+| `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
+
+`MPagesRoutes` mirrors `Login`, `Home`, `UiMockup` (no typed params). `publicRoutes = ["Login", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `MainLayout` (`MAIN`). No `LANDING`/`CUSTOMER_MAIN` layouts exist yet.
+
 ## 2) Path helper (mandatory for workspace routes)
 
 Declared once at the top of `routes.ts` (after re-exports, before `const routes`):
@@ -70,15 +83,19 @@ Rule: `.cursor/rules/website-route-static-before-parametric.mdc`. Skill: `.curso
 
 ### 5.1) Public (no auth)
 
+Shipped: `Login`, `Home`, `UiMockup`. `Register`, `ResetPassword`, and the `LANDING` layout for `Home` are planned.
+
 | Identify | Path | Layout |
 |----------|------|--------|
 | `Login` | `/login` | `BASIC` |
-| `Home` | `/` | `LANDING` |
-| `Register` | `/register` | `BASIC` |
-| `ResetPassword` | `/reset-password` | `BASIC` |
+| `Home` | `/` | `MAIN` (planned: `LANDING`) |
+| `Register` | `/register` | `BASIC` (planned) |
+| `ResetPassword` | `/reset-password` | `BASIC` (planned) |
 | `UiMockup` | `/ui-mockup` | `MAIN` |
 
-### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`)
+### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`) — planned
+
+None of these routes ship yet. `customerRouter` and the `/customer/*` workspace are planned.
 
 | Identify | Path |
 |----------|------|
@@ -95,7 +112,9 @@ Rule: `.cursor/rules/website-route-static-before-parametric.mdc`. Skill: `.curso
 |----------|------|--------|
 | `Error` | `/:error(404|500|403)` | `BASIC` |
 
-## 6) Role redirect alignment
+## 6) Role redirect alignment — planned
+
+Shipped: `getMyHomeIdentify` always returns `"Home"`; `publicRoutes` includes `Home`. The CUSTOMER-aware redirect logic below is planned.
 
 - `getMyHomeIdentify` returns `CustomerHome` when `authedAs === "CUSTOMER"`, else `Home`.
 - Authed users on public routes redirect to `CustomerHome`.

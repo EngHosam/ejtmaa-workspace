@@ -23,10 +23,11 @@ See `docs/platforms/website/ui-foundation.md`.
 
 ## Backend coupling
 
-- Requesters: `auth` (visitor), `customer`, `notification`
-- GQL mirrors: `base` + `customer`
-- Socket namespace: `/customer`
-- Events: `OnCustomerEvent`
+- Requesters: `visitor.auth`, `customer.customer`, `customer.notification` (see `src/types/requesters/requesters.website.ts`)
+- GQL mirrors: `base` + `customer` (`me`, `notifications`, `me.canDeleteNotifications`)
+- Socket namespace: `customer`
+- Events: `onCustomerEventDate` (payload `OnCustomerEventDate { type: "UPDATED" }`)
+- Backend mount: `/website` (test `http://192.168.1.10:3206/website`, prod `https://backend.ejtmaa.live/website`)
 
 ## Flow documentation
 
@@ -41,14 +42,24 @@ See `docs/platforms/website/ui-foundation.md`.
 
 ## 6) Route registry summary
 
-### 6.1) Path groups
+### 6.1) Shipped routes
 
-Customer routes register through `customerRouter` in `routes.ts`.
-Full path table, section blocks, and redirect rules: `route-registry-contract.md`.
+`src/resources/configs/routes.ts` currently ships four identifies:
 
-Public routes: `Login`, `Home`, `Register`, `ResetPassword`, `UiMockup`.
-Customer workspace routes live under `/customer/*`.
-`Error` stays last in the registry.
+| Identify | Path | Layout |
+|---|---|---|
+| `Login` | `/login` | `BASIC` |
+| `Home` | `/` | `MAIN` |
+| `UiMockup` | `/ui-mockup` | `MAIN` |
+| `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
+
+`publicRoutes` = `["Login", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"Home"`.
+
+Layouts shipped: `BasicLayout` (`BASIC`) and `MainLayout` (`MAIN`).
+
+### 6.2) Planned (not shipped)
+
+`customerRouter`, the `/customer/*` workspace, `Register`, `ResetPassword`, `CustomerHome`, `CUSTOMER_MAIN` layout, and the `customer`/`base`/`Error` section-block split are planned per `route-registry-contract.md` and `website-route-registry-governance.mdc`. They are not yet present in `routes.ts`.
 
 ## Documentation stance
 

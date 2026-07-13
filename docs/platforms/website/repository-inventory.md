@@ -12,7 +12,7 @@ website/
 │   │   ├── ui/
 │   │   │   ├── base/          # framework-bound infrastructure (Utils, hooks, core)
 │   │   │   ├── components/    # reusable product UI
-│   │   │   ├── layouts/       # shell layouts (visitor, customer)
+│   │   │   ├── layouts/       # shell layouts (BasicLayout, MainLayout)
 │   │   │   └── pages/         # route page orchestration
 │   │   └── helpers/
 │   ├── client/                # client entry
@@ -44,10 +44,23 @@ Paths below describe the customer portal contract inventory for `website/`.
 
 ## GQL mirrors
 
-- `src/types/gql/definitions/base.graphql` — shared SDL
-- `src/types/gql/definitions/customer.graphql` — customer SDL
-- `src/types/gql/gql-types/base.ts` — shared types
-- `src/types/gql/gql-types/customer.ts` — customer types
+- `src/types/gql/definitions/base.graphql` — shared SDL (scalars, `_Ability`, `_Notification*`, interfaces, `_Notification`)
+- `src/types/gql/definitions/customer.graphql` — customer SDL (`_Me` + root `Query { me, notifications }`)
+- `src/types/gql/definitions/shared.graphql` — shared `Query { notifications }` extension stub
+- `src/types/gql/gql-types/base.ts` — shared generated types
+- `src/types/gql/gql-types/customer.ts` — customer generated types
+
+Supervisor SDL/types are a `cpanel/` concern and are not mirrored under `website/`.
+
+## Requesters
+
+`src/types/requesters/requesters.website.ts` defines `RequestersMap`:
+
+| Actor | Requester | Subs |
+|---|---|---|
+| `visitor` | `auth` | `registerCustomer`, `login`, `resetPassword` |
+| `customer` | `customer` | `readSettings`, `updateSettings` |
+| `customer` | `notification` | `deleteAll` |
 
 ## Boundaries
 

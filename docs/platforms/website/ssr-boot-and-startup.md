@@ -44,7 +44,7 @@ Auth uses a **cookie token + page reload** so the normal SSR boot path owns hydr
 
 Start payload: `/website/custom/start` returns the auth payload under the **`auth`** key, and the website auth reducer spreads it as `...action.auth`. See `docs/platforms/backend/contracts/client-portal-http-website.md`.
 
-Post-login landing: after `auth.login` reloads, the router middleware in `website/src/app/services/router.ts` redirects to `getMyHomeIdentify(myInstance)` — `CustomerHome` for a customer, `Home` for a visitor. See `flow-auth.md` §4A.
+Post-login landing: after `auth.login` reloads, the router middleware in `website/src/app/services/router.ts` redirects to `getMyHomeIdentify(myInstance)`. Shipped: `getMyHomeIdentify` always returns `"Home"`. The `CustomerHome` branch (returning `CustomerHome` for `authedAs === "CUSTOMER"`) is planned. See `flow-auth.md` §4A.
 
 ## 6) Verification checklist
 

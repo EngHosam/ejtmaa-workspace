@@ -6,6 +6,17 @@ Customer portal contract (see `overview.md`).
 
 Web-native shared UI primitives and shell for `website/`: document shell, actor-specific headers, side drawers, authed customer bottom bar (`CustomerBottomBar`), and shared presentational primitives -- composed from `Utils` and semantic theme tokens.
 
+## 1.1) Shipped shell
+
+The shipped shell uses generic primitives, not the actor-specific components below:
+
+- Layouts: `BasicLayout` (`BASIC`) and `MainLayout` (`MAIN`) — no `LANDING`/`CUSTOMER_MAIN` layouts yet.
+- Components: `Header`, `Drawer`, `Footer`, `Logo`, `ThemeModeSwitch`, `LanguageSwitch` (all under `src/app/ui/components/`).
+- Main drawer (`src/app/ui/layouts/main-layout/drawer.ts`): one `business` section with `dashboard` (→ `Home`) + `logout` only. `operations`/`settings` sections and all cpanel nav item keys are not shipped.
+- `AuthedAs = "CUSTOMER"`; auth reducer exposes `auth.customer.permissions`.
+
+`LandingHeader`, `CustomerHeader`, `LandingDrawer`, `CustomerDrawer`, and `CustomerBottomBar` are planned (see §3, §4, and `flow-customer-shell.md`).
+
 ## 2) Document shell
 
 - Document shell owned by `MyHtml` + `MyApp`/`MyPage` lifecycle.
@@ -13,7 +24,9 @@ Web-native shared UI primitives and shell for `website/`: document shell, actor-
 - Safe-area insets use CSS `env(safe-area-inset-*)` or theme padding tokens.
 - Authed customer shell uses `Dims.bottomBarHeight` for bottom clearance. See `flow-customer-shell.md`.
 
-## 3) Actor-specific headers
+## 3) Actor-specific headers — planned
+
+Shipped header: generic `Header` (`src/app/ui/components/Header.tsx`) with `main`/`compact` variants. The actor-specific headers below are planned.
 
 | Actor | Component | Contract |
 |---|---|---|
@@ -29,7 +42,9 @@ Shared header behavior (both components):
 - Brand slot: the logo (`Logo preset="header"`) renders bare — no border/background/padding pill around it. The `main` variant places `resolvedBrandSlot` directly in the trailing row. See `brand-identity-alignment.md` § Logo and `.cursor/rules/website-logo-no-frame.mdc`.
 - Trailing control cluster: `ThemeModeSwitch` + `LanguageSwitch` render in the trailing row for the `main` non-compact variant (gated by `showThemeSwitch`). Header icon buttons (`HeaderIconButton`: menu / back / `trailingAction` e.g. notifications) use `crn={semanticDims.card.radius}` with `semanticColor.inputBackground` + `inputBorder` + `iconPrimary` — same corner and surface tokens as the two toggles.
 
-## 4) Side drawer
+## 4) Side drawer — planned
+
+Shipped drawer: generic `Drawer` + `main-layout/drawer.ts` (dashboard + logout only). The role-specific drawers below are planned.
 
 - Visitor drawer: `components/LandingDrawer.tsx` (mobile, portaled). See `component-structure.md` and visitor shell pages.
 - Authed customer drawer: `CustomerDrawer.tsx` -- portaled side drawer with route-gated nav items. See `flow-customer-shell.md` section 5.

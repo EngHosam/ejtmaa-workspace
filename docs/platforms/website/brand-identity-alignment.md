@@ -9,7 +9,7 @@ Describes the current brand identity alignment of `website/` runtime URLs and co
 | key | test mode (`SHARED__TEST_MODE=true`) | production |
 |---|---|---|
 | `ME_URL` | `http://192.168.1.10:3090` | `https://ejtmaa.live` |
-| `BASE_URL` | `http://192.168.1.10:3206/cpanel` | `https://backend.ejtmaa.live/website` |
+| `BASE_URL` | `http://192.168.1.10:3206/website` | `https://backend.ejtmaa.live/website` |
 | `SOCKET_URL(namespace)` | `http://192.168.1.10:6662/${namespace}` | `https://backend.ejtmaa.live/${namespace}` |
 
 Behavioral facts:

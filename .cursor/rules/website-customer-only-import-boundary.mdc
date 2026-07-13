@@ -1,0 +1,41 @@
+---
+description: Forbid website from importing cpanel/supervisor surfaces; website is CUSTOMER + visitor only
+globs:
+  - website/src/**/*
+  - website/graphql.config.yml
+alwaysApply: false
+---
+
+# Website Customer-Only Import Boundary
+
+`website/` is the Customer + visitor frontend on mount `/website`. It MUST NOT import, reference, or wire any cpanel/supervisor surface. Supervisor is a `cpanel/` concern.
+
+## Forbidden in `website/`
+
+- Importing `src/types/requesters/requesters.cpanel.ts`. The website requester map is `src/types/requesters/requesters.website.ts` only.
+- Importing or mirroring `supervisor.graphql` / `gql-types/supervisor.ts`. Website GQL mirror is `base` + `customer` under `src/types/gql/**` only.
+- Wiring `FORMS.SUPERVISOR.*` in `src/resources/configs/axios/api.ts`. Customer write path is `FORMS.R` (visitor) + `FORMS.CUSTOMER.R`.
+- `AuthedAs = "SUPERVISOR"` or any `supervisor` key in the auth reducer. Website actor is `AuthedAs = "CUSTOMER"` with `auth.customer.permissions`.
+- Supervisor socket namespaces or supervisor socket event payloads (`OnWhatsappAccountStatusChanged*`, `OnGroupChatSessionProcess*`, `OnSingleChatSessionMessage*`, `OnNotificationDeleted*`, `OnBulkNotification*`). Website socket namespace is `customer`; events mirror `website/src/types/events.ts` customer payloads only.
+- Supervisor/cpanel nav item keys (`customers`, `realEstateCompanies`, `individualSellers`, `projects`, `standaloneUnits`, `orders`, `viewingBookings`, `financialOperations`, `technicalSupport`, `contactMessages`, `supervisors`, `platformSettings`, `accountSettings`) in drawer specs or translations.
+- `BASE_URL` pointing at the `/cpanel` mount. Website `BASE_URL` uses `/website` in both test and production (invariant W44).
+
+## Required
+
+- Requesters: `visitor.auth`, `customer.customer`, `customer.notification` from `requesters.website.ts`.
+- GQL mirror: `base` + `customer` only.
+- Socket: `customer` namespace + customer event payloads.
+- `graphql.config.yml` schema lists reference `base.graphql` and (where the subtree hosts customer operations) `customer.graphql` only — never `supervisor.graphql`.
+
+## Why
+
+Cross-platform contamination (cpanel requesters/supervisor mirrors wired into website) silently breaks the actor model, routes, socket, and backend mount. The boundary is enforced at import time; a single guard here prevents a per-caller fix.
+
+## Authority
+
+- `docs/platforms/website/overview.md` § Backend coupling
+- `docs/platforms/website/repository-inventory.md` § Requesters / GQL mirrors
+- `docs/platforms/website/graphql-mirror-and-tooling.md` §5 (role boundary)
+- `docs/invariants/website.md` W7, W44, Shipped baseline
+- `.cursor/rules/gql-schemas-bridges-general.mdc` (supervisor mirrors belong to cpanel only)
+- `.cursor/rules/socket-event-mirroring.mdc` (customer events mirror into website only)

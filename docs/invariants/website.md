@@ -11,6 +11,12 @@ Interpretation rule:
 - invariants below define obligations for the customer portal contract,
 - they must not be misread as proof that every route or UI surface is already implemented in the checked-in `website/` scaffold today.
 
+## Shipped baseline (current state)
+
+The checked-in scaffold currently ships: actor model `CUSTOMER` + `visitor` on mount `/website`; `AuthedAs = "CUSTOMER"`; routes `Login`, `Home`, `UiMockup`, `Error` only (`publicRoutes = ["Login", "UiMockup", "Home"]`, `getMyHomeIdentify = "Home"`); GQL mirror `base` + `customer` (`me`, `notifications`, `me.canDeleteNotifications`); requesters `visitor.auth`, `customer.customer`, `customer.notification` (`requesters.website.ts`); socket namespace `customer` with event `onCustomerEventDate`; main drawer `dashboard` + `logout` only; auth page `Login` (email+password, `sub: "login"`); `BASE_URL` test + prod on `/website`.
+
+Not yet shipped: `Register`, `ResetPassword`, Google social, `CustomerHome`, `CUSTOMER_MAIN` layout, `customerRouter`, `/customer/*` workspace, `CustomerHeader`/`CustomerDrawer`/`LandingDrawer`/`CustomerBottomBar`, customer settings/notifications/help/about/terms screens, `CUSTOM.START` boot wiring. These remain obligated by the invariants below and the flow docs.
+
 ## W1. Repository Ownership
 
 `website/` is its own git repository. Git operations for website files run from `website/`.
@@ -208,3 +214,4 @@ See `.cursor/rules/website-locale-switch.mdc` and `docs/platforms/website/ui-fou
 
 - `docs/platforms/website/overview.md`
 - `.cursor/rules/website-platform-governance.mdc`
+- `.cursor/rules/website-customer-only-import-boundary.mdc`

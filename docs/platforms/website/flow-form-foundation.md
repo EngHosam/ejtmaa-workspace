@@ -8,11 +8,12 @@ Web-native requester form foundation for `website/`: the typed requester route m
 
 ## 2) Web-native approach (governance)
 
-- **Requester endpoint typing** — `website/src/types/requesters/requesters.website.ts`:
-  - `visitor.auth`: `registerCustomer` | `registerCustomerSocial` | `login` | `loginSocial` | `resetPassword`,
+- **Requester endpoint typing** — `website/src/types/requesters/requesters.website.ts` (shipped):
+  - `visitor.auth`: `registerCustomer` | `login` | `resetPassword`,
   - `customer.customer`: `readSettings` | `updateSettings`,
   - `customer.notification`: `deleteAll`.
-  - Endpoint builders: `API.FORMS.VISITOR.R("auth")(sub)`, `API.FORMS.CUSTOMER.R(requester)(sub)`.
+  - Planned subs not yet shipped: `visitor.auth` `loginSocial` | `registerCustomerSocial` (Google social).
+  - Endpoint builders (shipped): `API.FORMS.R("auth")(sub)` (visitor), `API.FORMS.CUSTOMER.R(requester)(sub)`.
 - **Shared `FORMS` registrations** — `Forms.ts` stores the requester endpoint builder (not a preselected `sub`); callers pass the truthful `sub` at send time.
 - **Form hooks (web-core)** — same ownership split as cpanel:
   - `useForm` reads an already-existing form entry,

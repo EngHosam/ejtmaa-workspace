@@ -22,6 +22,10 @@ Actors: **visitor** and **customer**.
 | `src/app/ui/pages/*` | Route entry pages |
 | `src/types/*` | Shared contracts and GQL mirrors |
 
+### 1.1) Shipped vs planned
+
+Shipped: `BasicLayout` + `MainLayout` only; pages `Login`, `Home`, `UiMockup`, `Error`; shared components `Header`, `Drawer`, `Footer`, `Logo`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, auth/form primitives. The visitor/customer shell components, `LandingLayout`/`CustomerMainLayout`, `Register`/`ResetPassword`, and `pages/customer/*` listed below are **planned** (target contract), not yet in the scaffold.
+
 ## 2) `ui/base/` -- infrastructure only
 
 Framework-facing primitives: `MyApp`, `MyHtml`, `MyPage`, base hooks, form/adapter wrappers, `Utils.tsx`.
@@ -32,7 +36,7 @@ Business UI does not belong here.
 
 Shared project UI composed from `Utils` + semantic theme tokens.
 
-Groups:
+Shipped groups: Feedback (`Loadable`, `Toast`), Shell (`Header`, `Drawer`, `Footer`, `Logo`), Auth (`AuthPageShell`, `AuthTextField`, `FormActionButton`), Form (`FormTextField`), plus `DataTable`, `ThemeModeSwitch`, `LanguageSwitch`. The groups below describe the target contract; entries not yet shipped are planned.
 
 | Group | Examples |
 |---|---|
@@ -45,16 +49,16 @@ Groups:
 | Home (visitor) | `home/*` landing sections for public `Home` route |
 | Notifications | `customer/notifications/CustomerNotificationCard`, `NotificationRowSkeleton` |
 
-Local `graphql.config.yml` is allowed when the subtree hosts GraphQL-aware code and points at mirrored `base` + `customer` schemas under `src/types/gql/`.
+Local `graphql.config.yml` is allowed when the subtree hosts GraphQL-aware code. Shipped helper configs point at `base.graphql` only; the target contract points at mirrored `base` + `customer` under `src/types/gql/`.
 
 ## 4) `ui/layouts/` -- shell layouts
 
-| Layout | Use |
-|---|---|
-| `BasicLayout` | Auth and error pages |
-| `LandingLayout` | Visitor landing and public marketing subpages |
-| `CustomerMainLayout` | Authed customer workspace (`CUSTOMER_MAIN`) |
-| `MainLayout` | Review and shell preview routes (`UiMockup`) |
+| Layout | Use | Status |
+|---|---|---|
+| `BasicLayout` | Auth and error pages | shipped |
+| `MainLayout` | `Home`, `UiMockup` | shipped |
+| `LandingLayout` | Visitor landing and public marketing subpages | planned |
+| `CustomerMainLayout` | Authed customer workspace (`CUSTOMER_MAIN`) | planned |
 
 `MyApp` resolves layout from route metadata.
 
@@ -62,9 +66,11 @@ Local `graphql.config.yml` is allowed when the subtree hosts GraphQL-aware code 
 
 Thin route entry components bound to route identifiers.
 
-Public/auth: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
+Shipped: `Login`, `Home`, `UiMockup`, `Error`. The remaining entries below are planned.
 
-Customer workspace: `pages/customer/*` (`CustomerHome`, settings, notifications, static info, support).
+Public/auth (target): `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
+
+Customer workspace (planned): `pages/customer/*` (`CustomerHome`, settings, notifications, static info, support).
 
 Pages orchestrate hooks, layouts, adapters, and shared UI. Extract reusable sections to `components/`.
 

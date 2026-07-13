@@ -6,13 +6,26 @@ Customer portal contract for auth flows (see `overview.md`).
 
 Web-native **Customer** auth for `website/`: login, register, reset password, and Google social login/register.
 
-Visitor auth requesters (`API.FORMS.VISITOR.R("auth")`) are mapped in `website/src/types/requesters/requesters.website.ts`:
+## 1.1) Shipped state
+
+Only **Login** ships. `Login.tsx` binds `useShallowForm({ initProps: { api: API.FORMS.R("auth") } })` (visitor), submits with `sub: "login"`, and on success calls `auth.login(myInstance, token)` → cookie + `window.location.reload()`. Fields: email + password.
+
+Shipped visitor `auth` subs in `requesters.website.ts`: `registerCustomer`, `login`, `resetPassword`. `loginSocial` / `registerCustomerSocial` are **not** in the shipped requester map.
+
+`Register`, `ResetPassword`, Google social, `CustomerHome`, `CUSTOMER_MAIN`, and the role-based redirect in §4A are **planned** (not shipped). `getMyHomeIdentify` currently returns `"Home"`; `publicRoutes = ["Login", "UiMockup", "Home"]`.
+
+The remainder of this document describes the target auth contract.
+
+Visitor auth requesters are consumed via `API.FORMS.R("auth")` (shipped visitor builder). Shipped subs in `website/src/types/requesters/requesters.website.ts`:
 
 - `login`
-- `loginSocial`
 - `registerCustomer`
-- `registerCustomerSocial`
 - `resetPassword`
+
+Planned subs (not yet in the shipped requester map):
+
+- `loginSocial`
+- `registerCustomerSocial`
 
 Backend `AuthRequester.ts` gates auth subs for `["website"]` (`visitor` role).
 

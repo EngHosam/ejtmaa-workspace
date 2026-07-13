@@ -28,6 +28,7 @@ Backend owns the website GraphQL contract:
 
 - `website/src/types/gql/definitions/base.graphql`
 - `website/src/types/gql/definitions/customer.graphql`
+- `website/src/types/gql/definitions/shared.graphql` — shared `Query { notifications }` extension stub
 
 Mirror artifacts only — not website-owned schema authoring surfaces.
 
@@ -42,14 +43,14 @@ Copied/generated contract artifacts — do not hand-edit.
 
 Root schema project:
 
-- `website/graphql.config.yml` — `customer` project pointing at mirrored `base` + `customer` under `src/types/gql/definitions/`
+- `website/graphql.config.yml` — project pointing at mirrored `base` + `customer` under `src/types/gql/definitions/` (schema list: `base.graphql` + `customer.graphql`).
 
 Subtree helper configs (when GraphQL-aware UI code exists in that subtree):
 
 - `website/src/app/ui/pages/graphql.config.yml`
 - `website/src/app/ui/components/graphql.config.yml`
 
-Helper configs scope editor awareness to the local subtree and point at the mirrored `base` + `customer` pair. They do not declare independent schemas.
+Shipped helper configs point at `base.graphql` only (subtree editor awareness); they do not declare independent schemas. `src/app/ui/pages/customer/graphql.config.yml` and `src/app/ui/components/customer/graphql.config.yml` are placeholder configs for future customer screens.
 
 ## 4) Copy workflow
 

@@ -11,9 +11,21 @@ Customer portal contract (see `overview.md`).
 
 ## Write path
 
-1. Route page binds form to requester via `API.FORMS.CUSTOMER.R` or `API.FORMS.VISITOR.R` (visitor).
-2. `CustomerRequesterController` or visitor form controller dispatches to requester.
+1. Route page binds form to requester via `API.FORMS.R` (visitor) or `API.FORMS.CUSTOMER.R` (customer).
+2. Visitor form controller or `CustomerRequesterController` dispatches to the requester.
 3. Requester validates, authorizes, persists, emits side effects (notify/socket).
+
+Shipped endpoint map (`src/resources/configs/axios/api.ts`):
+
+| Key | Path |
+|---|---|
+| `DATA_ADAPTERS.GQL` | `/data_adapters/gql` |
+| `FORMS.R` (visitor) | `/forms/requester/{requester}/{sub}` |
+| `FORMS.CUSTOMER.R` | `/forms/customer/requester/{requester}/{sub}` |
+| `ACTIONS.LOGOUT` | `/actions/logout` |
+| `ACTIONS.MULTIPART_UPLOAD` | `/actions/multipart_upload` |
+| `CUSTOM.START` | `/custom/start` |
+| `CUSTOM.SELECT` | `/custom/select` |
 
 ## Actor maps
 
@@ -35,16 +47,16 @@ Sync from backend:
 
 ## Socket
 
-- Namespace: `/customer`
-- Event: `OnCustomerEvent` (`UPDATED` on profile/settings change)
+- Namespace: `customer` (authed; selected in `src/app/services/socket.ts` when `authedAs === "CUSTOMER"`)
+- Event: `onCustomerEventDate` (payload `OnCustomerEventDate { type: "UPDATED" }`, see `src/types/events.ts` and `src/resources/configs/socket/events.ts`)
 
 ## SSR boot
 
-1. Server calls `/website/custom/start`
-2. `global.setServerStartData(...)` hydrates auth
-3. Client prepares socket and marks started
+1. Server calls `/website/custom/start` (`API.CUSTOM.START`).
+2. `global.setServerStartData(...)` hydrates auth.
+3. Client prepares socket and marks started.
 
-See `docs/platforms/website/ssr-boot-and-startup.md`.
+The `CUSTOM.START`/`CUSTOM.SELECT` endpoints ship in `api.ts`; the boot wiring that calls them is planned. See `docs/platforms/website/ssr-boot-and-startup.md`.
 
 ## Adapter enterMode
 
@@ -60,7 +72,7 @@ Rules:
 - Customer home/dashboard hooks (`useCustomerDashboard`) and paginated list hooks (`useCustomerNotifications`) use `FORCE_RELOAD_ON_MOUNT`.
 - List adapters document `enterMode` on the owning route page when a session-preserve exception applies.
 
-Governance: `.cursor/rules/website-list-adapter-enter-mode.mdc`.
+The hooks above (`useCustomerDashboard`, `useCustomerNotifications`) are planned; no list/home adapter hooks ship yet. `initDataAdaptersProps` currently registers `DATA_ADAPTERS.ADAPTER1` (customer) with no list adapter wired. Governance: `.cursor/rules/website-list-adapter-enter-mode.mdc`.
 
 ## Related
 
