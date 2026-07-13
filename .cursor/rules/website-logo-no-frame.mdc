@@ -1,0 +1,58 @@
+---
+description: Ejtmaa website logo must render bare — no border/background/padding pill around it; size only via Logo preset
+globs:
+  - website/src/app/ui/components/Logo.tsx
+  - website/src/app/ui/components/Header.tsx
+  - website/src/app/ui/components/Footer.tsx
+  - website/src/app/ui/components/Drawer.tsx
+  - website/src/app/ui/pages/**/*.tsx
+  - website/src/app/ui/components/**/*.tsx
+  - docs/platforms/website/brand-identity-alignment.md
+  - docs/platforms/website/shared-ui-and-shell.md
+  - docs/platforms/website/page-error.md
+alwaysApply: false
+---
+
+# Website Logo No-Frame
+
+Applies when placing the brand `Logo` (`website/src/app/ui/components/Logo.tsx`) anywhere in `website/`.
+
+## Rule
+
+`Logo` renders a bare `Image`. Consumers MUST NOT wrap it in a pill/frame — no `br` (border), no `bg` (background fill), no `p` (padding), no `crn={999}` container, no `shd` around it. Render the `Logo` element directly, with alignment only (`as_fs` / `as_c` / direct placement in a flex row).
+
+## Size via preset only
+
+The logo is sized exclusively by the `preset` prop, backed by `LOGO_SIZES`:
+
+| Preset | Size | Consumer |
+|---|---|---|
+| `header` | `11rem × 3.25rem` | `Header` main brand slot |
+| `drawer` | `13rem × 3.85rem` | `Drawer` hero identity zone |
+| `footer` | `11rem × 3.25rem` | `Footer` brand slot |
+| `hero` | `27rem × 7.95rem` | `Error` centered hero card |
+
+Do not override `w`/`h` at the call site. Add a new preset in `LOGO_SIZES` when a new size context appears (e.g. a landing hero), preserving the ~3.4:1 aspect ratio.
+
+## Why
+
+A border/background/padding pill around the logo adds visual weight that competes with the mark, shrinks the effective logo area, and creates inconsistent "framed vs bare" treatments across header/footer/drawer/error. The brand reads strongest as a bare mark sized to its context.
+
+## Canonical cases
+
+- `Header.tsx` main variant: `{isMain && resolvedBrandSlot}` — direct render in the trailing row.
+- `Footer.tsx`: `<Box as_fs>{resolvedBrandSlot}</Box>` — alignment only.
+- `Drawer.tsx` hero zone: `<Box as_fs>{resolvedBrandSlot}</Box>` — alignment only.
+- `Error.tsx`: `<Box as_c><Logo preset="hero"/></Box>` — alignment only.
+
+## Forbidden
+
+- Wrapping `Logo` in a `Box` with `br` + `bg` + `p` + `crn={999}` (the removed pill pattern).
+- Passing `w`/`h` props to `Logo` instead of selecting/adding a preset.
+- Re-introducing a per-consumer frame "to make the logo stand out" — enlarge the preset instead.
+
+## Authority
+
+- `website/src/app/ui/components/Logo.tsx`
+- `docs/platforms/website/brand-identity-alignment.md` § Logo
+- `docs/invariants/website.md` W45

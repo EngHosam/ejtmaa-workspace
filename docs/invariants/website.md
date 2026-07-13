@@ -181,6 +181,18 @@ See `.cursor/rules/website-semantic-color-token-discipline.mdc` and `docs/platfo
 
 See `docs/platforms/website/brand-identity-alignment.md`.
 
+## W45. Logo No-Frame + Preset Sizing
+
+The brand `Logo` (`website/src/app/ui/components/Logo.tsx`) renders a bare `Image`. Consumers MUST NOT wrap it in a border/background/padding pill — render it with alignment only (`as_fs` / `as_c` / direct flex placement). Size is selected exclusively by the `preset` prop (`header` / `drawer` / `footer` / `hero`), backed by `LOGO_SIZES`; no call-site `w`/`h` overrides. Add a new preset when a new size context appears, preserving the ~3.4:1 aspect ratio.
+
+See `.cursor/rules/website-logo-no-frame.mdc` and `docs/platforms/website/brand-identity-alignment.md` § Logo.
+
+## W46. Corner Radius Token Discipline
+
+Corner radius is centralized in `Dims` (`website/src/resources/configs/theme.ts`): `corner` `8px`, `smallCorner` `6px`, `largeCorner` `12px`, `pillCorner` `999px`. Consumers read the default card corner via `semanticDims.card.radius` (points to `Dims.corner`), not by re-typing the literal. Hardcoded `crn` rem/px literals for card/button corners are forbidden. Pills/circles use `crn={999}`. Per-corner radius uses `crn_tr` / `crn_tl` / `crn_br` / `crn_bl` (not `br_tr` / `br_bl`, which do not exist). A project-wide radius change is a single `Dims` edit, not a consumer sweep.
+
+See `.cursor/rules/website-corner-radius-tokens.mdc` and `docs/platforms/website/ui-foundation.md` § Corner radius tokens.
+
 ## Related
 
 - `docs/platforms/website/overview.md`

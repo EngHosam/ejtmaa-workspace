@@ -26,6 +26,7 @@ Shared header behavior (both components):
 - Badge behavior: numeric badge (`1..99`, capped `99`), dot badge (`true`), none (`0`/missing).
 - LTR-first authoring; runtime `dir` handles mirroring.
 - Fixed dimensions from `theme.ts`/`utils.ts` tokens. `zIndex.header` above body content.
+- Brand slot: the logo (`Logo preset="header"`) renders bare — no border/background/padding pill around it. The `main` variant places `resolvedBrandSlot` directly in the trailing row. See `brand-identity-alignment.md` § Logo and `.cursor/rules/website-logo-no-frame.mdc`.
 
 ## 4) Side drawer
 
@@ -35,6 +36,7 @@ Shared header behavior (both components):
 - Profile payload from `useMe()`: `name`, `avatar_url`.
 - UX order: hero identity zone -> action cluster -> navigation blocks -> utility footer (language, theme, sign-out). Footer stays outside scroll body.
 - Motion via `framer-motion`. Drawer actions are close-first.
+- Brand slot in the hero identity zone: `Logo preset="drawer"` rendered bare inside `<Box as_fs>` (alignment only, no frame). See `brand-identity-alignment.md` § Logo.
 
 ## 5) Shared primitives
 

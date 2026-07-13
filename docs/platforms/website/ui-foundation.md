@@ -64,6 +64,26 @@ Full audit procedure and the 48-key → `theme.ts` line map: `.cursor/skills/web
 - `Motion` — duration and easing tokens
 - `zIndex` — drawer, header, modals, toast stacking
 
+## Corner radius tokens
+
+Corner radius is centralized in `Dims` (`website/src/resources/configs/theme.ts`). Current values:
+
+| Token | Value | Use |
+|---|---|---|
+| `Dims.corner` | `8px` | Cards, inputs, buttons, drawer action rows — the default surface corner |
+| `Dims.smallCorner` | `6px` | Modals (see `resources/emotion/styles/modals-manager.ts`) |
+| `Dims.largeCorner` | `12px` | Large surfaces when a wider corner is intended |
+| `Dims.pillCorner` | `999px` | Pills / circles (kept as-is; not a halvable corner) |
+
+Consumption rules:
+
+- Read the default card corner via `semanticDims.card.radius` (`resources/configs/utils.ts`, which points to `Dims.corner`), not by re-typing the literal.
+- Pills/circles use `crn={999}` (the `rem()` helper in `Utils.tsx` passes numbers through as `Nrem`, so `999` overflows any element and renders as a pill).
+- Do not hardcode `crn="1.6rem"` / `crn="1rem"` / similar rem literals for card/button corners — use `semanticDims.card.radius` or `Dims.*`. The `Error` page was the canonical fix site for this.
+- Per-corner radius uses `crn_tr` / `crn_tl` / `crn_br` / `crn_bl` (not `br_tr`; `br_t`/`br_r`/`br_b`/`br_l` are border edges, not radii).
+
+Enforcement: `.cursor/rules/website-corner-radius-tokens.mdc`, invariant W46.
+
 ## RTL
 
 Website supports ar/en with cookie+reload locale switch.

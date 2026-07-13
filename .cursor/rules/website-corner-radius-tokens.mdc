@@ -1,0 +1,62 @@
+---
+description: Ejtmaa website corner radius is centralized in Dims — use semanticDims.card.radius / Dims.* tokens, not hardcoded crn rem literals; pills use crn={999}
+globs:
+  - website/src/resources/configs/theme.ts
+  - website/src/resources/configs/utils.ts
+  - website/src/resources/emotion/styles/modals-manager.ts
+  - website/src/app/ui/components/**/*.tsx
+  - website/src/app/ui/pages/**/*.tsx
+  - website/src/app/ui/base/components/Utils.tsx
+  - docs/platforms/website/ui-foundation.md
+  - docs/platforms/website/page-error.md
+alwaysApply: false
+---
+
+# Website Corner Radius Tokens
+
+Applies when setting corner radius on any `website/` UI via the `crn` / `crn_tr` / `crn_tl` / `crn_br` / `crn_bl` Utils props (`website/src/app/ui/base/components/Utils.tsx`) or via `borderRadius` in emotion styles.
+
+## Source of truth
+
+Corner radius is centralized in `Dims` (`website/src/resources/configs/theme.ts`):
+
+| Token | Value | Use |
+|---|---|---|
+| `Dims.corner` | `8px` | Default surface corner — cards, inputs, buttons, drawer action rows |
+| `Dims.smallCorner` | `6px` | Modals (`resources/emotion/styles/modals-manager.ts`) |
+| `Dims.largeCorner` | `12px` | Large surfaces when a wider corner is intended |
+| `Dims.pillCorner` | `999px` | Pills / circles (not a halvable corner) |
+
+## Rules
+
+1. **Read the card corner via `semanticDims.card.radius`** (`resources/configs/utils.ts`, points to `Dims.corner`), not by re-typing the literal `8px`.
+2. **No hardcoded `crn` rem/px literals for card/button corners.** `crn="1.6rem"`, `crn="1rem"`, `crn="16px"` etc. are forbidden — use `semanticDims.card.radius` (or `Dims.largeCorner` / `Dims.smallCorner` when a non-default corner is intentional).
+3. **Pills/circles use `crn={999}`** (number, not `"999px"`). The `rem()` helper coerces a number to `Nrem`, so `999` overflows any element and renders as a pill. Keep `999` for fully-round elements (chips, avatars, blobs, accent bars).
+4. **Per-corner radius props are `crn_tr` / `crn_tl` / `crn_br` / `crn_bl`.** Do not confuse them with `br_t` / `br_r` / `br_b` / `br_l`, which are border **edges** (color + width), not radii. `br_tr` / `br_bl` do not exist.
+5. **Editing radius scale happens once in `Dims`.** A project-wide radius change is a `Dims.corner` / `smallCorner` / `largeCorner` edit, not a sweep of consumer `crn` literals. `pillCorner` stays `999px`.
+
+## Why
+
+Centralizing radius in `Dims` means a single edit rescales the whole UI consistently, and `semanticDims.card.radius` keeps consumers decoupled from the exact pixel value. Hardcoded `crn` literals drift from the token and silently survive a `Dims` change, producing inconsistent corners (the `Error` page previously hardcoded `1.6rem`/`1rem` while the rest of the UI used the token).
+
+## Canonical cases
+
+- Cards / buttons / inputs across `website/`: `crn={semanticDims.card.radius}`.
+- `FormActionButton.tsx`, `AuthPageShell.tsx`, `Header.tsx`, `Footer.tsx`, `Drawer.tsx`, `Toast.tsx`, `DataTable.tsx`, `Error.tsx` card + CTA: `semanticDims.card.radius`.
+- Pills (`ThemeModeSwitch`, `HeaderIconButton`, chips, accent bar): `crn={999}`.
+- `Error.tsx` corner brackets: `crn_tr="0.35rem"` / `crn_bl="0.35rem"` for the rounded inner corner of an L-mark.
+
+## Forbidden
+
+- `crn="1.6rem"`, `crn="1rem"`, `crn="16px"` and similar literals for card/button corners.
+- `br_tr` / `br_bl` (do not exist) — use `crn_tr` / `crn_bl`.
+- Re-typing `8px` instead of `semanticDims.card.radius`.
+- Sweeping consumer `crn` values to change the project radius — edit `Dims` once.
+
+## Authority
+
+- `website/src/resources/configs/theme.ts` (`Dims`)
+- `website/src/resources/configs/utils.ts` (`semanticDims.card.radius`)
+- `website/src/app/ui/base/components/Utils.tsx` (`rem`, `crn*` props)
+- `docs/platforms/website/ui-foundation.md` § Corner radius tokens
+- `docs/invariants/website.md` W46
