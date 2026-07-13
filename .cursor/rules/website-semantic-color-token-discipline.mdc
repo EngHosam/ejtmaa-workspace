@@ -35,6 +35,8 @@ Applies when authoring or reviewing website UI that resolves colors through `sem
 
 - `FormActionButton.tsx`: primary text = `semanticColor.primaryActionText` over `semanticColor.primaryActionBackground` (navy); neutral text = `semanticColor.textPrimary` over `semanticColor.cardBackground`.
 - `ThemeModeSwitch.tsx`: single toggle button — icon `semanticColor.iconPrimary` over `semanticColor.inputBackground` (with `inputBorder`, corner `semanticDims.card.radius`); icon shows the **target** mode (`FiMoon` when light, `FiSun` when dark), click toggles to that scheme.
+- `LanguageSwitch.tsx`: single toggle button — text `semanticColor.iconPrimary` (bold) over `semanticColor.inputBackground` (with `inputBorder`, corner `semanticDims.card.radius`); label shows the **target** language (`EN` when ar, `ع` when en), click calls `changeLocale` to switch.
+- `Header.tsx` `HeaderIconButton`: icon `semanticColor.iconPrimary` over `semanticColor.inputBackground` (with `inputBorder`, corner `semanticDims.card.radius`) — menu / back / trailing action (notifications).
 - `UiMockup.tsx` status badge `reviewed`: `bg = semanticColor.secondaryActionBackground` (navy[50]) pairs with `clr = semanticColor.secondaryActionText` (navy).
 
 ## Audit procedure

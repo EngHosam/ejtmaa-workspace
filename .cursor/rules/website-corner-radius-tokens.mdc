@@ -42,8 +42,9 @@ Centralizing radius in `Dims` means a single edit rescales the whole UI consiste
 ## Canonical cases
 
 - Cards / buttons / inputs across `website/`: `crn={semanticDims.card.radius}`.
-- `FormActionButton.tsx`, `AuthPageShell.tsx`, `Header.tsx`, `Footer.tsx`, `Drawer.tsx`, `Toast.tsx`, `DataTable.tsx`, `Error.tsx` card + CTA: `semanticDims.card.radius`.
-- Pills (`ThemeModeSwitch`, `HeaderIconButton`, chips, accent bar): `crn={999}`.
+- `FormActionButton.tsx`, `AuthPageShell.tsx`, `Header.tsx` (incl. `HeaderIconButton`), `Footer.tsx`, `Drawer.tsx`, `Toast.tsx`, `DataTable.tsx`, `Error.tsx` card + CTA: `semanticDims.card.radius`.
+- `ThemeModeSwitch.tsx`, `LanguageSwitch.tsx`: `crn={semanticDims.card.radius}` (rounded-square toggle, not a pill).
+- Pills (chips, accent bar): `crn={999}`.
 - `Error.tsx` corner brackets: `crn_tr="0.35rem"` / `crn_bl="0.35rem"` for the rounded inner corner of an L-mark.
 
 ## Forbidden

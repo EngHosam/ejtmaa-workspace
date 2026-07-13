@@ -72,8 +72,7 @@ Auth primary surfaces use `SemanticColors.primary` / `SemanticColors.accent`.
 
 ## W10. Locale and Theme
 
-Locale switch: cookie + full reload via `changeLocale`. No client-side locale state.
-Theme paths via `ThemeMap` and `utils.ts` helpers.
+Locale switch: cookie + full reload via `changeLocale` (from `@my-ssr/web-core`); no client-side locale state. Current locale is read via `useMyInstance().getRouter().locale`. Theme paths via `ThemeMap` and `utils.ts` helpers.
 
 ## W11. Form Success Toast
 
@@ -189,7 +188,7 @@ See `.cursor/rules/website-logo-no-frame.mdc` and `docs/platforms/website/brand-
 
 ## W46. Corner Radius Token Discipline
 
-Corner radius is centralized in `Dims` (`website/src/resources/configs/theme.ts`): `corner` `8px`, `smallCorner` `6px`, `largeCorner` `12px`, `pillCorner` `999px`. Consumers read the default card corner via `semanticDims.card.radius` (points to `Dims.corner`), not by re-typing the literal. Hardcoded `crn` rem/px literals for card/button corners are forbidden. Pills/circles use `crn={999}`. Per-corner radius uses `crn_tr` / `crn_tl` / `crn_br` / `crn_bl` (not `br_tr` / `br_bl`, which do not exist). A project-wide radius change is a single `Dims` edit, not a consumer sweep.
+Corner radius is centralized in `Dims` (`website/src/resources/configs/theme.ts`): `corner` `8px`, `smallCorner` `6px`, `largeCorner` `12px`, `pillCorner` `999px`. Consumers read the default card corner via `semanticDims.card.radius` (points to `Dims.corner`), not by re-typing the literal. Hardcoded `crn` rem/px literals for card/button corners are forbidden. Pills/circles use `crn={999}`. Per-corner radius uses `crn_tr` / `crn_tl` / `crn_br` / `crn_bl` (not `br_tr` / `br_bl`, which do not exist). A project-wide radius change is a single `Dims` edit, not a consumer sweep. The hero/top-right toggles (`ThemeModeSwitch`, `LanguageSwitch`) and header icon buttons (`HeaderIconButton`) use `semanticDims.card.radius` — rounded-square, not pills; `crn={999}` is reserved for chips, accent bars, avatars, and blobs.
 
 See `.cursor/rules/website-corner-radius-tokens.mdc` and `docs/platforms/website/ui-foundation.md` § Corner radius tokens.
 
@@ -198,6 +197,12 @@ See `.cursor/rules/website-corner-radius-tokens.mdc` and `docs/platforms/website
 The website UI uses **only solid semantic colors**. `theme.ts` exports no gradient API (no `GradientDef` / `Gradients` / `SemanticGradients` / `getSemanticGradient` / `getGradientBackground`). `linear-gradient` / `radial-gradient` / `conic-gradient` are forbidden in every style path — including decorative overlays, clipped text, and scrollbar thumbs. Primary/accent fills use the solid tokens `semanticColor.primaryActionBackground` (navy `#0B2057`) and `semanticColor.accentActionBackground` (orange `#EC6901`), resolved via `getColor` / Utils props. `yarn type-check` guards `semanticColor` path validity; a grep for `gradient|Gradient|linear-gradient|radial-gradient|conic-gradient` under `website/src` must return no matches.
 
 See `.cursor/rules/website-no-gradients.mdc` and `docs/design-color-system.md` § Solid colors only.
+
+## W48. Bilingual Locale Surface (ar/en)
+
+The website ships two locales configured in `website/src/resources/configs/web-core.ts` `localization`: `ar` (default, RTL) and `en` (LTR), with `locales: ["ar", "en"]`, `defaultLocale: "ar"`, `rtlLocales: ["ar"]`. Translation modules `resources/translations/ar.ts` (source of the `Tr` type that backs `useTranslator`) and `resources/translations/en.ts` (full mirror) MUST stay key-mirrored — every key present in `ar.ts` is present in `en.ts` with the same shape (W14 relies on this). Locale switching is cookie (`locale`) + full reload via `changeLocale(myInstance)(newLocale)` exported from `@my-ssr/web-core` only; no client-side locale state, no partial reload. The current locale is read via `useMyInstance().getRouter().locale`. The sole UI surface for switching is `LanguageSwitch` (`website/src/app/ui/components/LanguageSwitch.tsx`): a single toggle button showing the **target** language letters (`EN` when current is `ar`, `ع` when current is `en`), placed beside `ThemeModeSwitch` in the header trailing cluster, the drawer hero identity zone, and `BasicLayout`'s top-right row.
+
+See `.cursor/rules/website-locale-switch.mdc` and `docs/platforms/website/ui-foundation.md` § Localization & RTL.
 
 ## Related
 

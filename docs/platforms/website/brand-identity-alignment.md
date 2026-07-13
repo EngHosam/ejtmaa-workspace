@@ -35,6 +35,8 @@ Guarantees:
 | `website/src/app/ui/components/form/FormActionButton.tsx` | primary: `semanticColor.primaryActionBackground` (navy) | `semanticColor.primaryActionText` |
 | `website/src/app/ui/components/form/FormActionButton.tsx` | neutral: `semanticColor.cardBackground` | `semanticColor.textPrimary` |
 | `website/src/app/ui/components/ThemeModeSwitch.tsx` | single toggle button: `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius` | `semanticColor.iconPrimary` (moon when light → switch to dark; sun when dark → switch to light) |
+| `website/src/app/ui/components/LanguageSwitch.tsx` | single toggle button: `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius` | `semanticColor.iconPrimary` (bold text: `EN` when ar → switch to en; `ع` when en → switch to ar) |
+| `website/src/app/ui/components/Header.tsx` (`HeaderIconButton`) | `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius` | `semanticColor.iconPrimary` (menu / back / trailing action e.g. notifications) |
 | `website/src/app/ui/pages/UiMockup.tsx` `reviewed` badge | `semanticColor.secondaryActionBackground` (navy[50]) | `semanticColor.secondaryActionText` (navy) |
 | `website/src/app/ui/pages/Error.tsx` primary CTA | `semanticColor.primaryActionBackground` (navy) (`actionBackground`) | `semanticColor.primaryActionText` |
 | `website/src/app/ui/pages/Error.tsx` error code | `semanticColor.accentActionBackground` (orange) solid text | `semanticColor.accentActionBackground` |
@@ -71,8 +73,9 @@ Add a new preset when a new size context appears (e.g. `hero` for the Error card
 
 - `docs/platforms/website/ui-foundation.md` — `theme.ts` / `semanticColor` foundation
 - `docs/platforms/website/shared-ui-and-shell.md` — drawer hero centering, theme toggle placement
-- `docs/invariants/website.md` — W7 (mount), W10 (theme paths), W43, W44, W45 (logo), W46 (corner radius), W47 (no gradients)
+- `docs/invariants/website.md` — W7 (mount), W10 (locale + theme paths), W43, W44, W45 (logo), W46 (corner radius), W47 (no gradients), W48 (bilingual locale surface)
 - `.cursor/rules/website-semantic-color-token-discipline.mdc`
 - `.cursor/rules/website-logo-no-frame.mdc`
 - `.cursor/rules/website-no-gradients.mdc`
+- `.cursor/rules/website-corner-radius-tokens.mdc`
 - `.cursor/skills/website-semantic-color-audit/SKILL.md`

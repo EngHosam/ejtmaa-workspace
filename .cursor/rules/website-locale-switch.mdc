@@ -1,0 +1,59 @@
+---
+description: Ejtmaa website locale switching is cookie + full reload via changeLocale only, with ar.ts/en.ts kept key-mirrored and LanguageSwitch as the sole switch UI; no client-side locale state.
+globs:
+  - website/src/resources/configs/web-core.ts
+  - website/src/resources/translations/*.ts
+  - website/src/app/ui/components/LanguageSwitch.tsx
+  - website/src/app/ui/components/Header.tsx
+  - website/src/app/ui/components/Drawer.tsx
+  - website/src/app/ui/layouts/BasicLayout.tsx
+  - website/src/app/ui/base/hooks/useTranslator.tsx
+  - docs/platforms/website/ui-foundation.md
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website Locale Switch (ar/en)
+
+Applies when changing, reading, or rendering the website locale, or when editing translation modules.
+
+## Source of truth
+
+- Locale config: `website/src/resources/configs/web-core.ts` `localization` — `locales: ["ar", "en"]`, `defaultLocale: "ar"`, `rtlLocales: ["ar"]` (`ar` is RTL, `en` is LTR).
+- Translation modules: `website/src/resources/translations/ar.ts` (default, source of the `Tr` type backing `useTranslator`) and `website/src/resources/translations/en.ts` (full mirror).
+- Switch API: `changeLocale(myInstance)(newLocale)` exported from `@my-ssr/web-core` — sets the `locale` cookie (1 year, path `/`) and calls `window.location.reload()`.
+- Current locale read: `useMyInstance().getRouter().locale`.
+- Switch UI: `website/src/app/ui/components/LanguageSwitch.tsx`.
+
+## Rules
+
+1. **No client-side locale state.** Locale is a cookie + full reload; never hold it in React state/reducer or switch via partial reload/hydration. Any new switch path MUST go through `changeLocale`.
+2. **`ar.ts` and `en.ts` stay key-mirrored.** Every key in `ar.ts` is present in `en.ts` with the same shape. Adding a translation key means adding it to both files in the same task. `useTranslator` is typed against `Tr` (from `ar.ts`); a missing `en.ts` key renders as `undefined` at runtime under the `en` locale.
+3. **`LanguageSwitch` is the sole switch UI.** Do not introduce a second locale control. It is a single toggle button showing the **target** language letters: `EN` when current is `ar`, `ع` when current is `en`. It mirrors `ThemeModeSwitch` styling (`semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius`, `semanticColor.iconPrimary`, `buttonReset`).
+4. **Placement is fixed**: beside `ThemeModeSwitch` in the header trailing cluster (gated by the same `showResolvedThemeSwitch`), the drawer hero identity zone (one centered `Row`, gated by `showThemeSwitch`), and `BasicLayout`'s top-right row. Do not relocate it to the drawer footer or a separate page.
+5. **Do not add a locale to `web-core.ts` `localization` without a matching translation module loader** in `translations` and a mirrored `resources/translations/<locale>.ts` file.
+
+## Why
+
+Cookie + full reload keeps SSR boot, RTL direction (`<html dir>`), and `moment`/`dayjs` locale in sync with zero partial-hydration edge cases. Mirroring `ar.ts`/`en.ts` keeps the `en` UI complete (W14 page titles rely on it). A single switch surface prevents divergent locale controls and stale state.
+
+## Canonical cases
+
+- `LanguageSwitch.tsx`: `const targetLocale = currentLocale === "ar" ? "en" : "ar";` then `changeLocale(myInstance)(targetLocale)` on click; `SHORT_LABELS = { ar: "ع", en: "EN" }` rendered as bold `Text` with `semanticColor.iconPrimary`.
+- `web-core.ts` `localization`: `locales: ["ar", "en"]`, `translations: { ar: () => import("../translations/ar"), en: () => import("../translations/en") }`, `rtlLocales: ["ar"]`.
+
+## Forbidden
+
+- `useState`/Redux state for the active locale; partial-reload locale changes.
+- Adding a key to `ar.ts` without the mirrored key in `en.ts` (and vice versa for shape).
+- A second locale switcher component or moving `LanguageSwitch` out of the three fixed placements.
+- Reading the locale from anywhere other than `useMyInstance().getRouter().locale` for switch-related logic.
+
+## Authority
+
+- `website/src/resources/configs/web-core.ts` (`localization`)
+- `website/src/resources/translations/ar.ts` + `en.ts`
+- `website/src/app/ui/components/LanguageSwitch.tsx`
+- `website/eng-hosam/@my-ssr/web-core/src/handlers/Router.ts` (`changeLocale`)
+- `docs/platforms/website/ui-foundation.md` § Localization & RTL
+- `docs/invariants/website.md` W10, W48

@@ -66,16 +66,35 @@ Corner radius is centralized in `Dims` (`website/src/resources/configs/theme.ts`
 Consumption rules:
 
 - Read the default card corner via `semanticDims.card.radius` (`resources/configs/utils.ts`, which points to `Dims.corner`), not by re-typing the literal.
-- Pills/circles use `crn={999}` (the `rem()` helper in `Utils.tsx` passes numbers through as `Nrem`, so `999` overflows any element and renders as a pill).
+- Pills/circles use `crn={999}` (the `rem()` helper in `Utils.tsx` passes numbers through as `Nrem`, so `999` overflows any element and renders as a pill). `crn={999}` is reserved for chips, accent bars, avatars, and blobs.
+- Header icon buttons (`HeaderIconButton` in `Header.tsx`) and the hero/top-right toggles (`ThemeModeSwitch`, `LanguageSwitch`) use `semanticDims.card.radius` — rounded-square, not pills.
 - Do not hardcode `crn="1.6rem"` / `crn="1rem"` / similar rem literals for card/button corners — use `semanticDims.card.radius` or `Dims.*`. The `Error` page was the canonical fix site for this.
 - Per-corner radius uses `crn_tr` / `crn_tl` / `crn_br` / `crn_bl` (not `br_tr`; `br_t`/`br_r`/`br_b`/`br_l` are border edges, not radii).
 
 Enforcement: `.cursor/rules/website-corner-radius-tokens.mdc`, invariant W46.
 
-## RTL
+## Localization & RTL
 
-Website supports ar/en with cookie+reload locale switch.
-Icon directional flip: `.cursor/rules/website-icon-rtl-flip.mdc`.
+- Locales are configured in `website/src/resources/configs/web-core.ts` `localization`: `locales: ["ar", "en"]`, `defaultLocale: "ar"`, `rtlLocales: ["ar"]`. `ar` is RTL, `en` is LTR.
+- Translation modules live in `website/src/resources/translations/`: `ar.ts` (default locale, source of the `Tr` type that backs `useTranslator`) and `en.ts` (full mirror). The two files MUST stay key-mirrored — every key in `ar.ts` is present in `en.ts` with the same shape (W14 relies on this).
+- Locale switching is cookie (`locale`) + full reload via `changeLocale(myInstance)(newLocale)` exported from `@my-ssr/web-core`; no client-side locale state, no partial reload. The current locale is read via `useMyInstance().getRouter().locale`.
+- The sole UI surface for switching is `LanguageSwitch` (`website/src/app/ui/components/LanguageSwitch.tsx`): a single toggle button showing the **target** language letters (`EN` when current is `ar`, `ع` when current is `en`), placed beside `ThemeModeSwitch` in the header trailing cluster, the drawer hero identity zone, and `BasicLayout`'s top-right row.
+- Icon directional flip: `.cursor/rules/website-icon-rtl-flip.mdc`.
+
+Locale surface traceability (current state):
+
+| Path | Role | Described in |
+|---|---|---|
+| `website/src/resources/configs/web-core.ts` | `localization`: `locales`/`defaultLocale`/`translations`/`rtlLocales` | `docs/platforms/website/ui-foundation.md` § Localization & RTL |
+| `website/src/resources/translations/ar.ts` | default locale module; source of `Tr` type | `docs/platforms/website/ui-foundation.md` § Localization & RTL |
+| `website/src/resources/translations/en.ts` | full English mirror of `ar.ts` | `docs/platforms/website/ui-foundation.md` § Localization & RTL |
+| `website/src/app/ui/components/LanguageSwitch.tsx` | sole locale switch UI (target-language letters) | `docs/platforms/website/brand-identity-alignment.md` § Canonical consumer pairings; `docs/design-color-system.md` § Traceability |
+| `website/src/app/ui/components/Header.tsx` | `LanguageSwitch` in trailing cluster; `HeaderIconButton` corner | `docs/platforms/website/shared-ui-and-shell.md` § Shared header behavior; `docs/platforms/website/brand-identity-alignment.md` § Canonical consumer pairings |
+| `website/src/app/ui/components/Drawer.tsx` | `LanguageSwitch` paired with `ThemeModeSwitch` in hero | `docs/platforms/website/shared-ui-and-shell.md` § Side drawer |
+| `website/src/app/ui/layouts/BasicLayout.tsx` | `LanguageSwitch` in top-right row | `docs/platforms/website/shared-ui-and-shell.md` § Shared primitives |
+| `website/lib/tsconfig.tsbuildinfo` | generated TS build artifact | not narrated (generated) |
+
+Enforcement: `.cursor/rules/website-locale-switch.mdc`, invariant W48.
 
 ## Theme sharing across frontends
 
