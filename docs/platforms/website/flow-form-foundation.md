@@ -23,7 +23,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - temporary private `useShallowForm` forms use `removeOnExit: true` by default.
 - **Read-on-edit**: edit routes pass only identity; edit mode hydrates via a `read` sub on entry. Show `Loadable` during injection + edit `read` in flight.
 - **Customer form screens**:
-  - auth: `/login`, `/register`, `/reset-password` — see `flow-auth.md`,
+  - auth: `/login`, `/register`, `/reset-password` — `API.FORMS.R("auth")`; see `flow-auth.md` for per-page subs, fields, and post-success behavior,
   - account settings: `/customer/settings` — `Forms.CUSTOMER_SETTINGS` → `updateSettings`; see `flow-settings.md`,
   - notification delete-all — see `flow-notifications.md`.
 - **Shared form field surfaces**: `FormTextField`, `FormActionButton`, `FormAvatarField` (settings), `FormInputWrapper`, `FormProvider`. Compose from `Utils` + semantic theme tokens.

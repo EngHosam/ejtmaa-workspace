@@ -24,7 +24,13 @@ Actors: **visitor** and **customer**.
 
 ### 1.1) Shipped vs planned
 
-Shipped: `BasicLayout` + `MainLayout` only; pages `Login`, `Home`, `UiMockup`, `Error`; shared components `Header`, `Drawer`, `Footer`, `Logo`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, auth/form primitives. The visitor/customer shell components, `LandingLayout`/`CustomerMainLayout`, `Register`/`ResetPassword`, and `pages/customer/*` listed below are **planned** (target contract), not yet in the scaffold.
+**Shipped layouts:** `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`).
+
+**Shipped pages:** `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
+
+**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`), landing home sections (`home/*`).
+
+**Planned (target contract, not yet in scaffold):** `CustomerMainLayout`, `CustomerHeader`/`CustomerDrawer`/`CustomerBottomBar`, `pages/customer/*`, Google social auth UI (`SelectableCard`, `Checkbox` on Register).
 
 ## 2) `ui/base/` -- infrastructure only
 
@@ -36,15 +42,25 @@ Business UI does not belong here.
 
 Shared project UI composed from `Utils` + semantic theme tokens.
 
-Shipped groups: Feedback (`Loadable`, `Toast`), Shell (`Header`, `Drawer`, `Footer`, `Logo`), Auth (`AuthPageShell`, `AuthTextField`, `FormActionButton`), Form (`FormTextField`), plus `DataTable`, `ThemeModeSwitch`, `LanguageSwitch`. The groups below describe the target contract; entries not yet shipped are planned.
+Shipped groups:
 
-| Group | Examples |
+| Group | Shipped examples |
 |---|---|
-| Feedback | `Loadable`, `GlobalLoadable`, `Toast` |
-| Shell (visitor) | `LandingHeader`, `LandingSubHeader`, `LandingFooter`, `LandingDrawer` |
+| Feedback | `Loadable`, `Toast` |
+| Shell (generic) | `Header`, `Drawer`, `Footer`, `Logo` |
+| Shell (visitor landing) | `LandingHeader`, `LandingFooter`, `LandingMobileDrawer` |
+| Auth | `AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton` |
+| Form | `FormTextField`, `FormActionButton`, `FormInputWrapper` |
+| Home (visitor) | `home/Hero`, `home/Platform`, … (landing sections) |
+
+Planned groups (target contract):
+
+| Group | Planned examples |
+|---|---|
+| Shell (visitor) | `LandingSubHeader`, `LandingDrawer` |
 | Shell (customer) | `CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerBottomBar`, `BottomIcons` |
-| Auth | `AuthPageShell`, `AuthTextField`, `FormActionButton` |
-| Form | `FormTextField`, `FormActionChip`, `FormInputWrapper` |
+| Auth (social) | `SelectableCard`, `Checkbox` on Register |
+| Form | `FormActionChip`, `FormAvatarField` |
 | Static info | `HelpGuideScreen`, `AboutEjtmaaScreen`, `TermsConditionsScreen` |
 | Home (visitor) | `home/*` landing sections for public `Home` route |
 | Notifications | `customer/notifications/CustomerNotificationCard`, `NotificationRowSkeleton` |
@@ -56,8 +72,8 @@ Local `graphql.config.yml` is allowed when the subtree hosts GraphQL-aware code.
 | Layout | Use | Status |
 |---|---|---|
 | `BasicLayout` | Auth and error pages | shipped |
-| `MainLayout` | `Home`, `UiMockup` | shipped |
-| `LandingLayout` | Visitor landing and public marketing subpages | planned |
+| `LandingLayout` | Public `Home` landing page | shipped |
+| `MainLayout` | `UiMockup` and future authed subpages | shipped |
 | `CustomerMainLayout` | Authed customer workspace (`CUSTOMER_MAIN`) | planned |
 
 `MyApp` resolves layout from route metadata.
@@ -66,9 +82,7 @@ Local `graphql.config.yml` is allowed when the subtree hosts GraphQL-aware code.
 
 Thin route entry components bound to route identifiers.
 
-Shipped: `Login`, `Home`, `UiMockup`, `Error`. The remaining entries below are planned.
-
-Public/auth (target): `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
+Shipped public/auth: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
 
 Customer workspace (planned): `pages/customer/*` (`CustomerHome`, settings, notifications, static info, support).
 

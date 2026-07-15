@@ -38,6 +38,7 @@ See `.cursor/rules/website-link-href-navigation.mdc`.
 5. **Same-page section jumps.** Landing section nav must use `scrollToLandingSection`/`scrollToLandingTop` (`landing-layout/drawer.ts`), not `Link`/`push`. Flag route-based section nav.
 6. **Utils + Link combo.** Where `<Text As={Link}>` / `<Box As={Link}>` is used, confirm `Link` props (`href`/`to`/`external`/`replace`/`redirect`/`query`/`state`) flow through `extra`, and `textDecoration`/`buttonReset` follow W29.
 7. **Verify** with `yarn type-check` (rejects bad `identify` and wrong `Href` shape).
+8. **Auth pages.** Default logo in `AuthPageShell` uses `Box As={Link} extra={{ href: { identify: "Home" } }}`. Cross-auth text links use `AuthNavLink`; secondary CTAs use `AuthSecondaryNavButton` with `useNav().push({ identify })`.
 
 ## Report format
 

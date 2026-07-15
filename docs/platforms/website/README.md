@@ -32,9 +32,35 @@
 
 - [`../../invariants/website.md`](../../invariants/website.md)
 
-## Change set traceability
+## Change set traceability — visitor auth pages
 
-Current-state reflection of the brand-polish change set (radius tokens, logo sizing/no-frame, Error page redesign). No change history.
+Current-state reflection of the shipped visitor auth surface (`Login`, `Register`, `ResetPassword`). No change history.
+
+| Path (under `website/`) | Documented where |
+|---|---|
+| `src/app/ui/pages/Login.tsx` | `flow-auth.md` §6.1 |
+| `src/app/ui/pages/Register.tsx` | `flow-auth.md` §6.2 |
+| `src/app/ui/pages/ResetPassword.tsx` | `flow-auth.md` §6.3 |
+| `src/app/ui/components/auth/AuthPageShell.tsx` | `flow-auth.md` §4; `brand-identity-alignment.md` § Logo + auth shell |
+| `src/app/ui/components/auth/AuthTextField.tsx` | `flow-auth.md` §5 |
+| `src/app/ui/components/auth/AuthNavLink.tsx` | `flow-auth.md` §5, §7 |
+| `src/app/ui/components/auth/AuthSecondaryNavButton.tsx` | `flow-auth.md` §5, §7 |
+| `src/app/ui/components/form/FormTextField.tsx` | `flow-auth.md` §5.1; `flow-form-foundation.md` §2 |
+| `src/app/ui/components/form/FormActionButton.tsx` | `flow-auth.md` §5.2; `brand-identity-alignment.md` § Canonical consumer pairings |
+| `src/app/ui/components/form/FormInputWrapper.tsx` | `flow-auth.md` §5 (`actionArea` on password field) |
+| `src/app/ui/components/Logo.tsx` (`auth` preset) | `brand-identity-alignment.md` § Logo |
+| `src/app/ui/components/LandingHeader.tsx` (register CTA) | `flow-auth.md` §8 |
+| `src/app/ui/layouts/LandingLayout.tsx` (drawer register nav) | `flow-auth.md` §8 |
+| `src/app/services/router.ts` (`publicRoutes`, middleware) | `flow-auth.md` §2; `route-registry-contract.md` §1.1 |
+| `src/resources/configs/routes.ts` | `route-registry-contract.md` §1.1; `flow-auth.md` §2 |
+| `src/resources/translations/ar.ts` (`ui.pages.login/register/resetPassword`) | `flow-auth.md` §9 |
+| `src/resources/translations/en.ts` (mirror) | `flow-auth.md` §9 |
+| `src/types/requesters/requesters.website.ts` | `flow-auth.md` §1; `flow-form-foundation.md` §2 |
+| `lib/tsconfig.tsbuildinfo` | Generated build artifact from `yarn type-check`; not narrated. |
+
+Governance: `.cursor/rules/website-auth-flow.mdc`
+
+## Change set traceability — brand polish
 
 | Path (under `website/`) | Documented where |
 |---|---|
@@ -93,7 +119,7 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 | `src/resources/configs/urls.ts` | `BASE_URL` test mode `/cpanel` → `/website` | `overview.md` § Backend coupling; invariant W44 |
 | `src/app/services/auth.ts` | `AuthedAs = "CUSTOMER"`; `canDoAction` reads `customer.permissions` | `ssr-boot-and-startup.md` §4; `shared-ui-and-shell.md` §1.1 |
 | `src/app/services/socket.ts` | Authed socket namespace `customer` | `data-flow-and-gql.md` § Socket |
-| `src/app/services/router.ts` | `publicRoutes = ["Login", "UiMockup", "Home"]`; `getMyHomeIdentify = "Home"` | `route-registry-contract.md` §1.1; `flow-auth.md` §1.1 |
+| `src/app/services/router.ts` | `publicRoutes` includes `Register`, `ResetPassword`; `getMyHomeIdentify = "Home"` | `route-registry-contract.md` §1.1; `flow-auth.md` §2 |
 | `src/app/services/global.ts` | Trailing semicolon fix only | — (trivial) |
 | `src/resources/configs/axios/api.ts` | `FORMS.SUPERVISOR.R` → `FORMS.CUSTOMER.R` (`/forms/customer/requester/...`); imports `requesters.website` | `data-flow-and-gql.md` § Write path table |
 | `src/resources/configs/routes.ts` | Removed `Customers`/`Customer` routes + `MPagesRoutes` entries | `route-registry-contract.md` §1.1 |
@@ -101,7 +127,7 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 | `src/resources/configs/store/data-adapters.ts` | `//supervisor` → `//customer` comment on `ADAPTER1` | `data-flow-and-gql.md` § Adapter enterMode |
 | `src/resources/configs/socket/events.ts` | Supervisor events → single `onCustomerEventDate` | `data-flow-and-gql.md` § Socket |
 | `src/types/events.ts` | Supervisor payloads → `OnCustomerEventDate { type: "UPDATED" }` | `data-flow-and-gql.md` § Socket |
-| `src/app/ui/pages/Login.tsx` | `sub: "supervisorLogin"` → `"login"` | `flow-auth.md` §1.1 |
+| `src/app/ui/pages/Login.tsx` | Email+password login; `sub: "login"`; split `AuthPageShell` | `flow-auth.md` §6.1 |
 | `src/app/ui/pages/Error.tsx` | Consolidated `useRouter` + `useCurrentParams` import | `page-error.md` |
 | `src/app/ui/layouts/main-layout/drawer.ts` | Drawer → `business` section with `dashboard` + `logout` only | `shared-ui-and-shell.md` §1.1 |
 | `src/resources/translations/ar.ts` | Removed cpanel nav labels; `owner` → `Customer` | `repository-inventory.md`; invariant W48 |
@@ -122,10 +148,9 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 | `src/app/ui/components/Loadable.tsx` | Destructuring param line alignment |
 | `src/app/ui/components/Logo.tsx` | Type literal spacing |
 | `src/app/ui/components/ThemeModeSwitch.tsx` | Destructuring param line alignment |
-| `src/app/ui/components/auth/AuthPageShell.tsx` | Destructuring param line alignment |
-| `src/app/ui/components/auth/AuthTextField.tsx` | Destructuring param line alignment |
-| `src/app/ui/components/form/FormActionButton.tsx` | Destructuring param line alignment |
-| `src/app/ui/components/form/FormTextField.tsx` | Destructuring param line alignment |
+| `src/app/ui/components/auth/AuthTextField.tsx` | Thin wrapper; passes `type` including `tel` |
+| `src/app/ui/components/form/FormTextField.tsx` | `readOnly` during injection; optional `actionArea`; `placeholder` default `""` |
+| `src/app/ui/components/form/FormActionButton.tsx` | `tone: "secondary"` for cross-auth CTAs |
 | `src/app/ui/pages/UiMockup.tsx` | Destructuring param line alignment + import consolidation |
 | `src/resources/configs/theme.ts` | `FontFamilies` single-quote → escaped-double-quote strings (no value change) |
 | `lib/tsconfig.tsbuildinfo` | Generated build artifact from `yarn type-check`; not narrated. |

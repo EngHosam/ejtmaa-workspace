@@ -44,22 +44,24 @@ See `docs/platforms/website/ui-foundation.md`.
 
 ### 6.1) Shipped routes
 
-`src/resources/configs/routes.ts` currently ships four identifies:
+`src/resources/configs/routes.ts` currently ships six identifies:
 
 | Identify | Path | Layout |
 |---|---|---|
 | `Login` | `/login` | `BASIC` |
-| `Home` | `/` | `MAIN` |
+| `Register` | `/register` | `BASIC` |
+| `ResetPassword` | `/reset-password` | `BASIC` |
+| `Home` | `/` | `LANDING` |
 | `UiMockup` | `/ui-mockup` | `MAIN` |
 | `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
 
-`publicRoutes` = `["Login", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"Home"`.
+`publicRoutes` = `["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"Home"`.
 
-Layouts shipped: `BasicLayout` (`BASIC`) and `MainLayout` (`MAIN`).
+Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`).
 
 ### 6.2) Planned (not shipped)
 
-`customerRouter`, the `/customer/*` workspace, `Register`, `ResetPassword`, `CustomerHome`, `CUSTOMER_MAIN` layout, and the `customer`/`base`/`Error` section-block split are planned per `route-registry-contract.md` and `website-route-registry-governance.mdc`. They are not yet present in `routes.ts`.
+`customerRouter`, the `/customer/*` workspace, `CustomerHome`, `CUSTOMER_MAIN` layout, and the `customer`/`base` section-block split in `routes.ts` are planned per `route-registry-contract.md`.
 
 ## Documentation stance
 

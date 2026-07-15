@@ -14,16 +14,18 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 
 ## 1.1) Shipped state
 
-`routes.ts` currently ships **four** identifies only. The `customerRouter` helper, the `/customer/*` workspace, `Register`, `ResetPassword`, `CustomerHome`, and the `public → customer → base` section split are **planned** (see §2–§6 for the target contract).
+`routes.ts` currently ships **six** identifies. The `customerRouter` helper, the `/customer/*` workspace, `CustomerHome`, and the `public → customer → base` section split are **planned** (see §2–§6 for the target contract).
 
 | Identify | Path | Layout |
 |---|---|---|
 | `Login` | `/login` | `BASIC` |
-| `Home` | `/` | `MAIN` |
+| `Register` | `/register` | `BASIC` |
+| `ResetPassword` | `/reset-password` | `BASIC` |
+| `Home` | `/` | `LANDING` |
 | `UiMockup` | `/ui-mockup` | `MAIN` |
 | `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
 
-`MPagesRoutes` mirrors `Login`, `Home`, `UiMockup` (no typed params). `publicRoutes = ["Login", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `MainLayout` (`MAIN`). No `LANDING`/`CUSTOMER_MAIN` layouts exist yet.
+`MPagesRoutes` mirrors `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup` (no typed params). `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`). No `CUSTOMER_MAIN` layout yet.
 
 ## 2) Path helper (mandatory for workspace routes)
 
@@ -83,14 +85,14 @@ Rule: `.cursor/rules/website-route-static-before-parametric.mdc`. Skill: `.curso
 
 ### 5.1) Public (no auth)
 
-Shipped: `Login`, `Home`, `UiMockup`. `Register`, `ResetPassword`, and the `LANDING` layout for `Home` are planned.
+Shipped: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`.
 
 | Identify | Path | Layout |
 |----------|------|--------|
 | `Login` | `/login` | `BASIC` |
-| `Home` | `/` | `MAIN` (planned: `LANDING`) |
-| `Register` | `/register` | `BASIC` (planned) |
-| `ResetPassword` | `/reset-password` | `BASIC` (planned) |
+| `Register` | `/register` | `BASIC` |
+| `ResetPassword` | `/reset-password` | `BASIC` |
+| `Home` | `/` | `LANDING` |
 | `UiMockup` | `/ui-mockup` | `MAIN` |
 
 ### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`) — planned

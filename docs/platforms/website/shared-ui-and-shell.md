@@ -8,14 +8,21 @@ Web-native shared UI primitives and shell for `website/`: document shell, actor-
 
 ## 1.1) Shipped shell
 
-The shipped shell uses generic primitives, not the actor-specific components below:
+Layouts: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`) — no `CUSTOMER_MAIN` yet.
 
-- Layouts: `BasicLayout` (`BASIC`) and `MainLayout` (`MAIN`) — no `LANDING`/`CUSTOMER_MAIN` layouts yet.
-- Components: `Header`, `Drawer`, `Footer`, `Logo`, `ThemeModeSwitch`, `LanguageSwitch` (all under `src/app/ui/components/`).
-- Main drawer (`src/app/ui/layouts/main-layout/drawer.ts`): one `business` section with `dashboard` (→ `Home`) + `logout` only. `operations`/`settings` sections and all cpanel nav item keys are not shipped.
-- `AuthedAs = "CUSTOMER"`; auth reducer exposes `auth.customer.permissions`.
+| Context | Components |
+|---|---|
+| Auth + error (`BASIC`) | `ThemeModeSwitch`, `LanguageSwitch` in `BasicLayout` top row; auth pages use `AuthPageShell` |
+| Landing (`LANDING`) | `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `home/*` sections |
+| Main workspace (`MAIN`) | `Header`, `Drawer`, `Footer` via `MainLayout` |
 
-`LandingHeader`, `CustomerHeader`, `LandingDrawer`, `CustomerDrawer`, and `CustomerBottomBar` are planned (see §3, §4, and `flow-customer-shell.md`).
+Generic shell components: `Header`, `Drawer`, `Footer`, `Logo`, `ThemeModeSwitch`, `LanguageSwitch` (under `src/app/ui/components/`).
+
+Main drawer (`src/app/ui/layouts/main-layout/drawer.ts`): one `business` section with `dashboard` (→ `Home`) + `logout` only.
+
+`AuthedAs = "CUSTOMER"`; auth reducer exposes `auth.customer.permissions`.
+
+`CustomerHeader`, `CustomerDrawer`, and `CustomerBottomBar` are planned (see `flow-customer-shell.md`).
 
 ## 2) Document shell
 

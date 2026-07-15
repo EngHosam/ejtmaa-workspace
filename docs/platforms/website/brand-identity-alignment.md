@@ -33,6 +33,7 @@ Guarantees:
 | file | surface | text/icon |
 |---|---|---|
 | `website/src/app/ui/components/form/FormActionButton.tsx` | primary: `semanticColor.primaryActionBackground` (navy) | `semanticColor.primaryActionText` |
+| `website/src/app/ui/components/form/FormActionButton.tsx` | secondary: `semanticColor.secondaryActionBackground` | `semanticColor.secondaryActionText` |
 | `website/src/app/ui/components/form/FormActionButton.tsx` | neutral: `semanticColor.cardBackground` | `semanticColor.textPrimary` |
 | `website/src/app/ui/components/ThemeModeSwitch.tsx` | single toggle button: `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius` | `semanticColor.iconPrimary` (moon when light → switch to dark; sun when dark → switch to light) |
 | `website/src/app/ui/components/LanguageSwitch.tsx` | single toggle button: `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius` | `semanticColor.iconPrimary` (bold text: `EN` when ar → switch to en; `ع` when en → switch to ar) |
@@ -53,7 +54,11 @@ Size contract is the `preset` prop — the only way to size the logo. `LOGO_SIZE
 | `header` | `4.875rem` | `Header.tsx` main variant brand slot |
 | `drawer` | `7.7rem` | `Drawer.tsx` hero identity zone |
 | `footer` | `3.25rem` | `Footer.tsx` brand slot |
-| `hero` | `7.95rem` | `Error.tsx` centered hero card |
+| `hero` | `12rem` | `Hero.tsx` landing hero |
+| `auth` | `9.5rem` | `AuthPageShell.tsx` brand panel; links to `Home` via typed `Link` |
+
+Auth form card: `cardBackground` + `shellBorder`, no shadow. Decorative corner brackets on the outer shell match `Hero.tsx` (navy top-right, orange bottom-left) with Hero-equivalent section padding (`3rem 0 4rem`; desktop `5rem`/`6rem`).
+| `error` | `8.4rem` | `Error.tsx` centered hero card |
 
 Add a new preset when a new size context appears (e.g. `hero` for the Error card) instead of overriding `h` at the call site.
 

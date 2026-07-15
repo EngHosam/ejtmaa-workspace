@@ -32,10 +32,10 @@ Authoritative guide: `docs/platforms/website/flow-auth.md`.
 
 ### Routes and forms
 - Auth routes are `/login`, `/register`, `/reset-password` on `BASIC`.
-- Each auth page uses route-scoped `useShallowForm({ initProps: { api: API.FORMS.VISITOR.R("auth") } })`. Do not introduce mobile shared form identities on website.
+- Each auth page uses route-scoped `useShallowForm({ initProps: { api: API.FORMS.R("auth") } })`. Do not introduce mobile shared form identities on website.
 - `publicRoutes` must include `Login`, `Register`, `ResetPassword`, and `Home`.
 
-### Role-based home redirect
+### Role-based home redirect (planned)
 - Customer role home: `CustomerHome` → `/customer` on `CUSTOMER_MAIN`.
 - All customer workspace paths use `customerRouter("/…")`.
 - `getMyHomeIdentify` returns `CustomerHome` for `authedAs === "CUSTOMER"`, else `Home`.
@@ -44,11 +44,17 @@ Authoritative guide: `docs/platforms/website/flow-auth.md`.
 - Requires `/website/custom/start` auth payload under the `auth` key.
 
 ### Navigation
-- Auth-internal links use `useNav().push({ identify })`.
+- Auth-internal links use typed `identify` via `useNav().push({ identify })` or `Link` with `href: { identify }`.
+- Default auth logo links to `Home` via `Link` with `href: { identify: "Home" }` — no raw path strings.
 - Full reload reserved for `auth.login` and `auth.logout` only.
 
+### AuthPageShell layout
+- Outer wrapper uses landing `Hero` section padding (`3rem 0 4rem`; desktop `5rem`/`6rem`) — not `minH` + vertical centering.
+- Form card: white `cardBackground`, `shellBorder`, no shadow.
+- Decorative corner brackets match `Hero.tsx` (navy top-right, orange bottom-left).
+
 ### Copy and i18n
-- Email-only auth copy in `ar.ts` and `en.ts` together.
+- Auth copy in `ar.ts` and `en.ts` together.
 - No placeholders on auth fields.
 
 ### Form injection and Loadable
@@ -57,23 +63,24 @@ Authoritative guide: `docs/platforms/website/flow-auth.md`.
 
 ### Components
 - Reusable primitives live in `ui/components/` with generic names (`Checkbox`, `SelectableCard`).
-- Auth-specific wrappers stay in `ui/components/auth/`.
-- Primary tone uses `SemanticColors.primary` (solid navy).
+- Auth-specific wrappers stay in `ui/components/auth/` (`AuthNavLink`, `AuthSecondaryNavButton`).
+- Primary submit uses `FormActionButton tone="primary"`; cross-auth CTAs use `tone="secondary"`.
 
-### Social auth (Google)
+### Register payload (shipped website)
+- Email register sends `name`, `email`, `mobile`, `password` — matches backend `RegisterCustomerProps`.
+- Success → `nav.push({ identify: "Login" })` (no token).
+- Social register (planned) deletes email/password; uses cached `social` token.
+
+### Post-success
+- Login success → `auth.login` → cookie + reload.
+- ResetPassword success → `nav.push({ identify: "Login" })`.
+
+### Social auth (Google, planned)
 - Google only; GIS via `SocialAuthHelpers.ts`.
 - Forward ID token to `loginSocial` / `registerCustomerSocial`.
 - Cache token in form values for retry; clear on provider switch.
 - SSR-safe: invoke only from click handlers.
 
 ### Backend gating
-- Auth subs gated `@sub(["website", "app"], ["visitor"])` in `AuthRequester.ts`.
-- `requesters.website.ts` lists every auth sub under `visitor.auth`.
-
-### Register payload
-- Email register sends `email` + `password`; require terms `accepted`.
-- Social register deletes email/password; uses cached `social`.
-
-### Post-success
-- Login/register/social success → `auth.login` → cookie + reload.
-- ResetPassword success → `nav.push({ identify: "Login" })`.
+- Auth subs gated `@sub(["website"], ["visitor"])` in `AuthRequester.ts`.
+- `requesters.website.ts` lists every shipped auth sub under `visitor.auth`.

@@ -13,9 +13,9 @@ Interpretation rule:
 
 ## Shipped baseline (current state)
 
-The checked-in scaffold currently ships: actor model `CUSTOMER` + `visitor` on mount `/website`; `AuthedAs = "CUSTOMER"`; routes `Login`, `Home`, `UiMockup`, `Error` only (`publicRoutes = ["Login", "UiMockup", "Home"]`, `getMyHomeIdentify = "Home"`); GQL mirror `base` + `customer` (`me`, `notifications`, `me.canDeleteNotifications`); requesters `visitor.auth`, `customer.customer`, `customer.notification` (`requesters.website.ts`); socket namespace `customer` with event `onCustomerEventDate`; main drawer `dashboard` + `logout` only; auth page `Login` (email+password, `sub: "login"`); `BASE_URL` test + prod on `/website`.
+The checked-in scaffold currently ships: actor model `CUSTOMER` + `visitor` on mount `/website`; `AuthedAs = "CUSTOMER"`; routes `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error` (`publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`, `getMyHomeIdentify = "Home"`); layouts `BASIC`, `LANDING`, `MAIN`; GQL mirror `base` + `customer`; requesters `visitor.auth` (`registerCustomer`, `login`, `resetPassword`), `customer.customer`, `customer.notification`; socket namespace `customer`; auth pages `Login`, `Register`, `ResetPassword` on split `AuthPageShell` with `API.FORMS.R("auth")`; `BASE_URL` on `/website`.
 
-Not yet shipped: `Register`, `ResetPassword`, Google social, `CustomerHome`, `CUSTOMER_MAIN` layout, `customerRouter`, `/customer/*` workspace, `CustomerHeader`/`CustomerDrawer`/`LandingDrawer`/`CustomerBottomBar`, customer settings/notifications/help/about/terms screens, `CUSTOM.START` boot wiring. These remain obligated by the invariants below and the flow docs.
+Not yet shipped: Google social auth, `CustomerHome`, `CUSTOMER_MAIN` layout, `customerRouter`, `/customer/*` workspace, `CustomerHeader`/`CustomerDrawer`/`CustomerBottomBar`, customer settings/notifications/help/about/terms screens, `CUSTOM.START` boot wiring, customer role home redirect. These remain obligated by the invariants below and the flow docs.
 
 ## W1. Repository Ownership
 
