@@ -136,9 +136,19 @@ Portaled drawer slides from the start side in LTR and end side in RTL.
 
 Customer list cards use `semanticDims.card` spacing tokens and the two-group content pattern.
 
-## W29. Utils Props Over baseCssStyle
+## W29. Utils Style Prop Precedence (baseCssStyle vs cssStyle)
 
-Prefer `Utils` component props; reserve `baseCssStyle` for values without Utils equivalents.
+Inside `Utils` `Box.css()`, layers merge in order — later wins: reset → `baseCssStyle` → shorthand props (`bg`,`clr`,`p`,`w`,`h`,`crn`,`br`,`shd`,`fs`,`fw`,`clp`,`ta`,`opc`,`asp`,…) → `cssStyle` → `disabledStyle`/`hidden`/`hideAt`/`showAt`.
+
+- `baseCssStyle` is **overridden** by shorthand props. Use it ONLY for `...ElementStyles.buttonReset`, or a genuine default a shorthand must override (the conditional-fill `background:"transparent"` under `bg={active?X:undefined}`). Nothing else belongs here — not `:hover`, `@media`, `transition`, `transform`, `cursor`, `lineHeight`, `letterSpacing`, `overflowX/Y`, `boxShadow`, `display`, `flex`, `gridTemplateColumns`, `backgroundImage`, logical `textAlign`, asymmetric `borderRadius`, `backdropFilter`, `pointerEvents` (none have a conflicting shorthand, so they belong in `cssStyle`).
+- `cssStyle` **overrides** shorthand props. Put every regular no-shorthand value here. To override a `clr`/`bg` forced by a wrapper, use `cssStyle={{color}}`/`{{background}}` — it wins over the shorthand.
+- Prefer a shorthand prop over either layer when one exists (`fs` not `fontSize`, `opc` not `opacity`, `maxW` not `maxWidth`, `minW` not `minWidth`, `mt` not `marginTop`, `crn` not `borderRadius`, `br` not `border`, `bg` not `background`, `clr` not `color`, `asp` not `aspectRatio`).
+- `cursor:"pointer"` is auto-added by Utils when the `onClick` prop is set — do not duplicate it. Set `cursor` explicitly only for `extra.onClick` wiring or non-pointer cursors.
+- A reusable component MUST expose `cssStyle` (the override) to consumers, never `baseCssStyle`. A consumer-injected `baseCssStyle` would be silently overridden by the component's shorthand props — an unreliable escape hatch.
+
+See `.cursor/rules/website-utils-style-prop-precedence.mdc` and `.cursor/skills/website-utils-style-prop-audit/SKILL.md`.
+
+`Container`/`FlexContainer` in `Utils.tsx` resolve `maxW`/`w` through `rem()` and use `maxW != null` (not truthy) for the fallback: `maxWidth: maxW != null ? rem(maxW) : _.maxWidth`. So `maxW={0}` is honored (no falsey fallback to `_.maxWidth`), and a numeric `maxW` becomes `rem`. This is why `maxW={46}` in `SectionShell` yields `46rem`. Do not re-introduce `maxW || _.maxWidth`.
 
 ## W30. Honest Card Data
 
@@ -209,6 +219,69 @@ See `.cursor/rules/website-no-gradients.mdc` and `docs/design-color-system.md` �
 The website ships two locales configured in `website/src/resources/configs/web-core.ts` `localization`: `ar` (default, RTL) and `en` (LTR), with `locales: ["ar", "en"]`, `defaultLocale: "ar"`, `rtlLocales: ["ar"]`. Translation modules `resources/translations/ar.ts` (source of the `Tr` type that backs `useTranslator`) and `resources/translations/en.ts` (full mirror) MUST stay key-mirrored — every key present in `ar.ts` is present in `en.ts` with the same shape (W14 relies on this). Locale switching is cookie (`locale`) + full reload via `changeLocale(myInstance)(newLocale)` exported from `@my-ssr/web-core` only; no client-side locale state, no partial reload. The current locale is read via `useMyInstance().getRouter().locale`. The sole UI surface for switching is `LanguageSwitch` (`website/src/app/ui/components/LanguageSwitch.tsx`): a single toggle button showing the **target** language letters (`EN` when current is `ar`, `ع` when current is `en`), placed beside `ThemeModeSwitch` in the header trailing cluster, the drawer hero identity zone, and `BasicLayout`'s top-right row.
 
 See `.cursor/rules/website-locale-switch.mdc` and `docs/platforms/website/ui-foundation.md` § Localization & RTL.
+
+## W49. Native `<button>` Background Neutralization
+
+`ElementStyles.buttonReset` resets `appearance`/`border`/`outline` but NOT `background`. A `Row`/`Col`/`Box` rendered `As={"button"}` keeps the browser default (light/white) button background, which shows through in dark mode when no `bg` shorthand is set. Every `As={"button"}` MUST neutralize it by one of three patterns:
+
+- **Always-filled** (both states filled): `bg={...}` shorthand overrides the native bg.
+- **Conditionally-filled** (`bg={active ? X : undefined}`): `background:"transparent"` in `baseCssStyle` (alongside `...buttonReset`) so the `bg` shorthand wins for active; inactive falls back to transparent. Never put this transparent in `cssStyle` — it would override the `bg` shorthand and lose the active fill.
+- **Always-transparent** (outline/ghost, never filled, no conditional `bg`): `bg="@transparent"` shorthand. Do NOT use `background:"transparent"` in `baseCssStyle`/`cssStyle` here — `bg` is the shorthand for `background`, so the shorthand is the intent-revealing choice. (`baseCssStyle` background-transparent is reserved for the conditional-fill case where a `bg` shorthand must be able to win.)
+
+See `.cursor/rules/website-utils-style-prop-precedence.mdc` § Native `<button>` background.
+
+## W50. `rem()` Numeric Shorthand Convention
+
+`rem()` in `Utils` converts a **number** to a `rem` string and passes strings through unchanged. Pass a **number** to any rem-based shorthand when a rem value is intended (`fs={0.8}`, not `fs={"0.8rem"}`; `minW={1.5}`, `maxW={36}`, `mt={-0.15}`). Pass a **string** only for non-rem values (`"100%"`, `"1 / 1"`, `"0.85rem 1.25rem"`, `"0 0 1rem 1rem"`). Unitless `lineHeight` multipliers (`1.3`, `1.5`) MUST live in `cssStyle` — the `lh` prop forces `rem()` and would turn `1.3` into `1.3rem`. Raw SVG attributes (`<circle height="...">`) are NOT Utils shorthands and keep their unit strings — do not run rem-number conversion through them.
+
+See `.cursor/rules/website-utils-style-prop-precedence.mdc` § `rem()` and numeric shorthand values.
+
+## W51. Accent Action Text Is White
+
+`semanticColor.accentActionText` resolves to `base.text.action.default.fill.accent` = `BaseColors.white` in **both** light and dark schemas (`theme.ts`). Text/icons on a solid accent (orange `#EC6901`) fill MUST be `accentActionText` (white) — never `textPrimary`/`textSecondary` (dark ink), which is invisible on orange. This is a brand-authority decision in `theme.ts`; `accentActionText` is white on purpose, not a token to "fix" back to a dark value. Pair `accentActionBackground` (orange) with `accentActionText` (white); pair `primaryActionBackground` (navy) with `primaryActionText` (white).
+
+See `.cursor/rules/website-text-clr-on-colored-bg.mdc` and `docs/platforms/website/brand-identity-alignment.md`.
+
+## W52. SSR Hydration Determinism for Computed SVG Coordinates
+
+Server-rendered and client-rendered floating-point values for SVG attributes (`cx`/`cy`/`strokeDasharray`/`r`) MUST serialize identically or React emits a hydration mismatch. `Math.cos`/`Math.sin`/`Math.PI` can produce values that differ at the 14th decimal between Node and the browser, so any computed coordinate that lands on a raw SVG attribute MUST be rounded to a fixed precision (e.g. `round2 = n => Math.round(n*100)/100`) before being passed to the attribute. This applies to `HeroDashboard.tsx` seat coordinates and vote-ring dash arrays. Do not round Utils shorthand values (those are deterministic); only raw SVG attribute values from trig/PI computations.
+
+See `docs/platforms/website/landing-page.md` § Hydration.
+
+## W53. Landing Page Composition
+
+The public landing page (`website/src/app/ui/pages/Home.tsx` → `home/HomeScreen.tsx`) is the visitor home on mount `/website`. It composes 10 sections in order (`Hero`, `Problem`, `Platform`, `Lifecycle`, `Capabilities`, `Roles`, `LiveCommand`, `Trust`, `Impact`, `Faq`) inside a `landing-layout` shell (`shell.ts`, `drawer.ts`, `footer.ts`, `useActiveLandingSection.ts`) with `LandingHeader` + `LandingMobileDrawer` + `LandingFooter`. Sections share `home/SectionShell.tsx` (tone: `plain`/`brand`/`accent`/`inverted`) and `home/Reveal.tsx` (scroll reveal). Internal nav links use the `Link` component from `@my-ssr/web-core` with a typed `Href<keyof MPagesRoutes>` (not raw string paths) for client-side `nav.push` routing; unimplemented pages pass `undefined` temporarily. The landing surface is the canonical reference for W29/W49/W50/W51/W52/W54/W55 — see `docs/platforms/website/landing-page.md` for the full section map and contracts.
+
+See `docs/platforms/website/landing-page.md`.
+
+## W54. Cross-Page Navigation — `Link` + Typed `Href`
+
+Internal cross-page navigation MUST use the `Link` component from `@my-ssr/web-core` (not a raw `<a>`/`As={"a"}`). `Link` renders a real `<a href>` (SEO / middle-click / new-tab work) and intercepts the click → `getNav().push(to)` for client-side transition with no full reload. `Link` accepts `to`/`href: string | "CURRENT" | To<Ident>` where `To<Ident> = Href<Ident> & {state?}` and `Href<Ident> = {identify: Ident, replace?, sub?} & ParamsQuery<Ident>` (web-core `src/types/router.ts`). Callers MUST pass a **typed object** `{identify: "Login"}` (`Href<keyof MPagesRoutes>`), not a raw string path — the object form is type-checked against `MPagesRoutes` (`routes.ts`; current members `Login`, `Home`, `UiMockup`). Adding a navigable page = TWO edits in `routes.ts`: the `routes` map (path/layout/loader) AND the `MPagesRoutes` interface; until both exist, callers pass `href: undefined` (never a fake `identify` or guessed string). Programmatic nav from a button `onClick` uses `useNav()` (`website/src/app/ui/base/hooks/useNav`, CSR-only) → `push({identify: "X"})`; do not call it during render/SSR. `external` is for external URLs only (renders `<a target="_blank">` with no interception, full reload). Combining `Link` with Utils styling uses `<Text As={Link} extra={{href, ...}}>`; `Link` props flow through `extra`, `textDecoration` in `cssStyle`, `buttonReset` valid in `baseCssStyle`.
+
+See `.cursor/rules/website-link-href-navigation.mdc` and `.cursor/skills/website-link-href-audit/SKILL.md`.
+
+## W55. In-Page Section Navigation + SSR-Inert Active State
+
+Navigation between sections of the SAME page (landing sections) is **scroll-based** (`scrollIntoView` via `scrollToLandingSection` / `scrollToLandingTop` in `landing-layout/drawer.ts`), NOT route-based — do not use `Link`/`push` for same-page section jumps and do not invent a route per section. The active section is derived client-side from `useActiveLandingSection` (`landing-layout/useActiveLandingSection.ts`): it returns `null` on SSR and on the first client paint (gated by a `mounted` flag set in `useEffect`), and only resolves to a `LandingLayoutNavKey` after `IntersectionObserver` fires (`rootMargin: -45% 0px -50% 0px`). This is non-negotiable: an active section MUST NOT be guessed during SSR (it would either mark all items active or cause a hydration mismatch). Header nav items consume this hook and set `aria-current` + an accent underline only for the resolved key; on first paint no item is active.
+
+See `docs/platforms/website/landing-page.md` § Navigation contract.
+
+## W56. Footer Background Is Theme-Flipped (Light-in-Light / Dark-in-Dark)
+
+`semanticColor.footerBackground` resolves to `surface.fill.container.default.footer` in `theme.ts` and is **theme-flipped**, NOT fixed:
+
+- Light schema: `NeutralColors[100]` (`#F7F9FC`, light) — matches the light page surface.
+- Dark schema: `#040811` (dark near-black) — distinct from the dark page surface `#060B15`.
+
+Because the footer background follows the theme (light bg in light mode, dark bg in dark mode), footer text/icons MUST use the theme-flipped text tokens — `semanticColor.textPrimary` for link text and `semanticColor.textAccent` for section titles — so they resolve dark-in-light / light-in-dark and stay readable on the matching footer surface. Do NOT use a fixed-light token (e.g. `primaryActionText`/`accentActionText` white) for footer text: in light mode the footer bg is light, so white text would be invisible. This is the inverse of W51 (which fixes text white because its fill is fixed-dark/accent in both modes). The previous light value `BrandScales.navy[950]` (dark-in-both) was a bug — it forced dark `textPrimary` onto a dark fill in light mode (dark-on-dark, invisible); the fix is the theme-flipped bg, not a text change. Both `LandingFooter.tsx` and the shared `Footer.tsx` consume `footerBackground`, so the token change applies to both consistently.
+
+See `docs/platforms/website/landing-page.md` § Footer.
+
+## W57. Third-Party Brand Color Exemption (MicrobandCredit)
+
+`MicrobandCredit.tsx` renders the Microband third-party brand wordmark/dot in its official brand blue `#096fb1`. This hardcoded hex is **intentional and exempt from W43** (semantic color token discipline): it is the external Microband brand identity color, not an Ejtmaa semantic surface/text color, so it MUST NOT be replaced with a `semanticColor` token or "fixed" for dark-mode contrast. Third-party brand colors are reproduced verbatim (the brand owns the value); Ejtmaa semantic tokens describe Ejtmaa's own surfaces only. Do not add a `semanticColor` entry for it (W43 YAGNI + brand-authority). If a third-party brand color ever reads poorly on a themed surface, the fix is to change the surrounding Ejtmaa surface, never the brand color.
+
+See `docs/platforms/website/landing-page.md` § Footer.
 
 ## Related
 

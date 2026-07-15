@@ -15,6 +15,7 @@
 | [`ssr-boot-and-startup.md`](ssr-boot-and-startup.md) | SSR boot lifecycle |
 | [`shared-ui-and-shell.md`](shared-ui-and-shell.md) | Shell components |
 | [`page-error.md`](page-error.md) | Error (403/404/500) page composition |
+| [`landing-page.md`](landing-page.md) | Public landing page (10 sections, shell, style/color invariants) |
 
 ## Flows
 

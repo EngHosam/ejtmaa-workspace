@@ -1,0 +1,50 @@
+---
+description: Website Text/Icn on colored backgrounds — Text forces clr={defaultTextColor} (textPrimary/dark) by default and does NOT inherit the parent's clr, so any Text/Icn on a non-page fill MUST pass an explicit clr matching that fill. No dark text on accent (orange) backgrounds — use accentActionText (white).
+globs:
+  - website/src/app/ui/base/components/Utils.tsx
+  - website/src/app/ui/components/**
+  - website/src/app/ui/pages/**
+  - website/src/app/ui/layouts/**
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website Text/Icn Color on Colored Backgrounds
+
+Applies when rendering `Text` or `Icn` on any non-`pageBackground` fill (action, section tint, custom). Authority: `Utils.tsx` `Text` (forces `clr={defaultTextColor}`), `website-semantic-color-token-discipline.mdc`.
+
+## The pitfall (non-negotiable)
+
+`Text` renders `<Box clr={defaultTextColor} {..._props}>` where `defaultTextColor = semanticColor.textPrimary` (dark ink). It does **not** inherit the parent `Row`/`Col` `clr`. So a bare `<Text>{label}</Text>` inside an orange/navy button renders **dark ink** — invisible or wrong on the fill.
+
+Rules:
+
+1. **Every `Text`/`Icn` on a colored fill MUST pass `clr` explicitly** with the action-text token that pairs with that fill (or a `cssStyle={{color}}` override).
+2. **No dark INK on solid accent (orange).** `accentActionBackground` (orange `#EC6901`) is a light fill; text on it MUST be `semanticColor.accentActionText` (white). Never `textPrimary`/`textSecondary`/`textTertiary` (dark ink) — invisible/wrong.
+3. **No dark INK on primary (navy).** `primaryActionBackground` (navy) text MUST be `semanticColor.primaryActionText` (white). Never `textPrimary`/`textSecondary` (dark ink).
+4. **`sectionAccentBackground` (orange tint) as a SMALL fill** (pill, strip, chip, medallion) holding dark body text is discouraged — prefer `cardBackground`/`sectionBrandBackground` for dark body text there (LiveCommand current-item strip moved to `sectionBrandBackground`). As a **section background** (via `SectionShell tone="accent"`) the tint is very pale; dark titles/headings on it are approved and readable (Platform) — do not "fix" those. The **`textAccent` (orange) eyebrow on `sectionAccentBackground` is the approved brand pattern** (SectionShell eyebrow, Hero eyebrow, Platform) — allowed.
+5. **To override a `clr` forced by a wrapper** (e.g. `Text`'s default, or a `SectionShell` tone), use `cssStyle={{color: ...}}`, not `baseCssStyle` — `cssStyle` wins over `clr` (see `website-utils-style-prop-precedence.mdc`).
+
+## Canonical pairings
+
+- Orange button: `bg={accentActionBackground}` + `<Text clr={accentActionText}>` (white) — `AccentCta` in `home/Faq.tsx`.
+- Navy button/banner: `bg={primaryActionBackground}` + `<Text clr={primaryActionText}>` (white).
+- Card surface: `bg={cardBackground}` + `<Text clr={textPrimary}>` (dark) — the `Text` default is fine here.
+- Override default: `<Text cssStyle={{color: white}}>` over navy (Trust `SealHeader`).
+
+## Defects this prevents
+
+- `AccentCta` orange button rendering dark ink label (dark text on orange) — root cause: `<Text>` without `clr` defaulted to `textPrimary`.
+- `GhostCta` on navy rendering dark ink label (dark on navy).
+- LiveCommand current-item strip: `textPrimary` (dark) on `sectionAccentBackground` (orange tint) — moved to `sectionBrandBackground`.
+
+## Audit
+
+Run the audit in `.cursor/skills/website-text-clr-audit/SKILL.md` — grep `Text`/`Icn` inside colored `bg` blocks and verify an explicit `clr` (or `cssStyle` color) pairs with the fill.
+
+## Related
+
+- `.cursor/rules/website-semantic-color-token-discipline.mdc` (pair text/icon against resolved surface)
+- `.cursor/rules/website-utils-style-prop-precedence.mdc` (`cssStyle` overrides `clr`)
+- `.cursor/rules/website-action-control-loader-contrast.mdc` (sibling contrast concern)
+- `docs/invariants/website.md` W10, W43

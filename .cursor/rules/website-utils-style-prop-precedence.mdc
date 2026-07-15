@@ -1,0 +1,82 @@
+---
+description: Website Utils baseCssStyle vs cssStyle merge precedence — baseCssStyle is the base layer overridden by shorthand props; cssStyle is the final override that wins over shorthand props. Expose cssStyle (not baseCssStyle) as the consumer escape hatch on reusable components.
+globs:
+  - website/src/app/ui/base/components/Utils.tsx
+  - website/src/app/ui/components/**
+  - website/src/app/ui/pages/**
+  - website/src/app/ui/layouts/**
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website Utils Style Prop Precedence
+
+Applies when authoring or reviewing website UI built on `Utils` (`Box`/`Row`/`Col`/`Flex`/`Text`/`Icn`). Authority: `website/src/app/ui/base/components/Utils.tsx` `Box` `css()` construction; W29.
+
+## Merge order (non-negotiable)
+
+Inside `Box`, `css()` merges in this order — later wins:
+
+1. `{display:"block", boxSizing:"border-box"}` reset
+2. `baseCssStyle` — the base layer
+3. shorthand props (`bg`, `clr`, `p`, `w`, `h`, `crn`, `br`, `shd`, `fs`, `fw`, `clp`, `ta`, `opc`, …)
+4. `cssStyle` — the override layer
+5. `disabledStyle` / `hidden` / `hideAt` / `showAt`
+
+Consequences:
+
+- `baseCssStyle` is **overridden** by any shorthand prop touching the same property. Use it ONLY when a shorthand MUST be able to override the value — i.e. `...ElementStyles.buttonReset` (so `br`/`bg` can override the reset) or a genuine default a shorthand should win over. Nothing else belongs here.
+- `:hover`, `@media`, `transition`, `transform`, `transformOrigin`, `cursor`, `pointerEvents`, `backdropFilter`, `overflowX`/`Y`, custom `boxShadow`, asymmetric `borderRadius`, `display`, `flexDirection`, `flex`, `gridTemplateColumns`, `insetInlineStart`, `scrollMarginTop`, `lineHeight`, `letterSpacing`, `fontVariantNumeric`, `textTransform`, `fontFamily`, `listStyle`, `backgroundImage`/`Size`/`Position`, `paddingBlock`, `marginBlock`, logical `textAlign` — none of these have a shorthand that conflicts, so they behave identically in `cssStyle`. **Put them in `cssStyle`, not `baseCssStyle`.** Keeping them in `baseCssStyle` "because they're behavioral" is the wrong mental model: with no shorthand conflict, `baseCssStyle` gains nothing and only obscures intent.
+- Prefer a shorthand prop over either `baseCssStyle`/`cssStyle` when one exists (`fs` not `fontSize`, `opc` not `opacity`, `maxW` not `maxWidth`, `minW` not `minWidth`, `mt` not `marginTop`, `crn` not `borderRadius`, `br` not `border`, `bg` not `background`, `clr` not `color`, `asp` not `aspectRatio`).
+- `cursor: "pointer"` is auto-added by Utils when the `onClick` prop is set — do NOT also set it. Set `cursor` explicitly only when click is wired via `extra.onClick` (or a non-pointer cursor is needed).
+
+## Native `<button>` background (non-negotiable)
+
+`ElementStyles.buttonReset` resets `appearance`/`border`/`outline` but NOT `background`. A `Row`/`Col`/`Box` rendered as `As={"button"}` therefore keeps the browser's default (light/white) button background — which shows through in dark mode whenever no `bg` shorthand is set.
+
+Rule: every `As={"button"}` element MUST neutralize that native background. Three valid patterns — pick by fill behavior:
+
+- **Always-filled button** (e.g. accent/primary, both states filled): set `bg={...}`. The shorthand overrides the native bg. No extra work.
+- **Conditionally-filled button** (`bg={active ? X : undefined}` — active fills, inactive transparent): add `background: "transparent"` to `baseCssStyle` (alongside `...ElementStyles.buttonReset`). The `bg` shorthand then overrides it for the active state; inactive falls back to transparent. Do NOT put this `background: "transparent"` in `cssStyle` — `cssStyle` would override the `bg` shorthand and the active fill would be lost.
+- **Always-transparent button** (outline/ghost, never filled, no conditional `bg`): use the `bg="@transparent"` shorthand prop. Do NOT use `background: "transparent"` in `baseCssStyle` or `cssStyle` here — `bg` is the shorthand for `background`, so the shorthand is the correct, intent-revealing choice. (`baseCssStyle` background-transparent is reserved for the conditional-fill case above where a `bg` shorthand must be able to win.)
+
+The conditional-fill `background: "transparent"` in `baseCssStyle` is the canonical "genuine default a shorthand should override" use of `baseCssStyle` beyond `buttonReset`. The always-transparent case has no shorthand to override, so it uses the shorthand directly.
+
+## `rem()` and numeric shorthand values (non-negotiable)
+
+`rem()` in `Utils` converts a **number** to a `rem` string and passes strings through unchanged. Therefore:
+
+- Pass a **number** to any rem-based shorthand when a rem value is intended: `fs={0.8}` (not `fs={"0.8rem"}`), `minW={1.5}`, `maxW={36}`, `mt={-0.15}`. The string form works but violates the convention and hides intent.
+- Pass a **string** only when the value is not a plain rem (e.g. `"100%"`, `"1 / 1"`, `"0.85rem 1.25rem"`, `"0 0 1rem 1rem"`).
+- `lineHeight` as a unitless multiplier (e.g. `1.3`) must go in `cssStyle` (the `lh` prop forces `rem()` and would turn `1.3` into `1.3rem`).
+
+## Reusable component escape hatch
+
+A reusable component MUST expose `cssStyle` (the override) to consumers, never `baseCssStyle`. `baseCssStyle` is internal: the component builds its own base from shorthand props + its own `baseCssStyle`, then forwards to `Box`. A consumer-injected `baseCssStyle` would be silently overridden by the component's shorthand props — an unreliable escape hatch.
+
+Canonical pattern (every prior project: restatex, rawaj, glizer, academy, masdaria):
+
+```tsx
+export const Layout: CoreComponent<LayoutProps> = React.memo((props) => {
+    const {children, cssStyle, ..._props} = props;
+    return (
+        <Box minH={"100vh"} cssStyle={css({}, cssStyle)} {..._props}>
+            {children}
+        </Box>
+    );
+});
+```
+
+## Forbidden
+
+- Exposing `baseCssStyle` as a consumer customization prop on a reusable component.
+- Using `baseCssStyle` to set a property also set by a shorthand (`bg`, `clr`, `p`, `crn`, …) and expecting it to win — it will be overridden.
+- Using `baseCssStyle` for anything other than `...ElementStyles.buttonReset` (or a genuine default a shorthand must override). `:hover`, `@media`, `transition`, `transform`, `transformOrigin`, `cursor`, `overflowX/Y`, `boxShadow`, `display`, `flex`, `gridTemplateColumns`, `lineHeight`, `letterSpacing`, `fontVariantNumeric`, `textTransform`, `insetInlineStart`, `scrollMarginTop`, `backgroundImage`, `paddingBlock`, `textAlign`, … all belong in `cssStyle` — no shorthand conflicts with them, so `baseCssStyle` adds nothing but noise.
+- Passing a rem value as a string to a rem-based shorthand (`fs={"0.8rem"}`) — pass a number (`fs={0.8}`).
+- Setting `cursor: "pointer"` when the `onClick` prop is already set (Utils auto-adds it).
+
+## Related
+
+- `docs/invariants/website.md` W29
+- `.cursor/rules/website-text-clr-on-colored-bg.mdc` (sibling — the `clr` override case)
+- `.cursor/rules/website-semantic-color-token-discipline.mdc`

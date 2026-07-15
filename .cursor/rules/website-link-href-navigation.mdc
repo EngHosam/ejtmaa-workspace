@@ -1,0 +1,73 @@
+---
+description: Website cross-page navigation uses the Link component from @my-ssr/web-core with a typed Href<keyof MPagesRoutes> object (not a raw string path) for client-side nav.push routing; useNav().push for programmatic nav; external prop only for external URLs; in-page section nav is scroll-based, not route-based.
+globs:
+  - website/src/app/ui/components/**
+  - website/src/app/ui/pages/**
+  - website/src/app/ui/layouts/**
+  - website/src/resources/configs/routes.ts
+  - docs/invariants/website.md
+alwaysApply: false
+---
+
+# Website Link / Href Navigation
+
+Applies to any website UI that navigates between routes. Authorities: `@my-ssr/web-core` `src/components/Link.tsx`, `src/types/router.ts` (`Href`, `To`, `BrowserNavigator`); `website/src/app/ui/base/hooks/useNav.tsx`; `website/src/resources/configs/routes.ts` (`MPagesRoutes`).
+
+## Cross-page navigation — use `Link`, not `<a>`
+
+Internal cross-page navigation MUST use the `Link` component from `@my-ssr/web-core`. Do NOT render a raw `<a>` (or `As={"a"}`) for an internal route. `Link` renders a real `<a href>` (so SEO, middle-click, and open-in-new-tab work) but intercepts the click and calls `getRouter().getNav().push(to)` — client-side transition with no full reload.
+
+`Link` accepts `to` or `href` (alias: `to = to || href`) typed as `string | "CURRENT" | To<Ident>`, plus `external`, `replace`, `redirect`, `query`, `state`, `status`.
+
+## Typed `Href` — object, not string
+
+`Href<Ident> = { identify: Ident, replace?, sub? } & ParamsQuery<Ident>` (or `{ identify: "CURRENT", params?, query?, replace? }`). `To<Ident> = Href<Ident> & { state? }`.
+
+- Pass a **typed object** `{ identify: "Login" }` (a `Href<keyof MPagesRoutes>` / `To<...>`), NOT a raw string path like `"/login"`. The object form is type-checked against `MPagesRoutes`; a typo in `identify` fails `yarn type-check`.
+- `MPagesRoutes` is the website-local route interface in `routes.ts`. Current members: `Login`, `Home`, `UiMockup` (`Error` comes from web-core's `PagesRoutes`). 
+
+## Adding a target page = TWO edits
+
+To wire a new navigable page (e.g. `Register`, `About`, `Terms`):
+
+1. Add it to the `routes` map in `routes.ts` (`path`, `layout`, `preLoadedPage`/`pageLoader`).
+2. Declare it in the `MPagesRoutes` interface in `routes.ts` (so `Href<keyof MPagesRoutes>` accepts `{ identify: "Register" }`).
+
+Until both edits exist, the page is unimplemented → callers MUST pass `href: undefined` (the `Link` renders without a destination). Do NOT pass a fake string path or a guessed `identify` — it would either type-error or 404.
+
+## Combining `Link` with Utils styling
+
+`Utils` (`Box`/`Text`/`Row`/`Col`) forward the `extra` prop to the underlying element. To style a `Link` with Utils, render `<Text As={Link} ... extra={{ href, ... }}>` (or `<Box As={Link}>`):
+
+- `Link`-specific props (`href`/`to`/`external`/`replace`/`redirect`/`query`/`state`) go through `extra` (they are not Utils props).
+- Utils style props (`clr`, `variant`, `baseCssStyle`, `cssStyle`, …) apply normally; `...ElementStyles.buttonReset` in `baseCssStyle` is valid for an anchor rendered as a button-like control.
+- `textDecoration: "none"` belongs in `cssStyle` (no shorthand) when resetting link underline.
+
+Canonical example — `LandingFooterLink` (`website/src/app/ui/components/LandingFooter.tsx`): `<Text As={Link} extra={{ href: link.href /* Href<keyof MPagesRoutes> | undefined */, title, "aria-label" }}>`.
+
+## Programmatic navigation — `useNav().push`
+
+For navigation triggered from a button `onClick` (not a link), use `useNav()` from `website/src/app/ui/base/hooks/useNav` (returns `BrowserNavigator`): `push({ identify: "Login" })` for a route, `push("CURRENT")` to refresh. `useNav` is CSR-only (returns `{}` on the server), so it is safe to call inside event handlers but MUST NOT be invoked during render/SSR.
+
+## External links
+
+Use `Link` with `external` (or a plain `<a>`) ONLY for external URLs (different origin). `external` makes `Link` render `<a href={to} target="_blank">` with NO click interception — a full reload in a new tab. Never use `external` for an internal route (it would bypass client-side routing).
+
+## In-page section navigation is scroll-based, NOT route-based
+
+Navigation between sections of the SAME page (landing sections) uses `scrollIntoView` (`scrollToLandingSection` / `scrollToLandingTop` in `landing-layout/drawer.ts`), not `Link`/`push`. Do not invent a route per section. The active section is derived client-side from `useActiveLandingSection` (IntersectionObserver) — see W55.
+
+## Forbidden
+
+- Raw `<a>` / `As={"a"}` with a string `href` for an internal route (bypasses client-side nav → full reload).
+- Passing a raw string path to `Link`/`push` when a typed `Href` object is expected.
+- Passing a fake `identify` for an unimplemented page instead of `undefined`.
+- Using `external` for an internal route.
+- Using `Link`/`push` for same-page section jumps (use scroll).
+
+## Related
+
+- `docs/invariants/website.md` W54, W55
+- `.cursor/skills/website-link-href-audit/SKILL.md`
+- `.cursor/rules/website-route-registry-contract.mdc` (route registration)
+- `docs/platforms/website/route-registry-contract.md`

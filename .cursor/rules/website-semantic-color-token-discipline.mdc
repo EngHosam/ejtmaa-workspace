@@ -38,6 +38,11 @@ Applies when authoring or reviewing website UI that resolves colors through `sem
 - `LanguageSwitch.tsx`: single toggle button — text `semanticColor.iconPrimary` (bold) over `semanticColor.inputBackground` (with `inputBorder`, corner `semanticDims.card.radius`); label shows the **target** language (`EN` when ar, `ع` when en), click calls `changeLocale` to switch.
 - `Header.tsx` `HeaderIconButton`: icon `semanticColor.iconPrimary` over `semanticColor.inputBackground` (with `inputBorder`, corner `semanticDims.card.radius`) — menu / back / trailing action (notifications).
 - `UiMockup.tsx` status badge `reviewed`: `bg = semanticColor.secondaryActionBackground` (navy[50]) pairs with `clr = semanticColor.secondaryActionText` (navy).
+- `LandingFooter.tsx` / `Footer.tsx`: `bg = semanticColor.footerBackground` is **theme-flipped** (`NeutralColors[100]` light / `#040811` dark — W56), so text MUST be the theme-flipped `semanticColor.textPrimary` (links) and `semanticColor.textAccent` (titles), NOT a fixed-light token. This is the inverse of the fixed-fill controls above: the footer surface follows the scheme, so the text must follow it too.
+
+## Exemptions
+
+- **Third-party brand colors** (W57): a hardcoded hex that reproduces an EXTERNAL brand identity (e.g. `MicrobandCredit.tsx` Microband blue `#096fb1`) is exempt from non-negotiable #1. The brand owns the value; do not replace it with a `semanticColor` token, do not add a `semanticColor` entry for it (YAGNI + brand-authority), and do not "fix" it for dark-mode contrast. If a third-party brand color reads poorly on a themed Ejtmaa surface, change the Ejtmaa surface, never the brand color. This exemption is narrow: it covers only verbatim external brand wordmark/logo colors, not Ejtmaa's own UI accents.
 
 ## Audit procedure
 
@@ -47,5 +52,5 @@ To re-verify alignment after any `theme.ts` or `semanticColor` change, run the a
 
 - `docs/platforms/website/ui-foundation.md` (semantic color audit & type guard)
 - `docs/platforms/website/brand-identity-alignment.md` (shipped outcome)
-- `docs/invariants/website.md` W10, W43
+- `docs/invariants/website.md` W10, W43, W56 (footer bg theme-flipped), W57 (third-party brand color exemption)
 - `.cursor/rules/website-action-control-loader-contrast.mdc` (spinner contrast on filled controls — sibling concern)
