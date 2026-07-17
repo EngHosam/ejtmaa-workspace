@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.
@@ -20,10 +20,12 @@ On-disk draft SDL (reference copy):
 Root queries (from `customer.graphql`):
 - `me` — current customer profile
 - `notifications` — paginated notifications
+- `organization` — current customer's organization (`prepareOneGQLModel({ me: true })`)
 
 Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `MeBridge`
 - `NotificationBridge`
+- `OrganizationBridge`
 
 ## Supervisor schema surface
 
@@ -33,12 +35,18 @@ Root queries (from `supervisor.graphql`):
 - `customers` — customer list
 - `customer(id)` — single customer
 - `customerStats` — aggregate stats
+- `organizations(filter)` — organization list
+- `organization(id)` — single organization
+
+Nested relation:
+- `_Customer.organization: _Organization` (requires `OrganizationBridge` registered)
 
 Bridges (`backend/src/app/gql/schemas/SupervisorSchema.ts`):
 - `MeBridge`
 - `NotificationBridge`
 - `CustomerBridge`
 - `CustomerStatsBridge`
+- `OrganizationBridge`
 
 ## Generated types
 
@@ -49,12 +57,12 @@ Codegen output under `backend/src/app/gql/gql-types/`:
 
 ## Frontend mirrors
 
-| Frontend | Mirrors | Config |
-|---|---|---|
-| `website/` | `base` + `customer` | `website/graphql.config.yml` |
-| `cpanel/` | `base` + `supervisor` | `cpanel/graphql.config.yml` |
+| Frontend | Mirrors | Config | Current status |
+|---|---|---|---|
+| `website/` | `base` + `customer` | `website/graphql.config.yml` | Active |
+| `cpanel/` | `base` + `supervisor` | `cpanel/graphql.config.yml` | **Deferred** — `cpanel/` checkout temporarily removed; do not sync supervisor mirrors until restored |
 
-Sync is command-based copy from backend SDL/types. Do not hand-edit mirrored files.
+Sync (when the target platform exists) is command-based copy from backend SDL/types. Do not hand-edit mirrored files.
 
 ## Depth and security
 
@@ -63,3 +71,5 @@ Sync is command-based copy from backend SDL/types. Do not hand-edit mirrored fil
 - List queries must be bounded and ordered.
 
 See `docs/platforms/backend/patterns/graphql-and-bridges.md` for authoring standards.
+
+Organization domain detail: `docs/platforms/backend/contracts/organization-domain.md`.

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Practical invariants for the current Ejtmaa backend. Scoped to active modules: Customer, Supervisor, User, Token, Notification, SystemSetting.
+Practical invariants for the current Ejtmaa backend. Scoped to active modules: Customer, Organization, Supervisor, User, Token, Notification, SystemSetting.
 
 Interpretation rule:
 - invariants below define backend obligations for the Ejtmaa product surface.
@@ -73,9 +73,9 @@ Enum-like business fields follow the project enum contract across model, request
 
 ## B14. Shared GraphQL Enum and Mirror Sync Invariant
 
-Shared enums in `base.graphql` only. Mirror sync to frontends is command-based copy:
-- `website/src/types/gql/**`
-- `cpanel/src/types/gql/**`
+Shared enums in `base.graphql` only. Mirror sync to frontends is command-based copy when the target platform checkout exists:
+- `website/src/types/gql/**` (active)
+- `cpanel/src/types/gql/**` (deferred while `cpanel/` checkout is temporarily absent — do not sync)
 
 ## B15. GraphQL Relation Cardinality Gate Invariant
 
@@ -104,3 +104,17 @@ Guard ownership stays single-source per parent mode. Do not duplicate `willPrepa
 ## B21. GraphQL Enum Output Wrapper Invariant
 
 Enum-like output fields use object wrappers (`type _X { value: _XValue!, label: String }`) in `base.graphql`.
+
+## B22. Organization Tenant Ownership Invariant
+
+`Organization` is a non-actor tenant owned by exactly one `Customer` via `customer_id`:
+
+- real FK constraint (do not use `constraints: false` for this single-owner link),
+- unique index on `customer_id` (one org per customer),
+- ownership column name is `customer_id`, not a polymorphic `owner_*` pair.
+
+## B23. Me-Bound HasOne Root Query Invariant
+
+When a customer-role root-one resolves a `hasOne` from the authenticated customer (`Static.ident` matches association key), use `prepareOneGQLModel({ me: true })` and let role base + framework accessor resolve the row.
+
+Do not invent `as` aliases or override `getRootOrmParent` / `getOrmFindOptions` unless the association key differs from bridge `ident` or scoping cannot use the default accessor.

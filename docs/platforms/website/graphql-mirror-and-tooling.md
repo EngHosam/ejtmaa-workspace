@@ -32,6 +32,8 @@ Backend owns the website GraphQL contract:
 
 Mirror artifacts only — not website-owned schema authoring surfaces.
 
+Customer mirrors currently include root `organization` and `_Organization` from the backend organization contract (`docs/platforms/backend/contracts/organization-domain.md`).
+
 ### Generated type mirrors
 
 - `website/src/types/gql/gql-types/base.ts`

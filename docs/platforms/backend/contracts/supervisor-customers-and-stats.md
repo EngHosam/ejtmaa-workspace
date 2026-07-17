@@ -28,6 +28,7 @@ Types and queries:
 - `mobile`
 - `avatar_file`
 - `avatar_url`
+- `organization` — nested `_Organization` (requires `OrganizationBridge` registered)
 - `total_count` (pagination)
 
 `_CustomerFilter` inputs:
@@ -85,11 +86,13 @@ Dashboard KPI cards use `customerStats.total_count`.
 | `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts` | List/detail ORM query construction |
 | `backend/src/app/gql/bridges/supervisor/CustomerStatsBridge.ts` | `total_count` aggregate |
 | `backend/src/app/gql/bridges/supervisor/MeBridge.ts` | Supervisor profile |
+| `backend/src/app/gql/bridges/supervisor/OrganizationBridge.ts` | Nested `_Customer.organization` (org list/detail owned by organization-domain) |
 | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Thin resolver wiring |
 | `backend/src/app/gql/gql-types/supervisor.ts` | Generated types |
 
 ## Related
 
 - `docs/platforms/backend/contracts/graphql-and-types.md`
+- `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/supervisor-admin-read-surfaces.md`
 - `docs/platforms/cpanel/customer-management.md`

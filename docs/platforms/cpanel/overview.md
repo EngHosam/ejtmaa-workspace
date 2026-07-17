@@ -61,6 +61,7 @@ Supervisor GQL (`supervisor.graphql`):
 - `me`, `notifications`
 - `customers`, `customer(id)`
 - `customerStats` (`total_count` for `HomeStatCard` on supervisor home)
+- `organizations`, `organization(id)` and nested `_Customer.organization` exist on backend supervisor SDL; cpanel mirror/UI deferred while `cpanel/` checkout is absent
 
 Requesters on cpanel platform:
 

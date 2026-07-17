@@ -9,7 +9,7 @@ alwaysApply: false
 Ejtmaa actors: **Customer** and **Supervisor**.
 
 Current domain models (see `backend/src/app/orm/models/`):
-- `Customer`, `Supervisor`, `User`, `Token`, `Notification`, `SystemSetting`
+- `Customer`, `Organization` (non-actor tenant, owned by Customer), `Supervisor`, `User`, `Token`, `Notification`, `SystemSetting`
 
 - For actor-sensitive models, require explicit `Ability` type and `can()` override using `iCan()`.
 - Enforce owner safety: validate ownership facts and deny with stable message keys.

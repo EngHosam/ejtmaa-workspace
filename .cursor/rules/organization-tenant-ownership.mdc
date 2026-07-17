@@ -1,0 +1,35 @@
+---
+description: Organization tenant ownership and me-bound hasOne GQL read invariants
+globs: backend/src/app/orm/models/Organization.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/gql/bridges/**/OrganizationBridge.ts,backend/src/app/gql/schemas/*Schema.ts,backend/src/app/gql/definitions/**/*.graphql
+alwaysApply: false
+---
+
+# Organization Tenant Ownership
+
+Authoritative contract: `docs/platforms/backend/contracts/organization-domain.md`.
+
+## ORM
+
+- `Organization` is a **non-actor** model.
+- Own via `customer_id` → `Customer.id` with a **real FK** (no `constraints: false`).
+- Enforce **one org per customer** with a unique index on `customer_id`.
+- Do not remodel this as polymorphic `owner_type` / `owner_id` unless product ownership changes.
+- On `Customer`: keep `hasOne(Organization)` + mixins `getOrganization` / `setOrganization` / `createOrganization`; do not move tenant identity fields onto Customer attrs.
+
+## Attrs layout
+
+Group Attrs comments as `//relations`, `//info`, `//virtual` and keep `attributes()` field order aligned.
+
+## Customer GQL root-one
+
+For customer-role `organization` when `Customer.hasOne(Organization)` uses association key `organization` matching bridge `ident`:
+
+- Resolver: `prepareOneGQLModel({ me: true })`
+- Bridge stays minimal (`ident` / `typeIdent` / `ormModel` + typed `{ me: true }` parent)
+- Do **not** add `as` or override `getRootOrmParent` / `getOrmFindOptions` unless the association key differs or default accessor scoping is insufficient
+
+## Supervisor GQL
+
+- List/detail roots live on supervisor schema; nested `_Customer.organization` requires `OrganizationBridge` registered.
+- Keep list queries bounded (`withListable`) and deterministically ordered.
+- Do not sync supervisor organization mirrors into `cpanel/` while that platform checkout is absent; website customer mirrors remain the only active frontend sync for this domain.

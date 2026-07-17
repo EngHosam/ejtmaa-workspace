@@ -1,5 +1,9 @@
 # CPanel GraphQL Mirror and Tooling
 
+## Current workspace status
+
+The `cpanel/` platform checkout is **temporarily removed** from this workspace. Do **not** create or sync GraphQL mirrors under `cpanel/src/types/gql/**` until the platform folder is restored. Backend supervisor SDL (including organization reads) remains authoritative in `backend/`; consumption/mirroring resumes with the platform.
+
 ## Purpose
 
 GraphQL mirror and tooling contract for `cpanel/` supervisor reads.
@@ -30,9 +34,12 @@ Authoritative backend paths:
 The local cpanel schema mirror contract targets:
 
 - `cpanel/src/types/gql/definitions/base.graphql`
+- `cpanel/src/types/gql/definitions/shared.graphql` (draft/reference copy when present)
 - `cpanel/src/types/gql/definitions/supervisor.graphql`
 
 These files are mirror artifacts, not cpanel-owned schema authoring surfaces.
+
+When cpanel is restored and mirrors are synced, supervisor SDL will include organization list/detail and `_Customer.organization` from the backend organization contract.
 
 ### 2.2 Generated type mirrors
 

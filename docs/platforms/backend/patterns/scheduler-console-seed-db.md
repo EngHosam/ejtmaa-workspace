@@ -32,21 +32,39 @@ Sub consoles:
 
 File: `backend/src/app/orm/patches/SeedPatch.ts`
 
-Current `init()` seeds:
-- system settings defaults (about, terms, privacy, seller_name = "Ejtmaa", VAT flags)
-- default supervisor admin account when none exists
-- demo customers via `seedDemoCustomers` (extension hook for demo rows)
+### `init()`
 
-`SeedPatch.update(version)` is reserved for future targeted maintenance actions. The checked-in switch currently rejects unknown versions with `NOT_VALID`.
+Seeds only:
+- system settings defaults (about, terms, privacy, rights, seller_name = "Ejtmaa", VAT flags)
+- default supervisor admin account when none exists
+
+Does **not** seed demo customers or organizations.
+
+### `update("test_seed")`
+
+Targeted demo seed via `DatabaseConsole.update` → `SeedPatch.update("test_seed")`:
+
+1. `seedDemoCustomers` — early-return if any customer exists
+2. `seedDemoOrganizations` — early-return if any organization exists
+
+Demo row values stay in `SeedPatch.ts` only; docs do not mirror them.
+
+Unknown `update` versions reject with `NOT_VALID`.
+
+Seed logo directory: `backend/static/upload/__seed/images/` (upload gitignore whitelists `__seed/`).
+
+Organization seed mechanism: `docs/platforms/backend/contracts/organization-domain.md` §7.
 
 ## 4) Safety rules
 
-- Jobs and seed actions must be idempotent
+- Jobs and seed actions must be idempotent (prefer early-return when target rows already exist)
 - Use transactions for multi-step writes
 - Observable logs for critical branches
 - Do not silently swallow failures
+- Keep demo data out of `init()` unless product bootstrap truly requires it
 
 ## Related
 
 - `docs/platforms/backend/playbooks/add-update-fix.md`
+- `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/invariants/backend.md`

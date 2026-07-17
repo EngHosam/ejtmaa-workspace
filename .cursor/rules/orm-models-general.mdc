@@ -12,6 +12,7 @@ alwaysApply: false
 - Require `Attrs` + `attributes()` + `initOptions()` + `boot()` + factory export pattern.
 - Keep naming consistent: `XModel`, `modelName`, `tableName`, typed relation mixins.
 - Ensure field parity between `Attrs` and `attributes()`, including virtual fields used by callers.
+- Group Attrs with `//relations`, `//info`, `//virtual` comments; keep `attributes()` order aligned with that grouping.
 - Add indexes/scopes only for actual query needs; no dead scopes.
 - Keep helper methods deterministic, typed, and domain-focused.
 - No resolver-only mutation security; requester/model contract remains source of truth.

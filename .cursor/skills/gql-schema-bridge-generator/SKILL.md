@@ -108,9 +108,8 @@ Refuse finalization until clarified if:
 - State which cookbook playbook(s) were used for complex fixes.
 - Explicitly state enum output wrapper checks (`_X` output type vs `_XValue` filter enum).
 - Explicitly state backend->frontend mirror sync status for:
-  - `website/src/types/gql/definitions/*.graphql` and `website/src/types/gql/gql-types/*.ts` (customer)
-  - `website/src/types/gql/definitions/*.graphql` and `website/src/types/gql/gql-types/*.ts` (customer)
-  - `cpanel/src/types/gql/definitions/*.graphql` and `cpanel/src/types/gql/gql-types/*.ts` (supervisor)
+  - `website/src/types/gql/definitions/*.graphql` and `website/src/types/gql/gql-types/*.ts` (customer) when `website/` exists
+  - `cpanel/src/types/gql/definitions/*.graphql` and `cpanel/src/types/gql/gql-types/*.ts` (supervisor) only when `cpanel/` exists; if absent, state deferred and do not create mirrors
 - Explicitly state role bridge base contract compliance (loadAttr + trans + toEnum + willPrepare).
 
 ## Quality Gates
@@ -134,22 +133,28 @@ If partially blocked:
 
 Current Ejtmaa GQL surfaces:
 
-- Customer: `me`, `notifications`
-- Supervisor: `me`, `notifications`, `customers`, `customer`, `customerStats`
+- Customer: `me`, `notifications`, `organization`
+- Supervisor: `me`, `notifications`, `customers`, `customer`, `customerStats`, `organizations`, `organization`
 
 Reference bridges:
 
 - `backend/src/app/gql/bridges/customer/MeBridge.ts`
 - `backend/src/app/gql/bridges/customer/NotificationBridge.ts`
+- `backend/src/app/gql/bridges/customer/OrganizationBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/MeBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/NotificationBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/CustomerStatsBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/OrganizationBridge.ts`
 
 Rules:
 
 - `CustomerStatsBridge.loadExtra` serves `total_count`.
 - `CustomerBridge` owns supervisor list/detail filter mapping.
+- Customer `organization` root-one: `prepareOneGQLModel({ me: true })` when bridge `ident` matches `Customer.hasOne` association key; do not invent `as` / `getRootOrmParent` overrides.
+- Supervisor `OrganizationBridge` owns organization list/detail filters; nested `_Customer.organization` needs the bridge registered.
 - Role bridge bases: `CustomerBridgeBase`, `SupervisorBridgeBase`.
 - Keep resolvers thin; ORM policy lives in bridges.
-- Sync mirrors after SDL changes: `website/` (`customer`), `cpanel/` (`supervisor`).
+- Sync mirrors after SDL changes: `website/` (`customer`) always when present.
+- `cpanel/` (`supervisor`) sync only when the `cpanel/` platform checkout exists; currently deferred (folder temporarily removed) — do not invent `cpanel/src/types/gql/**` mirrors.
+- Organization contract detail: `docs/platforms/backend/contracts/organization-domain.md`.

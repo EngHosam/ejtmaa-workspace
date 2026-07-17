@@ -177,3 +177,11 @@ If partially blocked:
 2. list the exact missing inputs
 3. provide the smallest follow-up question set
 4. do not invent unresolved architecture decisions
+
+## Ejtmaa Model Addendum (Strict)
+
+Current non-actor tenant reference: `Organization` (`docs/platforms/backend/contracts/organization-domain.md`).
+
+- Attrs comment groups: `//relations`, `//info`, `//virtual`; keep `attributes()` order aligned.
+- Single-owner FK to Customer uses `customer_id` with a real constraint and unique index when cardinality is one-to-one.
+- Do not use polymorphic `owner_*` for Organization unless product ownership changes.

@@ -31,6 +31,7 @@ Supervisor GQL (`supervisor.graphql`):
 - `customers` — paginated list
 - `customer(id)` — single record
 - `customerStats` — aggregate stats
+- `organizations` / `organization(id)` + nested `_Customer.organization` — on backend supervisor SDL; cpanel mirror/UI deferred while platform checkout is absent
 - `me`, `notifications`
 
 Requesters on cpanel platform:
@@ -46,4 +47,5 @@ Requesters on cpanel platform:
 
 - `docs/platforms/cpanel/overview.md`
 - `docs/platforms/backend/contracts/supervisor-customers-and-stats.md`
+- `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/supervisor-admin-read-surfaces.md`

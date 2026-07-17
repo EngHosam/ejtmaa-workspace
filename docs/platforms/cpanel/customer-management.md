@@ -127,7 +127,7 @@ These files are verification artifacts and must stay aligned with backend truth 
 |------|---------------|
 | `cpanel/src/resources/configs/routes.ts` | Registers `Customers` and `Customer` routes with `:formType(show)/:id` pattern. |
 | `cpanel/src/types/customer.ts` | Shared customer route/list query contracts (`CustomerFormType`, `CustomersRouteQuery`, `CustomersFilterScope`). |
-| `cpanel/src/types/gql/definitions/supervisor.graphql` | Local mirror of the backend supervisor GraphQL SDL expanded for customer list/detail/stats reads. |
+| `cpanel/src/types/gql/definitions/supervisor.graphql` | Local mirror of supervisor SDL when `cpanel/` is present (customer list/detail/stats; organization fields when synced — see organization-domain). Currently deferred: platform checkout temporarily absent. |
 | `cpanel/src/types/gql/gql-types/supervisor.ts` | Local generated GraphQL type mirror for the supervisor schema. |
 | `cpanel/src/app/ui/pages/Customers.tsx` | Route-owned customers page that composes the page title, stats section, and list table. |
 | `cpanel/src/app/ui/pages/Customer.tsx` | Route-owned single-customer form page that orchestrates `customer.read` / `customer.update` through `useShallowForm` and returns through `back()`. |

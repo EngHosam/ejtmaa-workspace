@@ -15,6 +15,7 @@
 | [`external-http-mount-and-myfatoorah-callbacks.md`](contracts/external-http-mount-and-myfatoorah-callbacks.md) | External HTTP and payment callbacks |
 | [`supervisor-admin-read-surfaces.md`](contracts/supervisor-admin-read-surfaces.md) | Supervisor admin read surfaces |
 | [`supervisor-customers-and-stats.md`](contracts/supervisor-customers-and-stats.md) | Customer management and stats |
+| [`organization-domain.md`](contracts/organization-domain.md) | Organization tenant ORM + GQL + seed |
 | [`socket-event-mirroring.md`](contracts/socket-event-mirroring.md) | Socket notify events |
 
 ## Patterns
