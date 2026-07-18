@@ -6,7 +6,8 @@ Current Ejtmaa meeting-roster surface:
 
 - ORM join row: who is invited/participating in a given `Meeting`,
 - participant `type` (not a free-form permissions JSONB column),
-- invite delivery tracking (`notified`, `delivery_status`, optional `first_online_at`),
+- invite delivery tracking (`notified`, `delivery_status`),
+- self check-in attendance (`attended_at`, optional `left_at`),
 - customer GraphQL **nested** read under `_Meeting.participants`,
 - website GQL mirrors for that nested surface.
 
@@ -18,7 +19,10 @@ Out of scope (not shipped):
 - GraphQL inverse `_Member.meetingParticipants` / `_Member.meetings` (not needed yet),
 - GraphQL inverse `_MeetingParticipant.meeting` (SDL exposes `member` only today),
 - permission helper implementation in code (matrix agreed; not a shipped module yet),
-- participant write requesters / mutations,
+- participant write requesters / mutations (including check-in / leave writers),
+- separate presence history / reconnect log table,
+- `first_online_at`, `joined_at`, or `attended` boolean (removed / declined — see §3.6),
+- chair-marked attendance override without self check-in (not in product rule for this surface),
 - supervisor MeetingParticipant GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for participants,
@@ -28,8 +32,9 @@ Out of scope (not shipped):
 
 `MeetingParticipant` is a **non-actor** roster join between `Meeting` and `Member`.
 
-- Profiles stay on `Member`; this row is meeting-scoped participation + invite delivery state.
+- Profiles stay on `Member`; this row is meeting-scoped participation + invite delivery + self check-in attendance.
 - Permissions are **derived from `type`** (fixed matrix in product contract §8) — not stored per row.
+- Attendance is **self check-in**: the participant records entry themselves; present for quorum/minutes = `attended_at` is set.
 - Tenant isolation is inherited via `Meeting.organization_id` (member must be same org; enforce on write paths when they ship).
 
 Primary identity: composite primary key `(meeting_id, member_id)` — one roster row per member per meeting.
@@ -48,7 +53,7 @@ Persistence names:
 ### 3.1 Attrs layout
 
 - `//relations` — `meeting_id`, `member_id`
-- `//info` — `type`, `notified`, `delivery_status`, `first_online_at`
+- `//info` — `type`, `notified`, `delivery_status`, `attended_at`, `left_at`
 
 ### 3.2 Columns
 
@@ -59,7 +64,8 @@ Persistence names:
 | `type` | STRING(191) | no | enum `meetingParticipantType` |
 | `notified` | BOOLEAN | no | default `false` |
 | `delivery_status` | STRING(191) | no | enum `meetingParticipantDeliveryStatus`; default `PENDING` |
-| `first_online_at` | DATE | yes | first online timestamp; default `null` |
+| `attended_at` | DATE | yes | self check-in time; null = not present; default `null` |
+| `left_at` | DATE | yes | self leave / session leave; default `null` |
 
 Exported TS types: `MeetingParticipantType`, `MeetingParticipantDeliveryStatus` from `G_Tr` enum keys.
 
@@ -99,6 +105,26 @@ None beyond the composite primary key in this change set.
 
 Mixin declare blocks on MeetingParticipant: `meeting` / `member` (`BelongsTo*`).
 
+### 3.6 Attendance semantics (product)
+
+| Field | Meaning |
+|---|---|
+| `attended_at` | When the participant checked themselves in; null means not present for report/quorum |
+| `left_at` | When they left (self leave or end-of-session stamp when writers ship); null means not left / never checked in |
+
+Axes stay separate from invite delivery:
+
+| Axis | Columns |
+|---|---|
+| Invite delivery | `notified`, `delivery_status` |
+| Attendance (self) | `attended_at`, `left_at` |
+
+Explicit declines for this surface:
+
+- Do **not** keep `first_online_at` alongside `attended_at` (redundant under self check-in).
+- Do **not** use an `attended` boolean when `attended_at` nullability already encodes present/absent.
+- Do **not** add `joined_at` as a second name for the same event.
+
 ## 4) Customer GraphQL surface
 
 SDL:
@@ -110,7 +136,7 @@ SDL:
 
 Implements `_Timestamps` & `_Pagination`.
 
-Info: `type`, `notified`, `delivery_status`, `first_online_at`.
+Info: `type`, `notified`, `delivery_status`, `attended_at`, `left_at`.
 
 Timestamps: `created_at`, `updated_at`.
 
@@ -155,13 +181,15 @@ File: `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts`
 | `_Meeting.participants` | `MeetingParticipantBridge` | `GetManyParent = MeetingModel` |
 | `_MeetingParticipant.member` | `MemberBridge` | `GetOneParent` includes `MeetingParticipantModel` |
 
-Current `MemberBridge` shape:
+Current `MemberBridge` shape (includes other meeting-child parents beyond this domain):
 
 ```ts
 export type GetOneParent =
     | MemberModel
     | MeetingModel
     | MeetingParticipantModel
+    | VoteModel
+    | TalkRecordModel
     | { me: true; id: string };
 ```
 
@@ -216,6 +244,9 @@ Notes:
 | `belongsToMany` Meeting ↔ Member | Removed; use `hasMany` join only |
 | Root participant queries | Declined |
 | `_Member` → meetings / meetingParticipants GQL | Not needed yet (admin path is meeting → roster → member) |
+| Dual join stamps (`first_online_at` + `attended_at`) | Declined; self check-in uses `attended_at` only |
+| `attended` boolean | Declined; nullability of `attended_at` is enough |
+| Chair-only attendance mark without self check-in | Not in current product rule |
 
 ## 10) Failure modes (read path)
 
@@ -232,25 +263,36 @@ No separate root participant failure modes (no root queries).
 
 ## 11) Traceability map
 
+### 11.1 Attendance field change set (this work)
+
 | Path | Role | Section |
 |---|---|---|
-| `backend/src/app/orm/models/MeetingParticipant.ts` | ORM source of truth | §3 |
+| `backend/src/app/orm/models/MeetingParticipant.ts` | columns `attended_at` / `left_at`; removed `first_online_at` / `attended` | §3, §3.6 |
+| `backend/src/app/gql/definitions/customer.graphql` | `_MeetingParticipant` info fields | §4 |
+| `backend/src/app/gql/gql-types/customer.ts` | Generated from SDL | §7 (not line-narrated) |
+| `website/src/types/gql/definitions/customer.graphql` | Customer SDL mirror | §7 |
+| `website/src/types/gql/gql-types/customer.ts` | Generated type mirror | §7 (not line-narrated) |
+| `docs/platforms/backend/contracts/meeting-participant-domain.md` | This contract | all |
+| `.cursor/rules/meeting-participant-roster.mdc` | Attendance invariants | governance |
+| `.cursor/skills/orm-model-generator/SKILL.md` | ORM generator note | governance |
+| `.cursor/skills/gql-schema-bridge-generator/SKILL.md` | GQL generator note | governance |
+
+### 11.2 Broader participant surface (unchanged in this work; still authoritative)
+
+| Path | Role | Section |
+|---|---|---|
 | `backend/src/app/orm/models/Meeting.ts` | `hasMany` `participants` + mixins | §3.5 |
 | `backend/src/app/orm/models/Member.ts` | `hasMany` MeetingParticipant + mixins | §3.5 |
 | `backend/src/resources/trans/ar/general.ts` | participant enums AR | §3.3 |
 | `backend/src/resources/trans/en/general.ts` | participant enums EN | §3.3 |
 | `backend/src/app/gql/definitions/base.graphql` | participant GQL enum wrappers | §4 |
-| `backend/src/app/gql/definitions/customer.graphql` | `_MeetingParticipant` + `_Meeting.participants` | §4 |
 | `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts` | nested bridge | §4–§5 |
 | `backend/src/app/gql/bridges/customer/MemberBridge.ts` | `GetOneParent` includes join model | §4 |
 | `backend/src/app/gql/schemas/CustomerSchema.ts` | register bridge (no new roots) | §4 |
 | `backend/src/app/gql/gql-types/base.ts` | Generated | §7 |
-| `backend/src/app/gql/gql-types/customer.ts` | Generated | §7 |
 | `backend/src/app/gql/gql-types/supervisor.ts` | Generated (base enums); no participant roots | §7 |
 | `website/src/types/gql/definitions/base.graphql` | Mirror | §7 |
-| `website/src/types/gql/definitions/customer.graphql` | Mirror | §7 |
 | `website/src/types/gql/gql-types/base.ts` | Mirror | §7 |
-| `website/src/types/gql/gql-types/customer.ts` | Mirror | §7 |
 | `backend/.types/models.ts` | Generated registry (gitignored) | excluded from narrative |
 
 ## Related

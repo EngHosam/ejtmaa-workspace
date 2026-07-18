@@ -22,9 +22,15 @@ Authoritative contract: `docs/platforms/backend/contracts/meeting-participant-do
 - Do **not** store a free-form permissions JSONB or a `can_vote` boolean on the row.
 - Session permissions are fixed per type (see domain contract §8). Implement as a helper when session/socket work ships — do not invent a parallel ACL on `Member`.
 
+## Attendance
+
+- Self check-in: optional `attended_at` + optional `left_at` only.
+- Present for report = `attended_at` is set. No separate `first_online_at` / `attended` boolean / `joined_at`.
+
 ## Customer GQL
 
 - Nested only: `_Meeting.participants: [_MeetingParticipant]` with `member: _Member`.
+- Expose attendance as `attended_at`, `left_at` with the rest of the join-row info.
 - `MeetingParticipantBridge.ident = "participants"` must match Meeting association `as`.
 - No root `meetingParticipants` / `meetingParticipant` queries unless product reopens that decision.
 - Do **not** expose FK scalars `meeting_id` / `member_id` on `_MeetingParticipant`.
