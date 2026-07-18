@@ -1,0 +1,44 @@
+---
+description: MyFatoorahInvoice + subscription payment invariants — related_data union, no PENDING subscription, finalize entitlement
+globs:
+  - backend/src/app/orm/models/MyFatoorahInvoice.ts
+  - backend/src/app/orm/models/Subscription.ts
+  - backend/src/app/orm/models/Customer.ts
+  - backend/src/app/orchestrator/requesters/SubscriptionRequester.ts
+  - backend/src/app/http/controllers/external/payments/**
+  - backend/src/app/helpers/CustomerSubscriptionPaymentMethods.ts
+  - backend/src/app/gql/bridges/customer/MeBridge.ts
+  - docs/platforms/backend/contracts/myfatoorah-invoice-payment-domain.md
+alwaysApply: false
+---
+
+# MyFatoorah invoice / subscription payment
+
+Authoritative contract: `docs/platforms/backend/contracts/myfatoorah-invoice-payment-domain.md`.
+
+## Ownership and layering
+
+- Invoice owner is **Customer** (`customer_id` real FK) — not Organization, not polymorphic.
+- Checkout session = `MyFatoorahInvoice`. Entitlement = `Subscription` only after paid success.
+- Do **not** put `PENDING` / `CANCELED` on `Subscription`.
+
+## `related_data`
+
+- Discriminated union on `pay_for`. Today: `SUBSCRIPTION` arm (`plan_id`, `plan_billing_period`, optional `subscription_id`).
+- Soft ids only inside arms — **no** ORM FK to Plan/Subscription.
+- Shared money = invoice column `amount` only. Never put money fields inside arms. No `payed_amount`.
+
+## Writes
+
+- Start payment: requester `subscription.subscribe` creates `PENDING` invoice + MF URL; no Subscription row yet.
+- On first finalize `COMPLETED`: call `Subscription.subscribe(...)` static, then write `related_data.subscription_id`. Idempotent on re-entry.
+- Do not duplicate replace+create outside that static.
+
+## GQL
+
+- Allowed: `subscriptionPaymentMethods` (helper resolver, no Bridge), `_Me.canSubscribe(planId)`.
+- Forbidden unless product asks: invoice list/detail roots, `_MyFatoorahInvoice` bridge.
+
+## Out of scope unless product asks
+
+- Website payment UI, cpanel invoice UI, stale-PENDING reconcile scheduler.

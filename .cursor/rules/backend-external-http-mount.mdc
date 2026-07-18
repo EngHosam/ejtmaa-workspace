@@ -12,12 +12,13 @@ alwaysApply: false
 
 ## Contract
 
-- **Authoritative doc**: `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md`
+- **Authoritative docs**: `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md` (mount) and `docs/platforms/backend/contracts/myfatoorah-invoice-payment-domain.md` (invoice + entitlement on finalize).
 - **Callbacks**: MyFatoorah `CallBackUrl` / `ErrorUrl` use **`route("/external", ...)`** only — not `/website` or `/app` prefixes for payment returns.
 - **Platform segment**: Callers use **`platform: "website"`** in `MyFatoorah.createPaymentUrl`.
 - **Middleware group `external`**: currently **`compression`** and **`json`** only — do not add `granting`, `local`, `errors_funnel`, or `query_values` without an explicit product/security decision and doc update.
+- **Finalize**: first `COMPLETED` for subscription arm → `Subscription.subscribe` + soft `related_data.subscription_id` (idempotent). Do not create entitlement on `FAILED`/`CANCELED`.
 - **Errors**: `ErrorsFunnelMiddleware` does not whitelist **`external`**; unhandled errors on this mount fall through to the global `errorsFunnel` behavior when `req.errorsFunnel` is unset.
-- **Controllers**: live under `backend/src/app/http/controllers/external/`; autoload must eventually expose **`external`** in `backend/.types/controllers.ts` after serve/build.
+- **Controllers**: live under `backend/src/app/http/controllers/external/`; autoload must expose **`external`** in `backend/.types/controllers.ts` after serve/build.
 
 ## Anti-patterns
 

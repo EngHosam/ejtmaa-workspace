@@ -11,13 +11,15 @@ Current Ejtmaa plan (product catalog / الباقة) surface:
 
 Out of scope (not shipped):
 
-- `MyFatoorahInvoice` / payment session wiring,
 - plan write requesters / mutations / supervisor CRUD GQL,
 - SKU `code` column (explicitly rejected — identity is `id` + MultiLang `name`),
 - naming the model `Package` (language-sensitive; use `Plan`),
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent).
 
-Related shipped surface (separate contract): customer `Subscription` entitlement reads — see `subscription-domain.md`.
+Related shipped surfaces (separate contracts):
+
+- customer `Subscription` entitlement — `subscription-domain.md`
+- gateway checkout via `MyFatoorahInvoice` — `myfatoorah-invoice-payment-domain.md`
 
 ## 2) Domain purpose
 
@@ -28,11 +30,12 @@ Related shipped surface (separate contract): customer `Subscription` entitlement
 - Does **not** store payment or subscription state.
 - Changing catalog prices later must not rewrite historical purchases (those snapshot on `Subscription`).
 - Customer GQL exposes **ACTIVE** plans only for list and detail.
+- Payment method listing and subscribe amount resolve from these catalog prices for the chosen period.
 
 Layering:
 
 ```text
-Plan (catalog) ← Subscription (customer entitlement) ← MyFatoorahInvoice (gateway session, not shipped)
+Plan (catalog) ← Subscription (customer entitlement) ← MyFatoorahInvoice (gateway session)
 ```
 
 ## 3) ORM model
@@ -213,6 +216,7 @@ Existing scripts only:
 - `docs/platforms/backend/contracts/subscription-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/patterns/scheduler-console-seed-db.md`
-- `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md` (payment mount target; not yet wired to Plan)
+- `docs/platforms/backend/contracts/myfatoorah-invoice-payment-domain.md`
+- `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md`
 - `docs/platforms/website/graphql-mirror-and-tooling.md`
 - `.cursor/rules/plan-catalog-domain.mdc`

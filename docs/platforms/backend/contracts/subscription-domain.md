@@ -6,19 +6,21 @@ Current Ejtmaa subscription (الاشتراك) surface:
 
 - ORM persistence for customer-owned entitlement rows (`subscriptions` table),
 - snapshot of catalog commercial terms at purchase time,
+- static `Subscription.subscribe` for paid entitlement create (replace prior `ACTIVE`),
 - customer GraphQL reads: roots `subscriptions` / `subscription(id)`, nested `_Me.currentSubscription` and `_Subscription.plan`,
+- `_Me.canSubscribe(planId)` ability exposure (policy on `Customer.can`),
 - hourly scheduler promotion of overdue `ACTIVE` rows to `EXPIRED`,
 - website GraphQL mirrors for those reads,
 - localization for `subscriptionStatus`.
 
+Payment session create + finalize live in `myfatoorah-invoice-payment-domain.md` (requester `subscription.subscribe` starts checkout; finalize calls `Subscription.subscribe`).
+
 Out of scope (not shipped):
 
-- subscribe / renew / replace write requesters or mutations,
-- static lifecycle helpers on the ORM model (explicitly rejected — writers belong in requesters later),
-- `MyFatoorahInvoice` / payment session wiring,
+- renew-specific requester beyond `subscribe`,
 - supervisor Subscription GQL / cpanel mirrors,
 - seed rows for subscriptions,
-- statuses `PENDING` / `CANCELED` (checkout belongs on invoice later; no subscription row before entitlement).
+- statuses `PENDING` / `CANCELED` on Subscription (checkout belongs on `MyFatoorahInvoice`; no subscription row before entitlement).
 
 ## 2) Domain purpose
 
@@ -28,12 +30,12 @@ Out of scope (not shipped):
 - Catalog link `plan_id` → Plan.
 - Snapshots commercial terms so later Plan price/limit edits do not rewrite history.
 - Billing period is chosen at subscribe time and stored on the subscription (`plan_billing_period` + `plan_billing_period_count`); Plan holds both list prices.
-- Natural end → `EXPIRED` (scheduler). Mid-cycle replace/renew product rule (future writers): insert a **new** row; previous `ACTIVE` → `REPLACED`.
+- Natural end → `EXPIRED` (scheduler). Mid-cycle replace/renew: insert a **new** row via `Subscription.subscribe`; previous `ACTIVE` → `REPLACED`.
 
 Layering:
 
 ```text
-Plan (catalog) ← Subscription (customer entitlement) ← MyFatoorahInvoice (gateway session, not shipped)
+Plan (catalog) ← Subscription (customer entitlement) ← MyFatoorahInvoice (gateway session)
 ```
 
 ## 3) ORM model
@@ -80,7 +82,7 @@ No payment gateway columns on this model.
 |---|---|
 | `ACTIVE` | Current entitlement (may still be past `ends_at` until scheduler runs) |
 | `EXPIRED` | Natural end (`ends_at <= now`, set by task or future writer) |
-| `REPLACED` | Superseded by a newer subscription row (future writers) |
+| `REPLACED` | Superseded by a newer subscription row (`Subscription.subscribe`) |
 
 Do **not** reintroduce `PENDING` / `CANCELED` without an explicit product decision.
 
@@ -118,8 +120,8 @@ Keys under `backend/src/resources/trans/{ar,en}/general.ts` → `enums`:
 
 ### 3.8 Write path policy
 
-- **No** static `subscribe` / renew / expire helpers on the model class.
-- Entitlement writes belong in requesters when designed.
+- Entitlement create: static `Subscription.subscribe(op)` — snapshots Plan limits, sets calendar `starts_at`/`ends_at` from billing period, marks prior customer `ACTIVE` rows `REPLACED`, inserts new `ACTIVE`.
+- Callers (payment finalize, future requesters) must use that static; do not duplicate replace+create.
 - Scheduler may bulk-update status only (see §5).
 
 ## 4) GraphQL (customer)
@@ -127,7 +129,7 @@ Keys under `backend/src/resources/trans/{ar,en}/general.ts` → `enums`:
 ### 4.1 SDL
 
 - `backend/src/app/gql/definitions/base.graphql` — `_SubscriptionStatus` / `_SubscriptionStatusValue`
-- `backend/src/app/gql/definitions/customer.graphql` — type `_Subscription`, roots `subscriptions` / `subscription(id)`, `_Me.currentSubscription`, `_Subscription.plan`
+- `backend/src/app/gql/definitions/customer.graphql` — type `_Subscription`, roots `subscriptions` / `subscription(id)`, `_Me.currentSubscription`, `_Me.canSubscribe(planId)`, `_Subscription.plan`
 
 ### 4.2 Type `_Subscription`
 
@@ -273,7 +275,9 @@ Existing scripts only:
 - `docs/platforms/backend/contracts/plan-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/patterns/scheduler-console-seed-db.md`
-- `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md` (payment mount target; not yet wired)
+- `docs/platforms/backend/contracts/myfatoorah-invoice-payment-domain.md`
+- `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md`
 - `docs/platforms/website/graphql-mirror-and-tooling.md`
 - `.cursor/rules/subscription-domain.mdc`
+- `.cursor/rules/myfatoorah-invoice-payment-domain.mdc`
 - `.cursor/rules/gql-association-auto-relations.mdc`

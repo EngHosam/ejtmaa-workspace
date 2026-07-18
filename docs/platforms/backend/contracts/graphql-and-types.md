@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus`, `_PlanStatus`, `_PlanBillingPeriod`, `_SubscriptionStatus` (+ Value enums)
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus`, `_PlanStatus`, `_PlanBillingPeriod`, `_SubscriptionStatus`, `_PaymentMethod` (+ Value enums where applicable)
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.
@@ -31,9 +31,11 @@ Root queries (from `customer.graphql`):
 - `plan(id)` — single ACTIVE catalog plan (`{ public: true, id }`)
 - `subscriptions` — current customer's subscription history (`{ me: true }`)
 - `subscription(id)` — single subscription owned by current customer
+- `subscriptionPaymentMethods(planId, billingPeriod)` — MyFatoorah methods for ACTIVE plan price (helper resolver; not a Bridge)
 
 Nested (cardinality-safe):
 - `_Me.currentSubscription: _Subscription` (ORM `as: "currentSubscription"`; auto via MeBridge relations → `SubscriptionBridge`; ACTIVE + not ended)
+- `_Me.canDeleteNotifications: _Ability` / `_Me.canSubscribe(planId: ID!): _Ability` (MeBridge extras)
 - `_Subscription.plan: _Plan`
 - `_Member.organization: _Organization` (`belongsTo`, expected count 1)
 - `_MessageTemplate.organization: _Organization` (`belongsTo`, expected count 1)
@@ -69,7 +71,8 @@ Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 Org-owned intermediate base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts`.
 
 Plan catalog detail: `docs/platforms/backend/contracts/plan-domain.md`.  
-Subscription entitlement detail: `docs/platforms/backend/contracts/subscription-domain.md`.
+Subscription entitlement detail: `docs/platforms/backend/contracts/subscription-domain.md`.  
+Invoice / payment checkout detail: `docs/platforms/backend/contracts/myfatoorah-invoice-payment-domain.md`.
 
 ## Supervisor schema surface
 
@@ -122,4 +125,5 @@ Message template domain detail: `docs/platforms/backend/contracts/message-templa
 Meeting domain detail: `docs/platforms/backend/contracts/meeting-domain.md`.  
 Talk-record domain detail: `docs/platforms/backend/contracts/talk-record-domain.md`.  
 Plan catalog detail: `docs/platforms/backend/contracts/plan-domain.md`.  
-Subscription domain detail: `docs/platforms/backend/contracts/subscription-domain.md`.
+Subscription domain detail: `docs/platforms/backend/contracts/subscription-domain.md`.  
+Invoice / payment checkout detail: `docs/platforms/backend/contracts/myfatoorah-invoice-payment-domain.md`.

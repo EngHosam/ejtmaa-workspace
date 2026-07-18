@@ -22,7 +22,7 @@ alwaysApply: false
 
 ## Required
 
-- Requesters: `visitor.auth`, `customer.customer`, `customer.notification` from `requesters.website.ts`.
+- Requesters: `visitor.auth`, `customer.customer`, `customer.notification`, `customer.subscription` from `requesters.website.ts`.
 - GQL mirror: `base` + `customer` only.
 - Socket: `customer` namespace + customer event payloads.
 - `graphql.config.yml` schema lists reference `base.graphql` and (where the subtree hosts customer operations) `customer.graphql` only — never `supervisor.graphql`.

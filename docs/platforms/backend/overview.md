@@ -31,7 +31,7 @@ Provider graph:
 ## 3) Active Domain Surface
 
 ORM models (`backend/src/app/orm/models/`):
-- `Customer` — customer actor profile; `hasOne Organization` via `customer_id`; `hasMany Subscription` + scoped `hasOne` `currentSubscription`
+- `Customer` — customer actor profile; `hasOne Organization` via `customer_id`; `hasMany Subscription` + scoped `hasOne` `currentSubscription`; `hasMany MyFatoorahInvoice`; Ability `SUBSCRIPTION.subscribe`
 - `Organization` — tenant entity owned by a customer (`customer_id`, one-to-one); `hasMany Member`, `hasMany MessageTemplate`, `hasMany Meeting`
 - `Member` — non-actor org person (UUID `id` + `access_token`); belongs to Organization; ORM `hasMany` MeetingParticipant (no Member→meetings GQL yet)
 - `MessageTemplate` — non-actor org message library (`WHATSAPP` | `EMAIL`); belongs to Organization
@@ -42,7 +42,8 @@ ORM models (`backend/src/app/orm/models/`):
 - `Vote` — durable ballot under Decision (composite PK `(decision_id, member_id)`; `YES`|`NO`)
 - `TalkRecord` — durable talk-queue row under Meeting
 - `Plan` — non-actor platform catalog tier (الباقة; `plans` table; no tenant FK; `monthly_price` + `yearly_price` + limits); `hasMany Subscription`
-- `Subscription` — non-actor customer entitlement (`customer_id` payer; snapshot commercial terms; statuses `ACTIVE` \| `EXPIRED` \| `REPLACED`); `Customer.hasOne` scoped `currentSubscription`
+- `Subscription` — non-actor customer entitlement (`customer_id` payer; snapshot commercial terms; statuses `ACTIVE` \| `EXPIRED` \| `REPLACED`); static `subscribe`; `Customer.hasOne` scoped `currentSubscription`
+- `MyFatoorahInvoice` — non-actor gateway payment session (`customer_id` payer; `related_data` union; statuses `PENDING` \| `COMPLETED` \| `FAILED` \| `CANCELED`); no GQL roots
 - `Supervisor` — supervisor actor profile
 - `User` — shared user identity
 - `Token` — auth tokens
@@ -54,18 +55,19 @@ ORM models (`backend/src/app/orm/models/`):
 ### HTTP
 
 Configured in `backend/src/resources/configs/http/express.ts`:
-- Route groups: `/website`, `/cpanel`
-- Middleware groups: `website`, `cpanel`
+- Route groups: `/website`, `/external`, `/cpanel`
+- Middleware groups: `website`, `external` (`compression` + `json` only), `cpanel`
 
-Controllers autoload from `backend/src/app/http/controllers/website/` and `backend/src/app/http/controllers/cpanel/`.
+Controllers autoload from `backend/src/app/http/controllers/website/`, `backend/src/app/http/controllers/external/`, and `backend/src/app/http/controllers/cpanel/`.
 
-### Requesters (6)
+### Requesters (7)
 
 | Requester | Ident | Platforms |
 |---|---|---|
 | AuthRequester | `auth` | website (visitor), cpanel (visitor) |
 | CustomerRequester | `customer` | website (customer), cpanel (supervisor) |
 | NotificationRequester | `notification` | website (customer) |
+| SubscriptionRequester | `subscription` | website (customer) — `subscribe` |
 | SupervisorRequester | `supervisor` | cpanel (supervisor) |
 | WebsiteSettingsRequester | `website_settings` | cpanel (supervisor) |
 | PlatformSettingsRequester | `platform_settings` | cpanel (supervisor) |
@@ -99,4 +101,6 @@ Config: `backend/src/resources/configs/socket/io.ts`
 - `docs/platforms/backend/contracts/meeting-domain.md`
 - `docs/platforms/backend/contracts/plan-domain.md`
 - `docs/platforms/backend/contracts/subscription-domain.md`
+- `docs/platforms/backend/contracts/myfatoorah-invoice-payment-domain.md`
+- `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md`
 - `docs/invariants/backend.md`

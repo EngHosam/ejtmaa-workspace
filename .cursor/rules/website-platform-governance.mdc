@@ -42,7 +42,7 @@ Actor and backend coupling:
 - **Target:** typed website actor model is **CUSTOMER + visitor** on `/website`.
 - Backend integration aligns with `/website` surface: `FORMS.R` (visitor), `FORMS.CUSTOMER.R`, `DATA_ADAPTERS.GQL`, `CUSTOM.START`.
 - GQL mirrors: `base` + `customer` only under `src/types/gql/**`. Supervisor mirrors are a **cpanel** concern.
-- Requesters: `auth`, `customer`, `notification` on website platform (see `backend/requesters.website.ts`).
+- Requesters: `auth`, `customer`, `notification`, `subscription` on website platform (see `backend/requesters.website.ts`).
 
 Web-native authoring:
 - Author for SSR web using documented `cpanel/` patterns where applicable.

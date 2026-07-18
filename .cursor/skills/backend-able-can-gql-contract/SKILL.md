@@ -307,6 +307,13 @@ If GQL says an action is allowed but requester denies it, the task is incomplete
 - SDL, generated types, bridges, and app mirrors are synchronized when SDL changes.
 - No external project names appear in guidance, comments, docs, or final explanation.
 
+## Ejtmaa addendum (subscription payment)
+
+- `Customer.Ability.SUBSCRIPTION.sub = "subscribe"` with optional `plan` ModelRef.
+- Requester `subscription.subscribe` uses `throwMode: true` with resolved Plan instance.
+- GQL: `_Me.canSubscribe(planId: ID!)` MeBridge extra → same `can` with `visualMode` (`getSubAsks` for `planId`).
+- Contract: `docs/platforms/backend/contracts/myfatoorah-invoice-payment-domain.md`.
+
 ## Verification
 
 - For model/requester/GQL code changes, run only existing scripts from the touched package.

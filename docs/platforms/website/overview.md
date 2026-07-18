@@ -23,8 +23,8 @@ See `docs/platforms/website/ui-foundation.md`.
 
 ## Backend coupling
 
-- Requesters: `visitor.auth`, `customer.customer`, `customer.notification` (see `src/types/requesters/requesters.website.ts`)
-- GQL mirrors: `base` + `customer` (`me` + `currentSubscription` / `_Subscription`, `notifications`, `organization`, `members`, `member`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `talkRecords` / `_TalkRecord`, `plans` / `plan` / `_Plan`, `subscriptions` / `subscription`, `me.canDeleteNotifications`)
+- Requesters: `visitor.auth`, `customer.customer`, `customer.notification`, `customer.subscription` (`subscribe`) (see `src/types/requesters/requesters.website.ts`)
+- GQL mirrors: `base` + `customer` (`me` + `currentSubscription` / `_Subscription`, `me.canDeleteNotifications`, `me.canSubscribe(planId)`, `notifications`, `organization`, `members`, `member`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `talkRecords` / `_TalkRecord`, `plans` / `plan` / `_Plan`, `subscriptions` / `subscription`, `subscriptionPaymentMethods` / `_PaymentMethod`)
 - Socket namespace: `customer`
 - Events: `onCustomerEventDate` (payload `OnCustomerEventDate { type: "UPDATED" }`)
 - Backend mount: `/website` (test `http://192.168.1.10:3206/website`, prod `https://backend.ejtmaa.live/website`)

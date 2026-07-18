@@ -26,9 +26,9 @@ Authoritative contract: `docs/platforms/backend/contracts/subscription-domain.md
 
 ## Writes and jobs
 
-- No static subscribe/lifecycle helpers on the ORM model — requesters own writers when designed.
-- Renew/replace product rule: new row; previous `ACTIVE` → `REPLACED`. Natural end → `EXPIRED`.
-- `ExpireSubscriptionsTask` (hourly): `ACTIVE` + `ends_at <= now` → `EXPIRED`.
+- Entitlement create: `Subscription.subscribe(...)` (static) — new `ACTIVE` row, prior customer `ACTIVE` → `REPLACED`, calendar window from period.
+- Payment finalize / requesters call that static; do not duplicate replace+create inline.
+- Natural end → `EXPIRED` via `ExpireSubscriptionsTask` (hourly): `ACTIVE` + `ends_at <= now` → `EXPIRED`.
 
 ## Customer GQL
 

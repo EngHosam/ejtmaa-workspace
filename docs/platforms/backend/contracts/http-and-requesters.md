@@ -7,13 +7,15 @@ Configured in `backend/src/resources/configs/http/express.ts`.
 | Mount | Status | Actor granting | Route module |
 |---|---|---|---|
 | `/website` | Active | visitor, customer | `backend/src/app/http/routes/website.ts` |
+| `/external` | Active | none (callback mount) | `backend/src/app/http/routes/external.ts` |
 | `/cpanel` | Active | visitor (login), supervisor | `backend/src/app/http/routes/cpanel.ts` |
 
-Client portals are SSR frontends on `/website` and `/cpanel`.
+Client portals are SSR frontends on `/website` and `/cpanel`. Payment gateway callbacks use `/external` — see `external-http-mount-and-myfatoorah-callbacks.md`.
 
 ## Middleware groups
 
 - `website` — CORS, compression, json, query_values, granting (customer), local, errors_funnel
+- `external` — compression, json only (no granting / local / errors_funnel / query_values)
 - `cpanel` — CORS, compression, json, query_values, granting (visitor for login, supervisor for authed), local, errors_funnel
 
 ## Requester dispatch
@@ -30,16 +32,19 @@ Cpanel controllers:
 - `backend/src/app/http/controllers/cpanel/forms/SupervisorRequesterController.ts` — visitor login and supervisor writes
 - `backend/src/app/http/controllers/cpanel/data_adapters/GQLAdapterController.ts` — supervisor GQL reads
 
-## Active requesters (6)
+## Active requesters (7)
 
 | Requester | `@requester` ident | Website subs | Cpanel subs |
 |---|---|---|---|
 | AuthRequester | `auth` | visitor | visitor |
 | CustomerRequester | `customer` | customer | supervisor |
 | NotificationRequester | `notification` | customer | — |
+| SubscriptionRequester | `subscription` | customer (`subscribe`) | — |
 | SupervisorRequester | `supervisor` | — | supervisor |
 | WebsiteSettingsRequester | `website_settings` | — | supervisor |
 | PlatformSettingsRequester | `platform_settings` | — | supervisor |
+
+Subscription checkout detail: `myfatoorah-invoice-payment-domain.md`.
 
 Source files: `backend/src/app/orchestrator/requesters/`
 Registration: `backend/requesters.website.ts`, `backend/requesters.cpanel.ts`
