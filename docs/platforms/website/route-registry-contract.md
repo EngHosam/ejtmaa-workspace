@@ -105,7 +105,7 @@ Shipped: `CustomerHome`, `CustomerMembers`. Remaining workspace routes are plann
 |----------|------|--------|
 | `CustomerHome` | `/customer` | shipped (`CUSTOMER_MAIN`) |
 | `CustomerMeetings` | `/customer/meetings` (target) | planned — drawer tile |
-| `CustomerMembers` | `/customer/members` | shipped — empty page + drawer tile; `breadcrumb: { parent: CustomerHome }` |
+| `CustomerMembers` | `/customer/members` | shipped — directory (ResultLane + search); drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-members.md` |
 | `CustomerOrganization` | `/customer/organization` (target) | planned — drawer tile |
 | `CustomerMessageTemplates` | `/customer/message-templates` (target) | planned — drawer tile |
 | `CustomerSubscription` | `/customer/subscription` (target) | planned — drawer tile |
@@ -143,7 +143,7 @@ See `flow-auth.md` §4A and `.cursor/rules/website-auth-flow.mdc`.
 | `website/src/app/services/router.ts` | website | `publicRoutes`, `getMyHomeIdentify` → `CustomerHome` for customer |
 | `website/src/app/ui/layouts/CustomerMainLayout.tsx` | website | `CUSTOMER_MAIN` shell + sub-header offset |
 | `website/src/app/ui/pages/customer/CustomerHome.tsx` | website | empty authed home |
-| `website/src/app/ui/pages/customer/CustomerMembers.tsx` | website | empty members + W38 breadcrumb |
+| `website/src/app/ui/pages/customer/CustomerMembers.tsx` | website | members directory host + W38 breadcrumb (`flow-customer-members.md`) |
 | `docs/platforms/website/flow-customer-shell.md` | root | shell + drawer IA + breadcrumb / `HomeMark` |
 
 ## 8) Related documents and rules
@@ -153,3 +153,4 @@ See `flow-auth.md` §4A and `.cursor/rules/website-auth-flow.mdc`.
 - `.cursor/rules/website-route-registry-governance.mdc` — agent enforcement
 - `.cursor/rules/website-auth-flow.mdc` — `publicRoutes` + middleware
 - Per-feature flows under `docs/platforms/website/flow-*.md` — path columns reference this contract
+- `docs/platforms/website/flow-customer-members.md` — shipped `CustomerMembers` directory

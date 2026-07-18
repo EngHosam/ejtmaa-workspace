@@ -3,6 +3,7 @@ description: Website list and home dashboard adapters must use FORCE_RELOAD_ON_M
 globs:
   - website/src/app/ui/components/**/hooks/useCustomerDashboard.ts
   - website/src/app/ui/components/**/hooks/useCustomerNotifications*.ts
+  - website/src/app/ui/components/**/hooks/useCustomerMembers.ts
   - docs/platforms/website/data-flow-and-gql.md
   - docs/platforms/website/flow-*.md
   - docs/invariants/website.md
@@ -30,6 +31,8 @@ Route navigation unmounts the screen. Hooks keep stable adapter identities in `s
 - **Customer lists:** notifications and other paginated customer routes documented in `data-flow-and-gql.md`.
 
 Lazy pane activation via `shouldLoadStatus` + `useEffect` remains valid alongside `FORCE_RELOAD_ON_MOUNT` on the adapter hook.
+
+**Accepted equivalent (shipped members):** `useCustomerMembers` omits `enterMode` and instead `mLoad({ reload: true, query: adapterQuery })` from a `useEffect` keyed on the history-derived `adapterQuery`. That reload must still fire on remount and whenever the committed search changes. Do not replace it with client-side filtering of cached rows. Details: `flow-customer-members.md`, `.cursor/rules/website-customer-list-history-search.mdc`.
 
 ## Out of scope (keep LOAD_ON_MOUNT or existing contract)
 

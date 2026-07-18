@@ -1,0 +1,37 @@
+---
+description: ResultLane CardSkeleton must match the consuming card layout; use muted bones, not white/opaque listing placeholders
+globs:
+  - website/src/app/ui/components/ResultLane.tsx
+  - website/src/app/ui/components/CardSkeleton.tsx
+  - website/src/app/ui/components/customer/members/**
+  - docs/platforms/website/flow-customer-members.md
+alwaysApply: false
+---
+
+# ResultLane skeleton shape
+
+`ResultLane` currently hard-wires `CardSkeleton` for initial loading.
+
+## Required
+
+- `CardSkeleton` layout must **match the card shape** of the active ResultLane consumer (shipped: member identity card — circular avatar bone, text lines, trailing action bone).
+- Skeleton bones use a **muted** surface token (`semanticColor.inputMutedBackground` or equivalent), not a solid white/high-contrast block that reads as a finished empty card in light mode.
+- Card chrome (padding, radius, border/background) should echo the real card tokens (`cardBackground`, `shellBorder`, `semanticDims.card.radius`).
+
+## When adding a second ResultLane consumer with a different card
+
+Do **not** leave a mismatched shared skeleton. Either:
+
+- inject a `renderSkeleton` / skeleton slot into `ResultLane`, or
+- keep a consumer-specific lane wrapper — do not force a foreign card shape into `CardSkeleton`.
+
+## Forbidden
+
+- Reusing an unrelated listing/table skeleton (e.g. dense DataTable-style blocks) for the members identity card.
+- Opaque white bone fills that disappear or flash wrong in light theme.
+
+## Reference
+
+- `website/src/app/ui/components/CardSkeleton.tsx`
+- `website/src/app/ui/components/customer/members/CustomerMemberCard.tsx`
+- `docs/platforms/website/flow-customer-members.md` §6

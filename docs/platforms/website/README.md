@@ -27,6 +27,7 @@
 | Notifications | [`flow-notifications.md`](flow-notifications.md) | Notification list |
 | Static info | [`flow-static-info-pages.md`](flow-static-info-pages.md) | About Ejtmaa, legal pages |
 | Customer shell | [`flow-customer-shell.md`](flow-customer-shell.md) | Authed customer layout |
+| Customer members | [`flow-customer-members.md`](flow-customer-members.md) | Org member directory (search + ResultLane) |
 
 ## Invariants
 
@@ -105,7 +106,7 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 |---|---|---|
 | `src/types/requesters/requesters.website.ts` | `RequestersMap` (visitor.auth, customer.customer, customer.notification) | `repository-inventory.md` § Requesters; `data-flow-and-gql.md` § Actor maps; `overview.md` § Backend coupling |
 | `src/types/gql/definitions/base.graphql` | Shared SDL (scalars, `_Ability`, `_Notification*`, interfaces) | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors |
-| `src/types/gql/definitions/customer.graphql` | Customer SDL (`_Me` + `currentSubscription`, `_Organization`, `_Member`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant`, `_AgendaItem`, `_Decision`, `_Vote`, `_TalkRecord`, `_Plan`, `_Subscription`, `Query { me, notifications, organization, members, member, messageTemplates, messageTemplate, meetings, meeting, plans, plan, subscriptions, subscription }`; nested `_Subscription.plan`, `_Meeting.participants`, `_Meeting.agendaItems`, `_Meeting.decisions`, `_Decision.votes`, `_Meeting.talkRecords`) | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors |
+| `src/types/gql/definitions/customer.graphql` | Customer SDL (`_Me` + `currentSubscription`, `_Organization`, `_Member`, `_MemberFilter`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant`, `_AgendaItem`, `_Decision`, `_Vote`, `_TalkRecord`, `_Plan`, `_Subscription`, `Query { me, notifications, organization, members(filter), member, messageTemplates, messageTemplate, meetings, meeting, plans, plan, subscriptions, subscription }`; nested `_Subscription.plan`, `_Meeting.participants`, `_Meeting.agendaItems`, `_Meeting.decisions`, `_Decision.votes`, `_Meeting.talkRecords`) | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors; `flow-customer-members.md` |
 | `src/types/gql/definitions/shared.graphql` | Shared `Query { notifications }` extension stub | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors |
 | `src/types/gql/gql-types/base.ts` | Generated shared types | `graphql-mirror-and-tooling.md` §2 |
 | `src/types/gql/gql-types/customer.ts` | Generated customer types | `graphql-mirror-and-tooling.md` §2; `data-flow-and-gql.md` § Read path |
@@ -168,11 +169,26 @@ Full path map: [`flow-customer-shell.md`](flow-customer-shell.md) §12. Related 
 | `CUSTOMER_ME` + SSR hydrate | `flow-customer-shell.md` §6; `data-flow-and-gql.md`; `ssr-boot-and-startup.md` |
 | Routes / home identify | `route-registry-contract.md`; `overview.md` §6 |
 
+## Change set traceability — customer members directory
+
+Full path map: [`flow-customer-members.md`](flow-customer-members.md) §11. Backend filter: [`../backend/contracts/member-domain.md`](../backend/contracts/member-domain.md) §4–§5.
+
+| Concern | Documented where |
+|---|---|
+| `_MemberFilter` + bridge search | `member-domain.md`; `graphql-and-types.md` |
+| History key `members` + Enter commit | `flow-customer-members.md` §4; `.cursor/rules/website-customer-list-history-search.mdc` |
+| `CUSTOMER_GQL` + `customer-members` adapter | `flow-customer-members.md` §3; `data-flow-and-gql.md` |
+| ResultLane + member-shaped `CardSkeleton` | `flow-customer-members.md` §6; `.cursor/rules/website-result-lane-skeleton-shape.mdc` |
+| Chrome-only Add/Edit (no write forms) | `flow-customer-members.md` §8 |
+
 ## Governance
 
 - `.cursor/rules/website-platform-governance.mdc`
 - `.cursor/rules/website-customer-only-import-boundary.mdc`
 - `.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc`
 - `.cursor/rules/website-customer-utils-composed-marks.mdc`
+- `.cursor/rules/website-customer-list-history-search.mdc`
+- `.cursor/rules/website-result-lane-skeleton-shape.mdc`
 - `.cursor/skills/website-platform-governance/SKILL.md`
 - `.cursor/skills/website-customer-drawer-nav/SKILL.md`
+- `.cursor/skills/website-customer-result-lane-list/SKILL.md`

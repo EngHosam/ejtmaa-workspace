@@ -23,7 +23,7 @@ Main drawer (`src/app/ui/layouts/main-layout/drawer.ts`): one `business` section
 
 `AuthedAs = "CUSTOMER"`; auth reducer exposes `auth.customer.permissions`.
 
-Shared marks under `src/app/ui/components/`: `DrawerMenuIcon` (header + landing menu), `HomeMark` (breadcrumb root + drawer home tile; tones `ink` / `onPrimary`). Shared breadcrumb under `src/app/ui/components/`: `Breadcrumb` + `useBreadcrumbs` (**not** under `ui/base/`). Customer helpers under `customer/`: `HeaderIconButton`, `IdentityAvatar`, `CustomerSubHeader`, `hooks/useMe`. **Planned:** `CustomerBottomBar`, `BottomIcons`.
+Shared marks under `src/app/ui/components/`: `DrawerMenuIcon` (header + landing menu), `HomeMark` (breadcrumb root + drawer home tile; tones `ink` / `onPrimary`). Shared breadcrumb under `src/app/ui/components/`: `Breadcrumb` + `useBreadcrumbs` (**not** under `ui/base/`). Shared list-lane primitives: `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `Wrong`. Customer helpers under `customer/`: `HeaderIconButton`, `IdentityAvatar`, `CustomerSubHeader`, `hooks/useMe`, members directory (`hooks/useCustomerMembers`, `members/*` — `flow-customer-members.md`). **Planned:** `CustomerBottomBar`, `BottomIcons`.
 
 ## 2) Document shell
 
@@ -67,7 +67,8 @@ Customer drawer differs from the generic `Drawer` hero (no centered logo hero; i
 - **SegmentedPills**: tab/scope semantics; a11y label per option.
 - **Loadable**: spinner/progress surface for initial loading, submit-busy, and overlay loaders.
 - **Toast**: success/error notifications; translation-backed copy.
-- **Empty / Guest / LaneFailed / Able**: shared `Utils`-built primitives with stacking rules documented in `ui-foundation.md`.
+- **Empty / LaneFailed** (`Wrong.tsx`): absolute overlays for ResultLane; i18n `ui.components.wrong.*`. Guest / Able remain planned/target where not present.
+- **ResultLane**: responsive card grid + skeleton + load-more + empty/failed; consumer supplies `renderCard`. Current `CardSkeleton` is member-card shaped — see `flow-customer-members.md` §6 and `.cursor/rules/website-result-lane-skeleton-shape.mdc`.
 - **ThemeModeSwitch** / **LanguageSwitch**: paired single-toggle buttons. `ThemeModeSwitch` shows the **target** mode icon (`FiMoon` when light, `FiSun` when dark); `LanguageSwitch` shows the **target** language letters (`EN` when current is `ar`, `ع` when current is `en`) and switches via `changeLocale` (cookie + full reload). Both use `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius` (not pills), and live in the drawer hero identity zone, the header trailing cluster, and `BasicLayout`'s top-right row. See `brand-identity-alignment.md` § Canonical consumer pairings and `ui-foundation.md` § Localization & RTL.
 
 ## 6) Navigation stabilization

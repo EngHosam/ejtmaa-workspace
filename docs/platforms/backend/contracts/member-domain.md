@@ -10,7 +10,9 @@ Current Ejtmaa member surface:
 
 Also shipped:
 
-- demo members via `SeedPatch.update("test_seed")` → `seedDemoMembers` (mechanism only; payload in code).
+- demo members via `SeedPatch.update("test_seed")` → `seedDemoMembers` (mechanism only; payload in code),
+- optional server-side list filter `_MemberFilter.search` on root `members` (name / email / mobile `iLike`),
+- website authenticated members directory UI (read-only list + search + load-more) — see `docs/platforms/website/flow-customer-members.md`.
 
 Out of scope (not shipped):
 
@@ -19,7 +21,8 @@ Out of scope (not shipped):
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - role / permissions fields on Member (session permissions live on `MeetingParticipant.type` — see `meeting-participant-domain.md` §8),
 - nested `_Organization.members` (high cardinality — root list only),
-- nested `_Member.meetingParticipants` / `_Member.meetings` (not needed yet; admin path is meeting → roster → member).
+- nested `_Member.meetingParticipants` / `_Member.meetings` (not needed yet; admin path is meeting → roster → member),
+- additional filter fields beyond `search` (no status/scope/sort args on `_MemberFilter`).
 
 ## 2) Domain purpose
 
@@ -100,15 +103,26 @@ Not exposed:
 - `organization_id` column (use `organization` relation)
 - nested `_Organization.members` (B15 high-cardinality gate; use root list)
 
+### Filter input
+
+```graphql
+input _MemberFilter {
+    search: String
+}
+```
+
+- Optional. Omitted / null / whitespace-only → no text predicate (org-scoped list only).
+- Non-empty after trim → case-insensitive substring match (`Op.iLike` with `%…%`) on **`name` OR `email` OR `mobile`**.
+
 ### Root queries
 
-- `members: [_Member]`
+- `members(filter: _MemberFilter): [_Member]`
 - `member(id: ID!): _Member`
 
 Resolvers (`CustomerSchema`):
 
 ```ts
-prepareManyGQLModels({ me: true })
+prepareManyGQLModels({ me: true, filter: filter || undefined })
 prepareOneGQLModel({ me: true, id })
 ```
 
@@ -118,15 +132,20 @@ File: `backend/src/app/gql/bridges/customer/MemberBridge.ts`
 
 - Extends `CustomerOrganizationOwnedBridgeBase` (shared `me` → Organization resolve)
 - `ident = "member"`, `typeIdent = "_Member"`, `ormModel = MemberModel`
-- `GetManyParent = OrganizationOwnedMeParent` (`{ me: true }`)
+- `MemberFilter` / `GetManyParent = OrganizationOwnedMeParent & { filter?: Nullable<MemberFilter> }`
 - `GetOneParent = MemberModel | MeetingModel | MeetingParticipantModel | VoteModel | TalkRecordModel | { me: true; id: string }`
   - `MeetingModel` for `_Meeting.chairperson`
   - `MeetingParticipantModel` for `_MeetingParticipant.member`
   - `VoteModel` for `_Vote.member`
   - `TalkRecordModel` for `_TalkRecord.member`
-- Does **not** override `getRootOrmParent` or `getOrmFindOptions` (inherited / role defaults)
+- Does **not** override `getRootOrmParent` (org-owned base)
+- **Does** override `getOrmFindOptions` for root `prepareType === "many"`:
+  - Always applies `withListable()` + `withReplacements()` + `order: [["updated_at", "desc"]]`
+  - When `filter.search` trims non-empty, adds `where: { [Op.and]: [{ [Op.or]: [name|email|mobile iLike] }] }`
+  - Nested / one prepares fall through to `super.getOrmFindOptions`
 
-Shared base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` — see `message-template-domain.md` §4.
+Shared base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` — see `message-template-domain.md` §4.  
+Parent-payload discipline: `.cursor/rules/gql-root-parent-payload-contract.mdc` (§3 — filter mapping is entity-owned policy).
 
 ### Inverse relation parent typing (mandatory)
 
@@ -150,10 +169,10 @@ Do not put `OrganizationModel` on `MemberBridge.GetOneParent` for the organizati
 
 ### `members`
 
-1. `MemberBridge.AsRoot` → `prepareManyGQLModels({ me: true })`
+1. `MemberBridge.AsRoot` → `prepareManyGQLModels({ me: true, filter })`
 2. `getRootOrmParent` → customer's Organization
-3. Base list options: `withListable` + `withReplacements` + `order updated_at DESC`
-4. `organization.getMembers(...)`
+3. `getOrmFindOptions` (many): listable + replacements + `updated_at DESC` + optional search `where`
+4. `organization.getMembers(...)` — tenant scope remains the association; filter only narrows within the org
 
 ### `member(id)`
 
@@ -161,6 +180,7 @@ Do not put `OrganizationModel` on `MemberBridge.GetOneParent` for the organizati
 2. Same org resolve as above
 3. Base one options: `where: { id }`
 4. Scoped to that organization association
+5. `_MemberFilter` does **not** apply to the singular root
 
 ## 6) Seed mechanism
 
@@ -187,6 +207,7 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 | `members` / `member` | no `context.customer` | `NOT_PERMIT` |
 | `members` / `member` | customer has no organization | `404` |
 | `member(id)` | missing / other-org id | framework empty → `404` |
+| `members` + filter | search matches nothing in org | empty list (HTTP/GQL success; not 404) |
 
 ## 9) Traceability map
 
@@ -195,15 +216,15 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 | `backend/src/app/orm/models/Member.ts` | ORM source of truth | §3 |
 | `backend/src/app/orm/models/MeetingParticipant.ts` | ORM roster inverse (GQL nest deferred) | §3.4; `meeting-participant-domain.md` |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany Member` + mixins | §3.4 |
-| `backend/src/app/gql/definitions/customer.graphql` | `_Member` + roots + inverse relation | §4 |
+| `backend/src/app/gql/definitions/customer.graphql` | `_Member` + `_MemberFilter` + roots + inverse relation | §4 |
 | `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | shared `me` → Organization | §4 |
-| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | thin entity bridge | §4–§5 |
+| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | org-owned bridge + search `getOrmFindOptions` | §4–§5 |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | `GetOneParent` includes `MemberModel` for inverse | §4 |
-| `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + resolvers | §4 |
+| `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + resolvers (`filter` parent) | §4 |
 | `backend/src/app/orm/patches/SeedPatch.ts` | `seedDemoMembers` / `test_seed` | §6 |
-| `backend/src/app/gql/gql-types/customer.ts` | Generated | §7 |
-| `website/src/types/gql/definitions/customer.graphql` | Mirror | §7 |
-| `website/src/types/gql/gql-types/customer.ts` | Mirror | §7 |
+| `backend/src/app/gql/gql-types/customer.ts` | Generated (`_MemberFilter`) | §7 |
+| `website/src/types/gql/definitions/customer.graphql` | Mirror | §7; `flow-customer-members.md` |
+| `website/src/types/gql/gql-types/customer.ts` | Mirror | §7; `flow-customer-members.md` |
 | `backend/.types/models.ts` | Generated registry (gitignored) | excluded from narrative |
 
 ## Related
@@ -214,6 +235,7 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 - `docs/platforms/backend/contracts/vote-domain.md` (`_Vote.member`)
 - `docs/platforms/backend/contracts/talk-record-domain.md` (`_TalkRecord.member`)
 - `docs/platforms/backend/contracts/graphql-and-types.md`
+- `docs/platforms/website/flow-customer-members.md` (website directory UI)
 - `docs/invariants/backend.md` (B15, B18, B23)
-- `.cursor/rules/gql-root-parent-payload-contract.mdc` (inverse `GetOneParent` typing)
+- `.cursor/rules/gql-root-parent-payload-contract.mdc` (explicit `filter` parent + inverse `GetOneParent`)
 - `.cursor/rules/meeting-participant-roster.mdc`

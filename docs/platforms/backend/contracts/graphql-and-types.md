@@ -21,7 +21,7 @@ Root queries (from `customer.graphql`):
 - `me` — current customer profile
 - `notifications` — paginated notifications
 - `organization` — current customer's organization (`prepareOneGQLModel({ me: true })`)
-- `members` — members of the customer's organization (`{ me: true }` → Organization parent)
+- `members(filter: _MemberFilter)` — members of the customer's organization (`{ me: true, filter }` → Organization parent; optional `search` iLike on name/email/mobile — see `member-domain.md` §4–§5)
 - `member(id)` — single member in the customer's organization
 - `messageTemplates` — message templates of the customer's organization (same `me` → Organization parent)
 - `messageTemplate(id)` — single message template in the customer's organization

@@ -6,7 +6,7 @@ Customer portal contract for the customer shell (see `overview.md`).
 
 Authed customer shell on `website/`: `CUSTOMER_MAIN` layout, identity-first header, credit footer, portaled quick-nav drawer (grid tiles), and customer `me` read boundary via `CUSTOMER_ME`.
 
-**Shipped in this shell:** layout wiring, `CustomerHome` empty page, `CustomerMembers` empty page, header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
+**Shipped in this shell:** layout wiring, `CustomerHome` empty page, `CustomerMembers` directory page (list/search — see `flow-customer-members.md`), header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
 
 **Not shipped yet:** `CustomerBottomBar`, `BottomIcons`, `Dims.bottomBarHeight`, and the remaining drawer target routes other than `CustomerHome` / `CustomerMembers` (tiles render disabled until registered).
 
@@ -87,7 +87,7 @@ Order (product-aligned to backend `CustomerSchema` roots / customer settings; us
 |---|---|---|---|---|
 | 1 | `itemHome` | `CustomerHome` | `HomeMark` `tone="onPrimary"` `size={1.45}` | shell home (shipped route) |
 | 2 | `itemMeetings` | `CustomerMeetings` | `FiCalendar` | `meetings` / `meeting` |
-| 3 | `itemMembers` | `CustomerMembers` | `FiUsers` | `members` / `member` (shipped empty route) |
+| 3 | `itemMembers` | `CustomerMembers` | `FiUsers` | `members` / `member` (shipped directory — `flow-customer-members.md`) |
 | 4 | `itemOrganization` | `CustomerOrganization` | `FiBriefcase` | `organization` |
 | 5 | `itemMessageTemplates` | `CustomerMessageTemplates` | `FiMessageSquare` | `messageTemplates` / `messageTemplate` |
 | 6 | `itemSubscription` | `CustomerSubscription` | `FiCreditCard` | `plans` / `subscriptions` |
@@ -119,9 +119,10 @@ Nav is close-first: `onClose` then `nav.push({identify})`.
 
 ### Route + page
 
-- `CustomerMembers` — empty `MyPage` at `/customer/members` (`CUSTOMER_MAIN`, `mustAuthedAs: ["CUSTOMER"]`).
+- `CustomerMembers` — `MyPage` at `/customer/members` (`CUSTOMER_MAIN`, `mustAuthedAs: ["CUSTOMER"]`) mounting `CustomerMembersScreen` (directory UI).
 - Route `breadcrumb`: `{ parent: "CustomerHome", label: tr => tr.ui.pages.customer.members.title }` (W38).
 - Drawer tile `CustomerMembers` enables automatically once the identify is registered.
+- List/search/load-more contract: **`flow-customer-members.md`** (not duplicated here).
 
 ### Shell composition
 
@@ -188,7 +189,7 @@ Governance: `.cursor/rules/website-customer-utils-composed-marks.mdc`.
 - `footer.rights`
 - `drawer.*` — title (**تنقل سريع** / **Quick navigation**), close, role chip, nine tile labels, prefs, logout
 - `subHeader.navHome` / `subHeader.breadcrumbAriaLabel` — breadcrumb root label + nav aria
-- `ui.pages.customer.members.title` — route breadcrumb leaf label for `CustomerMembers`
+- `ui.pages.customer.members.title` — route breadcrumb leaf label for `CustomerMembers` (full members copy set: `flow-customer-members.md` §9)
 
 Shipped tile label contract (user-approved wording):
 
@@ -219,7 +220,7 @@ See `docs/invariants/website.md` W24 and `.cursor/rules/website-route-reactive-c
 
 | Path | Status | Doc anchor |
 |---|---|---|
-| `website/src/app/ui/pages/customer/CustomerMembers.tsx` | added | §7.1 |
+| `website/src/app/ui/pages/customer/CustomerMembers.tsx` | page host | §7.1; directory body → `flow-customer-members.md` |
 | `website/src/app/ui/components/customer/CustomerSubHeader.tsx` | added | §2, §7.1 |
 | `website/src/app/ui/components/Breadcrumb.tsx` | added | §7.1 |
 | `website/src/app/ui/components/useBreadcrumbs.ts` | added | §7.1 |
@@ -236,6 +237,7 @@ Prior shell inventory (header/footer/drawer/`useMe`/…) remains in earlier go-d
 ## 13) Related
 
 - `docs/platforms/website/route-registry-contract.md`
+- `docs/platforms/website/flow-customer-members.md`
 - `docs/platforms/website/shared-ui-and-shell.md`
 - `docs/platforms/website/component-structure.md`
 - `docs/platforms/website/data-flow-and-gql.md`

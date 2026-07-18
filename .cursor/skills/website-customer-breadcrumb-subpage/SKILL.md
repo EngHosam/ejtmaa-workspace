@@ -18,7 +18,7 @@ description: >-
 
 1. Read `.cursor/rules/website-authed-drawer-subpage-governance.mdc`, `.cursor/rules/website-breadcrumb-product-placement.mdc`, and `docs/platforms/website/flow-customer-shell.md` §7.1.
 2. Register the route in `website/src/resources/configs/routes.ts` (customer section + matching `MPagesRoutes` member) via `customerRouter(...)`, `layout: "CUSTOMER_MAIN"`, `mustAuthedAs: ["CUSTOMER"]`, and `breadcrumb: { parent: "CustomerHome", label: tr => tr.ui.pages.customer.<feature>.title }` unless a deeper parent is documented.
-3. Add a thin `MyPage` under `website/src/app/ui/pages/customer/`. Empty `Main()` is valid until the feature body ships. List screens later add `SectionHeading` + `pt={2}` per authed-drawer governance.
+3. Add a thin `MyPage` under `website/src/app/ui/pages/customer/`. Empty `Main()` is valid until the feature body ships. List screens later add `SectionHeading` + `pt={2}` per authed-drawer governance. For ResultLane + history search directories, follow `.cursor/skills/website-customer-result-lane-list/SKILL.md`.
 4. Confirm `CustomerMainLayout` already toggles `CustomerSubHeader` from `routes[identify]?.breadcrumb` — do **not** hardcode identify lists.
 5. Keep breadcrumb product files under `ui/components/` (`Breadcrumb`, `useBreadcrumbs`, `HomeMark`, `CustomerSubHeader`). Never place them in `ui/base/`.
 6. If the page is a new drawer tile identify, follow `.cursor/skills/website-customer-drawer-nav/SKILL.md` for IA alignment; home tile continues to use `HomeMark` `tone="onPrimary"`.

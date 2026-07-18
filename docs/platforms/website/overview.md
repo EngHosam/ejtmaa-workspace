@@ -24,7 +24,7 @@ See `docs/platforms/website/ui-foundation.md`.
 ## Backend coupling
 
 - Requesters: `visitor.auth`, `customer.customer`, `customer.notification`, `customer.subscription` (`subscribe`) (see `src/types/requesters/requesters.website.ts`)
-- GQL mirrors: `base` + `customer` (`me` + `currentSubscription` / `_Subscription`, `me.canDeleteNotifications`, `me.canSubscribe(planId)`, `notifications`, `organization`, `members`, `member`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `talkRecords` / `_TalkRecord`, `plans` / `plan` / `_Plan`, `subscriptions` / `subscription`, `subscriptionPaymentMethods` / `_PaymentMethod`)
+- GQL mirrors: `base` + `customer` (`me` + `currentSubscription` / `_Subscription`, `me.canDeleteNotifications`, `me.canSubscribe(planId)`, `notifications`, `organization`, `members(filter: _MemberFilter)`, `member`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `talkRecords` / `_TalkRecord`, `plans` / `plan` / `_Plan`, `subscriptions` / `subscription`, `subscriptionPaymentMethods` / `_PaymentMethod`)
 - Socket namespace: `customer`
 - Events: `OnCustomerEvent` (payload `OnCustomerEventDate { type: "UPDATED" }`)
 - Backend mount: `/website` (test `http://192.168.1.10:3206/website`, prod `https://backend.ejtmaa.live/website`)
@@ -39,6 +39,7 @@ See `docs/platforms/website/ui-foundation.md`.
 | Notifications | [flow-notifications.md](./flow-notifications.md) |
 | Static info pages | [flow-static-info-pages.md](./flow-static-info-pages.md) |
 | Customer shell | [flow-customer-shell.md](./flow-customer-shell.md) |
+| Customer members | [flow-customer-members.md](./flow-customer-members.md) |
 
 ## 6) Route registry summary
 
@@ -59,11 +60,11 @@ See `docs/platforms/website/ui-foundation.md`.
 
 Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-Shipped customer workspace: `CustomerHome` (`/customer`) and `CustomerMembers` (`/customer/members`, route `breadcrumb` → fixed `CustomerSubHeader`). Both `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell details: `flow-customer-shell.md`.
+Shipped customer workspace: `CustomerHome` (`/customer`) and `CustomerMembers` (`/customer/members`, directory list/search + breadcrumb → fixed `CustomerSubHeader`). Both `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Members directory: `flow-customer-members.md`.
 
 ### 6.2) Planned (not shipped)
 
-Remaining `/customer/*` workspace routes (meetings, members, organization, message templates, subscription, settings, support, help, notifications, static info, bottom bar) — see `route-registry-contract.md` §5.2 and `flow-customer-shell.md`.
+Remaining `/customer/*` workspace routes (meetings, organization, message templates, subscription, settings, support, help, notifications, static info, bottom bar) — see `route-registry-contract.md` §5.2 and `flow-customer-shell.md`.
 
 ## Documentation stance
 

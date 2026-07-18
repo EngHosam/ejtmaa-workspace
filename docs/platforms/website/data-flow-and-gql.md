@@ -69,6 +69,17 @@ See `docs/platforms/website/ssr-boot-and-startup.md` and `flow-customer-shell.md
 
 Do not point `CUSTOMER_ME` at visitor/global `DATA_ADAPTERS.GQL`. Hook: `website/src/app/ui/components/customer/hooks/useMe.tsx`.
 
+## Customer GQL inherit base + members list
+
+| Adapter | API | Role |
+|---|---|---|
+| `DATA_ADAPTERS.CUSTOMER_GQL` | `API.DATA_ADAPTERS.CUSTOMER.GQL` | Inherit target for mount-private customer list adapters |
+| `"customer-members"` (private id) | inherits `CUSTOMER_GQL` | Members directory — `useCustomerMembers` |
+
+Members query uses `listable: "members"` and optional `filter: { search }` from route history key `members`. Full contract: `flow-customer-members.md`.
+
+Default `initDataAdaptersProps.default.maxLoadLength` is **24** (shared load-more page size for adapters that do not override it).
+
 ## Adapter enterMode
 
 List and home adapters use `enterMode` on `useShallowAdapter` / `$$_dataAdapter` to control mount-time reload behavior.
@@ -83,10 +94,13 @@ Rules:
 - `useMe` default path uses `LOAD_ON_MOUNT` (optional `updateOnEnter` → `FORCE_RELOAD_ON_MOUNT`).
 - Planned list/home hooks (`useCustomerDashboard`, `useCustomerNotifications`) use `FORCE_RELOAD_ON_MOUNT` when added.
 - List adapters document `enterMode` on the owning route page when a session-preserve exception applies.
+- Shipped `useCustomerMembers` reloads via `useEffect` → `mLoad({ reload: true, query: adapterQuery })` when the history-derived query changes (covers remount + search commit without a separate `enterMode` flag).
 
-Shipped customer adapters in `initDataAdaptersProps`: `ADAPTER1`, `CUSTOMER_ME`. Governance: `.cursor/rules/website-list-adapter-enter-mode.mdc`.
+Shipped customer adapters in `initDataAdaptersProps`: `ADAPTER1`, `CUSTOMER_ME`, `CUSTOMER_GQL`. Governance: `.cursor/rules/website-list-adapter-enter-mode.mdc`, `.cursor/rules/website-customer-list-history-search.mdc`.
 
 ## Related
 
+- `docs/platforms/website/flow-customer-members.md`
 - `docs/platforms/website/graphql-mirror-and-tooling.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
+- `docs/platforms/backend/contracts/member-domain.md`

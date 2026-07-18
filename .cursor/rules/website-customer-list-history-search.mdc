@@ -1,0 +1,36 @@
+---
+description: Customer website list search must commit via useWithHistoryState (Enter), pass filter on the adapter query, and never client-filter loaded rows
+globs:
+  - website/src/app/ui/components/**/hooks/useCustomer*.ts
+  - website/src/app/ui/components/**/hooks/useCustomer*.tsx
+  - website/src/app/ui/components/SearchField.tsx
+  - website/src/app/ui/components/ResultLane.tsx
+  - docs/platforms/website/flow-customer-members.md
+alwaysApply: false
+---
+
+# Website customer list history search
+
+Use when wiring **server-backed search/filter** on authenticated customer list screens (`useShallowAdapter` + GQL `filter`).
+
+## Required
+
+1. Persist committed list query with `useWithHistoryState` and a **stable route key** (members: `"members"`).
+2. Keep a **draft** local value for the search field; commit to history on **Enter** (`SearchField` `onSubmit`), not on every keystroke, unless a later product decision explicitly changes that.
+3. Build the adapter `query` from the **normalized committed** history state (trim; omit empty filter fields).
+4. Reload with `mLoad({ reload: true, query })` when the committed query changes. Pass the **same** `query` (including `filter`) on load-more and refresh.
+5. Filter on the **server** via the GQL arg / bridge policy. Mirror SDL first (`_MemberFilter` pattern).
+
+## Forbidden
+
+- Client-side filtering of already-loaded adapter records as a substitute for GQL `filter`.
+- Rebuilding adapter query ad hoc in the screen without history (merge bugs when omitting `filter` on load-more).
+- Inventing write routes, requesters, or fake forms to “complete” search UX.
+- Dropping `filter` from load-more / refresh while search is active.
+
+## Reference
+
+- Canonical: `website/src/app/ui/components/customer/hooks/useCustomerMembers.ts`
+- Flow: `docs/platforms/website/flow-customer-members.md`
+- Backend filter: `docs/platforms/backend/contracts/member-domain.md` §4–§5
+- Parent payload: `.cursor/rules/gql-root-parent-payload-contract.mdc`
