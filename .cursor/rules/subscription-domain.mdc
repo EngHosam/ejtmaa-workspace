@@ -1,0 +1,37 @@
+---
+description: Subscription (الاشتراك) customer entitlement ORM/GQL invariants — statuses, current scope, expire task
+globs: backend/src/app/orm/models/Subscription.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/gql/bridges/customer/SubscriptionBridge.ts,backend/src/app/gql/definitions/customer.graphql,backend/src/app/scheduler/tasks/ExpireSubscriptionsTask.ts,docs/platforms/backend/contracts/subscription-domain.md
+alwaysApply: false
+---
+
+# Subscription domain
+
+Authoritative contract: `docs/platforms/backend/contracts/subscription-domain.md`.
+
+## Ownership
+
+- Owned by **Customer** (`customer_id`) — not Organization.
+- Also `plan_id` → Plan. Snapshot commercial terms on the row; do not rely on live Plan prices for history.
+
+## Statuses
+
+- Only `ACTIVE` | `EXPIRED` | `REPLACED`.
+- Do **not** add `PENDING` / `CANCELED` without an explicit product decision (checkout belongs on invoice later).
+
+## Current entitlement
+
+- `Customer.hasOne(Subscription().scope("current"), { as: "currentSubscription" })`.
+- Scope `current` must stay a **function**: `ACTIVE` and `ends_at > new Date()`.
+- GQL `_Me.currentSubscription` uses that association + `SubscriptionBridge` (`ident = "subscription"`). Do **not** add `CurrentSubscriptionBridge`.
+
+## Writes and jobs
+
+- No static subscribe/lifecycle helpers on the ORM model — requesters own writers when designed.
+- Renew/replace product rule: new row; previous `ACTIVE` → `REPLACED`. Natural end → `EXPIRED`.
+- `ExpireSubscriptionsTask` (hourly): `ACTIVE` + `ends_at <= now` → `EXPIRED`.
+
+## Customer GQL
+
+- Roots `subscriptions` / `subscription(id)` with `{ me: true }` → Customer parent.
+- Nested `_Subscription.plan`; `PlanBridge.GetOneParent` includes `SubscriptionModel`.
+- No supervisor Subscription surface until explicitly requested.

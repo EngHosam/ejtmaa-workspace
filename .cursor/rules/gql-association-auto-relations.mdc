@@ -1,0 +1,38 @@
+---
+description: MeBridge/entity bootRelations auto-map Sequelize associations to bridges by modelName === ident
+globs: backend/src/app/gql/bridges/**/*.ts,backend/eng-hosam/@nodejs/gql/src/BridgeBase.ts
+alwaysApply: false
+---
+
+# GQL association auto-relations
+
+Framework: `BridgeBase.bootRelations` walks `ormModel.associations` and builds relation tuples. Lookup uses `schema.mappedRegisteredBridges[bridgeIdent]`.
+
+## Auto path (prefer)
+
+When a real Sequelize association exists:
+
+1. Association key (`as` or default) → GraphQL field / ORM include name.
+2. `association.target.name` (= ORM `modelName`) → `bridgeIdent`.
+3. Target bridge must have `static ident` equal to that `modelName`.
+
+Example: `Customer.hasOne(Subscription().scope("current"), { as: "currentSubscription" })` with `Subscription.modelName = "subscription"` and `SubscriptionBridge.ident = "subscription"` → `_Me.currentSubscription` without declaring `MeBridge.static relations` and without a second bridge class.
+
+## Do not
+
+- Create `CurrentXBridge` / duplicate bridge solely to rename `ident` to the `as` value when the target bridge already matches `modelName`.
+- Assume auto-wiring works for custom getters that are **not** Sequelize associations.
+
+## Explicit `static relations` (when required)
+
+Declare on the parent bridge only when:
+
+- there is no association (custom getter), and/or
+- you need non-default options (`"lazy"`, forced-ask, etc.), and/or
+- bridge `ident` must differ from `target.modelName` (rare — prefer aligning names).
+
+Sibling pattern (qline): company MeBridge maps `activeCompanySubscription` → `companySubscription` with `"lazy"` because active subscription is a custom getter, not `hasOne`.
+
+## Nested parent types
+
+When nesting under a parent type, ensure the child bridge `GetOneParent` includes the parent model type (e.g. `SubscriptionBridge` includes `CustomerModel` for Me nest; `PlanBridge` includes `SubscriptionModel` for `_Subscription.plan`).

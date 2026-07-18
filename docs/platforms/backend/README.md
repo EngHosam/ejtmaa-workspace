@@ -25,6 +25,7 @@
 | [`vote-domain.md`](contracts/vote-domain.md) | Vote ORM + nested GQL under Decision |
 | [`talk-record-domain.md`](contracts/talk-record-domain.md) | TalkRecord ORM + nested GQL under Meeting |
 | [`plan-domain.md`](contracts/plan-domain.md) | Plan (الباقة) catalog ORM + public customer GQL |
+| [`subscription-domain.md`](contracts/subscription-domain.md) | Subscription (الاشتراك) customer entitlement ORM + GQL reads + expire task |
 | [`livekit-media-plane.md`](contracts/livekit-media-plane.md) | LiveKit helper + env + token/room media plane |
 | [`socket-event-mirroring.md`](contracts/socket-event-mirroring.md) | Socket notify events |
 

@@ -1,5 +1,5 @@
 ---
-description: Plan (الباقة) catalog ORM/GQL invariants — naming, billing period, public ACTIVE reads
+description: Plan (الباقة) catalog ORM/GQL invariants — dual pricing, naming, public ACTIVE reads
 globs: backend/src/app/orm/models/Plan.ts,backend/src/app/gql/bridges/customer/PlanBridge.ts,backend/src/app/gql/definitions/customer.graphql,backend/src/app/gql/schemas/CustomerSchema.ts,docs/platforms/backend/contracts/plan-domain.md
 alwaysApply: false
 ---
@@ -18,9 +18,11 @@ Authoritative contract: `docs/platforms/backend/contracts/plan-domain.md`.
 ## Shape
 
 - Non-actor platform catalog — **no** `customer_id` / `organization_id`.
-- Billing: `billing_period` (`MONTHLY` | `YEARLY`) + `billing_period_count` — not `duration_days`.
+- Dual list prices on one row: `monthly_price` + `yearly_price` (SAR). Do **not** split monthly/yearly into two Plan rows.
+- Do **not** store `billing_period` / single `price` on Plan — period is chosen when creating a subscription (requester-owned later; snapshotted on `Subscription`).
 - Limits `max_members` / `max_meetings_per_month`: null means unlimited.
-- No payment or subscription state on this model.
+- No payment or subscription state on this model — entitlement lives on `Subscription` (`subscription-domain.md`).
+- `hasMany(Subscription)` on `plan_id`; nested GQL is `_Subscription.plan` only (not `_Plan.subscriptions`).
 
 ## Customer GQL
 
@@ -28,4 +30,5 @@ Authoritative contract: `docs/platforms/backend/contracts/plan-domain.md`.
 - Bridge extends `CustomerBridgeBase` (not org-owned base).
 - Visibility: `status = ACTIVE` on both list and detail; order `sort_order`, then `id`.
 - MultiLang `name` / `description` → localized `String` via role `loadAttr`.
+- Expose `monthly_price` / `yearly_price` (not a single `price`).
 - No supervisor Plan surface until catalog admin CRUD is explicitly requested.

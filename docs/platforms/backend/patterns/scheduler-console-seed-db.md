@@ -6,7 +6,8 @@ Config: `backend/src/resources/configs/scheduler/index.ts`, `backend/src/resourc
 
 Current state:
 - Example task `TestTask` registered in `cron.ts` for framework wiring
-- Production domain scheduler jobs land as modules are added
+- `ExpireSubscriptionsTask` — every hour; sets `Subscription.status` from `ACTIVE` → `EXPIRED` when `ends_at <= now` (idempotent bulk update)
+- Further production domain scheduler jobs land as modules are added
 
 Adding a task:
 1. Create class under `backend/src/app/scheduler/tasks/` extending `TaskBase`
@@ -47,6 +48,7 @@ Targeted demo seed via `DatabaseConsole.update` → `SeedPatch.update("test_seed
 1. `seedDemoCustomers` — early-return if any customer exists
 2. `seedDemoOrganizations` — early-return if any organization exists
 3. `seedDemoMembers` — early-return if any member exists; explicit org `subdomain` calls + curated Saudi names; `organization.createMember(...)`
+4. `seedDemoCatalogPlans` — early-return if any Plan exists; creates three catalog tiers via `Plan().create(...)` each with `monthly_price` + `yearly_price` (entry array named `demoCatalogPlanEntries`, not `plans`)
 
 Demo row values stay in `SeedPatch.ts` only; docs do not mirror them.
 
@@ -55,7 +57,9 @@ Unknown `update` versions reject with `NOT_VALID`.
 Seed logo directory: `backend/static/upload/__seed/images/` (upload gitignore whitelists `__seed/`).
 
 Organization seed mechanism: `docs/platforms/backend/contracts/organization-domain.md` §7.  
-Member seed mechanism: `docs/platforms/backend/contracts/member-domain.md` §6.
+Member seed mechanism: `docs/platforms/backend/contracts/member-domain.md` §6.  
+Plan catalog seed mechanism: `docs/platforms/backend/contracts/plan-domain.md` §6.  
+Subscription: no seed rows; expire task contract in `subscription-domain.md` §5.
 
 ## 4) Safety rules
 
@@ -72,4 +76,6 @@ Member seed mechanism: `docs/platforms/backend/contracts/member-domain.md` §6.
 - `docs/platforms/backend/playbooks/add-update-fix.md`
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/member-domain.md`
+- `docs/platforms/backend/contracts/plan-domain.md`
+- `docs/platforms/backend/contracts/subscription-domain.md`
 - `docs/invariants/backend.md`

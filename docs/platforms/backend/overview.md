@@ -31,7 +31,7 @@ Provider graph:
 ## 3) Active Domain Surface
 
 ORM models (`backend/src/app/orm/models/`):
-- `Customer` — customer actor profile; `hasOne Organization` via `customer_id` (`getOrganization` / `createOrganization`)
+- `Customer` — customer actor profile; `hasOne Organization` via `customer_id`; `hasMany Subscription` + scoped `hasOne` `currentSubscription`
 - `Organization` — tenant entity owned by a customer (`customer_id`, one-to-one); `hasMany Member`, `hasMany MessageTemplate`, `hasMany Meeting`
 - `Member` — non-actor org person (UUID `id` + `access_token`); belongs to Organization; ORM `hasMany` MeetingParticipant (no Member→meetings GQL yet)
 - `MessageTemplate` — non-actor org message library (`WHATSAPP` | `EMAIL`); belongs to Organization
@@ -41,7 +41,8 @@ ORM models (`backend/src/app/orm/models/`):
 - `Decision` — non-actor decision under Meeting (`modelName: "decision"`; phase PRE_START|DURING; durable SQL); `hasMany` votes
 - `Vote` — durable ballot under Decision (composite PK `(decision_id, member_id)`; `YES`|`NO`)
 - `TalkRecord` — durable talk-queue row under Meeting
-- `Plan` — non-actor platform catalog SKU (الباقة; `plans` table; no tenant FK; billing period + limits)
+- `Plan` — non-actor platform catalog tier (الباقة; `plans` table; no tenant FK; `monthly_price` + `yearly_price` + limits); `hasMany Subscription`
+- `Subscription` — non-actor customer entitlement (`customer_id` payer; snapshot commercial terms; statuses `ACTIVE` \| `EXPIRED` \| `REPLACED`); `Customer.hasOne` scoped `currentSubscription`
 - `Supervisor` — supervisor actor profile
 - `User` — shared user identity
 - `Token` — auth tokens
@@ -78,7 +79,7 @@ Registration maps:
 Provider config: `backend/src/resources/configs/gql/index.ts`
 - Schemas: `customer`, `supervisor`
 - SDL: `backend/src/app/gql/definitions/customer.graphql`, `backend/src/app/gql/definitions/supervisor.graphql`, `backend/src/app/gql/definitions/base.graphql`
-- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge`, `VoteBridge`, `TalkRecordBridge`, `PlanBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant/agenda/decision/vote/talkRecord bridges are nested-only; `PlanBridge` is public catalog `STATIC`)
+- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge`, `VoteBridge`, `TalkRecordBridge`, `PlanBridge`, `SubscriptionBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant/agenda/decision/vote/talkRecord bridges are nested-only; `PlanBridge` is public catalog `STATIC`; `SubscriptionBridge` is customer-owned `{ me: true }` and also serves `_Me.currentSubscription` via ORM association auto-relations)
 - Supervisor bridges: `MeBridge`, `NotificationBridge`, `CustomerBridge`, `CustomerStatsBridge`, `OrganizationBridge` under `backend/src/app/gql/bridges/supervisor/`
 
 ### Socket
@@ -97,4 +98,5 @@ Config: `backend/src/resources/configs/socket/io.ts`
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/meeting-domain.md`
 - `docs/platforms/backend/contracts/plan-domain.md`
+- `docs/platforms/backend/contracts/subscription-domain.md`
 - `docs/invariants/backend.md`

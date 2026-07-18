@@ -11,27 +11,28 @@ Current Ejtmaa plan (product catalog / الباقة) surface:
 
 Out of scope (not shipped):
 
-- `Subscription` / purchase lifecycle,
 - `MyFatoorahInvoice` / payment session wiring,
 - plan write requesters / mutations / supervisor CRUD GQL,
-- seed rows for plans,
 - SKU `code` column (explicitly rejected — identity is `id` + MultiLang `name`),
 - naming the model `Package` (language-sensitive; use `Plan`),
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent).
 
+Related shipped surface (separate contract): customer `Subscription` entitlement reads — see `subscription-domain.md`.
+
 ## 2) Domain purpose
 
-`Plan` is a **non-actor** platform catalog SKU: what the product sells (price, billing cadence, soft limits).
+`Plan` is a **non-actor** platform catalog tier: what the product sells (dual SAR prices, soft limits).
 
 - Not owned by `Customer` or `Organization` (no tenant FK).
+- Holds **both** `monthly_price` and `yearly_price` on one row — billing period is chosen when creating a subscription (not as separate catalog SKUs).
 - Does **not** store payment or subscription state.
-- Changing catalog price later must not rewrite historical purchases (those will snapshot on `Subscription` when that model ships).
+- Changing catalog prices later must not rewrite historical purchases (those snapshot on `Subscription`).
 - Customer GQL exposes **ACTIVE** plans only for list and detail.
 
-Layering (future):
+Layering:
 
 ```text
-Plan (catalog) ← Subscription (org purchase) ← MyFatoorahInvoice (gateway session)
+Plan (catalog) ← Subscription (customer entitlement) ← MyFatoorahInvoice (gateway session, not shipped)
 ```
 
 ## 3) ORM model
@@ -51,10 +52,7 @@ Runtime model registry: generated/local `.types/models.ts` must include `"Plan"`
 
 ### 3.1 Attrs layout
 
-- `// identity` — `name`, `description`
-- `// commercial` — `price`, `billing_period`, `billing_period_count`
-- `// limits` — `max_members`, `max_meetings_per_month`
-- `// lifecycle` — `sort_order`, `status`
+- `//info` — `name`, `description`, `monthly_price`, `yearly_price`, limits, `sort_order`, `status`
 
 ### 3.2 Columns
 
@@ -63,24 +61,19 @@ Runtime model registry: generated/local `.types/models.ts` must include `"Plan"`
 | `id` | BIGINT PK | no | auto-increment |
 | `name` | JSONB | no | `MultiLangString` `{ ar, en }` |
 | `description` | JSONB | yes | `MultiLangString` or null |
-| `price` | DECIMAL(18, 2) | no | SAR (parsed via ORM DECIMAL → rounded float) |
-| `billing_period` | STRING(191) | no | enum `planBillingPeriod` |
-| `billing_period_count` | INTEGER | no | default `1` |
+| `monthly_price` | DECIMAL(18, 2) | no | SAR |
+| `yearly_price` | DECIMAL(18, 2) | no | SAR |
 | `max_members` | INTEGER | yes | null = unlimited |
 | `max_meetings_per_month` | INTEGER | yes | null = unlimited |
 | `sort_order` | INTEGER | no | default `0` |
 | `status` | STRING(191) | no | enum `planStatus`, default `ACTIVE` |
 
-No `code` / SKU string column.
+No `code` / SKU string column. No single `price` / `billing_period` on Plan.
 
-### 3.3 Billing period (not day counts)
+### 3.3 Billing period ownership
 
-Commercial duration uses calendar period + count:
-
-- `billing_period`: `MONTHLY` \| `YEARLY`
-- `billing_period_count`: usually `1` (allows future multi-period SKUs without schema reshape)
-
-Do **not** store `duration_days` for plan length — renewal math belongs on subscription using calendar months/years.
+- Catalog enum `planBillingPeriod` (`MONTHLY` \| `YEARLY`) is stored on **Subscription** when a row is created, not on Plan.
+- Plan only exposes both list prices; writers snapshot the matching price into `Subscription.plan_price`.
 
 ### 3.4 Indexes
 
@@ -88,18 +81,16 @@ Do **not** store `duration_days` for plan length — renewal math belongs on sub
 
 ### 3.5 Relations
 
-`boot()` is empty today. No `hasMany` Subscription association until that model ships.
+`Plan.hasMany(Subscription)` on `plan_id`.
 
 ### 3.6 Enums (translations)
 
 Keys under `backend/src/resources/trans/{ar,en}/general.ts` → `enums`:
 
-| Enum key | Values |
-|---|---|
-| `planStatus` | `ACTIVE`, `DISABLED` |
-| `planBillingPeriod` | `MONTHLY`, `YEARLY` |
-
-ORM attrs use `enum: ["one", "planStatus"]` / `["one", "planBillingPeriod"]` with `isTypedObject: true`.
+| Enum key | Values | Used on |
+|---|---|---|
+| `planStatus` | `ACTIVE`, `DISABLED` | Plan ORM |
+| `planBillingPeriod` | `MONTHLY`, `YEARLY` | Subscription snapshot / subscribe arg (not Plan columns) |
 
 ## 4) GraphQL (customer)
 
@@ -117,9 +108,8 @@ Implements `_Timestamps` & `_Pagination`.
 | `id` | `ID!` | |
 | `name` | `String` | MultiLang JSONB → localized via `CustomerBridgeBase.loadAttr` |
 | `description` | `String` | same |
-| `price` | `Float` | |
-| `billing_period` | `_PlanBillingPeriod` | enum wrapper `{ value, label }` |
-| `billing_period_count` | `Int` | |
+| `monthly_price` | `Float` | |
+| `yearly_price` | `Float` | |
 | `max_members` | `Int` | |
 | `max_meetings_per_month` | `Int` | |
 | `sort_order` | `Int` | |
@@ -127,7 +117,7 @@ Implements `_Timestamps` & `_Pagination`.
 | `created_at` / `updated_at` | `String!` | |
 | `total_count` | `Int` | pagination |
 
-No nested relations on `_Plan` yet.
+No nested high-cardinality subscription list on `_Plan`. Inverse nest is `_Subscription.plan` only (`PlanBridge.GetOneParent` includes `SubscriptionModel`).
 
 ### 4.3 Bridge
 
@@ -173,11 +163,12 @@ Mirror paths:
 - `website/src/types/gql/gql-types/base.ts`
 - `website/src/types/gql/gql-types/customer.ts`
 
-## 6) Naming and seed collisions
+## 6) Naming, seed, and collisions
 
 - ORM/GQL English name: **`Plan`** / `_Plan` / `plans` — Arabic product name remains الباقة.
 - Do **not** rename to `Package` (reserved words / package managers collide).
 - Seed helper arrays must **not** be named `plan` / `plans` / `SeedPlan` — see `.cursor/rules/backend-demo-seed-conventions.mdc`.
+- `test_seed` mechanism: `seedDemoCatalogPlans` + entry array `demoCatalogPlanEntries` (early-return if any Plan exists). Demo payload values stay in `SeedPatch.ts` only.
 
 ## 7) Verification
 
@@ -191,7 +182,9 @@ Existing scripts only:
 | Path | Status | Doc home |
 |---|---|---|
 | `backend/src/app/orm/models/Plan.ts` | added | §3 |
-| `backend/src/app/gql/bridges/customer/PlanBridge.ts` | added | §4.3 |
+| `backend/src/app/gql/bridges/customer/PlanBridge.ts` | modified | §4.3 (`GetOneParent` includes `SubscriptionModel`) |
+| `backend/src/app/orm/patches/SeedPatch.ts` | modified | §6 `seedDemoCatalogPlans` |
+| `docs/platforms/backend/contracts/subscription-domain.md` | related | Subscription entitlement |
 | `backend/src/app/gql/schemas/CustomerSchema.ts` | modified | §4.4 |
 | `backend/src/app/gql/definitions/base.graphql` | modified | §4.1 |
 | `backend/src/app/gql/definitions/customer.graphql` | modified | §4.1–4.2 |
@@ -217,7 +210,9 @@ Existing scripts only:
 
 ## 9) Related
 
+- `docs/platforms/backend/contracts/subscription-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
+- `docs/platforms/backend/patterns/scheduler-console-seed-db.md`
 - `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md` (payment mount target; not yet wired to Plan)
 - `docs/platforms/website/graphql-mirror-and-tooling.md`
 - `.cursor/rules/plan-catalog-domain.mdc`
