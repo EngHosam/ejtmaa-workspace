@@ -12,6 +12,7 @@ Current Ejtmaa meeting surface:
 - nested roster via `_Meeting.participants` (see `meeting-participant-domain.md`),
 - nested agenda via `_Meeting.agendaItems` (see `agenda-item-domain.md`),
 - nested decisions via `_Meeting.decisions` (see `decision-domain.md`),
+- nested talk queue via `_Meeting.talkRecords` (see `talk-record-domain.md`),
 - website GQL mirrors for that customer surface.
 
 Out of scope (not shipped):
@@ -97,13 +98,14 @@ Under `backend/src/resources/trans/ar/general.ts` and `en/general.ts`:
 - `hasMany(MeetingParticipant, { as: "participants" })` on `meeting_id` (roster; see `meeting-participant-domain.md`)
 - `hasMany(AgendaItem)` on `meeting_id` (default association `agendaItems`, no `as`; see `agenda-item-domain.md`)
 - `hasMany(Decision)` on `meeting_id` (default association `decisions`, no `as`; see `decision-domain.md`)
+- `hasMany(TalkRecord)` on `meeting_id` (default association `talkRecords`, no `as`; see `talk-record-domain.md`)
 
 `Organization.boot()` inverse:
 
 - `hasMany(Meeting)` on `organization_id`
 - mixins: `getMeetings` / `createMeeting` / … (association PK type `string` for UUID meeting id)
 
-Mixin declare blocks on Meeting are split: organization / chairperson / whatsapp template / email template / participants / agenda items / decisions.
+Mixin declare blocks on Meeting are split: organization / chairperson / whatsapp template / email template / participants / agenda items / decisions / talk records.
 
 Do **not** add `belongsToMany(Member)` on Meeting for the roster — join rows are exposed via `participants` only.
 
@@ -129,6 +131,7 @@ Relations:
 - `participants: [_MeetingParticipant]` (roster nest; B15 OK for expected board size — contract in `meeting-participant-domain.md`)
 - `agendaItems: [_AgendaItem]` (agenda nest; contract in `agenda-item-domain.md`)
 - `decisions: [_Decision]` (decision nest; contract in `decision-domain.md`)
+- `talkRecords: [_TalkRecord]` (talk-queue nest; contract in `talk-record-domain.md`)
 
 ### Root queries
 
@@ -162,6 +165,7 @@ File: `backend/src/app/gql/bridges/customer/MeetingBridge.ts`
 | `_Meeting.participants` | `MeetingParticipantBridge` | `GetManyParent = MeetingModel` |
 | `_Meeting.agendaItems` | `AgendaItemBridge` | `GetManyParent = MeetingModel` |
 | `_Meeting.decisions` | `DecisionBridge` | `GetManyParent = MeetingModel` |
+| `_Meeting.talkRecords` | `TalkRecordBridge` | `GetManyParent = MeetingModel` |
 
 Current shapes:
 
@@ -174,6 +178,8 @@ export type GetOneParent =
     | MemberModel
     | MeetingModel
     | MeetingParticipantModel
+    | VoteModel
+    | TalkRecordModel
     | { me: true; id: string };
 
 // MessageTemplateBridge
@@ -182,7 +188,7 @@ export type GetOneParent = MessageTemplateModel | MeetingModel | { me: true; id:
 
 ### Registered bridges
 
-`CustomerSchema.registeredBridges` includes `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, and `DecisionBridge`.
+`CustomerSchema.registeredBridges` includes `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge`, `VoteBridge`, and `TalkRecordBridge`.
 
 ## 5) Read flow (root)
 
@@ -228,6 +234,7 @@ Verification: `yarn generate-types`, `yarn type-check`.
 | `backend/src/app/orm/models/MeetingParticipant.ts` | Roster join (detail contract) | `meeting-participant-domain.md` |
 | `backend/src/app/orm/models/AgendaItem.ts` | Agenda lines (detail contract) | `agenda-item-domain.md` |
 | `backend/src/app/orm/models/Decision.ts` | Decisions (detail contract) | `decision-domain.md` |
+| `backend/src/app/orm/models/TalkRecord.ts` | Talk queue (detail contract) | `talk-record-domain.md` |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany Meeting` + mixins | §3.5 |
 | `backend/src/resources/trans/ar/general.ts` | meeting enums AR | §3.3 |
 | `backend/src/resources/trans/en/general.ts` | meeting enums EN | §3.3 |
@@ -237,9 +244,10 @@ Verification: `yarn generate-types`, `yarn type-check`.
 | `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts` | nested roster bridge | `meeting-participant-domain.md` |
 | `backend/src/app/gql/bridges/customer/AgendaItemBridge.ts` | nested agenda bridge | `agenda-item-domain.md` |
 | `backend/src/app/gql/bridges/customer/DecisionBridge.ts` | nested decision bridge | `decision-domain.md` |
+| `backend/src/app/gql/bridges/customer/TalkRecordBridge.ts` | nested talk-record bridge | `talk-record-domain.md` |
 | `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | shared `me` → Organization | §4 |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | inverse parent typing | §4 |
-| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | chairperson + participant.member parent typing | §4 |
+| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | chairperson + participant/vote/talkRecord.member parent typing | §4 |
 | `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts` | template parent typing | §4 |
 | `backend/src/app/gql/schemas/CustomerSchema.ts` | register + resolvers | §4 |
 | `backend/src/app/gql/gql-types/base.ts` | Generated | §7 |
@@ -258,6 +266,7 @@ Verification: `yarn generate-types`, `yarn type-check`.
 - `docs/platforms/backend/contracts/meeting-participant-domain.md`
 - `docs/platforms/backend/contracts/agenda-item-domain.md`
 - `docs/platforms/backend/contracts/decision-domain.md`
+- `docs/platforms/backend/contracts/talk-record-domain.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`

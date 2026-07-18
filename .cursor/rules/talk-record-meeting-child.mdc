@@ -1,0 +1,27 @@
+---
+description: TalkRecord under Meeting — default association naming, nested GQL, no decision_id
+globs: backend/src/app/orm/models/TalkRecord.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/gql/bridges/**/TalkRecordBridge.ts,backend/src/app/gql/bridges/**/MemberBridge.ts,backend/src/app/gql/schemas/CustomerSchema.ts,backend/src/app/gql/definitions/**/*.graphql
+alwaysApply: false
+---
+
+# TalkRecord (Meeting child)
+
+Authoritative contract: `docs/platforms/backend/contracts/talk-record-domain.md`.
+
+## ORM
+
+- Non-actor under `Meeting` (`meeting_id` FK); speaker via `member_id`.
+- `modelName: "talkRecord"` so default `hasMany` is `talkRecords` — **do not** add `as` on `Meeting.hasMany(TalkRecord())`.
+- Bridge `ident` and SDL field must stay `talkRecords`.
+- Durable SQL talk queue/history (not Yjs / LiveKit).
+- **No** `decision_id` — queue is meeting-scoped only (product decision).
+- Enum `talkRecordStatus`: `WAITING` | `SPEAKING` | `COMPLETED` | `CANCELED` (default `WAITING`).
+
+## Customer GQL
+
+- Nested only: `_Meeting.talkRecords: [_TalkRecord]`.
+- Expose `id`, `sort_order`, `status`, `started_at`, `ended_at`, `member` (+ timestamps / `total_count`).
+- Do **not** expose FK scalars or nest `meeting` / `decision` on `_TalkRecord` while the path is meeting → talkRecords.
+- `TalkRecordBridge.ident = "talkRecords"`; `GetManyParent = MeetingModel`.
+- `MemberBridge.GetOneParent` must include `TalkRecordModel` for `_TalkRecord.member`.
+- No root talk-record queries unless product reopens that decision.

@@ -24,7 +24,7 @@ See `docs/platforms/website/ui-foundation.md`.
 ## Backend coupling
 
 - Requesters: `visitor.auth`, `customer.customer`, `customer.notification` (see `src/types/requesters/requesters.website.ts`)
-- GQL mirrors: `base` + `customer` (`me`, `notifications`, `organization`, `members`, `member`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `me.canDeleteNotifications`)
+- GQL mirrors: `base` + `customer` (`me`, `notifications`, `organization`, `members`, `member`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `talkRecords` / `_TalkRecord`, `me.canDeleteNotifications`)
 - Socket namespace: `customer`
 - Events: `onCustomerEventDate` (payload `OnCustomerEventDate { type: "UPDATED" }`)
 - Backend mount: `/website` (test `http://192.168.1.10:3206/website`, prod `https://backend.ejtmaa.live/website`)
