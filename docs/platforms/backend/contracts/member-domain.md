@@ -112,20 +112,22 @@ prepareOneGQLModel({ me: true, id })
 
 File: `backend/src/app/gql/bridges/customer/MemberBridge.ts`
 
+- Extends `CustomerOrganizationOwnedBridgeBase` (shared `me` → Organization resolve)
 - `ident = "member"`, `typeIdent = "_Member"`, `ormModel = MemberModel`
-- `GetManyParent = { me: true }`
+- `GetManyParent = OrganizationOwnedMeParent` (`{ me: true }`)
 - `GetOneParent = MemberModel | { me: true; id: string }`
-- Overrides `getRootOrmParent` for `me`: resolve `context.customer` → `getOrganization()` → return Organization (or `NOT_PERMIT` / `404`)
-- Does **not** override `getOrmFindOptions` (role base defaults apply)
+- Does **not** override `getRootOrmParent` or `getOrmFindOptions` (inherited / role defaults)
+
+Shared base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` — see `message-template-domain.md` §4.
 
 ### Inverse relation parent typing (mandatory)
 
 When `_Member.organization` is selected, the framework prepares **`OrganizationBridge`** with parent = `MemberModel`.
 
-Therefore `OrganizationBridge` must declare:
+Therefore `OrganizationBridge` must declare (also includes other inverse parents as they ship):
 
 ```ts
-export type GetOneParent = MemberModel | { me: true };
+export type GetOneParent = MemberModel | MessageTemplateModel | { me: true };
 ```
 
 Do not put `OrganizationModel` on `MemberBridge.GetOneParent` for this inverse; that bridge prepares Organization, not Member.
@@ -183,7 +185,8 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 | `backend/src/app/orm/models/Member.ts` | ORM source of truth | §3 |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany Member` + mixins | §3.4 |
 | `backend/src/app/gql/definitions/customer.graphql` | `_Member` + roots + inverse relation | §4 |
-| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | me → Organization parent | §4–§5 |
+| `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | shared `me` → Organization | §4 |
+| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | thin entity bridge | §4–§5 |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | `GetOneParent` includes `MemberModel` for inverse | §4 |
 | `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + resolvers | §4 |
 | `backend/src/app/orm/patches/SeedPatch.ts` | `seedDemoMembers` / `test_seed` | §6 |
@@ -195,6 +198,7 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 ## Related
 
 - `docs/platforms/backend/contracts/organization-domain.md`
+- `docs/platforms/backend/contracts/message-template-domain.md` (shared org-owned GQL base)
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/invariants/backend.md` (B15, B18, B23)
 - `.cursor/rules/gql-root-parent-payload-contract.mdc` (inverse `GetOneParent` typing)

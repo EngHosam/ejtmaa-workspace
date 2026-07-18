@@ -11,7 +11,21 @@ Without `loadAttr`, JSONB MultiLang fields return raw JSON objects instead of lo
 | Base | Path |
 |---|---|
 | `CustomerBridgeBase` | `backend/src/app/gql/bridges/customer/CustomerBridgeBase.ts` |
+| `CustomerOrganizationOwnedBridgeBase` | `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` |
 | `SupervisorBridgeBase` | `backend/src/app/gql/bridges/supervisor/SupervisorBridgeBase.ts` |
+
+### Customer org-owned intermediate base
+
+`CustomerOrganizationOwnedBridgeBase` extends `CustomerBridgeBase` and owns the shared `{ me: true }` → `context.customer.getOrganization()` root-parent resolve.
+
+Use for Organization children exposed on the customer schema (`MemberBridge`, `MessageTemplateBridge`, future org-scoped entities).
+
+Do **not**:
+
+- put this resolve on `CustomerBridgeBase` (other customer bridges differ),
+- copy the same `getRootOrmParent` body into each entity bridge.
+
+Detail: `docs/platforms/backend/contracts/message-template-domain.md` §4.
 
 ## Required methods
 

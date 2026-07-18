@@ -32,6 +32,7 @@ Framework contracts: `@nodejs/gql` (`BridgeBase`, `GQLSchemaBase`, `GQLProvider`
 ### Role bridge bases
 
 - `backend/src/app/gql/bridges/customer/CustomerBridgeBase.ts`
+- `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` — org-owned `me` → Organization
 - `backend/src/app/gql/bridges/supervisor/SupervisorBridgeBase.ts`
 
 ### Entity bridges
@@ -40,10 +41,14 @@ Framework contracts: `@nodejs/gql` (`BridgeBase`, `GQLSchemaBase`, `GQLProvider`
 |---|---|
 | `backend/src/app/gql/bridges/customer/MeBridge.ts` | Customer profile |
 | `backend/src/app/gql/bridges/customer/NotificationBridge.ts` | Customer notifications |
+| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | Customer organization + inverse parents |
+| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | Org members (extends org-owned base) |
+| `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts` | Org message templates (extends org-owned base) |
 | `backend/src/app/gql/bridges/supervisor/MeBridge.ts` | Supervisor profile |
 | `backend/src/app/gql/bridges/supervisor/NotificationBridge.ts` | Supervisor notifications |
 | `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts` | Customer list/detail |
 | `backend/src/app/gql/bridges/supervisor/CustomerStatsBridge.ts` | `customerStats.total_count` |
+| `backend/src/app/gql/bridges/supervisor/OrganizationBridge.ts` | Supervisor organization list/detail |
 
 ### SDL
 

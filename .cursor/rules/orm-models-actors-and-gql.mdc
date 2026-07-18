@@ -9,7 +9,7 @@ alwaysApply: false
 Ejtmaa actors: **Customer** and **Supervisor**.
 
 Current domain models (see `backend/src/app/orm/models/`):
-- `Customer`, `Organization` (non-actor tenant, owned by Customer), `Member` (non-actor under Organization; UUID PK + `access_token`; customer GQL only), `Supervisor`, `User`, `Token`, `Notification`, `SystemSetting`
+- `Customer`, `Organization` (non-actor tenant, owned by Customer), `Member` (non-actor under Organization; UUID PK + `access_token`; customer GQL only), `MessageTemplate` (non-actor under Organization; `WHATSAPP` | `EMAIL`; customer GQL only), `Supervisor`, `User`, `Token`, `Notification`, `SystemSetting`
 
 - For actor-sensitive models, require explicit `Ability` type and `can()` override using `iCan()`.
 - Enforce owner safety: validate ownership facts and deny with stable message keys.

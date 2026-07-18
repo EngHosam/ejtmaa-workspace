@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.
@@ -23,16 +23,22 @@ Root queries (from `customer.graphql`):
 - `organization` — current customer's organization (`prepareOneGQLModel({ me: true })`)
 - `members` — members of the customer's organization (`{ me: true }` → Organization parent)
 - `member(id)` — single member in the customer's organization
+- `messageTemplates` — message templates of the customer's organization (same `me` → Organization parent)
+- `messageTemplate(id)` — single message template in the customer's organization
 
 Nested (cardinality-safe):
 - `_Member.organization: _Organization` (`belongsTo`, expected count 1)
-- not `_Organization.members` (high cardinality → root list only)
+- `_MessageTemplate.organization: _Organization` (`belongsTo`, expected count 1)
+- not `_Organization.members` / not nested high-cardinality template lists under Organization (root list only)
 
 Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `MeBridge`
 - `NotificationBridge`
 - `OrganizationBridge`
-- `MemberBridge`
+- `MemberBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
+- `MessageTemplateBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
+
+Org-owned intermediate base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts`.
 
 ## Supervisor schema surface
 
@@ -80,4 +86,5 @@ Sync (when the target platform exists) is command-based copy from backend SDL/ty
 See `docs/platforms/backend/patterns/graphql-and-bridges.md` for authoring standards.
 
 Organization domain detail: `docs/platforms/backend/contracts/organization-domain.md`.  
-Member domain detail: `docs/platforms/backend/contracts/member-domain.md`.
+Member domain detail: `docs/platforms/backend/contracts/member-domain.md`.  
+Message template domain detail: `docs/platforms/backend/contracts/message-template-domain.md`.

@@ -16,6 +16,7 @@ Out of scope for this contract (not shipped):
 
 - organization requesters / write mutations,
 - member domain (see `member-domain.md` — shipped separately),
+- message template domain (see `message-template-domain.md` — shipped separately),
 - meeting domain,
 - supervisor organization stats aggregate,
 - cpanel GraphQL mirrors / UI (cpanel platform checkout is temporarily absent; do not sync supervisor mirrors until restored).
@@ -324,6 +325,8 @@ No website organization UI/adapters in this change set (customer mirrors only). 
 
 ## Related
 
+- `docs/platforms/backend/contracts/member-domain.md`
+- `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/contracts/supervisor-admin-read-surfaces.md`
 - `docs/platforms/backend/contracts/supervisor-customers-and-stats.md`

@@ -18,6 +18,17 @@ Use when editing **customer (and similar) role bridges**, **`CustomerSchema` / `
 - **`CustomerBridgeBase`** and **`SupervisorBridgeBase`** already implement default root **`many`** (`withListable`, `withReplacements`, `order: [["updated_at","desc"]]`) and root **`one`** with **`id`** (`withReplacements`, `where: { id }`), and **`getRootOrmParent`** for non-`me` payloads resolves to **`"STATIC"`** as appropriate.
 - **Do not re-implement** that same `getOrmFindOptions` block in an entity bridge **only** to rebuild the same `FindOptions` the base already returns.
 
+## 2b. Org-owned customer children → `CustomerOrganizationOwnedBridgeBase`
+
+When a customer entity belongs to **Organization** (not directly to Customer) and roots use `{ me: true }`:
+
+- Extend **`CustomerOrganizationOwnedBridgeBase`** (`MemberBridge`, `MessageTemplateBridge`, …).
+- That base owns `getRootOrmParent` for `me` → `context.customer.getOrganization()`.
+- Do **not** copy that method into each entity bridge.
+- Do **not** put that resolve on `CustomerBridgeBase` (Me / Notification / Organization roots differ).
+
+Contract: `docs/platforms/backend/contracts/message-template-domain.md` §4.
+
 ## 3. When an entity bridge *should* override `getOrmFindOptions`
 
 Override **only** when the bridge adds **real, entity-owned policy** that the role base does not provide, for example:
@@ -35,14 +46,14 @@ If removing the override changes nothing observable against the role base, the o
 
 ## 5. Inverse `belongsTo` nested field → parent bridge `GetOneParent` (mandatory)
 
-When SDL exposes a **cardinality-safe** inverse on the child (example: `_Member.organization: _Organization`):
+When SDL exposes a **cardinality-safe** inverse on the child (examples: `_Member.organization`, `_MessageTemplate.organization`):
 
 - The nested field is prepared by the **target entity bridge** (here `OrganizationBridge`), not the child bridge.
-- That target bridge's `GetOneParent` **must** include the **source ORM model** (here `MemberModel | …`).
+- That target bridge's `GetOneParent` **must** include the **source ORM model** (here `MemberModel | MessageTemplateModel | …`).
 - Do **not** omit this when adding the SDL relation — typed parents document real nested prepare paths and prevent silent contract drift.
-- Do **not** put the parent model on the child's `GetOneParent` for this inverse; that would describe the removed high-cardinality nest (`_Organization.members`), not `belongsTo`.
+- Do **not** put the parent model on the child's `GetOneParent` for this inverse; that would describe a removed high-cardinality nest, not `belongsTo`.
 
-Worked example: `docs/platforms/backend/contracts/member-domain.md` §4.
+Worked examples: `docs/platforms/backend/contracts/member-domain.md` §4, `message-template-domain.md` §4.
 
 ## 6. Quick checklist before merging
 
@@ -50,5 +61,6 @@ Worked example: `docs/platforms/backend/contracts/member-domain.md` §4.
 - [ ] Entity bridge `GetManyParent` / `GetOneParent` types **reflect** that payload.
 - [ ] Every new nested SDL relation updated the **correct** bridge's `GetOneParent` / `GetManyParent` (including inverse `belongsTo` → target bridge).
 - [ ] No **copy-paste** `getOrmFindOptions` that only mirrors **`CustomerBridgeBase` / `SupervisorBridgeBase`** defaults.
+- [ ] Org-owned customer roots extend **`CustomerOrganizationOwnedBridgeBase`** (no duplicated `me` → Organization `getRootOrmParent`).
 
 Related: `gql-schemas-bridges-general.mdc`, `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`.

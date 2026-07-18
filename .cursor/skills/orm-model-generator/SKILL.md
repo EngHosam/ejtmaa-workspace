@@ -186,3 +186,4 @@ Current non-actor tenant reference: `Organization` (`docs/platforms/backend/cont
 - Single-owner FK to Customer uses `customer_id` with a real constraint and unique index when cardinality is one-to-one.
 - Do not use polymorphic `owner_*` for Organization unless product ownership changes.
 - `Member` is non-actor under Organization (`organization_id` real FK). PK is UUID v4 (`id`); link/access uses separate unique `access_token` (UUID default) — no `public_id`. Customer is not a Member row.
+- `MessageTemplate` is non-actor under Organization (`organization_id` real FK). Channel enum `messageTemplateChannel`: `WHATSAPP` | `EMAIL`. `subject` nullable (email); `body` required TEXT.

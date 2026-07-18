@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Practical invariants for the current Ejtmaa backend. Scoped to active modules: Customer, Organization, Member, Supervisor, User, Token, Notification, SystemSetting.
+Practical invariants for the current Ejtmaa backend. Scoped to active modules: Customer, Organization, Member, MessageTemplate, Supervisor, User, Token, Notification, SystemSetting.
 
 Interpretation rule:
 - invariants below define backend obligations for the Ejtmaa product surface.
@@ -82,8 +82,9 @@ Shared enums in `base.graphql` only. Mirror sync to frontends is command-based c
 Add relations only when expected count is `<= 100`. Clarify ambiguous cases before schema expansion.
 
 - High-cardinality collections (example: organization members) use **root list/detail** with `withListable`, not nested `parent.many`.
-- Cardinality-safe inverses (`belongsTo` / expected count 1) may be nested (example: `_Member.organization`).
+- Cardinality-safe inverses (`belongsTo` / expected count 1) may be nested (examples: `_Member.organization`, `_MessageTemplate.organization`).
 - When adding any nested SDL relation, update the preparing bridge's `GetOneParent` / `GetManyParent` (see `.cursor/rules/gql-root-parent-payload-contract.mdc` §5).
+- Customer org-owned children that resolve `{ me: true }` to the customer's Organization must extend `CustomerOrganizationOwnedBridgeBase` — do not re-copy that `getRootOrmParent` per entity bridge.
 
 ## B16. GraphQL Type Block Layout Invariant
 
