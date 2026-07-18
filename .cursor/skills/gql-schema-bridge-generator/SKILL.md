@@ -144,6 +144,7 @@ Reference bridges:
 - `backend/src/app/gql/bridges/customer/MemberBridge.ts`
 - `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts`
 - `backend/src/app/gql/bridges/customer/MeetingBridge.ts`
+- `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/MeBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/NotificationBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts`
@@ -158,8 +159,10 @@ Rules:
 - Customer `members` / `member(id)`: `{ me: true }` resolves root parent to the customer's Organization (Member belongs to Organization, not Customer); no supervisor Member surface yet.
 - Customer `messageTemplates` / `messageTemplate(id)`: same `{ me: true }` → Organization parent pattern as members; inverse `_MessageTemplate.organization` requires `OrganizationBridge` `GetOneParent` to include `MessageTemplateModel`.
 - Customer `meetings` / `meeting(id)`: same org-owned base; nested `chairperson` / `whatsappTemplate` / `emailTemplate` require `MemberBridge` / `MessageTemplateBridge` `GetOneParent` to include `MeetingModel`; inverse `_Meeting.organization` requires `OrganizationBridge` `GetOneParent` to include `MeetingModel`.
+- Customer `_Meeting.participants: [_MeetingParticipant]` (nested only; no root): join-row fields + `member`; no FK scalars on `_MeetingParticipant`. ORM: `Meeting.hasMany(MeetingParticipant, { as: "participants" })` only (no `belongsToMany`). `MeetingParticipantBridge.ident = "participants"`; `MemberBridge.GetOneParent` includes `MeetingParticipantModel`. Contract: `meeting-participant-domain.md`.
+- Do **not** add `_Member.meetingParticipants` / `_Member.meetings` unless product requests member-history UX (B15 risk over time).
 - When adding nested SDL `belongsTo` (example `_Member.organization`), update the **target** bridge `GetOneParent` to include the **source** model (`OrganizationBridge`: `MemberModel | …`). Never skip this. See `gql-root-parent-payload-contract.mdc` §5 and `member-domain.md`.
-- Do not nest high-cardinality `hasMany` under parent types when expected count may exceed 100 (B15); use root list instead.
+- Do not nest high-cardinality `hasMany` under parent types when expected count may exceed 100 (B15); use root list instead. Meeting roster under `_Meeting` is an allowed nest for expected board size.
 - Supervisor `OrganizationBridge` owns organization list/detail filters; nested `_Customer.organization` needs the bridge registered.
 - Role bridge bases: `CustomerBridgeBase`, `SupervisorBridgeBase`.
 - Org-owned customer children (`Member`, `MessageTemplate`, `Meeting`, …): extend `CustomerOrganizationOwnedBridgeBase` (`me` → customer's Organization). Do not copy that `getRootOrmParent` into each entity bridge.

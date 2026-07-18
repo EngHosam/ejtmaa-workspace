@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus` (+ Value enums)
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus` (+ Value enums)
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.
@@ -32,7 +32,10 @@ Nested (cardinality-safe):
 - `_Member.organization: _Organization` (`belongsTo`, expected count 1)
 - `_MessageTemplate.organization: _Organization` (`belongsTo`, expected count 1)
 - `_Meeting.organization: _Organization`, `_Meeting.chairperson: _Member`, `_Meeting.whatsappTemplate` / `emailTemplate: _MessageTemplate`
+- `_Meeting.participants: [_MeetingParticipant]` (roster; expected board size ≤ 100 — B15); `_MeetingParticipant.member: _Member`
 - not `_Organization.members` / meetings / templates as nested high-cardinality lists (root list only)
+- not root `meetingParticipants` / `meetingParticipant` (nested under meeting only)
+- not `_Member.meetingParticipants` / `_Member.meetings` (deferred)
 
 Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `MeBridge`
@@ -41,6 +44,7 @@ Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `MemberBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
 - `MessageTemplateBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
 - `MeetingBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
+- `MeetingParticipantBridge` (nested under Meeting only; extends `CustomerBridgeBase`)
 
 Org-owned intermediate base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts`.
 

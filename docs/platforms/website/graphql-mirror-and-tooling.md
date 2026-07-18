@@ -32,7 +32,7 @@ Backend owns the website GraphQL contract:
 
 Mirror artifacts only — not website-owned schema authoring surfaces.
 
-Customer mirrors currently include organization, member, message-template, and meeting reads from backend contracts (`organization-domain.md`, `member-domain.md`, `message-template-domain.md`, `meeting-domain.md`): roots `organization`, `members`, `member(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)`; types `_Organization` / `_Member` / `_MessageTemplate` / `_Meeting` (with cardinality-safe nested relations).
+Customer mirrors currently include organization, member, message-template, meeting, and meeting-participant reads from backend contracts (`organization-domain.md`, `member-domain.md`, `message-template-domain.md`, `meeting-domain.md`, `meeting-participant-domain.md`): roots `organization`, `members`, `member(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)`; types `_Organization` / `_Member` / `_MessageTemplate` / `_Meeting` / `_MeetingParticipant` (nested `_Meeting.participants` + `_MeetingParticipant.member`; no root participant queries).
 
 ### Generated type mirrors
 

@@ -1,0 +1,36 @@
+---
+description: MeetingParticipant roster join invariants (composite PK, hasMany-only, nested GQL)
+globs: backend/src/app/orm/models/MeetingParticipant.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/orm/models/Member.ts,backend/src/app/gql/bridges/**/MeetingParticipantBridge.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,backend/src/app/gql/bridges/**/MemberBridge.ts,backend/src/app/gql/schemas/CustomerSchema.ts,backend/src/app/gql/definitions/**/*.graphql
+alwaysApply: false
+---
+
+# MeetingParticipant Roster
+
+Authoritative contract: `docs/platforms/backend/contracts/meeting-participant-domain.md`.
+
+## ORM
+
+- Non-actor join row between `Meeting` and `Member`.
+- Composite PK `(meeting_id, member_id)` — do **not** add a surrogate `id` unless product explicitly requires row identity later.
+- `Meeting.hasMany(MeetingParticipant, { as: "participants" })` + `MeetingParticipant.belongsTo(Meeting|Member)`.
+- `Member.hasMany(MeetingParticipant)` is allowed for ORM inverse; do **not** expose `_Member.meetingParticipants` / `_Member.meetings` in GQL until product asks.
+- **Forbidden:** `belongsToMany` Meeting ↔ Member through this table.
+
+## Type and permissions
+
+- Store `type`: `CHAIRPERSON` | `MEMBER` | `VIEWER` (localized enum `meetingParticipantType`).
+- Do **not** store a free-form permissions JSONB or a `can_vote` boolean on the row.
+- Session permissions are fixed per type (see domain contract §8). Implement as a helper when session/socket work ships — do not invent a parallel ACL on `Member`.
+
+## Customer GQL
+
+- Nested only: `_Meeting.participants: [_MeetingParticipant]` with `member: _Member`.
+- `MeetingParticipantBridge.ident = "participants"` must match Meeting association `as`.
+- No root `meetingParticipants` / `meetingParticipant` queries unless product reopens that decision.
+- Do **not** expose FK scalars `meeting_id` / `member_id` on `_MeetingParticipant`.
+- `MemberBridge.GetOneParent` must include `MeetingParticipantModel` for nested `member`.
+
+## Cardinality
+
+- Nested under Meeting is B15-OK for expected board/assembly roster size.
+- If a Member→history list is added later and may exceed 100, prefer a bounded/root list (same B15 rule).

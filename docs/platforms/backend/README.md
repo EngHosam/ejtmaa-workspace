@@ -19,6 +19,7 @@
 | [`member-domain.md`](contracts/member-domain.md) | Member ORM + customer GQL reads |
 | [`message-template-domain.md`](contracts/message-template-domain.md) | MessageTemplate ORM + customer GQL reads |
 | [`meeting-domain.md`](contracts/meeting-domain.md) | Meeting ORM + customer GQL reads |
+| [`meeting-participant-domain.md`](contracts/meeting-participant-domain.md) | MeetingParticipant roster ORM + nested GQL |
 | [`socket-event-mirroring.md`](contracts/socket-event-mirroring.md) | Socket notify events |
 
 ## Patterns

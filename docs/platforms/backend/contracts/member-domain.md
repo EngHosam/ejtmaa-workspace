@@ -17,8 +17,9 @@ Out of scope (not shipped):
 - member requesters / write mutations,
 - supervisor Member GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
-- role / permissions fields on Member,
-- nested `_Organization.members` (high cardinality — root list only).
+- role / permissions fields on Member (session permissions live on `MeetingParticipant.type` — see `meeting-participant-domain.md` §8),
+- nested `_Organization.members` (high cardinality — root list only),
+- nested `_Member.meetingParticipants` / `_Member.meetings` (not needed yet; admin path is meeting → roster → member).
 
 ## 2) Domain purpose
 
@@ -68,6 +69,7 @@ Persistence names:
 `Member.boot()`:
 
 - `belongsTo(Organization)` on `organization_id` (real FK)
+- `hasMany(MeetingParticipant)` on `member_id` (ORM inverse for roster; GQL nest under Member not exposed)
 
 `Organization.boot()` inverse:
 
@@ -75,6 +77,8 @@ Persistence names:
 - mixins: `getMembers` / `createMember` / … (association PK type `string` for UUID member id)
 
 No direct `Customer` ↔ `Member` association.
+
+Do **not** add `belongsToMany(Meeting)` on Member for roster traversal.
 
 ## 4) Customer GraphQL surface
 
@@ -115,7 +119,9 @@ File: `backend/src/app/gql/bridges/customer/MemberBridge.ts`
 - Extends `CustomerOrganizationOwnedBridgeBase` (shared `me` → Organization resolve)
 - `ident = "member"`, `typeIdent = "_Member"`, `ormModel = MemberModel`
 - `GetManyParent = OrganizationOwnedMeParent` (`{ me: true }`)
-- `GetOneParent = MemberModel | MeetingModel | { me: true; id: string }` (`MeetingModel` for `_Meeting.chairperson`)
+- `GetOneParent = MemberModel | MeetingModel | MeetingParticipantModel | { me: true; id: string }`
+  - `MeetingModel` for `_Meeting.chairperson`
+  - `MeetingParticipantModel` for `_MeetingParticipant.member`
 - Does **not** override `getRootOrmParent` or `getOrmFindOptions` (inherited / role defaults)
 
 Shared base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` — see `message-template-domain.md` §4.
@@ -130,7 +136,7 @@ Therefore `OrganizationBridge` must declare (also includes other inverse parents
 export type GetOneParent = MemberModel | MessageTemplateModel | MeetingModel | { me: true };
 ```
 
-`MemberBridge.GetOneParent` also includes `MeetingModel` for nested `_Meeting.chairperson`.
+`MemberBridge.GetOneParent` also includes `MeetingModel` / `MeetingParticipantModel` for nested meeting surfaces.
 
 Do not put `OrganizationModel` on `MemberBridge.GetOneParent` for the organization inverse; that bridge prepares Organization, not Member.
 
@@ -185,6 +191,7 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 | Path | Role | Section |
 |---|---|---|
 | `backend/src/app/orm/models/Member.ts` | ORM source of truth | §3 |
+| `backend/src/app/orm/models/MeetingParticipant.ts` | ORM roster inverse (GQL nest deferred) | §3.4; `meeting-participant-domain.md` |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany Member` + mixins | §3.4 |
 | `backend/src/app/gql/definitions/customer.graphql` | `_Member` + roots + inverse relation | §4 |
 | `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | shared `me` → Organization | §4 |
@@ -201,6 +208,8 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/message-template-domain.md` (shared org-owned GQL base)
+- `docs/platforms/backend/contracts/meeting-participant-domain.md` (roster join; session type permissions)
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/invariants/backend.md` (B15, B18, B23)
 - `.cursor/rules/gql-root-parent-payload-contract.mdc` (inverse `GetOneParent` typing)
+- `.cursor/rules/meeting-participant-roster.mdc`

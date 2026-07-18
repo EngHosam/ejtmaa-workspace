@@ -9,12 +9,12 @@ Current Ejtmaa meeting surface:
 - chairperson FK to `Member`,
 - independent lifecycle (`status`) and invite-notify axes (`notify_status` + `notify_start_at`),
 - customer GraphQL read of meetings for the authenticated customer's organization,
+- nested roster via `_Meeting.participants` (see `meeting-participant-domain.md`),
 - website GQL mirrors for that customer surface.
 
 Out of scope (not shipped):
 
 - meeting requesters / write mutations,
-- MeetingParticipant / roster join table,
 - LiveKit room/token issuance,
 - Yjs collaborative session state,
 - supervisor Meeting GraphQL,
@@ -92,13 +92,16 @@ Under `backend/src/resources/trans/ar/general.ts` and `en/general.ts`:
 - `belongsTo(Member, { as: "chairperson" })` on `chairperson_id`
 - `belongsTo(MessageTemplate, { as: "whatsappTemplate" })` on `whatsapp_template_id`
 - `belongsTo(MessageTemplate, { as: "emailTemplate" })` on `email_template_id`
+- `hasMany(MeetingParticipant, { as: "participants" })` on `meeting_id` (roster; see `meeting-participant-domain.md`)
 
 `Organization.boot()` inverse:
 
 - `hasMany(Meeting)` on `organization_id`
 - mixins: `getMeetings` / `createMeeting` / … (association PK type `string` for UUID meeting id)
 
-Mixin declare blocks on Meeting are split: organization / chairperson / whatsapp template / email template.
+Mixin declare blocks on Meeting are split: organization / chairperson / whatsapp template / email template / participants.
+
+Do **not** add `belongsToMany(Member)` on Meeting for the roster — join rows are exposed via `participants` only.
 
 ## 4) Customer GraphQL surface
 
@@ -113,12 +116,13 @@ Implements `_Timestamps` & `_Pagination`.
 
 Info: `id`, `subject`, `type`, `datetime`, `min_members_count`, `status`, `notify_status`, `notify_start_at`.
 
-Relations (cardinality-safe `belongsTo`):
+Relations:
 
-- `organization: _Organization`
+- `organization: _Organization` (cardinality-safe `belongsTo`)
 - `chairperson: _Member` (association `as` = field name)
 - `whatsappTemplate: _MessageTemplate`
 - `emailTemplate: _MessageTemplate`
+- `participants: [_MeetingParticipant]` (roster nest; B15 OK for expected board size — contract in `meeting-participant-domain.md`)
 
 ### Root queries
 
@@ -144,11 +148,12 @@ File: `backend/src/app/gql/bridges/customer/MeetingBridge.ts`
 
 ### Inverse / nested parent typing (mandatory)
 
-| Nested SDL field | Preparing bridge | `GetOneParent` must include |
+| Nested SDL field | Preparing bridge | Parent typing |
 |---|---|---|
-| `_Meeting.organization` | `OrganizationBridge` | `MeetingModel` |
-| `_Meeting.chairperson` | `MemberBridge` | `MeetingModel` |
-| `_Meeting.whatsappTemplate` / `emailTemplate` | `MessageTemplateBridge` | `MeetingModel` |
+| `_Meeting.organization` | `OrganizationBridge` | `GetOneParent` includes `MeetingModel` |
+| `_Meeting.chairperson` | `MemberBridge` | `GetOneParent` includes `MeetingModel` |
+| `_Meeting.whatsappTemplate` / `emailTemplate` | `MessageTemplateBridge` | `GetOneParent` includes `MeetingModel` |
+| `_Meeting.participants` | `MeetingParticipantBridge` | `GetManyParent = MeetingModel` |
 
 Current shapes:
 
@@ -157,7 +162,11 @@ Current shapes:
 export type GetOneParent = MemberModel | MessageTemplateModel | MeetingModel | { me: true };
 
 // MemberBridge
-export type GetOneParent = MemberModel | MeetingModel | { me: true; id: string };
+export type GetOneParent =
+    | MemberModel
+    | MeetingModel
+    | MeetingParticipantModel
+    | { me: true; id: string };
 
 // MessageTemplateBridge
 export type GetOneParent = MessageTemplateModel | MeetingModel | { me: true; id: string };
@@ -165,7 +174,7 @@ export type GetOneParent = MessageTemplateModel | MeetingModel | { me: true; id:
 
 ### Registered bridges
 
-`CustomerSchema.registeredBridges` includes `MeetingBridge`.
+`CustomerSchema.registeredBridges` includes `MeetingBridge` and `MeetingParticipantBridge`.
 
 ## 5) Read flow (root)
 
@@ -208,15 +217,17 @@ Verification: `yarn generate-types`, `yarn type-check`.
 | Path | Role | Section |
 |---|---|---|
 | `backend/src/app/orm/models/Meeting.ts` | ORM source of truth | §3 |
+| `backend/src/app/orm/models/MeetingParticipant.ts` | Roster join (detail contract) | `meeting-participant-domain.md` |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany Meeting` + mixins | §3.5 |
 | `backend/src/resources/trans/ar/general.ts` | meeting enums AR | §3.3 |
 | `backend/src/resources/trans/en/general.ts` | meeting enums EN | §3.3 |
 | `backend/src/app/gql/definitions/base.graphql` | meeting GQL enum wrappers | §4 |
 | `backend/src/app/gql/definitions/customer.graphql` | `_Meeting` + roots + nested relations | §4 |
 | `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | thin org-owned bridge | §4–§5 |
+| `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts` | nested roster bridge | `meeting-participant-domain.md` |
 | `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | shared `me` → Organization | §4 |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | inverse parent typing | §4 |
-| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | chairperson parent typing | §4 |
+| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | chairperson + participant.member parent typing | §4 |
 | `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts` | template parent typing | §4 |
 | `backend/src/app/gql/schemas/CustomerSchema.ts` | register + resolvers | §4 |
 | `backend/src/app/gql/gql-types/base.ts` | Generated | §7 |
@@ -232,6 +243,7 @@ Verification: `yarn generate-types`, `yarn type-check`.
 
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/member-domain.md`
+- `docs/platforms/backend/contracts/meeting-participant-domain.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`
