@@ -33,10 +33,22 @@ If removing the override changes nothing observable against the role base, the o
 - Principal / owner guards align with `getRootOrmParent` for the active parent mode (see `gql-schemas-bridges-general.mdc` Ejtmaa addendum).
 - **`public` in `getOrmFindOptions`:** Role bases do **not** read `parent.public`. Ejtmaa customer and supervisor schemas do not use a `public` root parent today; keep explicit parent flags that match the active schema contract.
 
-## 5. Quick checklist before merging
+## 5. Inverse `belongsTo` nested field → parent bridge `GetOneParent` (mandatory)
+
+When SDL exposes a **cardinality-safe** inverse on the child (example: `_Member.organization: _Organization`):
+
+- The nested field is prepared by the **target entity bridge** (here `OrganizationBridge`), not the child bridge.
+- That target bridge's `GetOneParent` **must** include the **source ORM model** (here `MemberModel | …`).
+- Do **not** omit this when adding the SDL relation — typed parents document real nested prepare paths and prevent silent contract drift.
+- Do **not** put the parent model on the child's `GetOneParent` for this inverse; that would describe the removed high-cardinality nest (`_Organization.members`), not `belongsTo`.
+
+Worked example: `docs/platforms/backend/contracts/member-domain.md` §4.
+
+## 6. Quick checklist before merging
 
 - [ ] Resolver passes the **correct explicit parent** for this schema (`me`, `id`, `filter`, and pagination args as required by sibling fields).
 - [ ] Entity bridge `GetManyParent` / `GetOneParent` types **reflect** that payload.
+- [ ] Every new nested SDL relation updated the **correct** bridge's `GetOneParent` / `GetManyParent` (including inverse `belongsTo` → target bridge).
 - [ ] No **copy-paste** `getOrmFindOptions` that only mirrors **`CustomerBridgeBase` / `SupervisorBridgeBase`** defaults.
 
 Related: `gql-schemas-bridges-general.mdc`, `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`.

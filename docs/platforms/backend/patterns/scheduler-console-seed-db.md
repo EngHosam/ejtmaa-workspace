@@ -46,6 +46,7 @@ Targeted demo seed via `DatabaseConsole.update` → `SeedPatch.update("test_seed
 
 1. `seedDemoCustomers` — early-return if any customer exists
 2. `seedDemoOrganizations` — early-return if any organization exists
+3. `seedDemoMembers` — early-return if any member exists; explicit org `subdomain` calls + curated Saudi names; `organization.createMember(...)`
 
 Demo row values stay in `SeedPatch.ts` only; docs do not mirror them.
 
@@ -53,7 +54,8 @@ Unknown `update` versions reject with `NOT_VALID`.
 
 Seed logo directory: `backend/static/upload/__seed/images/` (upload gitignore whitelists `__seed/`).
 
-Organization seed mechanism: `docs/platforms/backend/contracts/organization-domain.md` §7.
+Organization seed mechanism: `docs/platforms/backend/contracts/organization-domain.md` §7.  
+Member seed mechanism: `docs/platforms/backend/contracts/member-domain.md` §6.
 
 ## 4) Safety rules
 
@@ -62,9 +64,12 @@ Organization seed mechanism: `docs/platforms/backend/contracts/organization-doma
 - Observable logs for critical branches
 - Do not silently swallow failures
 - Keep demo data out of `init()` unless product bootstrap truly requires it
+- Do not name seed structures `plan` / `plans` (conflicts with future product packages)
+- Demo person names: curated realistic locale names in code — do not use faker for Saudi member/customer-facing demo people
 
 ## Related
 
 - `docs/platforms/backend/playbooks/add-update-fix.md`
 - `docs/platforms/backend/contracts/organization-domain.md`
+- `docs/platforms/backend/contracts/member-domain.md`
 - `docs/invariants/backend.md`

@@ -1,0 +1,29 @@
+---
+description: Demo seed naming and person-name conventions for SeedPatch
+globs: backend/src/app/orm/patches/SeedPatch.ts,backend/src/console/DatabaseConsole.ts,docs/platforms/backend/patterns/scheduler-console-seed-db.md,docs/platforms/backend/contracts/*-domain.md
+alwaysApply: false
+---
+
+# Backend Demo Seed Conventions
+
+Authoritative mechanism docs: `docs/platforms/backend/patterns/scheduler-console-seed-db.md`.
+
+## Naming
+
+- Do **not** name seed structs/arrays/helpers `plan` / `plans` / `SeedPlan` — that word is reserved for future product packages and confuses later readers.
+- Prefer explicit helpers (`seedMembersForSubdomain`, `demoSaudiMemberNames`, org `subdomain` literals).
+
+## Person names
+
+- For Saudi/Arabic demo people (members, similar directory rows): use a **curated** name list in `SeedPatch.ts`.
+- Do **not** use faker (`MyArFaker` / `MyFaker`) for those display names.
+
+## Payload vs docs
+
+- Keep emails, passwords, sample names, counts, and colors in code only.
+- Docs describe **mechanism** (console action, early-return, factories/mixins) — not demo payload tables.
+
+## Members (current)
+
+- `test_seed` → `seedDemoMembers` after orgs; early-return if any member exists.
+- Detail: `docs/platforms/backend/contracts/member-domain.md` §6.

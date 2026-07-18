@@ -32,7 +32,7 @@ Backend owns the website GraphQL contract:
 
 Mirror artifacts only — not website-owned schema authoring surfaces.
 
-Customer mirrors currently include root `organization` and `_Organization` from the backend organization contract (`docs/platforms/backend/contracts/organization-domain.md`).
+Customer mirrors currently include organization and member reads from backend contracts (`organization-domain.md`, `member-domain.md`): roots `organization`, `members`, `member(id)`, types `_Organization` / `_Member` (with `_Member.organization`).
 
 ### Generated type mirrors
 

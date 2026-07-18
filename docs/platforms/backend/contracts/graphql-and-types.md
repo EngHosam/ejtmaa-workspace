@@ -21,11 +21,18 @@ Root queries (from `customer.graphql`):
 - `me` — current customer profile
 - `notifications` — paginated notifications
 - `organization` — current customer's organization (`prepareOneGQLModel({ me: true })`)
+- `members` — members of the customer's organization (`{ me: true }` → Organization parent)
+- `member(id)` — single member in the customer's organization
+
+Nested (cardinality-safe):
+- `_Member.organization: _Organization` (`belongsTo`, expected count 1)
+- not `_Organization.members` (high cardinality → root list only)
 
 Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `MeBridge`
 - `NotificationBridge`
 - `OrganizationBridge`
+- `MemberBridge`
 
 ## Supervisor schema surface
 
@@ -72,4 +79,5 @@ Sync (when the target platform exists) is command-based copy from backend SDL/ty
 
 See `docs/platforms/backend/patterns/graphql-and-bridges.md` for authoring standards.
 
-Organization domain detail: `docs/platforms/backend/contracts/organization-domain.md`.
+Organization domain detail: `docs/platforms/backend/contracts/organization-domain.md`.  
+Member domain detail: `docs/platforms/backend/contracts/member-domain.md`.

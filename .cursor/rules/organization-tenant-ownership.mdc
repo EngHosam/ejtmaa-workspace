@@ -33,3 +33,9 @@ For customer-role `organization` when `Customer.hasOne(Organization)` uses assoc
 - List/detail roots live on supervisor schema; nested `_Customer.organization` requires `OrganizationBridge` registered.
 - Keep list queries bounded (`withListable`) and deterministically ordered.
 - Do not sync supervisor organization mirrors into `cpanel/` while that platform checkout is absent; website customer mirrors remain the only active frontend sync for this domain.
+
+## Members (related)
+
+- `Member` belongs to Organization; see `docs/platforms/backend/contracts/member-domain.md`.
+- Customer GQL: root `members` / `member(id)` only — not nested `_Organization.members` (B15).
+- Inverse `_Member.organization` requires `OrganizationBridge` `GetOneParent` to include `MemberModel`.

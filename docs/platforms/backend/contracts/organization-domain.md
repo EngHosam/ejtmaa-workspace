@@ -15,7 +15,7 @@ Current Ejtmaa organization (tenant) surface:
 Out of scope for this contract (not shipped):
 
 - organization requesters / write mutations,
-- member models,
+- member domain (see `member-domain.md` — shipped separately),
 - meeting domain,
 - supervisor organization stats aggregate,
 - cpanel GraphQL mirrors / UI (cpanel platform checkout is temporarily absent; do not sync supervisor mirrors until restored).
