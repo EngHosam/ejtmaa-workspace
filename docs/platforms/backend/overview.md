@@ -40,6 +40,8 @@ ORM models (`backend/src/app/orm/models/`):
 - `AgendaItem` — non-actor agenda line under Meeting (`modelName: "agendaItem"`; durable SQL)
 - `Decision` — non-actor decision under Meeting (`modelName: "decision"`; phase PRE_START|DURING; durable SQL); `hasMany` votes
 - `Vote` — durable ballot under Decision (composite PK `(decision_id, member_id)`; `YES`|`NO`)
+- `TalkRecord` — durable talk-queue row under Meeting
+- `Plan` — non-actor platform catalog SKU (الباقة; `plans` table; no tenant FK; billing period + limits)
 - `Supervisor` — supervisor actor profile
 - `User` — shared user identity
 - `Token` — auth tokens
@@ -76,7 +78,7 @@ Registration maps:
 Provider config: `backend/src/resources/configs/gql/index.ts`
 - Schemas: `customer`, `supervisor`
 - SDL: `backend/src/app/gql/definitions/customer.graphql`, `backend/src/app/gql/definitions/supervisor.graphql`, `backend/src/app/gql/definitions/base.graphql`
-- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge`, `VoteBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant/agenda/decision/vote bridges are nested-only)
+- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge`, `VoteBridge`, `TalkRecordBridge`, `PlanBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant/agenda/decision/vote/talkRecord bridges are nested-only; `PlanBridge` is public catalog `STATIC`)
 - Supervisor bridges: `MeBridge`, `NotificationBridge`, `CustomerBridge`, `CustomerStatsBridge`, `OrganizationBridge` under `backend/src/app/gql/bridges/supervisor/`
 
 ### Socket
@@ -94,4 +96,5 @@ Config: `backend/src/resources/configs/socket/io.ts`
 - `docs/platforms/backend/contracts/member-domain.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/meeting-domain.md`
+- `docs/platforms/backend/contracts/plan-domain.md`
 - `docs/invariants/backend.md`

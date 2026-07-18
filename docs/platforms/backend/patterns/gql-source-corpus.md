@@ -49,6 +49,8 @@ Framework contracts: `@nodejs/gql` (`BridgeBase`, `GQLSchemaBase`, `GQLProvider`
 | `backend/src/app/gql/bridges/customer/AgendaItemBridge.ts` | Nested agenda (`ident = "agendaItems"`) |
 | `backend/src/app/gql/bridges/customer/DecisionBridge.ts` | Nested decisions (`ident = "decisions"`) |
 | `backend/src/app/gql/bridges/customer/VoteBridge.ts` | Nested votes under decision (`ident = "votes"`) |
+| `backend/src/app/gql/bridges/customer/TalkRecordBridge.ts` | Nested talk records under meeting (`ident = "talkRecords"`) |
+| `backend/src/app/gql/bridges/customer/PlanBridge.ts` | Public plan catalog (`ident = "plan"`; `{ public: true }`) |
 | `backend/src/app/gql/bridges/supervisor/MeBridge.ts` | Supervisor profile |
 | `backend/src/app/gql/bridges/supervisor/NotificationBridge.ts` | Supervisor notifications |
 | `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts` | Customer list/detail |

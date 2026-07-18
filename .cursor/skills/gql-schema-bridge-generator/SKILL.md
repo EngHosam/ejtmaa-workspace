@@ -133,7 +133,7 @@ If partially blocked:
 
 Current Ejtmaa GQL surfaces:
 
-- Customer: `me`, `notifications`, `organization`, `members`, `member(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)` (+ nested `participants`, `agendaItems`, `decisions`, `talkRecords`)
+- Customer: `me`, `notifications`, `organization`, `members`, `member(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)` (+ nested `participants`, `agendaItems`, `decisions`, `talkRecords`), `plans`, `plan(id)`
 - Supervisor: `me`, `notifications`, `customers`, `customer`, `customerStats`, `organizations`, `organization`
 
 Reference bridges:
@@ -149,6 +149,7 @@ Reference bridges:
 - `backend/src/app/gql/bridges/customer/DecisionBridge.ts`
 - `backend/src/app/gql/bridges/customer/VoteBridge.ts`
 - `backend/src/app/gql/bridges/customer/TalkRecordBridge.ts`
+- `backend/src/app/gql/bridges/customer/PlanBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/MeBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/NotificationBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts`
@@ -168,6 +169,7 @@ Rules:
 - Customer `_Meeting.decisions: [_Decision]` (nested only; no root): `id`, `sort_order`, `subject`, `phase`, `status`, `voting_type`; no `meeting_id` scalar. ORM: `Meeting.hasMany(Decision)` (default association; no `as`). `DecisionBridge.ident = "decisions"`. Base enums: `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`.
 - Customer `_Decision.votes: [_Vote]` (nested only; no root): `value`, `cast_at`, `member`; no FK scalars. ORM: `Decision.hasMany(Vote)` (default; no `as`). `VoteBridge.ident = "votes"`; `MemberBridge.GetOneParent` includes `VoteModel`. Base enum: `_VoteValue`.
 - Customer `_Meeting.talkRecords: [_TalkRecord]` (nested only; no root): `id`, `sort_order`, `status`, `started_at`, `ended_at`, `member`; no FK scalars / no `decision`. ORM: `Meeting.hasMany(TalkRecord)` (default; no `as`). `TalkRecordBridge.ident = "talkRecords"`; `MemberBridge.GetOneParent` includes `TalkRecordModel`. Base enum: `_TalkRecordStatus`.
+- Customer `plans` / `plan(id)`: platform catalog (no owner FK). Parent `{ public: true }` → `STATIC`. `PlanBridge` extends `CustomerBridgeBase` (not org-owned). Root policy: `status = ACTIVE`, order `sort_order` then `id`. MultiLang `name`/`description` → localized `String`. Base enums: `_PlanStatus`, `_PlanBillingPeriod`. No supervisor Plan surface yet.
 - Do **not** add `_Member.meetingParticipants` / `_Member.meetings` unless product requests member-history UX (B15 risk over time).
 - When adding nested SDL `belongsTo` (example `_Member.organization`), update the **target** bridge `GetOneParent` to include the **source** model (`OrganizationBridge`: `MemberModel | …`). Never skip this. See `gql-root-parent-payload-contract.mdc` §5 and `member-domain.md`.
 - Do not nest high-cardinality `hasMany` under parent types when expected count may exceed 100 (B15); use root list instead. Meeting roster under `_Meeting` is an allowed nest for expected board size.

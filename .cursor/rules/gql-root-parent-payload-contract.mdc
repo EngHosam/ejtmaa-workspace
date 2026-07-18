@@ -42,7 +42,7 @@ If removing the override changes nothing observable against the role base, the o
 ## 4. Same idea for adjacent concerns (do not duplicate the role base)
 
 - Principal / owner guards align with `getRootOrmParent` for the active parent mode (see `gql-schemas-bridges-general.mdc` Ejtmaa addendum).
-- **`public` in `getOrmFindOptions`:** Role bases do **not** read `parent.public`. Ejtmaa customer and supervisor schemas do not use a `public` root parent today; keep explicit parent flags that match the active schema contract.
+- **`public` in `getOrmFindOptions`:** Role bases do **not** read `parent.public`. Customer catalog roots that are not actor/org-scoped (example: `plans` / `plan(id)`) pass `{ public: true }` so the entity bridge can own visibility policy; keep explicit parent flags that match the active schema contract.
 
 ## 5. Inverse `belongsTo` nested field → parent bridge `GetOneParent` (mandatory)
 

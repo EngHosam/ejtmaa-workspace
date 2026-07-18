@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus` (+ Value enums)
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus`, `_PlanStatus`, `_PlanBillingPeriod` (+ Value enums)
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.
@@ -27,6 +27,8 @@ Root queries (from `customer.graphql`):
 - `messageTemplate(id)` — single message template in the customer's organization
 - `meetings` — meetings of the customer's organization (same `me` → Organization parent)
 - `meeting(id)` — single meeting in the customer's organization
+- `plans` — ACTIVE platform catalog plans (`prepareManyGQLModels({ public: true })`)
+- `plan(id)` — single ACTIVE catalog plan (`{ public: true, id }`)
 
 Nested (cardinality-safe):
 - `_Member.organization: _Organization` (`belongsTo`, expected count 1)
@@ -57,8 +59,11 @@ Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `DecisionBridge` (nested under Meeting only; extends `CustomerBridgeBase`)
 - `VoteBridge` (nested under Decision only; extends `CustomerBridgeBase`)
 - `TalkRecordBridge` (nested under Meeting only; extends `CustomerBridgeBase`)
+- `PlanBridge` (public catalog; extends `CustomerBridgeBase`; `{ public: true }` → `STATIC`; ACTIVE-only)
 
 Org-owned intermediate base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts`.
+
+Plan catalog detail: `docs/platforms/backend/contracts/plan-domain.md`.
 
 ## Supervisor schema surface
 

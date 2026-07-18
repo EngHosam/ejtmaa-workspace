@@ -167,7 +167,7 @@ Do not put `OrganizationModel` on `MemberBridge.GetOneParent` for the organizati
 `SeedPatch.seedDemoMembers` (from `test_seed` after customers + orgs):
 
 - early-return when `Member.count() > 0`
-- seeds members for an explicit subset of organizations looked up by `subdomain` via `seedMembersForSubdomain(...)` — **not** a generic “plan/plans” structure (that name is reserved for future product packages)
+- seeds members for an explicit subset of organizations looked up by `subdomain` via `seedMembersForSubdomain(...)` — **not** a generic “plan/plans” structure (that name is the product ORM model `Plan`)
 - member display names come from a curated Saudi name list in `SeedPatch.ts` (not faker)
 - rows created with `organization.createMember(...)`; emails/mobiles/counts stay in code only
 

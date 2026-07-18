@@ -64,7 +64,7 @@ Member seed mechanism: `docs/platforms/backend/contracts/member-domain.md` §6.
 - Observable logs for critical branches
 - Do not silently swallow failures
 - Keep demo data out of `init()` unless product bootstrap truly requires it
-- Do not name seed structures `plan` / `plans` (conflicts with future product packages)
+- Do not name seed structures `plan` / `plans` (conflicts with product ORM model `Plan`)
 - Demo person names: curated realistic locale names in code — do not use faker for Saudi member/customer-facing demo people
 
 ## Related

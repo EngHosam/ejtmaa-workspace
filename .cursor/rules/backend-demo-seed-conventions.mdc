@@ -10,7 +10,7 @@ Authoritative mechanism docs: `docs/platforms/backend/patterns/scheduler-console
 
 ## Naming
 
-- Do **not** name seed structs/arrays/helpers `plan` / `plans` / `SeedPlan` — that word is reserved for future product packages and confuses later readers.
+- Do **not** name seed structs/arrays/helpers `plan` / `plans` / `SeedPlan` — those collide with the product ORM model `Plan` (`plans` table) and confuse later readers.
 - Prefer explicit helpers (`seedMembersForSubdomain`, `demoSaudiMemberNames`, org `subdomain` literals).
 
 ## Person names
