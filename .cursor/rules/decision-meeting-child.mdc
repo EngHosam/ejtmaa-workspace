@@ -1,0 +1,29 @@
+---
+description: Decision under Meeting — default association naming, nested GQL only
+globs: backend/src/app/orm/models/Decision.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/gql/bridges/**/DecisionBridge.ts,backend/src/app/gql/schemas/CustomerSchema.ts,backend/src/app/gql/definitions/**/*.graphql
+alwaysApply: false
+---
+
+# Decision (Meeting child)
+
+Authoritative contract: `docs/platforms/backend/contracts/decision-domain.md`.
+
+## ORM
+
+- Non-actor under `Meeting` (`meeting_id` FK).
+- `modelName: "decision"` so default `hasMany` is `decisions` — **do not** add `as` on `Meeting.hasMany(Decision())`.
+- Bridge `ident` and SDL field must stay `decisions`.
+- Durable SQL (`phase` PRE_START / DURING); not Yjs source of truth.
+- Enums: `decisionPhase`, `decisionStatus` (default `NEW`), optional `decisionVotingType`.
+
+## Customer GQL
+
+- Nested only: `_Meeting.decisions: [_Decision]`.
+- Expose `id`, `sort_order`, `subject`, `phase`, `status`, `voting_type` (+ timestamps / `total_count`).
+- Do **not** expose `meeting_id` scalar; no root decision queries unless product reopens that decision.
+- `DecisionBridge` extends `CustomerBridgeBase`; `GetManyParent = MeetingModel`.
+- Shared enum wrappers live in `base.graphql` (`_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`).
+
+## Related children (not this rule)
+
+Vote / talk-record models link to Decision later; do not invent nested GQL for them until those ORM models ship.

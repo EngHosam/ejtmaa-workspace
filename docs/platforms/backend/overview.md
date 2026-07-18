@@ -35,9 +35,10 @@ ORM models (`backend/src/app/orm/models/`):
 - `Organization` — tenant entity owned by a customer (`customer_id`, one-to-one); `hasMany Member`, `hasMany MessageTemplate`, `hasMany Meeting`
 - `Member` — non-actor org person (UUID `id` + `access_token`); belongs to Organization; ORM `hasMany` MeetingParticipant (no Member→meetings GQL yet)
 - `MessageTemplate` — non-actor org message library (`WHATSAPP` | `EMAIL`); belongs to Organization
-- `Meeting` — non-actor org session (UUID PK; chairperson Member; optional template FKs; LiveKit later); `hasMany` participants + agendaItems
+- `Meeting` — non-actor org session (UUID PK; chairperson Member; optional template FKs; LiveKit later); `hasMany` participants + agendaItems + decisions
 - `MeetingParticipant` — non-actor roster join (composite PK `(meeting_id, member_id)`; type `CHAIRPERSON` | `MEMBER` | `VIEWER`)
 - `AgendaItem` — non-actor agenda line under Meeting (`modelName: "agendaItem"`; durable SQL)
+- `Decision` — non-actor decision under Meeting (`modelName: "decision"`; phase PRE_START|DURING; durable SQL)
 - `Supervisor` — supervisor actor profile
 - `User` — shared user identity
 - `Token` — auth tokens
@@ -74,7 +75,7 @@ Registration maps:
 Provider config: `backend/src/resources/configs/gql/index.ts`
 - Schemas: `customer`, `supervisor`
 - SDL: `backend/src/app/gql/definitions/customer.graphql`, `backend/src/app/gql/definitions/supervisor.graphql`, `backend/src/app/gql/definitions/base.graphql`
-- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant and agenda bridges are nested-only)
+- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant/agenda/decision bridges are nested-only)
 - Supervisor bridges: `MeBridge`, `NotificationBridge`, `CustomerBridge`, `CustomerStatsBridge`, `OrganizationBridge` under `backend/src/app/gql/bridges/supervisor/`
 
 ### Socket
