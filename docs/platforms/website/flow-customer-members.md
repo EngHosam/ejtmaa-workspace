@@ -19,7 +19,7 @@ Authenticated customer org-member directory and create/edit/delete form on `CUST
 - Soft-delete / cascade delete when roster or chairperson refs exist (backend **blocks** with specific message keys).
 - Distinct empty copy for “no search hits” vs “no members yet”.
 - Page / sort / scope route params (load-more list only).
-- Settings page reuse of `FormAvatarField` (field is shared-ready; settings flow still planned).
+- Organization logo reuse of `FormAvatarField` with `name="logo_file"` — see `flow-customer-organization.md` (shipped).
 
 ## 2) Entry points
 
@@ -96,7 +96,7 @@ Governance: `.cursor/rules/website-multi-path-form-routes.mdc`, `.cursor/rules/w
 
 ### 5.2 Avatar upload
 
-`FormAvatarField` → `uploadEntityMediaFile` → `API.ACTIONS.MULTIPART_UPLOAD` → store `uploadedName` in form field `avatar_file`. Helpers: `website/src/app/helpers/entityMedia.ts`, `media.ts` (`mediaStaticRoot` / `mediaImageUri`). Visual language: navy identity circle + quiet text action (Ejtmaa), not Masdaria camera-chip chrome. Rule: `.cursor/rules/website-form-avatar-field.mdc`.
+`FormAvatarField` → `uploadEntityMediaFile` → `API.ACTIONS.MULTIPART_UPLOAD` → store `uploadedName` in form field `avatar_file` (default `name`; org form overrides to `logo_file`). Helpers: `website/src/app/helpers/entityMedia.ts`, `media.ts` (`mediaStaticRoot` / `mediaImageUri`). Visual language: navy identity circle + absolute `cover` fill + quiet text action (Ejtmaa), not Masdaria camera-chip chrome. Rule: `.cursor/rules/website-form-avatar-field.mdc`.
 
 ## 6) Shared field contracts (touched this slice)
 

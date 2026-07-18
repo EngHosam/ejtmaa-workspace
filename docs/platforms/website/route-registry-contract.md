@@ -100,7 +100,7 @@ Shipped: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`.
 
 ### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`)
 
-Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`. Remaining workspace routes are planned.
+Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerOrganization`. Remaining workspace routes are planned.
 
 | Identify | Path | Status |
 |----------|------|--------|
@@ -108,7 +108,7 @@ Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`. Remaining work
 | `CustomerMeetings` | `/customer/meetings` (target) | planned — drawer tile |
 | `CustomerMembers` | `/customer/members` | shipped — directory (ResultLane + search); drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-members.md` |
 | `CustomerMemberForm` | `/customer/members/form` (+ `/:id`) | shipped — multi-path create/update; `breadcrumb: { parent: CustomerMembers }`; href via `formRoute.ts` — `flow-customer-members.md` §5 |
-| `CustomerOrganization` | `/customer/organization` (target) | planned — drawer tile |
+| `CustomerOrganization` | `/customer/organization` | shipped — settings form upsert; drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-organization.md` |
 | `CustomerMessageTemplates` | `/customer/message-templates` (target) | planned — drawer tile |
 | `CustomerSubscription` | `/customer/subscription` (target) | planned — drawer tile |
 | `CustomerSettings` | `/customer/settings` | planned — drawer tile + settings flow |

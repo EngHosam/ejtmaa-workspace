@@ -1,0 +1,33 @@
+---
+description: FormColorField contract — native color swatch + hex text, FormInputWrapper, W29 style layers
+globs:
+  - website/src/app/ui/components/form/FormColorField.tsx
+  - website/src/app/ui/components/**/*Form*.tsx
+  - docs/platforms/website/flow-form-foundation.md
+  - docs/platforms/website/flow-customer-organization.md
+alwaysApply: false
+---
+
+# Website FormColorField
+
+Applies when adding or changing the shared color form field. Authority: `docs/platforms/website/flow-form-foundation.md` §3.4.
+
+## Contract
+
+1. Controlled via `useFormInput({ name })` — form value is a string (typically `#rrggbb`) or empty/null.
+2. UI: native `input type="color"` swatch + hex text input inside one `FormInputWrapper` row. Do **not** add a third-party color-picker dependency.
+3. Optional `fallback` hex drives the swatch when the form value is empty or not a valid `#rgb` / `#rrggbb`. Prefer `BrandColors` from `theme.ts` at the call site when branding defaults matter.
+4. W29: `baseCssStyle` holds only `...ElementStyles.inputReset`. Swatch padding uses shorthand `p={0}`. Cursor, webkit/moz swatch pseudo styles, caret/autofill styles live in `cssStyle`.
+5. Hex text uses Utils `ltr` (machine hex). Do not invent backend hex Joi unless product requires it.
+
+## Forbidden
+
+- Putting `padding`, `cursor`, or pseudo styles in `baseCssStyle`.
+- Parallel color widgets outside `form/FormColorField.tsx` for the same job.
+- Manual success toasts after color save (W11).
+
+## Reference
+
+- Field: `website/src/app/ui/components/form/FormColorField.tsx`
+- Consumer: `CustomerOrganizationScreen`
+- Flow: `flow-form-foundation.md` §3.4, `flow-customer-organization.md` §5

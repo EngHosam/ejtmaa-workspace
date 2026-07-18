@@ -10,11 +10,14 @@ Current Ejtmaa organization (tenant) surface:
 - localization for organization status,
 - demo seed via console `test_seed` (not `init`),
 - seed logo assets under `static/upload/__seed/images/`,
-- website GraphQL mirrors for the customer organization read.
+- website GraphQL mirrors for the customer organization read,
+- website customer write surface via `OrganizationRequester` (`read` | `upsert`) — see §9,
+- website organization settings form — `docs/platforms/website/flow-customer-organization.md`.
 
 Out of scope for this contract (not shipped):
 
-- organization requesters / write mutations,
+- accepting or writing `custom_domain` from the customer organization form/requester,
+- customer control of `status` on upsert (create always forces `ACTIVE`; update never writes status),
 - member domain (see `member-domain.md` — shipped separately),
 - message template domain (see `message-template-domain.md` — shipped separately),
 - meeting domain (see `meeting-domain.md` — shipped separately),
@@ -92,7 +95,7 @@ Mixins on `OrganizationModel`:
 
 File: `backend/src/app/orm/models/Customer.ts`
 
-`Customer` remains the **actor** model. This change set only adds the organization association; it does not alter Customer attrs, abilities, or user/notification ownership.
+`Customer` remains the **actor** model. Organization association mixins live here. `Customer.Ability.ORGANIZATION` (`read` | `upsert`) and `can("ORGANIZATION")` are the authorization surface for the website organization requester — see §9.
 
 `Customer.boot()` addition:
 
@@ -283,9 +286,77 @@ Backend verification scripts (existing):
 - `yarn generate-types`
 - `yarn type-check`
 
-No website organization UI/adapters in this change set (customer mirrors only). No cpanel organization UI.
+Website organization **settings form** (requester-backed, not a GQL adapter list): `docs/platforms/website/flow-customer-organization.md`. No cpanel organization UI.
 
-## 9) Failure / auth modes (read path)
+## 9) Write surface (`OrganizationRequester`)
+
+HTTP: existing customer form controller → `API.FORMS.CUSTOMER.R("organization")(sub)` → `/forms/customer/requester/organization/:sub`. No new controller.
+
+### 9.1 Ability — `Customer.Ability.ORGANIZATION`
+
+File: `backend/src/app/orm/models/Customer.ts`
+
+```ts
+ORGANIZATION: {
+  sub: "read" | "upsert"
+}
+```
+
+| Sub | Guard |
+|---|---|
+| `read` | Customer may always read their tenant profile (empty defaults when no org row) |
+| `upsert` | Customer may always upsert their tenant profile (create when missing; update when present) |
+
+`can("ORGANIZATION")` allows both subs without requiring an existing organization row (create path must work).
+
+### 9.2 Requester subs
+
+File: `backend/src/app/orchestrator/requesters/OrganizationRequester.ts` (`@requester("organization")`, platform `website`, actor `customer`).
+
+| Sub | Behavior |
+|---|---|
+| `read` | Facts → `can ORGANIZATION read` → if org: values `{ name, description, logo_file, primary_color, secondary_color, subdomain }`; if none: empty defaults (`name: ""`, nullables `null`). **No `status` / `custom_domain` in values.** |
+| `upsert` | Validate fields → start transaction → `can ORGANIZATION upsert` → if org: `organization.update(payload)`; else `customer.createOrganization({ ...payload, status: "ACTIVE" })`. Never writes `custom_domain` or `status` on update. |
+
+Field rules (requester-local):
+
+| Field | Rule |
+|---|---|
+| `name` | `joi.string().trim().min(2)` — keep internal spaces |
+| `description` | optional nullable string; `""` / null → null |
+| `logo_file` | optional string filename; `""` / null → null on persist |
+| `primary_color` / `secondary_color` | optional nullable string; `""` / null → null (no hex schema invented) |
+| `subdomain` | **required**; `trim` + `lowercase` + `min(4)`; `prepareCleanString` with `cleanWhiteSpaces`; English alpha only (`Validator.isAlpha(..., "en-US")`) → `subdomain.wrong`; reserved / bad-word substring list → `subdomain.invalid`; case-insensitive uniqueness excluding current org id → `subdomain.registered` |
+
+Reserved subdomain list: `backend/src/app/helpers/BadWords.ts` spread into `notAllowedSubdomains` in the requester (platform mounts, product terms, infra, brands). Match uses `.includes(s)` (substring), same family as historical company-register validation.
+
+Joi keys live under `backend/src/resources/trans/{ar,en}/general.ts`: `subdomain.registered`, `subdomain.wrong`, `subdomain.invalid`.
+
+### 9.3 Maps + messages
+
+| Map | Entry |
+|---|---|
+| `backend/requesters.website.ts` | `customer.organization: "read" \| "upsert"` |
+| `website/src/types/requesters/requesters.website.ts` | Same union (W18) |
+
+Messages (`backend/src/resources/trans/{ar,en}/messages.ts`):
+
+- create branch → `SUCCESS_CREATE`
+- update branch → `SUCCESS_UPDATE`
+
+### 9.4 Failure modes (write)
+
+| Condition | Result |
+|---|---|
+| Subdomain too short / missing | Joi `min` / required |
+| Non-English-alpha subdomain | `subdomain.wrong` |
+| Forbidden / reserved substring | `subdomain.invalid` |
+| Subdomain taken by another org | `subdomain.registered` |
+| Other validation errors | field / firewall errors via `throwIfNotValid` |
+
+Verify: `yarn type-check` in `backend/`.
+
+## 10) Failure / auth modes (GQL read path)
 
 | Surface | Condition | Behavior |
 |---|---|---|
@@ -294,12 +365,19 @@ No website organization UI/adapters in this change set (customer mirrors only). 
 | Supervisor `organization(id)` | missing id | framework `404` |
 | Supervisor lists | unbounded | prevented by role `withListable` max length |
 
-## 10) Traceability map
+Note: the **form** `read` sub does **not** 404 when no org exists — it returns empty defaults so the settings page can create on first upsert.
+
+## 11) Traceability map
 
 | Path | Role | Section |
 |---|---|---|
 | `backend/src/app/orm/models/Organization.ts` | ORM source of truth | §3–§3.4 |
-| `backend/src/app/orm/models/Customer.ts` | `hasOne Organization` + org mixins (`get`/`set`/`create`) | §3.5 |
+| `backend/src/app/orm/models/Customer.ts` | `hasOne Organization` + org mixins + `Ability.ORGANIZATION` | §3.5, §9.1 |
+| `backend/src/app/orchestrator/requesters/OrganizationRequester.ts` | `read` / `upsert` | §9 |
+| `backend/src/app/helpers/BadWords.ts` | Reserved/bad-word list for subdomain | §9.2 |
+| `backend/requesters.website.ts` | `customer.organization` union | §9.3 |
+| `website/src/types/requesters/requesters.website.ts` | W18 mirror | §9.3 |
+| `docs/platforms/website/flow-customer-organization.md` | Website settings form | §8, §9 |
 | `backend/src/resources/trans/ar/general.ts` | AR enum labels | §4 |
 | `backend/src/resources/trans/en/general.ts` | EN enum labels | §4 |
 | `backend/src/app/gql/definitions/base.graphql` | Shared status wrappers | §4 |
@@ -333,5 +411,7 @@ No website organization UI/adapters in this change set (customer mirrors only). 
 - `docs/platforms/backend/contracts/supervisor-customers-and-stats.md`
 - `docs/platforms/backend/patterns/scheduler-console-seed-db.md`
 - `docs/invariants/backend.md`
+- `docs/platforms/website/flow-customer-organization.md`
+- `docs/platforms/website/flow-form-foundation.md`
 - `docs/platforms/website/graphql-mirror-and-tooling.md`
 - `docs/platforms/cpanel/graphql-mirror-and-tooling.md` (deferred until `cpanel/` restored)

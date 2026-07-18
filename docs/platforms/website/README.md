@@ -28,6 +28,7 @@
 | Static info | [`flow-static-info-pages.md`](flow-static-info-pages.md) | About Ejtmaa, legal pages |
 | Customer shell | [`flow-customer-shell.md`](flow-customer-shell.md) | Authed customer layout |
 | Customer members | [`flow-customer-members.md`](flow-customer-members.md) | Org member directory (search + ResultLane) |
+| Customer organization | [`flow-customer-organization.md`](flow-customer-organization.md) | Org settings form (read + upsert) |
 
 ## Invariants
 
@@ -60,6 +61,29 @@ Current-state reflection of the shipped visitor auth surface (`Login`, `Register
 | `lib/tsconfig.tsbuildinfo` | Generated build artifact from `yarn type-check`; not narrated. |
 
 Governance: `.cursor/rules/website-auth-flow.mdc`
+
+## Change set traceability — customer organization form
+
+| Path | Documented where |
+|---|---|
+| `website/src/resources/configs/routes.ts` (`CustomerOrganization`) | `flow-customer-organization.md` §2; `route-registry-contract.md` §5.2 |
+| `website/src/resources/configs/store/forms.ts` (`CUSTOMER_ORGANIZATION`) | `flow-customer-organization.md` §3; `flow-form-foundation.md` §2 |
+| `website/src/types/requesters/requesters.website.ts` (`customer.organization`) | `flow-form-foundation.md` §2; `organization-domain.md` §9.3 |
+| `website/src/app/ui/pages/customer/CustomerOrganization.tsx` | `flow-customer-organization.md` §2 |
+| `website/src/app/ui/components/customer/organization/CustomerOrganizationScreen.tsx` | `flow-customer-organization.md` §3–§4 |
+| `website/src/app/ui/components/form/FormAvatarField.tsx` | `flow-form-foundation.md` §3.3; `website-form-avatar-field.mdc` |
+| `website/src/app/ui/components/form/FormColorField.tsx` | `flow-form-foundation.md` §3.4; `website-form-color-field.mdc` |
+| `website/src/app/ui/components/customer/IdentityAvatar.tsx` | `flow-customer-organization.md` §5 |
+| `website/src/app/ui/components/customer/members/CustomerMemberFormScreen.tsx` | Trivial `didEntered` alias cleanup — `flow-customer-members.md` §5 |
+| `website/src/resources/translations/ar.ts` / `en.ts` (`organization.*`) | `flow-customer-organization.md` §6 |
+| `website/lib/tsconfig.tsbuildinfo` | Generated; not narrated |
+| `backend/src/app/orchestrator/requesters/OrganizationRequester.ts` | `organization-domain.md` §9 |
+| `backend/src/app/helpers/BadWords.ts` | `organization-domain.md` §9.2 |
+| `backend/src/app/orm/models/Customer.ts` (`Ability.ORGANIZATION`) | `organization-domain.md` §9.1 |
+| `backend/requesters.website.ts` | `organization-domain.md` §9.3 |
+| `docs/platforms/website/flow-customer-organization.md` | This flow |
+| `.cursor/skills/website-customer-organization-form/SKILL.md` | Repeatable workflow |
+| `.cursor/rules/website-form-color-field.mdc` / `website-form-avatar-field.mdc` | Field contracts |
 
 ## Change set traceability — brand polish
 

@@ -40,22 +40,23 @@ See `docs/platforms/website/ui-foundation.md`.
 | Static info pages | [flow-static-info-pages.md](./flow-static-info-pages.md) |
 | Customer shell | [flow-customer-shell.md](./flow-customer-shell.md) |
 | Customer members (directory + form) | [flow-customer-members.md](./flow-customer-members.md) |
+| Customer organization (settings form) | [flow-customer-organization.md](./flow-customer-organization.md) |
 
 ## 6) Route registry summary
 
 ### 6.1) Shipped routes
 
-Authoritative table: `route-registry-contract.md` §1.1 (nine identifies including `CustomerHome`, `CustomerMembers`, multi-path `CustomerMemberForm`).
+Authoritative table: `route-registry-contract.md` §1.1 / §5.2 (includes `CustomerHome`, `CustomerMembers`, multi-path `CustomerMemberForm`, `CustomerOrganization`).
 
 `publicRoutes` = `["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`.
 
 Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`). All `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Members: `flow-customer-members.md`. Forms: `flow-form-foundation.md`.
+Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`), `CustomerOrganization` (`/customer/organization`). All `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Members: `flow-customer-members.md`. Organization: `flow-customer-organization.md`. Forms: `flow-form-foundation.md`.
 
 ### 6.2) Planned (not shipped)
 
-Remaining `/customer/*` workspace routes (meetings, organization, message templates, subscription, settings, support, help, notifications, static info, bottom bar) — see `route-registry-contract.md` §5.2 and `flow-customer-shell.md`.
+Remaining `/customer/*` workspace routes (meetings, message templates, subscription, settings, support, help, notifications, static info, bottom bar) — see `route-registry-contract.md` §5.2 and `flow-customer-shell.md`.
 
 ## Documentation stance
 

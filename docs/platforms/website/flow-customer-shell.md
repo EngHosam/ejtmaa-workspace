@@ -88,7 +88,7 @@ Order (product-aligned to backend `CustomerSchema` roots / customer settings; us
 | 1 | `itemHome` | `CustomerHome` | `HomeMark` `tone="onPrimary"` `size={1.45}` | shell home (shipped route) |
 | 2 | `itemMeetings` | `CustomerMeetings` | `FiCalendar` | `meetings` / `meeting` |
 | 3 | `itemMembers` | `CustomerMembers` | `FiUsers` | `members` / `member` (shipped directory — `flow-customer-members.md`) |
-| 4 | `itemOrganization` | `CustomerOrganization` | `FiBriefcase` | `organization` |
+| 4 | `itemOrganization` | `CustomerOrganization` | `FiBriefcase` | `organization` (shipped settings form — `flow-customer-organization.md`) |
 | 5 | `itemMessageTemplates` | `CustomerMessageTemplates` | `FiMessageSquare` | `messageTemplates` / `messageTemplate` |
 | 6 | `itemSubscription` | `CustomerSubscription` | `FiCreditCard` | `plans` / `subscriptions` |
 | 7 | `itemSettings` | `CustomerSettings` | `FiSettings` | `CustomerRequester` read/update settings |
