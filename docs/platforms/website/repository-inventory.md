@@ -45,7 +45,7 @@ Paths below describe the customer portal contract inventory for `website/`.
 ## GQL mirrors
 
 - `src/types/gql/definitions/base.graphql` — shared SDL (scalars, `_Ability`, `_Notification*`, interfaces, `_Notification`)
-- `src/types/gql/definitions/customer.graphql` — customer SDL (`_Me`, `_Organization`, `_Member`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant` + root `Query { me, notifications, organization, members, member, messageTemplates, messageTemplate, meetings, meeting }`; nested `_Meeting.participants`)
+- `src/types/gql/definitions/customer.graphql` — customer SDL (`_Me`, `_Organization`, `_Member`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant`, `_AgendaItem` + root `Query { me, notifications, organization, members, member, messageTemplates, messageTemplate, meetings, meeting }`; nested `_Meeting.participants`, `_Meeting.agendaItems`)
 - `src/types/gql/definitions/shared.graphql` — shared `Query { notifications }` extension stub
 - `src/types/gql/gql-types/base.ts` — shared generated types
 - `src/types/gql/gql-types/customer.ts` — customer generated types

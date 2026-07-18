@@ -1,0 +1,27 @@
+---
+description: AgendaItem under Meeting — default association naming, nested GQL only
+globs: backend/src/app/orm/models/AgendaItem.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/gql/bridges/**/AgendaItemBridge.ts,backend/src/app/gql/schemas/CustomerSchema.ts,backend/src/app/gql/definitions/customer.graphql
+alwaysApply: false
+---
+
+# AgendaItem (Meeting child)
+
+Authoritative contract: `docs/platforms/backend/contracts/agenda-item-domain.md`.
+
+## ORM
+
+- Non-actor under `Meeting` (`meeting_id` FK).
+- `modelName: "agendaItem"` so default `hasMany` is `agendaItems` — **do not** add `as` on `Meeting.hasMany(AgendaItem())`.
+- Bridge `ident` and SDL field must stay `agendaItems`.
+- Durable SQL agenda (not Yjs / LiveKit).
+
+## Customer GQL
+
+- Nested only: `_Meeting.agendaItems: [_AgendaItem]`.
+- Expose `id`, `sort_order`, `subject` (+ timestamps / `total_count`).
+- Do **not** expose `meeting_id` scalar; no root agenda queries unless product reopens that decision.
+- `AgendaItemBridge` extends `CustomerBridgeBase`; `GetManyParent = MeetingModel`.
+
+## Naming preference for new meeting children
+
+When the GQL field should be a short plural (e.g. `agendaItems`), prefer a basic Sequelize `modelName` whose default plural matches that field so `as` is unnecessary. Use explicit `as` only when the default name is wrong (e.g. `MeetingParticipant` → `participants`).

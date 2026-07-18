@@ -33,8 +33,10 @@ Nested (cardinality-safe):
 - `_MessageTemplate.organization: _Organization` (`belongsTo`, expected count 1)
 - `_Meeting.organization: _Organization`, `_Meeting.chairperson: _Member`, `_Meeting.whatsappTemplate` / `emailTemplate: _MessageTemplate`
 - `_Meeting.participants: [_MeetingParticipant]` (roster; expected board size ≤ 100 — B15); `_MeetingParticipant.member: _Member`
+- `_Meeting.agendaItems: [_AgendaItem]` (agenda lines; nested only — see `agenda-item-domain.md`)
 - not `_Organization.members` / meetings / templates as nested high-cardinality lists (root list only)
 - not root `meetingParticipants` / `meetingParticipant` (nested under meeting only)
+- not root `agendaItems` / `agendaItem` (nested under meeting only)
 - not `_Member.meetingParticipants` / `_Member.meetings` (deferred)
 
 Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
@@ -45,6 +47,7 @@ Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `MessageTemplateBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
 - `MeetingBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
 - `MeetingParticipantBridge` (nested under Meeting only; extends `CustomerBridgeBase`)
+- `AgendaItemBridge` (nested under Meeting only; extends `CustomerBridgeBase`)
 
 Org-owned intermediate base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts`.
 

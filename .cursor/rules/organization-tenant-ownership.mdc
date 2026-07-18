@@ -1,6 +1,6 @@
 ---
 description: Organization tenant ownership and me-bound hasOne GQL read invariants
-globs: backend/src/app/orm/models/Organization.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/src/app/gql/bridges/**/OrganizationBridge.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,backend/src/app/gql/bridges/**/MeetingParticipantBridge.ts,backend/src/app/gql/bridges/**/CustomerOrganizationOwnedBridgeBase.ts,backend/src/app/gql/schemas/*Schema.ts,backend/src/app/gql/definitions/**/*.graphql
+globs: backend/src/app/orm/models/Organization.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/src/app/orm/models/AgendaItem.ts,backend/src/app/gql/bridges/**/OrganizationBridge.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,backend/src/app/gql/bridges/**/MeetingParticipantBridge.ts,backend/src/app/gql/bridges/**/AgendaItemBridge.ts,backend/src/app/gql/bridges/**/CustomerOrganizationOwnedBridgeBase.ts,backend/src/app/gql/schemas/*Schema.ts,backend/src/app/gql/definitions/**/*.graphql
 alwaysApply: false
 ---
 
@@ -61,3 +61,8 @@ For customer-role `organization` when `Customer.hasOne(Organization)` uses assoc
 - Roster join `MeetingParticipant` — see `docs/platforms/backend/contracts/meeting-participant-domain.md` and `.cursor/rules/meeting-participant-roster.mdc`.
 - Customer GQL: nested `_Meeting.participants` only (no root participant queries).
 - ORM: `hasMany` / `belongsTo` only — no `belongsToMany` Meeting ↔ Member.
+
+## Agenda items (related)
+
+- `AgendaItem` under Meeting — see `docs/platforms/backend/contracts/agenda-item-domain.md` and `.cursor/rules/agenda-item-meeting-child.mdc`.
+- Customer GQL: nested `_Meeting.agendaItems` only; ORM `modelName: "agendaItem"` → default association (no `as`).
