@@ -38,7 +38,8 @@ ORM models (`backend/src/app/orm/models/`):
 - `Meeting` — non-actor org session (UUID PK; chairperson Member; optional template FKs; LiveKit later); `hasMany` participants + agendaItems + decisions
 - `MeetingParticipant` — non-actor roster join (composite PK `(meeting_id, member_id)`; type `CHAIRPERSON` | `MEMBER` | `VIEWER`)
 - `AgendaItem` — non-actor agenda line under Meeting (`modelName: "agendaItem"`; durable SQL)
-- `Decision` — non-actor decision under Meeting (`modelName: "decision"`; phase PRE_START|DURING; durable SQL)
+- `Decision` — non-actor decision under Meeting (`modelName: "decision"`; phase PRE_START|DURING; durable SQL); `hasMany` votes
+- `Vote` — durable ballot under Decision (composite PK `(decision_id, member_id)`; `YES`|`NO`)
 - `Supervisor` — supervisor actor profile
 - `User` — shared user identity
 - `Token` — auth tokens
@@ -75,7 +76,7 @@ Registration maps:
 Provider config: `backend/src/resources/configs/gql/index.ts`
 - Schemas: `customer`, `supervisor`
 - SDL: `backend/src/app/gql/definitions/customer.graphql`, `backend/src/app/gql/definitions/supervisor.graphql`, `backend/src/app/gql/definitions/base.graphql`
-- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant/agenda/decision bridges are nested-only)
+- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge`, `VoteBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant/agenda/decision/vote bridges are nested-only)
 - Supervisor bridges: `MeBridge`, `NotificationBridge`, `CustomerBridge`, `CustomerStatsBridge`, `OrganizationBridge` under `backend/src/app/gql/bridges/supervisor/`
 
 ### Socket

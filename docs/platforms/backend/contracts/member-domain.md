@@ -119,9 +119,10 @@ File: `backend/src/app/gql/bridges/customer/MemberBridge.ts`
 - Extends `CustomerOrganizationOwnedBridgeBase` (shared `me` → Organization resolve)
 - `ident = "member"`, `typeIdent = "_Member"`, `ormModel = MemberModel`
 - `GetManyParent = OrganizationOwnedMeParent` (`{ me: true }`)
-- `GetOneParent = MemberModel | MeetingModel | MeetingParticipantModel | { me: true; id: string }`
+- `GetOneParent = MemberModel | MeetingModel | MeetingParticipantModel | VoteModel | { me: true; id: string }`
   - `MeetingModel` for `_Meeting.chairperson`
   - `MeetingParticipantModel` for `_MeetingParticipant.member`
+  - `VoteModel` for `_Vote.member`
 - Does **not** override `getRootOrmParent` or `getOrmFindOptions` (inherited / role defaults)
 
 Shared base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` — see `message-template-domain.md` §4.
@@ -136,7 +137,7 @@ Therefore `OrganizationBridge` must declare (also includes other inverse parents
 export type GetOneParent = MemberModel | MessageTemplateModel | MeetingModel | { me: true };
 ```
 
-`MemberBridge.GetOneParent` also includes `MeetingModel` / `MeetingParticipantModel` for nested meeting surfaces.
+`MemberBridge.GetOneParent` also includes `MeetingModel` / `MeetingParticipantModel` / `VoteModel` for nested meeting surfaces.
 
 Do not put `OrganizationModel` on `MemberBridge.GetOneParent` for the organization inverse; that bridge prepares Organization, not Member.
 
@@ -209,6 +210,7 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/message-template-domain.md` (shared org-owned GQL base)
 - `docs/platforms/backend/contracts/meeting-participant-domain.md` (roster join; session type permissions)
+- `docs/platforms/backend/contracts/vote-domain.md` (`_Vote.member`)
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/invariants/backend.md` (B15, B18, B23)
 - `.cursor/rules/gql-root-parent-payload-contract.mdc` (inverse `GetOneParent` typing)

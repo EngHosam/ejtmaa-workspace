@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Practical invariants for the current Ejtmaa backend. Scoped to active modules: Customer, Organization, Member, MessageTemplate, Meeting, MeetingParticipant, AgendaItem, Decision, Supervisor, User, Token, Notification, SystemSetting.
+Practical invariants for the current Ejtmaa backend. Scoped to active modules: Customer, Organization, Member, MessageTemplate, Meeting, MeetingParticipant, AgendaItem, Decision, Vote, Supervisor, User, Token, Notification, SystemSetting.
 
 Interpretation rule:
 - invariants below define backend obligations for the Ejtmaa product surface.

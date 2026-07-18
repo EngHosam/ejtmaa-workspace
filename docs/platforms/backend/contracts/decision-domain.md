@@ -6,6 +6,7 @@ Current Ejtmaa decision surface:
 
 - ORM persistence for meeting decisions (durable SQL; pre-start and during-meeting phases),
 - customer GraphQL **nested** read under `_Meeting.decisions`,
+- nested durable votes via `_Decision.votes` (see `vote-domain.md`),
 - localized enums for phase / status / voting type,
 - website GQL mirrors for that nested surface.
 
@@ -13,7 +14,7 @@ Out of scope (not shipped):
 
 - root queries `decisions` / `decision(id)`,
 - GraphQL inverse `_Decision.meeting`,
-- nested votes / talk records under `_Decision` (models not shipped yet),
+- nested talk records under `_Decision` (model not shipped yet),
 - decision write requesters / mutations,
 - supervisor Decision GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
@@ -26,7 +27,7 @@ Out of scope (not shipped):
 
 - `phase = PRE_START` — created/edited before the meeting starts.
 - `phase = DURING` — created or advanced during the live session.
-- Status / voting-type fields support later vote rows and reports; votes themselves are a separate model (not in this change set).
+- Status / voting-type fields describe voting lifecycle; durable casts live on `Vote` (`vote-domain.md`).
 - Tenant isolation is inherited via `Meeting.organization_id`.
 
 ## 3) ORM model
@@ -79,6 +80,7 @@ Under `backend/src/resources/trans/ar/general.ts` and `en/general.ts`:
 `Decision.boot()`:
 
 - `belongsTo(Meeting)` on `meeting_id`
+- `hasMany(Vote)` on `decision_id` (default association `votes`, no `as`; see `vote-domain.md`)
 
 `Meeting.boot()`:
 
@@ -110,7 +112,9 @@ Timestamps: `created_at`, `updated_at`.
 
 Pagination: `total_count`.
 
-**Not exposed:** `meeting_id` scalar; no nested `meeting` / votes / talk records yet.
+Relations: `votes: [_Vote]` (see `vote-domain.md`).
+
+**Not exposed:** `meeting_id` scalar; no nested `meeting` / talk records yet.
 
 ### Nested under `_Meeting`
 
@@ -142,10 +146,11 @@ File: `backend/src/app/gql/bridges/customer/DecisionBridge.ts`
 | Nested SDL field | Preparing bridge | Parent typing |
 |---|---|---|
 | `_Meeting.decisions` | `DecisionBridge` | `GetManyParent = MeetingModel` |
+| `_Decision.votes` | `VoteBridge` | `GetManyParent = DecisionModel` |
 
 ### Registered bridges
 
-`CustomerSchema.registeredBridges` includes `DecisionBridge`. No new Query resolvers.
+`CustomerSchema.registeredBridges` includes `DecisionBridge` and `VoteBridge`. No new Query resolvers.
 
 ## 5) Read flow (nested)
 
@@ -188,6 +193,7 @@ Nested decisions inherit the parent meeting read gate:
 | Path | Role | Section |
 |---|---|---|
 | `backend/src/app/orm/models/Decision.ts` | ORM source of truth | §3 |
+| `backend/src/app/orm/models/Vote.ts` | Durable votes (detail contract) | `vote-domain.md` |
 | `backend/src/app/orm/models/Meeting.ts` | `hasMany` Decision + mixins | §3.5 |
 | `backend/src/resources/trans/ar/general.ts` | decision enums AR | §3.3 |
 | `backend/src/resources/trans/en/general.ts` | decision enums EN | §3.3 |
@@ -208,6 +214,7 @@ Nested decisions inherit the parent meeting read gate:
 
 - `docs/platforms/backend/contracts/meeting-domain.md`
 - `docs/platforms/backend/contracts/agenda-item-domain.md`
+- `docs/platforms/backend/contracts/vote-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/invariants/backend.md` (B15)
 - `.cursor/rules/decision-meeting-child.mdc`

@@ -147,6 +147,7 @@ Reference bridges:
 - `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts`
 - `backend/src/app/gql/bridges/customer/AgendaItemBridge.ts`
 - `backend/src/app/gql/bridges/customer/DecisionBridge.ts`
+- `backend/src/app/gql/bridges/customer/VoteBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/MeBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/NotificationBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts`
@@ -164,6 +165,7 @@ Rules:
 - Customer `_Meeting.participants: [_MeetingParticipant]` (nested only; no root): join-row fields + `member`; no FK scalars on `_MeetingParticipant`. ORM: `Meeting.hasMany(MeetingParticipant, { as: "participants" })` only (no `belongsToMany`). `MeetingParticipantBridge.ident = "participants"`; `MemberBridge.GetOneParent` includes `MeetingParticipantModel`. Contract: `meeting-participant-domain.md`.
 - Customer `_Meeting.agendaItems: [_AgendaItem]` (nested only; no root): `id`, `sort_order`, `subject`; no `meeting_id` scalar. ORM: `Meeting.hasMany(AgendaItem)` (default association; no `as`). `AgendaItemBridge.ident = "agendaItems"`.
 - Customer `_Meeting.decisions: [_Decision]` (nested only; no root): `id`, `sort_order`, `subject`, `phase`, `status`, `voting_type`; no `meeting_id` scalar. ORM: `Meeting.hasMany(Decision)` (default association; no `as`). `DecisionBridge.ident = "decisions"`. Base enums: `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`.
+- Customer `_Decision.votes: [_Vote]` (nested only; no root): `value`, `cast_at`, `member`; no FK scalars. ORM: `Decision.hasMany(Vote)` (default; no `as`). `VoteBridge.ident = "votes"`; `MemberBridge.GetOneParent` includes `VoteModel`. Base enum: `_VoteValue`.
 - Do **not** add `_Member.meetingParticipants` / `_Member.meetings` unless product requests member-history UX (B15 risk over time).
 - When adding nested SDL `belongsTo` (example `_Member.organization`), update the **target** bridge `GetOneParent` to include the **source** model (`OrganizationBridge`: `MemberModel | …`). Never skip this. See `gql-root-parent-payload-contract.mdc` §5 and `member-domain.md`.
 - Do not nest high-cardinality `hasMany` under parent types when expected count may exceed 100 (B15); use root list instead. Meeting roster under `_Meeting` is an allowed nest for expected board size.

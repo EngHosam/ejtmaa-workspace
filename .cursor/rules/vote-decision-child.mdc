@@ -1,0 +1,25 @@
+---
+description: Vote under Decision — composite PK, nested GQL, member only
+globs: backend/src/app/orm/models/Vote.ts,backend/src/app/orm/models/Decision.ts,backend/src/app/gql/bridges/**/VoteBridge.ts,backend/src/app/gql/bridges/**/MemberBridge.ts,backend/src/app/gql/schemas/CustomerSchema.ts,backend/src/app/gql/definitions/**/*.graphql
+alwaysApply: false
+---
+
+# Vote (Decision child)
+
+Authoritative contract: `docs/platforms/backend/contracts/vote-domain.md`.
+
+## ORM
+
+- Non-actor; composite PK `(decision_id, member_id)` — no surrogate `id`.
+- `modelName: "vote"` → `Decision.hasMany(Vote())` as `votes` — **no** `as`.
+- Keep denormalized `meeting_id` for report queries.
+- Enum `voteValue`: `YES` | `NO`.
+
+## Customer GQL
+
+- Nested only: `_Decision.votes: [_Vote]`.
+- Expose `value`, `cast_at`, `member` (+ timestamps / `total_count`).
+- Do **not** expose FK scalars or nest `meeting` / `decision` on `_Vote` while the path is meeting → decisions → votes (meeting + decision come from parents).
+- `VoteBridge.ident = "votes"`; `GetManyParent = DecisionModel`.
+- `MemberBridge.GetOneParent` must include `VoteModel` for `_Vote.member`.
+- No root vote queries unless product reopens that decision.

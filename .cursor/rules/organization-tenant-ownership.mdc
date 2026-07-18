@@ -1,6 +1,6 @@
 ---
 description: Organization tenant ownership and me-bound hasOne GQL read invariants
-globs: backend/src/app/orm/models/Organization.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/src/app/orm/models/AgendaItem.ts,backend/src/app/orm/models/Decision.ts,backend/src/app/gql/bridges/**/OrganizationBridge.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,backend/src/app/gql/bridges/**/MeetingParticipantBridge.ts,backend/src/app/gql/bridges/**/AgendaItemBridge.ts,backend/src/app/gql/bridges/**/DecisionBridge.ts,backend/src/app/gql/bridges/**/CustomerOrganizationOwnedBridgeBase.ts,backend/src/app/gql/schemas/*Schema.ts,backend/src/app/gql/definitions/**/*.graphql
+globs: backend/src/app/orm/models/Organization.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/src/app/orm/models/AgendaItem.ts,backend/src/app/orm/models/Decision.ts,backend/src/app/orm/models/Vote.ts,backend/src/app/gql/bridges/**/OrganizationBridge.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,backend/src/app/gql/bridges/**/MeetingParticipantBridge.ts,backend/src/app/gql/bridges/**/AgendaItemBridge.ts,backend/src/app/gql/bridges/**/DecisionBridge.ts,backend/src/app/gql/bridges/**/VoteBridge.ts,backend/src/app/gql/bridges/**/CustomerOrganizationOwnedBridgeBase.ts,backend/src/app/gql/schemas/*Schema.ts,backend/src/app/gql/definitions/**/*.graphql
 alwaysApply: false
 ---
 
@@ -71,3 +71,8 @@ For customer-role `organization` when `Customer.hasOne(Organization)` uses assoc
 
 - `Decision` under Meeting — see `docs/platforms/backend/contracts/decision-domain.md` and `.cursor/rules/decision-meeting-child.mdc`.
 - Customer GQL: nested `_Meeting.decisions` only; ORM `modelName: "decision"` → default association (no `as`).
+
+## Votes (related)
+
+- `Vote` under Decision — see `docs/platforms/backend/contracts/vote-domain.md` and `.cursor/rules/vote-decision-child.mdc`.
+- Customer GQL: nested `_Decision.votes` + `_Vote.member` only (no `meeting` on `_Vote`); ORM `modelName: "vote"` → default association (no `as`).

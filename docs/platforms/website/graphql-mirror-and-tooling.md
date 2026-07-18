@@ -32,7 +32,7 @@ Backend owns the website GraphQL contract:
 
 Mirror artifacts only — not website-owned schema authoring surfaces.
 
-Customer mirrors currently include organization, member, message-template, meeting, meeting-participant, agenda-item, and decision reads from backend contracts (`organization-domain.md`, `member-domain.md`, `message-template-domain.md`, `meeting-domain.md`, `meeting-participant-domain.md`, `agenda-item-domain.md`, `decision-domain.md`): roots `organization`, `members`, `member(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)`; types `_Organization` / `_Member` / `_MessageTemplate` / `_Meeting` / `_MeetingParticipant` / `_AgendaItem` / `_Decision` (nested `_Meeting.participants` + `_MeetingParticipant.member`, `_Meeting.agendaItems`, `_Meeting.decisions`; no root participant/agenda/decision queries).
+Customer mirrors currently include organization, member, message-template, meeting, meeting-participant, agenda-item, decision, and vote reads from backend contracts (`organization-domain.md`, `member-domain.md`, `message-template-domain.md`, `meeting-domain.md`, `meeting-participant-domain.md`, `agenda-item-domain.md`, `decision-domain.md`, `vote-domain.md`): roots `organization`, `members`, `member(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)`; types `_Organization` / `_Member` / `_MessageTemplate` / `_Meeting` / `_MeetingParticipant` / `_AgendaItem` / `_Decision` / `_Vote` (nested `_Meeting.participants` + `_MeetingParticipant.member`, `_Meeting.agendaItems`, `_Meeting.decisions`, `_Decision.votes` + `_Vote.member`; no root participant/agenda/decision/vote queries).
 
 ### Generated type mirrors
 

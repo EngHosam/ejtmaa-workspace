@@ -22,6 +22,7 @@
 | [`meeting-participant-domain.md`](contracts/meeting-participant-domain.md) | MeetingParticipant roster ORM + nested GQL |
 | [`agenda-item-domain.md`](contracts/agenda-item-domain.md) | AgendaItem ORM + nested GQL under Meeting |
 | [`decision-domain.md`](contracts/decision-domain.md) | Decision ORM + nested GQL under Meeting |
+| [`vote-domain.md`](contracts/vote-domain.md) | Vote ORM + nested GQL under Decision |
 | [`socket-event-mirroring.md`](contracts/socket-event-mirroring.md) | Socket notify events |
 
 ## Patterns

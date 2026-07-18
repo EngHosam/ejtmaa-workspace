@@ -24,6 +24,7 @@ Authoritative contract: `docs/platforms/backend/contracts/decision-domain.md`.
 - `DecisionBridge` extends `CustomerBridgeBase`; `GetManyParent = MeetingModel`.
 - Shared enum wrappers live in `base.graphql` (`_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`).
 
-## Related children (not this rule)
+## Related children
 
-Vote / talk-record models link to Decision later; do not invent nested GQL for them until those ORM models ship.
+- Votes: see `vote-domain.md` / `vote-decision-child.mdc` (`_Decision.votes` shipped).
+- Talk records: not shipped yet — do not invent nested GQL until that ORM model exists.

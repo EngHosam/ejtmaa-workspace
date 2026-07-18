@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType` (+ Value enums)
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue` (+ Value enums)
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.
@@ -35,10 +35,12 @@ Nested (cardinality-safe):
 - `_Meeting.participants: [_MeetingParticipant]` (roster; expected board size ≤ 100 — B15); `_MeetingParticipant.member: _Member`
 - `_Meeting.agendaItems: [_AgendaItem]` (agenda lines; nested only — see `agenda-item-domain.md`)
 - `_Meeting.decisions: [_Decision]` (decisions; nested only — see `decision-domain.md`)
+- `_Decision.votes: [_Vote]` + `_Vote.member: _Member` (nested only — see `vote-domain.md`; no `meeting` on `_Vote`)
 - not `_Organization.members` / meetings / templates as nested high-cardinality lists (root list only)
 - not root `meetingParticipants` / `meetingParticipant` (nested under meeting only)
 - not root `agendaItems` / `agendaItem` (nested under meeting only)
 - not root `decisions` / `decision` (nested under meeting only)
+- not root `votes` / `vote` (nested under decision only)
 - not `_Member.meetingParticipants` / `_Member.meetings` (deferred)
 
 Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
@@ -51,6 +53,7 @@ Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `MeetingParticipantBridge` (nested under Meeting only; extends `CustomerBridgeBase`)
 - `AgendaItemBridge` (nested under Meeting only; extends `CustomerBridgeBase`)
 - `DecisionBridge` (nested under Meeting only; extends `CustomerBridgeBase`)
+- `VoteBridge` (nested under Decision only; extends `CustomerBridgeBase`)
 
 Org-owned intermediate base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts`.
 
