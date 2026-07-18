@@ -1,6 +1,6 @@
 ---
 description: Organization tenant ownership and me-bound hasOne GQL read invariants
-globs: backend/src/app/orm/models/Organization.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/gql/bridges/**/OrganizationBridge.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/CustomerOrganizationOwnedBridgeBase.ts,backend/src/app/gql/schemas/*Schema.ts,backend/src/app/gql/definitions/**/*.graphql
+globs: backend/src/app/orm/models/Organization.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/gql/bridges/**/OrganizationBridge.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,backend/src/app/gql/bridges/**/CustomerOrganizationOwnedBridgeBase.ts,backend/src/app/gql/schemas/*Schema.ts,backend/src/app/gql/definitions/**/*.graphql
 alwaysApply: false
 ---
 
@@ -46,3 +46,12 @@ For customer-role `organization` when `Customer.hasOne(Organization)` uses assoc
 - Customer GQL: root `messageTemplates` / `messageTemplate(id)` — not nested under `_Organization`.
 - Inverse `_MessageTemplate.organization` requires `OrganizationBridge` `GetOneParent` to include `MessageTemplateModel`.
 - Org-owned customer bridges extend `CustomerOrganizationOwnedBridgeBase` for `{ me: true }` → Organization.
+
+## Meetings (related)
+
+- `Meeting` belongs to Organization; see `docs/platforms/backend/contracts/meeting-domain.md`.
+- Customer GQL: root `meetings` / `meeting(id)` only — not nested `_Organization.meetings` (B15).
+- Nested `chairperson` / `whatsappTemplate` / `emailTemplate` require target bridges' `GetOneParent` to include `MeetingModel`.
+- Inverse `_Meeting.organization` requires `OrganizationBridge` `GetOneParent` to include `MeetingModel`.
+- No Zoom/Teams `platform` / external meeting `url` columns — LiveKit is runtime later.
+- Invite start time is `notify_start_at` (not derived from `status`).

@@ -18,6 +18,7 @@
 | [`organization-domain.md`](contracts/organization-domain.md) | Organization tenant ORM + GQL + seed |
 | [`member-domain.md`](contracts/member-domain.md) | Member ORM + customer GQL reads |
 | [`message-template-domain.md`](contracts/message-template-domain.md) | MessageTemplate ORM + customer GQL reads |
+| [`meeting-domain.md`](contracts/meeting-domain.md) | Meeting ORM + customer GQL reads |
 | [`socket-event-mirroring.md`](contracts/socket-event-mirroring.md) | Socket notify events |
 
 ## Patterns

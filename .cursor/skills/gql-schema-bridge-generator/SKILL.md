@@ -133,7 +133,7 @@ If partially blocked:
 
 Current Ejtmaa GQL surfaces:
 
-- Customer: `me`, `notifications`, `organization`, `members`, `member(id)`, `messageTemplates`, `messageTemplate(id)`
+- Customer: `me`, `notifications`, `organization`, `members`, `member(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)`
 - Supervisor: `me`, `notifications`, `customers`, `customer`, `customerStats`, `organizations`, `organization`
 
 Reference bridges:
@@ -143,6 +143,7 @@ Reference bridges:
 - `backend/src/app/gql/bridges/customer/OrganizationBridge.ts`
 - `backend/src/app/gql/bridges/customer/MemberBridge.ts`
 - `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts`
+- `backend/src/app/gql/bridges/customer/MeetingBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/MeBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/NotificationBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts`
@@ -156,11 +157,12 @@ Rules:
 - Customer `organization` root-one: `prepareOneGQLModel({ me: true })` when bridge `ident` matches `Customer.hasOne` association key; do not invent `as` / `getRootOrmParent` overrides.
 - Customer `members` / `member(id)`: `{ me: true }` resolves root parent to the customer's Organization (Member belongs to Organization, not Customer); no supervisor Member surface yet.
 - Customer `messageTemplates` / `messageTemplate(id)`: same `{ me: true }` → Organization parent pattern as members; inverse `_MessageTemplate.organization` requires `OrganizationBridge` `GetOneParent` to include `MessageTemplateModel`.
+- Customer `meetings` / `meeting(id)`: same org-owned base; nested `chairperson` / `whatsappTemplate` / `emailTemplate` require `MemberBridge` / `MessageTemplateBridge` `GetOneParent` to include `MeetingModel`; inverse `_Meeting.organization` requires `OrganizationBridge` `GetOneParent` to include `MeetingModel`.
 - When adding nested SDL `belongsTo` (example `_Member.organization`), update the **target** bridge `GetOneParent` to include the **source** model (`OrganizationBridge`: `MemberModel | …`). Never skip this. See `gql-root-parent-payload-contract.mdc` §5 and `member-domain.md`.
 - Do not nest high-cardinality `hasMany` under parent types when expected count may exceed 100 (B15); use root list instead.
 - Supervisor `OrganizationBridge` owns organization list/detail filters; nested `_Customer.organization` needs the bridge registered.
 - Role bridge bases: `CustomerBridgeBase`, `SupervisorBridgeBase`.
-- Org-owned customer children (`Member`, `MessageTemplate`, …): extend `CustomerOrganizationOwnedBridgeBase` (`me` → customer's Organization). Do not copy that `getRootOrmParent` into each entity bridge.
+- Org-owned customer children (`Member`, `MessageTemplate`, `Meeting`, …): extend `CustomerOrganizationOwnedBridgeBase` (`me` → customer's Organization). Do not copy that `getRootOrmParent` into each entity bridge.
 - Keep resolvers thin; ORM policy lives in bridges.
 - Sync mirrors after SDL changes: `website/` (`customer`) always when present.
 - `cpanel/` (`supervisor`) sync only when the `cpanel/` platform checkout exists; currently deferred (folder temporarily removed) — do not invent `cpanel/src/types/gql/**` mirrors.

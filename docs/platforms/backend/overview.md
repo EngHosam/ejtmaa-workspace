@@ -32,9 +32,10 @@ Provider graph:
 
 ORM models (`backend/src/app/orm/models/`):
 - `Customer` — customer actor profile; `hasOne Organization` via `customer_id` (`getOrganization` / `createOrganization`)
-- `Organization` — tenant entity owned by a customer (`customer_id`, one-to-one); `hasMany Member`, `hasMany MessageTemplate`
+- `Organization` — tenant entity owned by a customer (`customer_id`, one-to-one); `hasMany Member`, `hasMany MessageTemplate`, `hasMany Meeting`
 - `Member` — non-actor org person (UUID `id` + `access_token`); belongs to Organization
 - `MessageTemplate` — non-actor org message library (`WHATSAPP` | `EMAIL`); belongs to Organization
+- `Meeting` — non-actor org session (UUID PK; chairperson Member; optional template FKs; LiveKit later)
 - `Supervisor` — supervisor actor profile
 - `User` — shared user identity
 - `Token` — auth tokens
@@ -71,7 +72,7 @@ Registration maps:
 Provider config: `backend/src/resources/configs/gql/index.ts`
 - Schemas: `customer`, `supervisor`
 - SDL: `backend/src/app/gql/definitions/customer.graphql`, `backend/src/app/gql/definitions/supervisor.graphql`, `backend/src/app/gql/definitions/base.graphql`
-- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`)
+- Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageTemplateBridge`, `MeetingBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`)
 - Supervisor bridges: `MeBridge`, `NotificationBridge`, `CustomerBridge`, `CustomerStatsBridge`, `OrganizationBridge` under `backend/src/app/gql/bridges/supervisor/`
 
 ### Socket
@@ -88,4 +89,5 @@ Config: `backend/src/resources/configs/socket/io.ts`
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/member-domain.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
+- `docs/platforms/backend/contracts/meeting-domain.md`
 - `docs/invariants/backend.md`

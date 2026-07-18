@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus` (+ Value enums)
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.
@@ -25,11 +25,14 @@ Root queries (from `customer.graphql`):
 - `member(id)` — single member in the customer's organization
 - `messageTemplates` — message templates of the customer's organization (same `me` → Organization parent)
 - `messageTemplate(id)` — single message template in the customer's organization
+- `meetings` — meetings of the customer's organization (same `me` → Organization parent)
+- `meeting(id)` — single meeting in the customer's organization
 
 Nested (cardinality-safe):
 - `_Member.organization: _Organization` (`belongsTo`, expected count 1)
 - `_MessageTemplate.organization: _Organization` (`belongsTo`, expected count 1)
-- not `_Organization.members` / not nested high-cardinality template lists under Organization (root list only)
+- `_Meeting.organization: _Organization`, `_Meeting.chairperson: _Member`, `_Meeting.whatsappTemplate` / `emailTemplate: _MessageTemplate`
+- not `_Organization.members` / meetings / templates as nested high-cardinality lists (root list only)
 
 Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `MeBridge`
@@ -37,6 +40,7 @@ Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `OrganizationBridge`
 - `MemberBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
 - `MessageTemplateBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
+- `MeetingBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
 
 Org-owned intermediate base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts`.
 
@@ -87,4 +91,5 @@ See `docs/platforms/backend/patterns/graphql-and-bridges.md` for authoring stand
 
 Organization domain detail: `docs/platforms/backend/contracts/organization-domain.md`.  
 Member domain detail: `docs/platforms/backend/contracts/member-domain.md`.  
-Message template domain detail: `docs/platforms/backend/contracts/message-template-domain.md`.
+Message template domain detail: `docs/platforms/backend/contracts/message-template-domain.md`.  
+Meeting domain detail: `docs/platforms/backend/contracts/meeting-domain.md`.

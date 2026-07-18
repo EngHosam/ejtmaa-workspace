@@ -18,7 +18,7 @@ Without `loadAttr`, JSONB MultiLang fields return raw JSON objects instead of lo
 
 `CustomerOrganizationOwnedBridgeBase` extends `CustomerBridgeBase` and owns the shared `{ me: true }` → `context.customer.getOrganization()` root-parent resolve.
 
-Use for Organization children exposed on the customer schema (`MemberBridge`, `MessageTemplateBridge`, future org-scoped entities).
+Use for Organization children exposed on the customer schema (`MemberBridge`, `MessageTemplateBridge`, `MeetingBridge`, future org-scoped entities).
 
 Do **not**:
 

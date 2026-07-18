@@ -46,14 +46,15 @@ If removing the override changes nothing observable against the role base, the o
 
 ## 5. Inverse `belongsTo` nested field → parent bridge `GetOneParent` (mandatory)
 
-When SDL exposes a **cardinality-safe** inverse on the child (examples: `_Member.organization`, `_MessageTemplate.organization`):
+When SDL exposes a **cardinality-safe** inverse/nested `belongsTo` on the child (examples: `_Member.organization`, `_MessageTemplate.organization`, `_Meeting.chairperson`, `_Meeting.whatsappTemplate`):
 
-- The nested field is prepared by the **target entity bridge** (here `OrganizationBridge`), not the child bridge.
-- That target bridge's `GetOneParent` **must** include the **source ORM model** (here `MemberModel | MessageTemplateModel | …`).
+- The nested field is prepared by the **target entity bridge**, not the child bridge.
+- That target bridge's `GetOneParent` **must** include the **source ORM model** (e.g. `MeetingModel` on `MemberBridge` / `MessageTemplateBridge` / `OrganizationBridge`).
+- Custom association `as` (e.g. `chairperson`, `whatsappTemplate`) must match the SDL field name; still type the **source** model on the **target** bridge.
 - Do **not** omit this when adding the SDL relation — typed parents document real nested prepare paths and prevent silent contract drift.
-- Do **not** put the parent model on the child's `GetOneParent` for this inverse; that would describe a removed high-cardinality nest, not `belongsTo`.
+- Do **not** put the parent model on the child's `GetOneParent` for a high-cardinality nest that was intentionally omitted (B15).
 
-Worked examples: `docs/platforms/backend/contracts/member-domain.md` §4, `message-template-domain.md` §4.
+Worked examples: `member-domain.md` §4, `message-template-domain.md` §4, `meeting-domain.md` §4.
 
 ## 6. Quick checklist before merging
 

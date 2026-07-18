@@ -187,3 +187,4 @@ Current non-actor tenant reference: `Organization` (`docs/platforms/backend/cont
 - Do not use polymorphic `owner_*` for Organization unless product ownership changes.
 - `Member` is non-actor under Organization (`organization_id` real FK). PK is UUID v4 (`id`); link/access uses separate unique `access_token` (UUID default) — no `public_id`. Customer is not a Member row.
 - `MessageTemplate` is non-actor under Organization (`organization_id` real FK). Channel enum `messageTemplateChannel`: `WHATSAPP` | `EMAIL`. `subject` nullable (email); `body` required TEXT.
+- `Meeting` is non-actor under Organization. UUID PK; `chairperson_id` → Member; optional `whatsapp_template_id` / `email_template_id` → MessageTemplate (`as` aliases). Enums: `meetingType`, `meetingStatus` (default `DRAFT`), `meetingNotifyStatus` (default `NOT_STARTED`); `notify_start_at` nullable. No media platform/url columns (LiveKit later).

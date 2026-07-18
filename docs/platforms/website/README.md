@@ -105,7 +105,7 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 |---|---|---|
 | `src/types/requesters/requesters.website.ts` | `RequestersMap` (visitor.auth, customer.customer, customer.notification) | `repository-inventory.md` § Requesters; `data-flow-and-gql.md` § Actor maps; `overview.md` § Backend coupling |
 | `src/types/gql/definitions/base.graphql` | Shared SDL (scalars, `_Ability`, `_Notification*`, interfaces) | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors |
-| `src/types/gql/definitions/customer.graphql` | Customer SDL (`_Me`, `_Organization`, `_Member`, `_MessageTemplate`, `Query { me, notifications, organization, members, member, messageTemplates, messageTemplate }`) | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors |
+| `src/types/gql/definitions/customer.graphql` | Customer SDL (`_Me`, `_Organization`, `_Member`, `_MessageTemplate`, `_Meeting`, `Query { me, notifications, organization, members, member, messageTemplates, messageTemplate, meetings, meeting }`) | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors |
 | `src/types/gql/definitions/shared.graphql` | Shared `Query { notifications }` extension stub | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors |
 | `src/types/gql/gql-types/base.ts` | Generated shared types | `graphql-mirror-and-tooling.md` §2 |
 | `src/types/gql/gql-types/customer.ts` | Generated customer types | `graphql-mirror-and-tooling.md` §2; `data-flow-and-gql.md` § Read path |

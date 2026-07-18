@@ -115,7 +115,7 @@ File: `backend/src/app/gql/bridges/customer/MemberBridge.ts`
 - Extends `CustomerOrganizationOwnedBridgeBase` (shared `me` → Organization resolve)
 - `ident = "member"`, `typeIdent = "_Member"`, `ormModel = MemberModel`
 - `GetManyParent = OrganizationOwnedMeParent` (`{ me: true }`)
-- `GetOneParent = MemberModel | { me: true; id: string }`
+- `GetOneParent = MemberModel | MeetingModel | { me: true; id: string }` (`MeetingModel` for `_Meeting.chairperson`)
 - Does **not** override `getRootOrmParent` or `getOrmFindOptions` (inherited / role defaults)
 
 Shared base: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` — see `message-template-domain.md` §4.
@@ -127,10 +127,12 @@ When `_Member.organization` is selected, the framework prepares **`OrganizationB
 Therefore `OrganizationBridge` must declare (also includes other inverse parents as they ship):
 
 ```ts
-export type GetOneParent = MemberModel | MessageTemplateModel | { me: true };
+export type GetOneParent = MemberModel | MessageTemplateModel | MeetingModel | { me: true };
 ```
 
-Do not put `OrganizationModel` on `MemberBridge.GetOneParent` for this inverse; that bridge prepares Organization, not Member.
+`MemberBridge.GetOneParent` also includes `MeetingModel` for nested `_Meeting.chairperson`.
+
+Do not put `OrganizationModel` on `MemberBridge.GetOneParent` for the organization inverse; that bridge prepares Organization, not Member.
 
 ### Registered bridges
 

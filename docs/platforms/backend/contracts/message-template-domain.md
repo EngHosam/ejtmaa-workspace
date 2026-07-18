@@ -15,8 +15,9 @@ Out of scope (not shipped):
 - supervisor MessageTemplate GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for templates,
-- Meeting (or other) FK references to templates,
 - nested `_Organization.messageTemplates` (use root list; same org-scoped root pattern as members).
+
+Related shipped consumer: `Meeting` optional FKs `whatsapp_template_id` / `email_template_id` — see `meeting-domain.md`.
 
 ## 2) Domain purpose
 
@@ -25,7 +26,7 @@ Out of scope (not shipped):
 - Channel is `WHATSAPP` or `EMAIL` (localized enum `messageTemplateChannel`).
 - Email may carry `subject`; WhatsApp uses `body` only (`subject` null).
 - Tenant boundary is `organization_id` (not `customer_id` directly).
-- Templates are intended for later invite/notify flows; Meeting does not store inline template text columns in this change set.
+- Templates are referenced by meetings via optional FKs; meetings do not store inline template text columns.
 
 ## 3) ORM model
 
@@ -115,7 +116,7 @@ File: `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts`
 - Extends `CustomerOrganizationOwnedBridgeBase` (not bare `CustomerBridgeBase`)
 - `ident = "messageTemplate"`, `typeIdent = "_MessageTemplate"`, `ormModel = MessageTemplateModel`
 - `GetManyParent = OrganizationOwnedMeParent` (`{ me: true }`)
-- `GetOneParent = MessageTemplateModel | { me: true; id: string }`
+- `GetOneParent = MessageTemplateModel | MeetingModel | { me: true; id: string }` (`MeetingModel` for `_Meeting` template nests)
 - Does **not** override `getRootOrmParent` or `getOrmFindOptions` (inherited / role defaults)
 
 ### Shared base: `CustomerOrganizationOwnedBridgeBase`
@@ -136,8 +137,10 @@ When `_MessageTemplate.organization` is selected, the framework prepares **`Orga
 Therefore `OrganizationBridge` must declare:
 
 ```ts
-export type GetOneParent = MemberModel | MessageTemplateModel | { me: true };
+export type GetOneParent = MemberModel | MessageTemplateModel | MeetingModel | { me: true };
 ```
+
+`MessageTemplateBridge.GetOneParent` also includes `MeetingModel` for nested `_Meeting.whatsappTemplate` / `emailTemplate`.
 
 ### Registered bridges
 
@@ -208,6 +211,7 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/member-domain.md` (same org-owned GQL parent pattern)
+- `docs/platforms/backend/contracts/meeting-domain.md` (optional template FKs from Meeting)
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`
 - `docs/invariants/backend.md` (B15, B18)
