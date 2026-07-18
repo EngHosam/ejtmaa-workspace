@@ -1,0 +1,31 @@
+---
+description: LiveKit media plane — helper-only, no ORM, A/V not business state
+globs: backend/src/app/helpers/LiveKitHelper.ts,backend/.env.example,backend/package.json
+alwaysApply: false
+---
+
+# LiveKit media plane
+
+Authoritative contract: `docs/platforms/backend/contracts/livekit-media-plane.md`.
+
+## Boundaries
+
+- LiveKit = **A/V only**. Do not store agenda, votes, talk queue, or attendance truth in LiveKit.
+- **No** LiveKit ORM model / room table / Zoom-style `platform`/`url` columns on `Meeting`.
+- Room name: `ejtmaa:meeting:{meetingId}` via `LiveKitHelper.roomName` only.
+
+## Helper
+
+- File: `backend/src/app/helpers/LiveKitHelper.ts`.
+- Dependency: `livekit-server-sdk` pinned (currently `2.17.0`).
+- Env: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (prefer dashboard `wss://` URL).
+- Default token TTL: `LiveKitHelper.DEFAULT_ACCESS_TOKEN_TTL` (`12h` from mint). Change that constant to retarget; override per call with `options.ttl`.
+- Return **client** URL from `clientUrl()` / `createAccessToken` (`ws`/`wss`), not a raw `https` host for browser connect.
+- Mint with `AccessToken` + `addGrant` + `await toJwt()` (SDK v2 async).
+- Room APIs via `LiveKitAPI` → `api.room.*`.
+
+## Ownership
+
+- Helper does **not** own roster/org/`STARTED` authz or SQL attendance writes — requesters do.
+- One JWT per member join; never reuse one token across members.
+- Do not commit secrets; keep values in gitignored `.env` only.

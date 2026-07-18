@@ -35,7 +35,7 @@ ORM models (`backend/src/app/orm/models/`):
 - `Organization` — tenant entity owned by a customer (`customer_id`, one-to-one); `hasMany Member`, `hasMany MessageTemplate`, `hasMany Meeting`
 - `Member` — non-actor org person (UUID `id` + `access_token`); belongs to Organization; ORM `hasMany` MeetingParticipant (no Member→meetings GQL yet)
 - `MessageTemplate` — non-actor org message library (`WHATSAPP` | `EMAIL`); belongs to Organization
-- `Meeting` — non-actor org session (UUID PK; chairperson Member; optional template FKs; LiveKit later); `hasMany` participants + agendaItems + decisions
+- `Meeting` — non-actor org session (UUID PK; chairperson Member; optional template FKs; LiveKit media via `LiveKitHelper`); `hasMany` participants + agendaItems + decisions + talkRecords
 - `MeetingParticipant` — non-actor roster join (composite PK `(meeting_id, member_id)`; type `CHAIRPERSON` | `MEMBER` | `VIEWER`)
 - `AgendaItem` — non-actor agenda line under Meeting (`modelName: "agendaItem"`; durable SQL)
 - `Decision` — non-actor decision under Meeting (`modelName: "decision"`; phase PRE_START|DURING; durable SQL); `hasMany` votes

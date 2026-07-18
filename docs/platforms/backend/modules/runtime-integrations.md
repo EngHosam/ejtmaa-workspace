@@ -32,6 +32,7 @@ Main groups:
 - db (`DB_*`)
 - socket (`IO_PORT`)
 - payment (`PAYMENT_MODE`, MyFatoorah keys)
+- LiveKit media (`LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`) — see `docs/platforms/backend/contracts/livekit-media-plane.md`
 
 ## 3) HTTP Integration Details
 
@@ -103,6 +104,20 @@ Current responsibilities:
 Related templates:
 - `backend/src/resources/views/invoice.twig`
 - `backend/src/resources/views/my_fatoorah_done.twig`
+
+## 7b) LiveKit media helper
+
+Active helper:
+- `backend/src/app/helpers/LiveKitHelper.ts`
+
+Dependency: `livekit-server-sdk@2.17.0` (pinned).
+
+Current responsibilities:
+- derive room name `ejtmaa:meeting:{meetingId}`
+- create/list/delete rooms and mint per-participant access tokens
+- normalize client connect URL (`ws`/`wss`)
+
+Does **not** own join authz, attendance SQL, or website client connect. Full contract: `docs/platforms/backend/contracts/livekit-media-plane.md`.
 
 ## 8) Database Scripts and Patches
 

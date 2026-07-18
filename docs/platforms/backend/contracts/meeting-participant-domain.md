@@ -26,7 +26,8 @@ Out of scope (not shipped):
 - supervisor MeetingParticipant GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for participants,
-- LiveKit / Yjs session planes.
+- LiveKit join requesters / client wiring (server helper exists — see `livekit-media-plane.md`),
+- Yjs session planes.
 
 ## 2) Domain purpose
 

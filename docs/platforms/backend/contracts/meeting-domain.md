@@ -18,7 +18,7 @@ Current Ejtmaa meeting surface:
 Out of scope (not shipped):
 
 - meeting requesters / write mutations,
-- LiveKit room/token issuance,
+- LiveKit join requesters / website client wiring (helper shipped — see `livekit-media-plane.md`),
 - Yjs collaborative session state,
 - supervisor Meeting GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
@@ -30,7 +30,7 @@ Out of scope (not shipped):
 
 `Meeting` is a **non-actor** scheduled session record inside an `Organization`.
 
-- Media is **LiveKit** at runtime later — not modeled as Zoom/Teams `platform` / external `url` columns.
+- Media is **LiveKit** at runtime — room/token helper shipped (`livekit-media-plane.md`); not modeled as Zoom/Teams `platform` / external `url` columns.
 - Invite copy comes from optional template FKs, not duplicated body/subject fields on the meeting.
 - Invite **start time** is `notify_start_at` (independent of `status`).
 - Invite **progress** is `notify_status` (`NOT_STARTED` | `WAITING_TO_NOTIFY` | `NOTIFIED`).
@@ -267,6 +267,7 @@ Verification: `yarn generate-types`, `yarn type-check`.
 - `docs/platforms/backend/contracts/agenda-item-domain.md`
 - `docs/platforms/backend/contracts/decision-domain.md`
 - `docs/platforms/backend/contracts/talk-record-domain.md`
+- `docs/platforms/backend/contracts/livekit-media-plane.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`

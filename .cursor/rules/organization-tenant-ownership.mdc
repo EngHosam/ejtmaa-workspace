@@ -53,7 +53,7 @@ For customer-role `organization` when `Customer.hasOne(Organization)` uses assoc
 - Customer GQL: root `meetings` / `meeting(id)` only — not nested `_Organization.meetings` (B15).
 - Nested `chairperson` / `whatsappTemplate` / `emailTemplate` require target bridges' `GetOneParent` to include `MeetingModel`.
 - Inverse `_Meeting.organization` requires `OrganizationBridge` `GetOneParent` to include `MeetingModel`.
-- No Zoom/Teams `platform` / external meeting `url` columns — LiveKit is runtime later.
+- No Zoom/Teams `platform` / external meeting `url` columns — LiveKit media via `LiveKitHelper` (`livekit-media-plane.md` / `.cursor/rules/livekit-media-plane.mdc`).
 - Invite start time is `notify_start_at` (not derived from `status`).
 
 ## Meeting participants (related)
