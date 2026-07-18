@@ -2,6 +2,8 @@
 description: Shared Utils-composed brand marks (e.g. DrawerMenuIcon) live under components/ — not IconBaseProps SVG + theme hooks
 globs:
   - website/src/app/ui/components/DrawerMenuIcon.tsx
+  - website/src/app/ui/components/HomeMark.tsx
+  - website/src/app/ui/components/Breadcrumb.tsx
   - website/src/app/ui/components/customer/**/*.tsx
   - website/src/app/ui/components/LandingHeader.tsx
 alwaysApply: false
@@ -18,10 +20,12 @@ Applies when authoring or replacing **custom dual-tone / brand marks** shared ac
 3. Do **not** implement these marks as `forwardRef` + `IconBaseProps` SVG that calls `useThemeManager` / hardcodes `me-icon` / invents a parallel icon system.
 4. RTL mirroring for start-side asymmetry: prefer flex start-side layout (first child = start) so `dir=rtl` flips naturally. Use `Icn` `flp` only for true directional Feather glyphs.
 5. Customer `HeaderIconButton` accepts marks via the `icon` ReactNode branch; landing header embeds the same mark directly.
+6. Shared home mark: `HomeMark` via `rootMark` / `Crumb.mark` / drawer tile `mark` (ReactNode) — not Feather `FiHome` when dual-tone brand chrome is intended. Use `tone="onPrimary"` on navy action wells.
 
-## Canonical case
+## Canonical cases
 
-`DrawerMenuIcon` (`website/src/app/ui/components/DrawerMenuIcon.tsx`): accent rail + two ink bars, default `size={1.2}`. Used by `CustomerHeader` and `LandingHeader` (replacing `FiMenu` on landing).
+- `DrawerMenuIcon` (`website/src/app/ui/components/DrawerMenuIcon.tsx`): accent rail + two ink bars, default `size={1.2}`. Used by `CustomerHeader` and `LandingHeader` (replacing `FiMenu` on landing).
+- `HomeMark` (`website/src/app/ui/components/HomeMark.tsx`): portal frame + accent floor rail; `tone="ink"` (breadcrumb) / `tone="onPrimary"` (drawer home tile).
 
 ## Why
 

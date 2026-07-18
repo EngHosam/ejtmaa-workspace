@@ -59,7 +59,7 @@ See `docs/platforms/website/ui-foundation.md`.
 
 Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-Shipped customer workspace entry: `CustomerHome` (`/customer`, `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`). Shell details: `flow-customer-shell.md`.
+Shipped customer workspace: `CustomerHome` (`/customer`) and `CustomerMembers` (`/customer/members`, route `breadcrumb` → fixed `CustomerSubHeader`). Both `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell details: `flow-customer-shell.md`.
 
 ### 6.2) Planned (not shipped)
 

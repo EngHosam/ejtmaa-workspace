@@ -21,6 +21,9 @@ Applies when shipping or reviewing an authed customer route reached from the **d
 4. **No identify-list sub-header hacks.** One `breadcrumb` entry on the route is the only registration surface.
 5. **Docs in the same task.** Update the feature flow doc and `route-registry-contract.md` when paths change.
 
-## Canonical case
+## Canonical cases
 
-- `CustomerNotifications` → `breadcrumb: { parent: "CustomerHome", label: tr => tr.ui.pages.customer.notifications.title }`
+- `CustomerMembers` (shipped empty) → `breadcrumb: { parent: "CustomerHome", label: tr => tr.ui.pages.customer.members.title }`
+- `CustomerNotifications` (planned) → `breadcrumb: { parent: "CustomerHome", label: tr => tr.ui.pages.customer.notifications.title }`
+
+Layout already renders fixed `CustomerSubHeader` from route meta — no identify-list hacks. Product placement: `.cursor/rules/website-breadcrumb-product-placement.mdc`.

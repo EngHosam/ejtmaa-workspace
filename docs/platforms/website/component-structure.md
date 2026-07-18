@@ -26,11 +26,11 @@ Actors: **visitor** and **customer**.
 
 **Shipped layouts:** `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-**Shipped pages:** `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`, `CustomerHome` (empty `Main`).
+**Shipped pages:** `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`, `CustomerHome` (empty `Main`), `CustomerMembers` (empty `Main` + breadcrumb).
 
-**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`), landing home sections (`home/*`), customer shell (`CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`).
+**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `HomeMark`, `Breadcrumb`, `useBreadcrumbs`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`), landing home sections (`home/*`), customer shell (`CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerSubHeader`, `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`).
 
-**Planned (target contract, not yet in scaffold):** `CustomerBottomBar` / `BottomIcons` / `CustomerSubHeader`, remaining `pages/customer/*` workspace screens, Google social auth UI (`SelectableCard`, `Checkbox` on Register).
+**Planned (target contract, not yet in scaffold):** `CustomerBottomBar` / `BottomIcons`, remaining `pages/customer/*` workspace screens, Google social auth UI (`SelectableCard`, `Checkbox` on Register).
 
 ## 2) `ui/base/` -- infrastructure only
 
@@ -58,7 +58,7 @@ Planned groups (target contract):
 | Group | Planned examples |
 |---|---|
 | Shell (visitor) | `LandingSubHeader`, `LandingDrawer` |
-| Shell (customer) | Shipped: `CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, helpers; planned: `CustomerBottomBar`, `BottomIcons`, `CustomerSubHeader` |
+| Shell (customer) | Shipped: `CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerSubHeader`, `Breadcrumb`, `useBreadcrumbs`, `HomeMark`, helpers; planned: `CustomerBottomBar`, `BottomIcons` |
 | Auth (social) | `SelectableCard`, `Checkbox` on Register |
 | Form | `FormActionChip`, `FormAvatarField` |
 | Static info | `HelpGuideScreen`, `AboutEjtmaaScreen`, `TermsConditionsScreen` |
@@ -84,7 +84,7 @@ Thin route entry components bound to route identifiers.
 
 Shipped public/auth: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
 
-Customer workspace: shipped empty `CustomerHome`; planned settings, meetings, members, organization, templates, subscription, notifications, static info, support.
+Customer workspace: shipped empty `CustomerHome` + `CustomerMembers`; planned settings, meetings, organization, templates, subscription, notifications, static info, support.
 
 Pages orchestrate hooks, layouts, adapters, and shared UI. Extract reusable sections to `components/`.
 

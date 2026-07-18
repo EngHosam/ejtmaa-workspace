@@ -1,0 +1,30 @@
+---
+description: Breadcrumb product surface lives under ui/components — never ui/base; fixed CustomerSubHeader + HomeMark contract
+globs:
+  - website/src/app/ui/components/Breadcrumb.tsx
+  - website/src/app/ui/components/useBreadcrumbs.ts
+  - website/src/app/ui/components/HomeMark.tsx
+  - website/src/app/ui/components/customer/CustomerSubHeader.tsx
+  - website/src/app/ui/layouts/CustomerMainLayout.tsx
+  - website/src/types/extends/global.ts
+  - docs/platforms/website/flow-customer-shell.md
+alwaysApply: false
+---
+
+# Website Breadcrumb Product Placement
+
+Applies when adding or editing customer (or future landing) breadcrumb shell pieces.
+
+## Non-negotiables
+
+1. **Product under `ui/components/`.** `Breadcrumb.tsx`, `useBreadcrumbs.ts`, `HomeMark.tsx`, and `CustomerSubHeader.tsx` stay in the product layer. Do **not** add breadcrumb walkers, helpers folders, or marks under `ui/base/`.
+2. **Contract types in `types/extends/global.ts`.** `BreadcrumbMeta` augments `PageRouteState.breadcrumb` — not a parallel type file under `ui/base/helpers/`.
+3. **Fixed sub-header.** `CustomerSubHeader` is a fixed sibling under `CustomerHeader`. Layout content `paddingTop` must include `CUSTOMER_SUBHEADER_BAR` when `routes[identify]?.breadcrumb` is set.
+4. **No `withMemo` on `CustomerSubHeader`.** Route-reactive (W24). `Breadcrumb` may use `withMemo` (crumbs are props).
+5. **Brand trail chrome.** Accent separators + current-page accent underline rail — not classic chevron trails — unless product explicitly reopens the visual contract (`flow-customer-shell.md` §7.1).
+6. **Shared home glyph.** Customer home uses `HomeMark` via `rootMark` / drawer `mark` (`tone="ink"` vs `tone="onPrimary"`). Do not reintroduce `FiHome` for those two surfaces without product approval.
+7. **Style props (W29).** Behavioral CSS (`backdropFilter`, `@media`, `:hover`, `transition`, overflow) in `cssStyle`; shorthands preferred; no invented `baseCssStyle` dumps.
+
+## Canonical case
+
+`CustomerMembers` + `CustomerSubHeader` + `HomeMark` as documented in `docs/platforms/website/flow-customer-shell.md` §7.1 / §5.3.

@@ -168,7 +168,7 @@ Customer routes register through `customerRouter` in `routes.ts` per `route-regi
 
 ## W38. Drawer Subpage Breadcrumb
 
-Authed drawer subpages without bottom bar must declare route `breadcrumb` before ship.
+Authed drawer subpages without bottom bar must declare route `breadcrumb` before ship. `CustomerMainLayout` renders fixed `CustomerSubHeader` from `routes[identify]?.breadcrumb` and offsets content by `CUSTOMER_SUBHEADER_BAR`. Breadcrumb product code (`Breadcrumb`, `useBreadcrumbs`, `HomeMark`, `CustomerSubHeader`) lives under `ui/components/`, not `ui/base/`. See `flow-customer-shell.md` §7.1.
 
 ## W40. Deck Stacking Isolation
 

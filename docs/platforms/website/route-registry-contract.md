@@ -14,7 +14,7 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 
 ## 1.1) Shipped state
 
-`routes.ts` currently ships **seven** identifies with `customerRouter`, the `public → customer → base` section split, and `CustomerHome` on `CUSTOMER_MAIN`. Remaining `/customer/*` workspace routes are still planned (see §5.2).
+`routes.ts` currently ships **eight** identifies with `customerRouter`, the `public → customer → base` section split, and `CustomerHome` + `CustomerMembers` on `CUSTOMER_MAIN`. Remaining `/customer/*` workspace routes are still planned (see §5.2).
 
 | Identify | Path | Layout |
 |---|---|---|
@@ -24,9 +24,10 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 | `Home` | `/` | `LANDING` |
 | `UiMockup` | `/ui-mockup` | `MAIN` |
 | `CustomerHome` | `/customer` | `CUSTOMER_MAIN` |
+| `CustomerMembers` | `/customer/members` | `CUSTOMER_MAIN` (breadcrumb → `CustomerHome`) |
 | `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
 
-`MPagesRoutes` mirrors `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `CustomerHome` (no typed params). `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
+`MPagesRoutes` mirrors `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `CustomerHome`, `CustomerMembers` (no typed params). `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
 ## 2) Path helper (mandatory for workspace routes)
 
@@ -98,13 +99,13 @@ Shipped: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`.
 
 ### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`)
 
-Shipped: `CustomerHome`. Remaining workspace routes are planned.
+Shipped: `CustomerHome`, `CustomerMembers`. Remaining workspace routes are planned.
 
 | Identify | Path | Status |
 |----------|------|--------|
 | `CustomerHome` | `/customer` | shipped (`CUSTOMER_MAIN`) |
 | `CustomerMeetings` | `/customer/meetings` (target) | planned — drawer tile |
-| `CustomerMembers` | `/customer/members` (target) | planned — drawer tile |
+| `CustomerMembers` | `/customer/members` | shipped — empty page + drawer tile; `breadcrumb: { parent: CustomerHome }` |
 | `CustomerOrganization` | `/customer/organization` (target) | planned — drawer tile |
 | `CustomerMessageTemplates` | `/customer/message-templates` (target) | planned — drawer tile |
 | `CustomerSubscription` | `/customer/subscription` (target) | planned — drawer tile |
@@ -137,11 +138,13 @@ See `flow-auth.md` §4A and `.cursor/rules/website-auth-flow.mdc`.
 
 | Path | Repo | Change |
 |------|------|--------|
-| `website/src/resources/configs/routes.ts` | website | `customerRouter`; public/customer/base sections; `CustomerHome` |
+| `website/src/resources/configs/routes.ts` | website | `customerRouter`; public/customer/base; `CustomerHome` + `CustomerMembers` + `breadcrumb` meta |
+| `website/src/types/extends/global.ts` | website | `BreadcrumbMeta` on `PageRouteState` |
 | `website/src/app/services/router.ts` | website | `publicRoutes`, `getMyHomeIdentify` → `CustomerHome` for customer |
-| `website/src/app/ui/layouts/CustomerMainLayout.tsx` | website | `CUSTOMER_MAIN` shell |
+| `website/src/app/ui/layouts/CustomerMainLayout.tsx` | website | `CUSTOMER_MAIN` shell + sub-header offset |
 | `website/src/app/ui/pages/customer/CustomerHome.tsx` | website | empty authed home |
-| `docs/platforms/website/flow-customer-shell.md` | root | full shell contract + drawer IA |
+| `website/src/app/ui/pages/customer/CustomerMembers.tsx` | website | empty members + W38 breadcrumb |
+| `docs/platforms/website/flow-customer-shell.md` | root | shell + drawer IA + breadcrumb / `HomeMark` |
 
 ## 8) Related documents and rules
 

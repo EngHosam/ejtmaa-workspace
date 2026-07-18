@@ -23,7 +23,7 @@ Main drawer (`src/app/ui/layouts/main-layout/drawer.ts`): one `business` section
 
 `AuthedAs = "CUSTOMER"`; auth reducer exposes `auth.customer.permissions`.
 
-Shared mark: `DrawerMenuIcon` under `src/app/ui/components/` (customer header + landing header). Customer helpers under `customer/`: `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`. **Planned:** `CustomerBottomBar`, `BottomIcons`, `CustomerSubHeader`.
+Shared marks under `src/app/ui/components/`: `DrawerMenuIcon` (header + landing menu), `HomeMark` (breadcrumb root + drawer home tile; tones `ink` / `onPrimary`). Shared breadcrumb under `src/app/ui/components/`: `Breadcrumb` + `useBreadcrumbs` (**not** under `ui/base/`). Customer helpers under `customer/`: `HeaderIconButton`, `IdentityAvatar`, `CustomerSubHeader`, `hooks/useMe`. **Planned:** `CustomerBottomBar`, `BottomIcons`.
 
 ## 2) Document shell
 
@@ -40,6 +40,7 @@ Shipped: generic `Header` (`src/app/ui/components/Header.tsx`) with `main`/`comp
 |---|---|---|
 | Visitor | `LandingHeader` | shipped (landing); `LandingSubHeader` planned |
 | Customer | `CustomerHeader` | shipped on `CUSTOMER_MAIN` |
+| Customer | `CustomerSubHeader` | shipped when route has `breadcrumb` |
 
 Shared header behavior (both components):
 

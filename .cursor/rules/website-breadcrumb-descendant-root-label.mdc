@@ -1,10 +1,11 @@
 ﻿---
 description: useBreadcrumbs must prefer a descendant route's rootLabel/rootNavParams over the parent route's own static label when the descendant's parent resolves to the current traversal target, then stop. Keeps entry-source breadcrumb truthful when a detail route carries its parent's dynamic label in the URL query.
 globs:
-  - website/src/app/ui/base/hooks/useBreadcrumbs.ts
-  - website/src/app/ui/base/helpers/breadcrumbMeta.ts
+  - website/src/app/ui/components/useBreadcrumbs.ts
   - website/src/types/extends/global.ts
   - website/src/resources/configs/routes.ts
+  - website/src/app/ui/components/Breadcrumb.tsx
+  - website/src/app/ui/components/customer/CustomerSubHeader.tsx
 alwaysApply: false
 ---
 
@@ -18,6 +19,7 @@ When a detail route's `breadcrumb` meta provides `rootLabel` (+ optional `rootIc
 - **Stop after using the descendant root label.** Once `useChildRootLabel` is true for a crumb, `break` -- do not keep walking the parent chain.
 - **Click target uses `rootNavParams` when `useChildRootLabel` is true**, and does not forward `parentNavQuery`. Otherwise use `parentNavParams` + `parentNavQuery` as before.
 - **`useBreadcrumbs` stays a generic walker.** No domain-specific parent resolution inside the hook; precedence is driven entirely by `BreadcrumbMeta` function fields on the descendant.
+- **Product surface, not `ui/base/`.** Hook lives at `ui/components/useBreadcrumbs.ts` next to `Breadcrumb.tsx`. `BreadcrumbMeta` lives in `types/extends/global.ts`. Do not put breadcrumb product code under `ui/base/`.
 
 ## Forbidden
 
