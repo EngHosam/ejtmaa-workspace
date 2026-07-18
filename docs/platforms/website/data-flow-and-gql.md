@@ -35,7 +35,7 @@ Website requester typing (`src/types/requesters/requesters.website.ts`):
 | Actor | Requesters |
 |---|---|
 | visitor | `auth` |
-| customer | `customer`, `notification` |
+| customer | `customer`, `member`, `notification`, `subscription` |
 
 ## GQL project config
 
@@ -78,6 +78,8 @@ Do not point `CUSTOMER_ME` at visitor/global `DATA_ADAPTERS.GQL`. Hook: `website
 
 Members query uses `listable: "members"` and optional `filter: { search }` from route history key `members`. Full contract: `flow-customer-members.md`.
 
+Member writes use `Forms.CUSTOMER_MEMBER` → `API.FORMS.CUSTOMER.R("member")(sub)` (`read` | `create` | `update` | `delete`). Avatar binary upload uses `API.ACTIONS.MULTIPART_UPLOAD` before storing the filename in form `avatar_file`. See `flow-form-foundation.md` and `member-domain.md` §9.
+
 Default `initDataAdaptersProps.default.maxLoadLength` is **24** (shared load-more page size for adapters that do not override it).
 
 ## Adapter enterMode
@@ -101,6 +103,7 @@ Shipped customer adapters in `initDataAdaptersProps`: `ADAPTER1`, `CUSTOMER_ME`,
 ## Related
 
 - `docs/platforms/website/flow-customer-members.md`
+- `docs/platforms/website/flow-form-foundation.md`
 - `docs/platforms/website/graphql-mirror-and-tooling.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/contracts/member-domain.md`

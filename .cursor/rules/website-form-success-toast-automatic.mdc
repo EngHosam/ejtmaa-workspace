@@ -35,7 +35,7 @@ await form.d.send({
 });
 ```
 
-Canonical references: `website/src/app/ui/components/customer/settings/CustomerSettingsScreen.tsx`, `website/src/app/ui/components/customer/hooks/useCustomerNotifications.ts` (resets values + reloads, no toast).
+Canonical references: `website/src/app/ui/components/customer/members/CustomerMemberFormScreen.tsx` (`nav.back()` only), `website/src/app/ui/components/customer/hooks/useCustomerNotifications.ts` when present (resets values + reloads, no toast).
 
 ## Opt-out is explicit
 

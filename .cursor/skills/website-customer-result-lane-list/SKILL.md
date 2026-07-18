@@ -24,7 +24,7 @@ description: >-
    - draft search + Enter commit (`SearchField` `onSubmit`)
    - `mLoad({ reload: true, query })` on committed query change; same `query` on load-more/refresh
    - Never client-filter loaded rows — `.cursor/rules/website-customer-list-history-search.mdc`
-5. Keep the page thin (`MyPage` → screen). Screen composes `SectionHeading`, search, `ResultLane`, and a product card. Chrome-only Add/Edit is allowed **without** inventing requesters/routes.
+5. Keep the page thin (`MyPage` → screen). Screen composes `SectionHeading`, search, `ResultLane`, and a product card. When write routes exist (members: `CustomerMemberForm`), wire Add/Edit via `formRoute` href builders — do not leave dead chrome and do not invent parallel write paths. Form workflow: `.cursor/skills/website-customer-member-form/SKILL.md`.
 6. Reuse shared `ResultLane` / `SearchField` / `LoadMoreButton` / `Wrong` / `SectionHeading`. Keep skeleton shape aligned with the card — `.cursor/rules/website-result-lane-skeleton-shape.mdc`.
 7. i18n ar/en for page + wrong overlays. Helmet title on the screen.
 8. Document under `docs/platforms/website/flow-*.md` (extend or add) and refresh indexes (`README.md`, `overview.md`, `data-flow-and-gql.md`, route registry). Update the backend domain contract when filter ships.

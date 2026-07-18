@@ -27,12 +27,13 @@ A create+update form route MUST be **one identify** with `path: { create, update
       },
       breadcrumb: {
           parent: <parent identify>,
-          label: (tr, params) => params?.id ? tr.ui.pages.<ns>.editTitle : tr.ui.pages.<ns>.createTitle,
+          label: (tr, op) => op.params?.id ? tr.ui.pages.<ns>.editTitle : tr.ui.pages.<ns>.createTitle,
       },
   }
   ```
-  - One `breadcrumb` with a **param-aware** `label(tr, params)`.
-  - If the parent crumb needs different params than the child route exposes, add `parentNavParams: (params) => ({ id: params.id })` on the child's `breadcrumb`.
+  - One `breadcrumb` with a **param-aware** `label(tr, op)` (`PageLoadOptions`).
+  - If the parent crumb needs different params than the child route exposes, add `parentNavParams: (op) => ({ id: op.params.id })` on the child's `breadcrumb`.
+  - Canonical shipped example: `CustomerMemberForm` → parent `CustomerMembers` (`flow-customer-members.md`).
 
 - **`MPagesRoutes`**: one entry, `{ id?: string }` (`id` present ⇒ update).
 

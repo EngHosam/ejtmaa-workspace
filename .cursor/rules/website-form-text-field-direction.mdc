@@ -1,0 +1,34 @@
+---
+description: FormTextField must inherit page locale direction; never force ltr/ta_l (Arabic caret stays at start)
+globs:
+  - website/src/app/ui/components/form/FormTextField.tsx
+  - website/src/app/ui/components/auth/AuthTextField.tsx
+  - website/src/app/ui/components/form/**/*.tsx
+  - docs/platforms/website/flow-form-foundation.md
+alwaysApply: false
+---
+
+# Website FormTextField direction
+
+Applies when editing shared text inputs under `website/src/app/ui/components/form/`. Authority: `docs/platforms/website/flow-form-foundation.md` §3.1.
+
+## Rule
+
+`FormTextField` (and wrappers that only re-export it) MUST inherit the document/page direction from the active locale.
+
+- Use logical alignment: `textAlign: "start"` in `cssStyle`.
+- Do **not** set Utils `ltr` or `ta_l` on the native `<input>` / `<textarea>`.
+
+## Why
+
+Forcing `direction: ltr` + left align on an RTL page makes the caret appear stuck at the visual start when typing Arabic (and fights the product’s default `ar` locale).
+
+## Forbidden
+
+- Hardcoded `ltr` / `rtl` / `ta_l` / `ta_r` on shared form text fields “for email/password convenience” unless a future product decision documents a per-`type` exception in `flow-form-foundation.md`.
+- Inventing a parallel text field component to work around direction instead of fixing `FormTextField`.
+
+## Reference
+
+- Canonical: `website/src/app/ui/components/form/FormTextField.tsx`
+- Flow: `docs/platforms/website/flow-form-foundation.md`

@@ -1,0 +1,38 @@
+---
+description: FormAvatarField contract — avatar_file + multipart helpers + Ejtmaa identity chrome (not Masdaria visual port)
+globs:
+  - website/src/app/ui/components/form/FormAvatarField.tsx
+  - website/src/app/helpers/entityMedia.ts
+  - website/src/app/helpers/media.ts
+  - website/src/app/ui/components/**/*Form*.tsx
+  - docs/platforms/website/flow-form-foundation.md
+  - docs/platforms/website/flow-customer-members.md
+alwaysApply: false
+---
+
+# Website FormAvatarField
+
+Applies when adding or changing the shared avatar form field or its upload/URI helpers. Authority: `docs/platforms/website/flow-form-foundation.md` §3.3.
+
+## Contract
+
+1. Form field name is **`avatar_file`** (uploaded filename string). Immediate upload via `uploadEntityMediaFile` → `API.ACTIONS.MULTIPART_UPLOAD` → store `uploadedName` with `useFormInput`.
+2. Helpers stay minimal:
+   - `website/src/app/helpers/entityMedia.ts` — `uploadEntityMediaFile` only
+   - `website/src/app/helpers/media.ts` — `mediaStaticRoot` / `mediaImageUri` only
+3. Do **not** invent parallel upload helpers, EntityMedia payload types, or Masdaria-only paths that do not exist in this repo.
+4. Visual language is **Ejtmaa identity**: navy circle (`primaryActionBackground` + `FiUser` / cover image) + quiet accent text action. Forbidden as the default chrome: Masdaria-style large camera chip, stretched full-width input shell around the avatar, or decorative overlays that fight `IdentityAvatar`.
+5. Preview resolve order: local object URL → form `avatar_file` → optional `currentAvatarUrl`.
+6. Accept `image/png,image/jpeg`. Show a compact loading state while uploading; revoke object URLs on replace/unmount.
+
+## Forbidden
+
+- Copying Masdaria UI structure and calling it “ported” without matching Ejtmaa tokens/composition.
+- Writing the raw `File` into the form reducer instead of the uploaded filename.
+- Importing `customer/IdentityAvatar` into `form/` (reverse dependency) — mirror tokens inline instead.
+
+## Reference
+
+- Field: `website/src/app/ui/components/form/FormAvatarField.tsx`
+- Consumer: `CustomerMemberFormScreen`
+- Flow: `flow-form-foundation.md`, `flow-customer-members.md` §5.2

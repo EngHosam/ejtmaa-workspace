@@ -1,59 +1,53 @@
-# Website Flow — Customer Members Directory
+# Website Flow — Customer Members (Directory + Form)
 
-Authenticated customer org-member directory on `CustomerMembers` (`/customer/members`). Shell/breadcrumb contract remains in `flow-customer-shell.md` §7.1; this page owns list data, search, and ResultLane UI.
+Authenticated customer org-member directory and create/edit/delete form on `CUSTOMER_MAIN`. Shell/breadcrumb contract remains in `flow-customer-shell.md` §7.1. Backend write contract: `docs/platforms/backend/contracts/member-domain.md` §9. Form foundation: `flow-form-foundation.md`.
 
 ## 1) Scope
 
 **Shipped**
 
-- Read-only member directory for the authenticated customer's organization.
-- Server-side search via GQL `members(filter: { search })` (not client-side filtering of loaded rows).
-- Route-query persistence under history key `members` (`useWithHistoryState`).
-- Enter-to-commit search (draft local state; commit writes route query).
-- Card grid via shared `ResultLane` + load-more (default `maxLoadLength: 24`).
-- Chrome-only Add / Edit controls (visible; **no** nav, **no** write forms, **no** Member requesters).
+- Member directory for the authenticated customer's organization (GQL list + server search + ResultLane load-more).
+- Route-query persistence under history key `members` (`useWithHistoryState`); Enter-to-commit search.
+- Multi-path form route `CustomerMemberForm` (`create` / `update`) with `MemberRequester` subs `read` | `create` | `update` | `delete`.
+- Fields: name (required), email / mobile (optional, with meeting-link subtitles), avatar (`avatar_file` via immediate multipart upload).
+- List Add → create form; card Edit → update form; form Save / Delete; `SectionHeading` optional back icon → `nav.back()`.
+- Automatic success toasts (W11); no manual `showToast(mainMessage)`.
 
 **Not shipped**
 
-- Member create/update/delete requesters or routes.
-- Distinct empty copy for “no search hits” vs “no members yet” (same empty strings today).
+- GQL `can*` UI gating (Add/Edit always visible).
+- Soft-delete / cascade delete when roster or chairperson refs exist (backend **blocks** with specific message keys).
+- Distinct empty copy for “no search hits” vs “no members yet”.
 - Page / sort / scope route params (load-more list only).
-
-Backend filter contract: `docs/platforms/backend/contracts/member-domain.md` §4–§5.
+- Settings page reuse of `FormAvatarField` (field is shared-ready; settings flow still planned).
 
 ## 2) Entry points
 
 | Layer | Path / symbol |
 |---|---|
-| Route | `CustomerMembers` → `/customer/members` (`CUSTOMER_MAIN`, `mustAuthedAs: ["CUSTOMER"]`, breadcrumb → `CustomerHome`) |
-| Page | `website/src/app/ui/pages/customer/CustomerMembers.tsx` — thin `MyPage` → `CustomerMembersScreen` |
-| Screen | `website/src/app/ui/components/customer/members/CustomerMembersScreen.tsx` |
-| Hook | `website/src/app/ui/components/customer/hooks/useCustomerMembers.ts` |
-| Card | `website/src/app/ui/components/customer/members/CustomerMemberCard.tsx` |
+| List route | `CustomerMembers` → `/customer/members` |
+| Form route | `CustomerMemberForm` → `path.create` `/customer/members/form`, `path.update` `/customer/members/form/:id` |
+| List page | `website/src/app/ui/pages/customer/CustomerMembers.tsx` |
+| Form page | `website/src/app/ui/pages/customer/CustomerMemberForm.tsx` |
+| List screen | `…/members/CustomerMembersScreen.tsx` |
+| Form screen | `…/members/CustomerMemberFormScreen.tsx` |
+| Hook | `…/hooks/useCustomerMembers.ts` |
+| Card | `…/members/CustomerMemberCard.tsx` |
+| Href builder | `website/src/resources/configs/customer/formRoute.ts` → `buildCustomerMemberFormHref` |
 
-Helmet title: `ui.pages.customer.members.title`.
+Both list and form: `layout: "CUSTOMER_MAIN"`, `mustAuthedAs: ["CUSTOMER"]`. Form breadcrumb parent `CustomerMembers`; label switches on `params.id` (create vs edit title).
 
-## 3) Data adapter
+## 3) Directory data adapter
 
 | Concern | Value |
 |---|---|
-| Mount-private adapter id | `"customer-members"` (file-private constant; not exported on `DATA_ADAPTERS`) |
+| Mount-private adapter id | `"customer-members"` |
 | Inherited | `DATA_ADAPTERS.CUSTOMER_GQL` → `API.DATA_ADAPTERS.CUSTOMER.GQL` |
 | Listable | `"members"` |
-| Default page size | `initDataAdaptersProps.default.maxLoadLength` = **24** (global default changed from 50 with this slice) |
-| Reload pattern | `useEffect` → `mLoad({ reload: true, query: adapterQuery })` when `adapterQuery` / `exist` / `mLoad` change; refresh + search commit reuse the same query object |
+| Default page size | `initDataAdaptersProps.default.maxLoadLength` = **24** |
+| Reload | `mLoad({ reload: true, query })` when committed history query changes; same query on load-more / refresh |
 
-`CUSTOMER_GQL` registration (`website/src/resources/configs/store/data-adapters.ts`):
-
-```ts
-CUSTOMER_GQL: "CUSTOMER_GQL"
-// init:
-[DATA_ADAPTERS.CUSTOMER_GQL]: {
-    api: API.DATA_ADAPTERS.CUSTOMER.GQL
-}
-```
-
-GQL operation (inline in the hook):
+GQL (inline in hook):
 
 ```graphql
 query CustomerMembers($filter: _MemberFilter) {
@@ -68,131 +62,133 @@ query CustomerMembers($filter: _MemberFilter) {
 }
 ```
 
-`buildMembersAdapterQuery` omits `search` from `filter` when trimmed empty so the wire payload stays `{}` rather than `{ search: "" }`.
+History search: `.cursor/rules/website-customer-list-history-search.mdc`. Backend filter: `member-domain.md` §4–§5.
 
-## 4) History search contract
+## 4) Directory screen composition
 
-Pattern aligned with Masdaria cpanel `CustomersTable` history key usage, with **Enter-only** commit (website product choice).
+`Container` → `Col pt={2} gap={1.5} pb={2}`:
 
-1. `useWithHistoryState<MembersRouteQuery>({ key: "members" })` — route nest `query.members.search`.
-2. `draftSearch` local state mirrors route on `routeQuery.search` change.
-3. `SearchField` `onValueChange` updates draft only; `onSubmit` (Enter) → `setRouteQuery({ search: draftSearch })`.
-4. Normalized trim → `adapterQuery` → adapter reload.
-5. `loadMore` / `refresh` must pass the **same** `adapterQuery` (including `filter`) so pagination does not drop the active search.
+1. Row `jc_sb`: `SectionHeading` + primary `FormActionButton` Add → `nav.push(buildCustomerMemberFormHref("create"))`.
+2. `SearchField` (draft + Enter commit).
+3. `ResultLane` → `CustomerMemberCard` (`onEdit` → `buildCustomerMemberFormHref("update", member.id)`).
 
-**Forbidden:** filtering already-loaded `members` in the UI; inventing write routes; omitting `filter` on load-more when search is active.
+Shared ResultLane chrome: §6 of the prior directory slice remains (`ResultLane`, `CardSkeleton` member-shaped, `SearchField`, `Wrong`). Skeleton rule: `.cursor/rules/website-result-lane-skeleton-shape.mdc`.
 
-Governance: `.cursor/rules/website-customer-list-history-search.mdc`.
+## 5) Form route + `Forms.CUSTOMER_MEMBER`
 
-## 5) Screen composition
-
-Order inside `Container` → `Col pt={2} gap={1.5} pb={2}`:
-
-1. Row: `SectionHeading` (title + subtitle) + `FormActionButton` Add (`type="button"`, **no** `onClick` / form — chrome only).
-2. `SearchField` bound to hook draft + `submitSearch`.
-3. `ResultLane` with `CustomerMemberCard` via `renderCard`.
-
-`CustomerMemberCard`: `IdentityAvatar` + name / email / mobile + Edit text button (chrome only; no nav).
-
-## 6) Shared ResultLane chrome
-
-Under `website/src/app/ui/components/`:
-
-| Component | Role |
+| Concern | Value |
 |---|---|
-| `ResultLane` | Grid (3/2/1 cols), skeleton / cards / load-more / empty / failed overlays |
-| `CardSkeleton` | Loading placeholder; **currently member-card shaped** (avatar + three lines + edit bone); bones use `semanticColor.inputMutedBackground` |
-| `LoadMoreButton` | Centered muted button; disabled while loading more |
-| `SearchField` | Card-surface input; Enter → `onSubmit` |
-| `SectionHeading` | Eyebrow / title / subtitle block (also previewed on `UiMockup`) |
-| `Wrong` (`Empty`, `LaneFailed`) | Absolute overlays; i18n under `ui.components.wrong.*` |
+| Form identity | `Forms.CUSTOMER_MEMBER` → `api: API.FORMS.CUSTOMER.R("member")` |
+| Multi-path | One identify; `isUpdate = !!id` from `useCurrentParams<"CustomerMemberForm">` — never branch on page identify |
+| Create reducer key | Stable `"customer-member-form-create"` + `removeOnExit: false` |
+| Update | Auto identify; `removeOnExit: true`; `initProps.values = { member: id }`; `didEntered` → `send({ sub: "read" })` |
+| Loading | `Loadable` while `!exist` or update `read` in flight (`INIT` / `SENDING` + `currentSub === "read"`) |
 
-`ResultLane` requires `T extends { id: string }`. Empty/failed copy for members is passed from page i18n; generic Wrong fallbacks exist for other consumers.
+Governance: `.cursor/rules/website-multi-path-form-routes.mdc`, `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc`, `.cursor/rules/website-form-success-toast-automatic.mdc`.
 
-**Skeleton constraint:** while `ResultLane` hard-wires `CardSkeleton`, that skeleton must match the consuming card shape. Do not reuse an unrelated listing skeleton. See `.cursor/rules/website-result-lane-skeleton-shape.mdc`.
+### 5.1 Screen chrome
 
-## 7) Theme / identity
+- Header row: `SectionHeading` (`onBack` → `nav.back()`, `backLabel` from `ui.components.mainHeader.back`) + action buttons (not full-width under fields).
+- Actions: primary Save/Add (`sub: create|update`, `afterSentSuccess: nav.back()`); update-only neutral Delete (`window.confirm` → `sub: "delete"` → `nav.back()`). Guard with `submittingRef`.
+- Fields column `maxW={32}`: `FormAvatarField` + `FormTextField` name / email / mobile.
+- Email / mobile `subTitle`: meeting-link purpose copy (i18n). No placeholders unless product asks.
+- Avatar preview after `read`: form value `avatar_file` resolved via `mediaImageUri` (no separate `currentAvatarUrl` required).
 
-Uses existing customer semantic tokens only (`cardBackground`, `shellBorder`, `textPrimary` / `Secondary` / `Accent`, `inputMutedBackground`, `iconSecondary`, `primaryAction*`, `stateError`, `semanticDims.card.radius`). No new theme keys. `IdentityAvatar` matches shell header identity language.
+### 5.2 Avatar upload
 
-## 8) Forms / write chrome
+`FormAvatarField` → `uploadEntityMediaFile` → `API.ACTIONS.MULTIPART_UPLOAD` → store `uploadedName` in form field `avatar_file`. Helpers: `website/src/app/helpers/entityMedia.ts`, `media.ts` (`mediaStaticRoot` / `mediaImageUri`). Visual language: navy identity circle + quiet text action (Ejtmaa), not Masdaria camera-chip chrome. Rule: `.cursor/rules/website-form-avatar-field.mdc`.
 
-- No `useShallowForm`, no Member requester, no create/edit routes.
-- Add uses shared `FormActionButton` as a **visual** primary control with `type="button"` and no handler.
-- Edit is a presentational text control on the card.
-- Do not wire fake success/toast for Add/Edit until requesters exist.
+## 6) Shared field contracts (touched this slice)
 
-## 9) i18n
+| Surface | Contract |
+|---|---|
+| `FormTextField` | Inherit page direction; `textAlign: "start"`; **do not** force `ltr` / `ta_l` (caret bug in Arabic). Rule: `.cursor/rules/website-form-text-field-direction.mdc` |
+| `FormInputWrapper` `subTitle` | `variant="caption"` + `semanticColor.textTertiary` (quieter than `inputTitle`) |
+| `SectionHeading` | Optional `onBack` + `backLabel`; back control uses `FiArrowLeft` + `flp`; row uses `flx_1 minW={0}` so sibling header actions can sit `jc_sb` |
+| `FormActionButton` | Header actions without `fullWidth` on this form |
+
+## 7) i18n
 
 | Key path | Purpose |
 |---|---|
-| `ui.pages.customer.members.*` | title, subtitle, addMember, edit, searchPlaceholder, emptyTitle, emptyDescription, loadMoreBtn, loadingMoreHint |
-| `ui.components.wrong.empty.*` | generic empty fallback |
-| `ui.components.wrong.laneFailed.*` | failed overlay + retryLabel |
-| `ui.pages.uiMockup.sections.sectionHeading` / `sectionHeadingReview.*` | UiMockup preview of `SectionHeading` |
+| `ui.pages.customer.members.*` | Directory title, search, empty, Add, Edit, load-more |
+| `ui.pages.customer.memberForm.*` | create/edit titles, subtitle, avatar labels, field labels, email/mobile subtitles, create/update/delete + confirm |
+| `ui.components.mainHeader.back` | SectionHeading back aria/title on form |
+| `ui.pages.uiMockup.formAvatarReview.*` / `sections.formAvatar` | UiMockup avatar preview |
+| `ui.pages.uiMockup.sectionHeadingReview.withBack` | UiMockup back-icon preview |
 
 ar/en mirrors required.
 
-## 10) Failure / empty modes (UI)
+## 8) Failure / empty modes (UI)
 
 | Condition | UI |
 |---|---|
-| Initial load | `CardSkeleton` grid (6) |
-| Loaded empty | `Empty` overlay with members empty copy |
-| Fail with no rows | `LaneFailed` + `retry` → hook `refresh` |
-| More pages | `LoadMoreButton` when `thereMoreRecords` |
+| Directory initial load | `CardSkeleton` grid |
+| Directory empty | `Empty` overlay |
+| Directory fail | `LaneFailed` + retry |
+| Form update read | Centered `Loadable` |
+| Delete blocked (roster/chairperson) | Backend main message toast (automatic); form stays |
+| Validation errors | Field errors via form reducer |
 
-## 11) Traceability map (this change set)
+## 9) Traceability map (this change set)
 
 ### Backend (`backend/` repo)
 
 | Path | Status | Doc |
 |---|---|---|
-| `src/app/gql/definitions/customer.graphql` | modified — `_MemberFilter`, `members(filter:)` | `member-domain.md` §4; this §1 |
-| `src/app/gql/schemas/CustomerSchema.ts` | modified — pass `filter` parent | `member-domain.md` §4–§5 |
-| `src/app/gql/bridges/customer/MemberBridge.ts` | modified — search `getOrmFindOptions` | `member-domain.md` §4–§5 |
-| `src/app/gql/gql-types/customer.ts` | generated | narrate as codegen only |
+| `src/app/orm/models/Customer.ts` | `Ability.MEMBER` + `can` | `member-domain.md` §9.1 |
+| `src/app/validation/joi_rules.ts` | `isCustomerOwnedMember` | §9.2 |
+| `src/app/orchestrator/requesters/MemberRequester.ts` | added | §9.3 |
+| `requesters.website.ts` | `customer.member` | §9.4 |
+| `src/resources/trans/ar/messages.ts` / `en/messages.ts` | delete + success keys | §9.4 |
 
 ### Website (`website/` repo)
 
 | Path | Status | Doc |
 |---|---|---|
-| `src/types/gql/definitions/customer.graphql` | mirror copy | §3; `graphql-mirror-and-tooling.md` |
-| `src/types/gql/gql-types/customer.ts` | mirror copy | codegen / mirror only |
-| `src/resources/configs/store/data-adapters.ts` | `CUSTOMER_GQL` + default `maxLoadLength: 24` | §3 |
-| `src/app/ui/pages/customer/CustomerMembers.tsx` | thin page → screen | §2 |
-| `src/app/ui/components/customer/hooks/useCustomerMembers.ts` | history + adapter + Enter search | §3–§4 |
-| `src/app/ui/components/customer/members/CustomerMembersScreen.tsx` | composition | §5 |
-| `src/app/ui/components/customer/members/CustomerMemberCard.tsx` | card | §5 |
-| `src/app/ui/components/ResultLane.tsx` | shared lane | §6 |
-| `src/app/ui/components/CardSkeleton.tsx` | member-shaped skeleton | §6 |
-| `src/app/ui/components/LoadMoreButton.tsx` | load more | §6 |
-| `src/app/ui/components/SearchField.tsx` | Enter submit | §4, §6 |
-| `src/app/ui/components/SectionHeading.tsx` | heading | §5–§6 |
-| `src/app/ui/components/Wrong.tsx` | Empty / LaneFailed | §6, §10 |
-| `src/resources/translations/ar.ts` / `en.ts` | members + wrong + mockup | §9 |
-| `src/app/ui/pages/UiMockup.tsx` | SectionHeading preview slot | §6, §9 |
+| `src/types/requesters/requesters.website.ts` | `customer.member` | this §5; `flow-form-foundation.md` |
+| `src/resources/configs/store/forms.ts` | `Forms.CUSTOMER_MEMBER` | §5 |
+| `src/resources/configs/customer/formRoute.ts` | href builder | §2, §5 |
+| `src/resources/configs/routes.ts` | `CustomerMemberForm` multi-path | §2; `route-registry-contract.md` |
+| `src/app/ui/pages/customer/CustomerMemberForm.tsx` | thin page | §2 |
+| `src/app/ui/components/customer/members/CustomerMemberFormScreen.tsx` | form screen | §5 |
+| `src/app/ui/components/customer/members/CustomerMembersScreen.tsx` | Add wiring | §4 |
+| `src/app/ui/components/customer/members/CustomerMemberCard.tsx` | `onEdit` | §4 |
+| `src/app/ui/components/form/FormAvatarField.tsx` | avatar field | §5.2 |
+| `src/app/helpers/entityMedia.ts` | multipart upload | §5.2 |
+| `src/app/helpers/media.ts` | static root + image URI | §5.2 |
+| `src/app/ui/components/form/FormTextField.tsx` | direction fix | §6 |
+| `src/app/ui/components/form/FormInputWrapper.tsx` | subtitle tertiary | §6 |
+| `src/app/ui/components/SectionHeading.tsx` | optional back | §5.1, §6 |
+| `src/app/ui/pages/UiMockup.tsx` | avatar + heading back previews | §7 |
+| `src/resources/translations/ar.ts` / `en.ts` | members + memberForm + mockup | §7 |
+| `src/app/ui/components/customer/hooks/useCustomerMembers.ts` | unchanged list hook | §3 |
 | `lib/tsconfig.tsbuildinfo` | generated | skip narrative |
 
-### Root docs / governance (this go-doc)
+### Root docs / governance
 
 | Path | Role |
 |---|---|
 | `docs/platforms/website/flow-customer-members.md` | this flow |
-| `docs/platforms/backend/contracts/member-domain.md` | filter contract refresh |
-| `docs/platforms/backend/contracts/graphql-and-types.md` | root `members(filter:)` note |
-| indexes under `docs/platforms/website/*` | cross-links |
-| `.cursor/rules/website-customer-list-history-search.mdc` | history + Enter + server filter |
-| `.cursor/rules/website-result-lane-skeleton-shape.mdc` | ResultLane skeleton shape |
-| `.cursor/skills/website-customer-result-lane-list/SKILL.md` | repeatable list workflow |
+| `docs/platforms/website/flow-form-foundation.md` | forms registry + field surfaces |
+| `docs/platforms/backend/contracts/member-domain.md` | write surface §9 |
+| `docs/platforms/website/route-registry-contract.md` | `CustomerMemberForm` |
+| `docs/platforms/website/overview.md` | index |
+| `docs/platforms/website/data-flow-and-gql.md` | requester map |
+| `docs/platforms/website/flow-customer-shell.md` | shell shipped note |
+| `.cursor/rules/website-form-avatar-field.mdc` | avatar field |
+| `.cursor/rules/website-form-text-field-direction.mdc` | input direction |
+| `.cursor/skills/website-customer-member-form/SKILL.md` | repeatable form workflow |
 
-## 12) Related
+## 10) Related
 
-- `docs/platforms/website/flow-customer-shell.md` (shell + breadcrumb)
+- `docs/platforms/website/flow-customer-shell.md`
+- `docs/platforms/website/flow-form-foundation.md`
 - `docs/platforms/website/data-flow-and-gql.md`
 - `docs/platforms/website/route-registry-contract.md`
 - `docs/platforms/backend/contracts/member-domain.md`
-- `.cursor/rules/website-one-adapter-per-route.mdc` (W36)
-- `.cursor/rules/website-list-adapter-enter-mode.mdc`
-- `.cursor/rules/website-presentational-label-props.mdc`
-- `.cursor/rules/gql-root-parent-payload-contract.mdc`
+- `.cursor/rules/website-multi-path-form-routes.mdc`
+- `.cursor/rules/website-customer-list-history-search.mdc`
+- `.cursor/rules/website-result-lane-skeleton-shape.mdc`
+- `.cursor/skills/website-customer-result-lane-list/SKILL.md`
+- `.cursor/skills/website-customer-breadcrumb-subpage/SKILL.md`

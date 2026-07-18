@@ -39,28 +39,19 @@ See `docs/platforms/website/ui-foundation.md`.
 | Notifications | [flow-notifications.md](./flow-notifications.md) |
 | Static info pages | [flow-static-info-pages.md](./flow-static-info-pages.md) |
 | Customer shell | [flow-customer-shell.md](./flow-customer-shell.md) |
-| Customer members | [flow-customer-members.md](./flow-customer-members.md) |
+| Customer members (directory + form) | [flow-customer-members.md](./flow-customer-members.md) |
 
 ## 6) Route registry summary
 
 ### 6.1) Shipped routes
 
-`src/resources/configs/routes.ts` currently ships six identifies:
-
-| Identify | Path | Layout |
-|---|---|---|
-| `Login` | `/login` | `BASIC` |
-| `Register` | `/register` | `BASIC` |
-| `ResetPassword` | `/reset-password` | `BASIC` |
-| `Home` | `/` | `LANDING` |
-| `UiMockup` | `/ui-mockup` | `MAIN` |
-| `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
+Authoritative table: `route-registry-contract.md` §1.1 (nine identifies including `CustomerHome`, `CustomerMembers`, multi-path `CustomerMemberForm`).
 
 `publicRoutes` = `["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`.
 
 Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-Shipped customer workspace: `CustomerHome` (`/customer`) and `CustomerMembers` (`/customer/members`, directory list/search + breadcrumb → fixed `CustomerSubHeader`). Both `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Members directory: `flow-customer-members.md`.
+Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`). All `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Members: `flow-customer-members.md`. Forms: `flow-form-foundation.md`.
 
 ### 6.2) Planned (not shipped)
 

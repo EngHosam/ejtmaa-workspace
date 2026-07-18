@@ -14,7 +14,7 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 
 ## 1.1) Shipped state
 
-`routes.ts` currently ships **eight** identifies with `customerRouter`, the `public → customer → base` section split, and `CustomerHome` + `CustomerMembers` on `CUSTOMER_MAIN`. Remaining `/customer/*` workspace routes are still planned (see §5.2).
+`routes.ts` currently ships **nine** identifies with `customerRouter`, the `public → customer → base` section split, and `CustomerHome` + `CustomerMembers` + multi-path `CustomerMemberForm` on `CUSTOMER_MAIN`. Remaining `/customer/*` workspace routes are still planned (see §5.2).
 
 | Identify | Path | Layout |
 |---|---|---|
@@ -25,9 +25,10 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 | `UiMockup` | `/ui-mockup` | `MAIN` |
 | `CustomerHome` | `/customer` | `CUSTOMER_MAIN` |
 | `CustomerMembers` | `/customer/members` | `CUSTOMER_MAIN` (breadcrumb → `CustomerHome`) |
+| `CustomerMemberForm` | create `/customer/members/form`; update `/customer/members/form/:id` | `CUSTOMER_MAIN` (breadcrumb → `CustomerMembers`) |
 | `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
 
-`MPagesRoutes` mirrors `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `CustomerHome`, `CustomerMembers` (no typed params). `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
+`MPagesRoutes` mirrors the same identifies; `CustomerMemberForm: { id?: string }` (`id` present ⇒ update). `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
 ## 2) Path helper (mandatory for workspace routes)
 
@@ -99,13 +100,14 @@ Shipped: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`.
 
 ### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`)
 
-Shipped: `CustomerHome`, `CustomerMembers`. Remaining workspace routes are planned.
+Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`. Remaining workspace routes are planned.
 
 | Identify | Path | Status |
 |----------|------|--------|
 | `CustomerHome` | `/customer` | shipped (`CUSTOMER_MAIN`) |
 | `CustomerMeetings` | `/customer/meetings` (target) | planned — drawer tile |
 | `CustomerMembers` | `/customer/members` | shipped — directory (ResultLane + search); drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-members.md` |
+| `CustomerMemberForm` | `/customer/members/form` (+ `/:id`) | shipped — multi-path create/update; `breadcrumb: { parent: CustomerMembers }`; href via `formRoute.ts` — `flow-customer-members.md` §5 |
 | `CustomerOrganization` | `/customer/organization` (target) | planned — drawer tile |
 | `CustomerMessageTemplates` | `/customer/message-templates` (target) | planned — drawer tile |
 | `CustomerSubscription` | `/customer/subscription` (target) | planned — drawer tile |
@@ -138,12 +140,14 @@ See `flow-auth.md` §4A and `.cursor/rules/website-auth-flow.mdc`.
 
 | Path | Repo | Change |
 |------|------|--------|
-| `website/src/resources/configs/routes.ts` | website | `customerRouter`; public/customer/base; `CustomerHome` + `CustomerMembers` + `breadcrumb` meta |
+| `website/src/resources/configs/routes.ts` | website | `customerRouter`; public/customer/base; `CustomerHome` + `CustomerMembers` + `CustomerMemberForm` multi-path |
+| `website/src/resources/configs/customer/formRoute.ts` | website | `buildCustomerMemberFormHref` |
 | `website/src/types/extends/global.ts` | website | `BreadcrumbMeta` on `PageRouteState` |
 | `website/src/app/services/router.ts` | website | `publicRoutes`, `getMyHomeIdentify` → `CustomerHome` for customer |
 | `website/src/app/ui/layouts/CustomerMainLayout.tsx` | website | `CUSTOMER_MAIN` shell + sub-header offset |
 | `website/src/app/ui/pages/customer/CustomerHome.tsx` | website | empty authed home |
 | `website/src/app/ui/pages/customer/CustomerMembers.tsx` | website | members directory host + W38 breadcrumb (`flow-customer-members.md`) |
+| `website/src/app/ui/pages/customer/CustomerMemberForm.tsx` | website | member form host + W38 breadcrumb |
 | `docs/platforms/website/flow-customer-shell.md` | root | shell + drawer IA + breadcrumb / `HomeMark` |
 
 ## 8) Related documents and rules
@@ -153,4 +157,5 @@ See `flow-auth.md` §4A and `.cursor/rules/website-auth-flow.mdc`.
 - `.cursor/rules/website-route-registry-governance.mdc` — agent enforcement
 - `.cursor/rules/website-auth-flow.mdc` — `publicRoutes` + middleware
 - Per-feature flows under `docs/platforms/website/flow-*.md` — path columns reference this contract
-- `docs/platforms/website/flow-customer-members.md` — shipped `CustomerMembers` directory
+- `docs/platforms/website/flow-customer-members.md` — shipped members directory + form
+- `.cursor/rules/website-multi-path-form-routes.mdc` — create/update path object contract

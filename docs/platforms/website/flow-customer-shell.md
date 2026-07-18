@@ -6,9 +6,9 @@ Customer portal contract for the customer shell (see `overview.md`).
 
 Authed customer shell on `website/`: `CUSTOMER_MAIN` layout, identity-first header, credit footer, portaled quick-nav drawer (grid tiles), and customer `me` read boundary via `CUSTOMER_ME`.
 
-**Shipped in this shell:** layout wiring, `CustomerHome` empty page, `CustomerMembers` directory page (list/search — see `flow-customer-members.md`), header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
+**Shipped in this shell:** layout wiring, `CustomerHome` empty page, `CustomerMembers` directory + `CustomerMemberForm` create/edit (see `flow-customer-members.md`), header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
 
-**Not shipped yet:** `CustomerBottomBar`, `BottomIcons`, `Dims.bottomBarHeight`, and the remaining drawer target routes other than `CustomerHome` / `CustomerMembers` (tiles render disabled until registered).
+**Not shipped yet:** `CustomerBottomBar`, `BottomIcons`, `Dims.bottomBarHeight`, and the remaining drawer target routes other than `CustomerHome` / `CustomerMembers` (tiles render disabled until registered; form is reached from the members list, not as a drawer tile).
 
 ## 2) Layout wiring
 
