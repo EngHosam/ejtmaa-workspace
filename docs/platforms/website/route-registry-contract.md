@@ -14,7 +14,7 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 
 ## 1.1) Shipped state
 
-`routes.ts` currently ships **six** identifies. The `customerRouter` helper, the `/customer/*` workspace, `CustomerHome`, and the `public → customer → base` section split are **planned** (see §2–§6 for the target contract).
+`routes.ts` currently ships **seven** identifies with `customerRouter`, the `public → customer → base` section split, and `CustomerHome` on `CUSTOMER_MAIN`. Remaining `/customer/*` workspace routes are still planned (see §5.2).
 
 | Identify | Path | Layout |
 |---|---|---|
@@ -23,9 +23,10 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 | `ResetPassword` | `/reset-password` | `BASIC` |
 | `Home` | `/` | `LANDING` |
 | `UiMockup` | `/ui-mockup` | `MAIN` |
+| `CustomerHome` | `/customer` | `CUSTOMER_MAIN` |
 | `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
 
-`MPagesRoutes` mirrors `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup` (no typed params). `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`). No `CUSTOMER_MAIN` layout yet.
+`MPagesRoutes` mirrors `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `CustomerHome` (no typed params). `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
 ## 2) Path helper (mandatory for workspace routes)
 
@@ -95,18 +96,26 @@ Shipped: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`.
 | `Home` | `/` | `LANDING` |
 | `UiMockup` | `/ui-mockup` | `MAIN` |
 
-### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`) — planned
+### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`)
 
-None of these routes ship yet. `customerRouter` and the `/customer/*` workspace are planned.
+Shipped: `CustomerHome`. Remaining workspace routes are planned.
 
-| Identify | Path |
-|----------|------|
-| `CustomerHome` | `/customer` |
-| `CustomerNotifications` | `/customer/notifications` |
-| `CustomerHelpGuide` | `/customer/help-guide` |
-| `CustomerAbout` | `/customer/about` |
-| `CustomerTerms` | `/customer/terms` |
-| `CustomerSettings` | `/customer/settings` |
+| Identify | Path | Status |
+|----------|------|--------|
+| `CustomerHome` | `/customer` | shipped (`CUSTOMER_MAIN`) |
+| `CustomerMeetings` | `/customer/meetings` (target) | planned — drawer tile |
+| `CustomerMembers` | `/customer/members` (target) | planned — drawer tile |
+| `CustomerOrganization` | `/customer/organization` (target) | planned — drawer tile |
+| `CustomerMessageTemplates` | `/customer/message-templates` (target) | planned — drawer tile |
+| `CustomerSubscription` | `/customer/subscription` (target) | planned — drawer tile |
+| `CustomerSettings` | `/customer/settings` | planned — drawer tile + settings flow |
+| `CustomerSupport` | `/customer/support` (target) | planned — drawer tile (no GQL root yet) |
+| `CustomerHelpGuide` | `/customer/help-guide` | planned — drawer tile + static info |
+| `CustomerNotifications` | `/customer/notifications` | planned — header bell |
+| `CustomerAbout` | `/customer/about` | planned — static info |
+| `CustomerTerms` | `/customer/terms` | planned — static info |
+
+Drawer tile identifies and gating: `flow-customer-shell.md` §5.3. Paths marked `(target)` are not registered until their page stage; drawer shows them disabled until `routes` membership exists.
 
 ### 5.3) Base
 
@@ -114,13 +123,13 @@ None of these routes ship yet. `customerRouter` and the `/customer/*` workspace 
 |----------|------|--------|
 | `Error` | `/:error(404|500|403)` | `BASIC` |
 
-## 6) Role redirect alignment — planned
+## 6) Role redirect alignment
 
-Shipped: `getMyHomeIdentify` always returns `"Home"`; `publicRoutes` includes `Home`. The CUSTOMER-aware redirect logic below is planned.
+Shipped:
 
 - `getMyHomeIdentify` returns `CustomerHome` when `authedAs === "CUSTOMER"`, else `Home`.
-- Authed users on public routes redirect to `CustomerHome`.
-- Unauthed users on `/customer/*` redirect to `Home`.
+- Authed users on public routes redirect to `getMyHomeIdentify` (→ `CustomerHome` for customer).
+- Unauthed users on `/customer/*` redirect to `Login` (current middleware).
 
 See `flow-auth.md` §4A and `.cursor/rules/website-auth-flow.mdc`.
 
@@ -128,8 +137,11 @@ See `flow-auth.md` §4A and `.cursor/rules/website-auth-flow.mdc`.
 
 | Path | Repo | Change |
 |------|------|--------|
-| `website/src/resources/configs/routes.ts` | website | `customerRouter`; public/customer/base sections |
-| `website/src/app/services/router.ts` | website | `publicRoutes`, `getMyHomeIdentify`, middleware |
+| `website/src/resources/configs/routes.ts` | website | `customerRouter`; public/customer/base sections; `CustomerHome` |
+| `website/src/app/services/router.ts` | website | `publicRoutes`, `getMyHomeIdentify` → `CustomerHome` for customer |
+| `website/src/app/ui/layouts/CustomerMainLayout.tsx` | website | `CUSTOMER_MAIN` shell |
+| `website/src/app/ui/pages/customer/CustomerHome.tsx` | website | empty authed home |
+| `docs/platforms/website/flow-customer-shell.md` | root | full shell contract + drawer IA |
 
 ## 8) Related documents and rules
 

@@ -34,6 +34,8 @@ description: >-
 - `docs/platforms/website/flow-customer-shell.md`
 - `.cursor/rules/website-route-registry-governance.mdc`
 - `.cursor/rules/website-route-static-before-parametric.mdc`
+- `.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc`
+- `.cursor/rules/website-customer-utils-composed-marks.mdc`
 - `docs/invariants/website.md`
 
 ## Instructions
@@ -41,10 +43,11 @@ description: >-
 1. Confirm scope: visitor + customer actors on `/website`; GQL mirrors `base` + `customer` only.
 2. Route changes must follow `route-registry-contract.md` (section blocks, `customerRouter`, static-before-parametric).
 3. UI work uses `Utils.tsx` + `theme.ts` + `utils.ts`; product UI in `ui/components/`, not `ui/base/`.
-4. Reads via `DATA_ADAPTERS.GQL`; writes via `API.FORMS.VISITOR.R` (visitor) or `API.FORMS.CUSTOMER.R`.
+4. Authed customer adapter reads use `API.DATA_ADAPTERS.CUSTOMER.GQL`; visitor/global reads use `DATA_ADAPTERS.GQL`. Writes via `API.FORMS.R` (visitor) or `API.FORMS.CUSTOMER.R`.
 5. Drawer/header-launched authed subpages declare route `breadcrumb` (W38).
-6. After material changes, update matching website docs and cited invariants in the same task.
-7. Run `yarn type-check` in `website/` when touching types, routes, or GQL mirrors.
+6. Customer drawer IA: check `CustomerSchema` / `.cursor/skills/website-customer-drawer-nav/SKILL.md` before editing tiles.
+7. After material changes, update matching website docs and cited invariants in the same task.
+8. Run `yarn type-check` in `website/` when touching types, routes, or GQL mirrors.
 
 ## Compliance checklist
 

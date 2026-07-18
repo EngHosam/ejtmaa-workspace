@@ -1,0 +1,28 @@
+---
+description: Shared Utils-composed brand marks (e.g. DrawerMenuIcon) live under components/ — not IconBaseProps SVG + theme hooks
+globs:
+  - website/src/app/ui/components/DrawerMenuIcon.tsx
+  - website/src/app/ui/components/customer/**/*.tsx
+  - website/src/app/ui/components/LandingHeader.tsx
+alwaysApply: false
+---
+
+# Website Utils-Composed Brand Marks
+
+Applies when authoring or replacing **custom dual-tone / brand marks** shared across shells (not Feather `IconType` glyphs).
+
+## Rule
+
+1. Shared marks live under `website/src/app/ui/components/` (not under `customer/`) so landing and customer can both import them.
+2. Compose with `Box` / `Row` / `Col` + `semanticColor` tokens, export `React.FC` + `withMemo`.
+3. Do **not** implement these marks as `forwardRef` + `IconBaseProps` SVG that calls `useThemeManager` / hardcodes `me-icon` / invents a parallel icon system.
+4. RTL mirroring for start-side asymmetry: prefer flex start-side layout (first child = start) so `dir=rtl` flips naturally. Use `Icn` `flp` only for true directional Feather glyphs.
+5. Customer `HeaderIconButton` accepts marks via the `icon` ReactNode branch; landing header embeds the same mark directly.
+
+## Canonical case
+
+`DrawerMenuIcon` (`website/src/app/ui/components/DrawerMenuIcon.tsx`): accent rail + two ink bars, default `size={1.2}`. Used by `CustomerHeader` and `LandingHeader` (replacing `FiMenu` on landing).
+
+## Why
+
+Forcing brand marks through `react-icons` `IconType` fought dual colors and RTL. Keeping the mark under `customer/` blocked landing reuse.

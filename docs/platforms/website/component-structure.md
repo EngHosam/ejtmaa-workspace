@@ -24,13 +24,13 @@ Actors: **visitor** and **customer**.
 
 ### 1.1) Shipped vs planned
 
-**Shipped layouts:** `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`).
+**Shipped layouts:** `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-**Shipped pages:** `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
+**Shipped pages:** `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`, `CustomerHome` (empty `Main`).
 
-**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`), landing home sections (`home/*`).
+**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`), landing home sections (`home/*`), customer shell (`CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`).
 
-**Planned (target contract, not yet in scaffold):** `CustomerMainLayout`, `CustomerHeader`/`CustomerDrawer`/`CustomerBottomBar`, `pages/customer/*`, Google social auth UI (`SelectableCard`, `Checkbox` on Register).
+**Planned (target contract, not yet in scaffold):** `CustomerBottomBar` / `BottomIcons` / `CustomerSubHeader`, remaining `pages/customer/*` workspace screens, Google social auth UI (`SelectableCard`, `Checkbox` on Register).
 
 ## 2) `ui/base/` -- infrastructure only
 
@@ -58,7 +58,7 @@ Planned groups (target contract):
 | Group | Planned examples |
 |---|---|
 | Shell (visitor) | `LandingSubHeader`, `LandingDrawer` |
-| Shell (customer) | `CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerBottomBar`, `BottomIcons` |
+| Shell (customer) | Shipped: `CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, helpers; planned: `CustomerBottomBar`, `BottomIcons`, `CustomerSubHeader` |
 | Auth (social) | `SelectableCard`, `Checkbox` on Register |
 | Form | `FormActionChip`, `FormAvatarField` |
 | Static info | `HelpGuideScreen`, `AboutEjtmaaScreen`, `TermsConditionsScreen` |
@@ -74,7 +74,7 @@ Local `graphql.config.yml` is allowed when the subtree hosts GraphQL-aware code.
 | `BasicLayout` | Auth and error pages | shipped |
 | `LandingLayout` | Public `Home` landing page | shipped |
 | `MainLayout` | `UiMockup` and future authed subpages | shipped |
-| `CustomerMainLayout` | Authed customer workspace (`CUSTOMER_MAIN`) | planned |
+| `CustomerMainLayout` | Authed customer workspace (`CUSTOMER_MAIN`) | shipped |
 
 `MyApp` resolves layout from route metadata.
 
@@ -84,7 +84,7 @@ Thin route entry components bound to route identifiers.
 
 Shipped public/auth: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
 
-Customer workspace (planned): `pages/customer/*` (`CustomerHome`, settings, notifications, static info, support).
+Customer workspace: shipped empty `CustomerHome`; planned settings, meetings, members, organization, templates, subscription, notifications, static info, support.
 
 Pages orchestrate hooks, layouts, adapters, and shared UI. Extract reusable sections to `components/`.
 

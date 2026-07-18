@@ -5,7 +5,7 @@ Customer portal contract (see `overview.md`).
 ## Read path
 
 1. Route page mounts adapter hook or `$$_dataAdapter` query.
-2. Adapter calls `/website/data_adapters/gql` with customer GQL operation.
+2. Authed customer adapters call `/website/data_adapters/customer/gql` (`API.DATA_ADAPTERS.CUSTOMER.GQL`); visitor/global reads use `/website/data_adapters/gql`.
 3. Backend `GQLAdapterController` resolves through `CustomerSchema` bridges.
 4. Response typed from mirrored `src/types/gql/gql-types/customer.ts`.
 
@@ -20,6 +20,7 @@ Shipped endpoint map (`src/resources/configs/axios/api.ts`):
 | Key | Path |
 |---|---|
 | `DATA_ADAPTERS.GQL` | `/data_adapters/gql` |
+| `DATA_ADAPTERS.CUSTOMER.GQL` | `/data_adapters/customer/gql` |
 | `FORMS.R` (visitor) | `/forms/requester/{requester}/{sub}` |
 | `FORMS.CUSTOMER.R` | `/forms/customer/requester/{requester}/{sub}` |
 | `ACTIONS.LOGOUT` | `/actions/logout` |
@@ -48,15 +49,25 @@ Sync from backend:
 ## Socket
 
 - Namespace: `customer` (authed; selected in `src/app/services/socket.ts` when `authedAs === "CUSTOMER"`)
-- Event: `onCustomerEventDate` (payload `OnCustomerEventDate { type: "UPDATED" }`, see `src/types/events.ts` and `src/resources/configs/socket/events.ts`)
+- Event: `OnCustomerEvent` (payload `OnCustomerEventDate { type: "UPDATED" }`, see `src/types/events.ts` and `src/resources/configs/socket/events.ts`)
 
 ## SSR boot
 
 1. Server calls `/website/custom/start` (`API.CUSTOM.START`).
 2. `global.setServerStartData(...)` hydrates auth.
-3. Client prepares socket and marks started.
+3. `router.setRouterAccessPermission(...)`.
+4. When `authedAs === "CUSTOMER"`, `auth.loadCurrentCustomer` → `LoadCurrentCustomer` hydrates `CUSTOMER_ME` for SSR shell.
+5. Client prepares socket and marks started.
 
-The `CUSTOM.START`/`CUSTOM.SELECT` endpoints ship in `api.ts`; the boot wiring that calls them is planned. See `docs/platforms/website/ssr-boot-and-startup.md`.
+See `docs/platforms/website/ssr-boot-and-startup.md` and `flow-customer-shell.md` §6.
+
+## Customer `me` adapter
+
+| Adapter | API | Core query |
+|---|---|---|
+| `DATA_ADAPTERS.CUSTOMER_ME` | `API.DATA_ADAPTERS.CUSTOMER.GQL` | `me { name avatar_url }` |
+
+Do not point `CUSTOMER_ME` at visitor/global `DATA_ADAPTERS.GQL`. Hook: `website/src/app/ui/components/customer/hooks/useMe.tsx`.
 
 ## Adapter enterMode
 
@@ -69,10 +80,11 @@ List and home adapters use `enterMode` on `useShallowAdapter` / `$$_dataAdapter`
 
 Rules:
 
-- Customer home/dashboard hooks (`useCustomerDashboard`) and paginated list hooks (`useCustomerNotifications`) use `FORCE_RELOAD_ON_MOUNT`.
+- `useMe` default path uses `LOAD_ON_MOUNT` (optional `updateOnEnter` → `FORCE_RELOAD_ON_MOUNT`).
+- Planned list/home hooks (`useCustomerDashboard`, `useCustomerNotifications`) use `FORCE_RELOAD_ON_MOUNT` when added.
 - List adapters document `enterMode` on the owning route page when a session-preserve exception applies.
 
-The hooks above (`useCustomerDashboard`, `useCustomerNotifications`) are planned; no list/home adapter hooks ship yet. `initDataAdaptersProps` currently registers `DATA_ADAPTERS.ADAPTER1` (customer) with no list adapter wired. Governance: `.cursor/rules/website-list-adapter-enter-mode.mdc`.
+Shipped customer adapters in `initDataAdaptersProps`: `ADAPTER1`, `CUSTOMER_ME`. Governance: `.cursor/rules/website-list-adapter-enter-mode.mdc`.
 
 ## Related
 

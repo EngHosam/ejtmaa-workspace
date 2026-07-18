@@ -26,7 +26,7 @@ See `docs/platforms/website/ui-foundation.md`.
 - Requesters: `visitor.auth`, `customer.customer`, `customer.notification`, `customer.subscription` (`subscribe`) (see `src/types/requesters/requesters.website.ts`)
 - GQL mirrors: `base` + `customer` (`me` + `currentSubscription` / `_Subscription`, `me.canDeleteNotifications`, `me.canSubscribe(planId)`, `notifications`, `organization`, `members`, `member`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `talkRecords` / `_TalkRecord`, `plans` / `plan` / `_Plan`, `subscriptions` / `subscription`, `subscriptionPaymentMethods` / `_PaymentMethod`)
 - Socket namespace: `customer`
-- Events: `onCustomerEventDate` (payload `OnCustomerEventDate { type: "UPDATED" }`)
+- Events: `OnCustomerEvent` (payload `OnCustomerEventDate { type: "UPDATED" }`)
 - Backend mount: `/website` (test `http://192.168.1.10:3206/website`, prod `https://backend.ejtmaa.live/website`)
 
 ## Flow documentation
@@ -55,13 +55,15 @@ See `docs/platforms/website/ui-foundation.md`.
 | `UiMockup` | `/ui-mockup` | `MAIN` |
 | `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
 
-`publicRoutes` = `["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"Home"`.
+`publicRoutes` = `["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`.
 
-Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`).
+Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
+
+Shipped customer workspace entry: `CustomerHome` (`/customer`, `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`). Shell details: `flow-customer-shell.md`.
 
 ### 6.2) Planned (not shipped)
 
-`customerRouter`, the `/customer/*` workspace, `CustomerHome`, `CUSTOMER_MAIN` layout, and the `customer`/`base` section-block split in `routes.ts` are planned per `route-registry-contract.md`.
+Remaining `/customer/*` workspace routes (meetings, members, organization, message templates, subscription, settings, support, help, notifications, static info, bottom bar) — see `route-registry-contract.md` §5.2 and `flow-customer-shell.md`.
 
 ## Documentation stance
 

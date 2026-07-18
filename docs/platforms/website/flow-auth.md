@@ -26,8 +26,8 @@ Not shipped: `loginSocial`, `registerCustomerSocial`, terms checkbox, Google GIS
 Router (`src/app/services/router.ts`):
 
 - `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`.
-- `getMyHomeIdentify` returns `"Home"` (customer role home redirect is planned).
-- Authed user on a public route → redirect to `getMyHomeIdentify` (currently `Home`).
+- `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`.
+- Authed user on a public route → redirect to `getMyHomeIdentify` (`CustomerHome` for customer).
 - Unauthed user on a non-public route → redirect to `Login`.
 
 ## 3) Page composition pattern
@@ -166,7 +166,7 @@ No placeholder keys on auth field namespaces.
 ## 10) Planned (not shipped)
 
 - Google social auth (`SocialAuthHelpers.ts`, `loginSocial`, `registerCustomerSocial`).
-- `CustomerHome` → `/customer` on `CUSTOMER_MAIN`; `getMyHomeIdentify` returning `CustomerHome` for `authedAs === "CUSTOMER"`.
+- `CustomerHome` → `/customer` on `CUSTOMER_MAIN` (shipped); `getMyHomeIdentify` returns `CustomerHome` for `authedAs === "CUSTOMER"`.
 - Terms `accepted` checkbox (only if backend website `registerCustomer` adds the field).
 - `SelectableCard` provider picker on Register.
 

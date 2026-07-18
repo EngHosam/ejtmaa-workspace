@@ -8,13 +8,14 @@ Web-native shared UI primitives and shell for `website/`: document shell, actor-
 
 ## 1.1) Shipped shell
 
-Layouts: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`) — no `CUSTOMER_MAIN` yet.
+Layouts: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
 | Context | Components |
 |---|---|
 | Auth + error (`BASIC`) | `ThemeModeSwitch`, `LanguageSwitch` in `BasicLayout` top row; auth pages use `AuthPageShell` |
 | Landing (`LANDING`) | `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `home/*` sections |
 | Main workspace (`MAIN`) | `Header`, `Drawer`, `Footer` via `MainLayout` |
+| Customer workspace (`CUSTOMER_MAIN`) | `CustomerDrawer` + `CustomerHeader` + content + `CustomerFooter` (see `flow-customer-shell.md`) |
 
 Generic shell components: `Header`, `Drawer`, `Footer`, `Logo`, `ThemeModeSwitch`, `LanguageSwitch` (under `src/app/ui/components/`).
 
@@ -22,7 +23,7 @@ Main drawer (`src/app/ui/layouts/main-layout/drawer.ts`): one `business` section
 
 `AuthedAs = "CUSTOMER"`; auth reducer exposes `auth.customer.permissions`.
 
-`CustomerHeader`, `CustomerDrawer`, and `CustomerBottomBar` are planned (see `flow-customer-shell.md`).
+Shared mark: `DrawerMenuIcon` under `src/app/ui/components/` (customer header + landing header). Customer helpers under `customer/`: `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`. **Planned:** `CustomerBottomBar`, `BottomIcons`, `CustomerSubHeader`.
 
 ## 2) Document shell
 
@@ -31,14 +32,14 @@ Main drawer (`src/app/ui/layouts/main-layout/drawer.ts`): one `business` section
 - Safe-area insets use CSS `env(safe-area-inset-*)` or theme padding tokens.
 - Authed customer shell uses `Dims.bottomBarHeight` for bottom clearance. See `flow-customer-shell.md`.
 
-## 3) Actor-specific headers — planned
+## 3) Actor-specific headers
 
-Shipped header: generic `Header` (`src/app/ui/components/Header.tsx`) with `main`/`compact` variants. The actor-specific headers below are planned.
+Shipped: generic `Header` (`src/app/ui/components/Header.tsx`) with `main`/`compact` variants; visitor `LandingHeader`; customer `CustomerHeader` (identity-first — `flow-customer-shell.md` §3).
 
-| Actor | Component | Contract |
+| Actor | Component | Status |
 |---|---|---|
-| Visitor | `LandingHeader` | Visitor landing pages; pairs with `LandingSubHeader` where needed |
-| Customer | `CustomerHeader` | `CUSTOMER_MAIN` workspace; main vs subpage variants documented in `flow-customer-shell.md` |
+| Visitor | `LandingHeader` | shipped (landing); `LandingSubHeader` planned |
+| Customer | `CustomerHeader` | shipped on `CUSTOMER_MAIN` |
 
 Shared header behavior (both components):
 
@@ -49,17 +50,15 @@ Shared header behavior (both components):
 - Brand slot: the logo (`Logo preset="header"`) renders bare — no border/background/padding pill around it. The `main` variant places `resolvedBrandSlot` directly in the trailing row. See `brand-identity-alignment.md` § Logo and `.cursor/rules/website-logo-no-frame.mdc`.
 - Trailing control cluster: `ThemeModeSwitch` + `LanguageSwitch` render in the trailing row for the `main` non-compact variant (gated by `showThemeSwitch`). Header icon buttons (`HeaderIconButton`: menu / back / `trailingAction` e.g. notifications) use `crn={semanticDims.card.radius}` with `semanticColor.inputBackground` + `inputBorder` + `iconPrimary` — same corner and surface tokens as the two toggles.
 
-## 4) Side drawer — planned
+## 4) Side drawers
 
-Shipped drawer: generic `Drawer` + `main-layout/drawer.ts` (dashboard + logout only). The role-specific drawers below are planned.
+Shipped:
 
-- Visitor drawer: `components/LandingDrawer.tsx` (mobile, portaled). See `component-structure.md` and visitor shell pages.
-- Authed customer drawer: `CustomerDrawer.tsx` -- portaled side drawer with route-gated nav items. See `flow-customer-shell.md` section 5.
-- Role resolution from the `auth` Redux slice `authedAs` (`CUSTOMER`).
-- Profile payload from `useMe()`: `name`, `avatar_url`.
-- UX order: hero identity zone (brand, title/subtitle, theme + language toggles) -> navigation blocks -> utility footer (utility items / sign-out). Footer stays outside scroll body.
-- Motion via `framer-motion`. Drawer actions are close-first.
-- Brand slot in the hero identity zone: `Logo preset="drawer"` rendered bare inside `<Box as_c>` (alignment only, no frame). The drawer hero column is centered horizontally and vertically (`ai_c` + `ta_c` + `jc_c`): brand slot, title, subtitle, and the theme + language toggles all align to the center. The two toggles sit in one centered `Row` (`ThemeModeSwitch` + `LanguageSwitch`), gated by `showThemeSwitch`. See `brand-identity-alignment.md` § Logo.
+- Generic `Drawer` + `main-layout/drawer.ts` (dashboard + logout) for `MAIN`.
+- Visitor mobile: `LandingMobileDrawer` (portaled). See landing layout docs.
+- Customer: `CustomerDrawer` — portaled quick-nav grid, layout-owned open state, hero from `useMe()`, theme/language + logout in utility footer. Canonical contract: `flow-customer-shell.md` §5.
+
+Customer drawer differs from the generic `Drawer` hero (no centered logo hero; identity row + 2-col grid tiles). Nav tiles must stay aligned to backend customer roots (`.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc`).
 
 ## 5) Shared primitives
 

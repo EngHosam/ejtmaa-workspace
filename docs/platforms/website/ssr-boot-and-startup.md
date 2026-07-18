@@ -14,7 +14,8 @@ Boot sequence for the customer portal:
   - early-exits on the error page,
   - calls `API.CUSTOM.START` (`/website/custom/start` via axios base) with `throwMode` + `throwWithErrorsFunnel` + `autoShowMainMessages`,
   - dispatches the startup payload through `global.setServerStartData(myInstance, res.data)`,
-  - computes route access permissions via `router.setRouterAccessPermission(myInstance)` **after** startup data is written.
+  - computes route access permissions via `router.setRouterAccessPermission(myInstance)` **after** startup data is written,
+  - when `authedAs === "CUSTOMER"`, loads `CUSTOMER_ME` via `auth.loadCurrentCustomer(myInstance)` → `LoadCurrentCustomer` (`useMe.tsx`) so `me` is available for SSR shell render.
 - **Client phase** (`boot.client`):
   - early-exits on the error page (marks client started and returns),
   - prepares socket via `socket.prepareSocket(myInstance)`,
@@ -44,7 +45,7 @@ Auth uses a **cookie token + page reload** so the normal SSR boot path owns hydr
 
 Start payload: `/website/custom/start` returns the auth payload under the **`auth`** key, and the website auth reducer spreads it as `...action.auth`. See `docs/platforms/backend/contracts/client-portal-http-website.md`.
 
-Post-login landing: after `auth.login` reloads, the router middleware in `website/src/app/services/router.ts` redirects to `getMyHomeIdentify(myInstance)`. Shipped: `getMyHomeIdentify` always returns `"Home"`. The `CustomerHome` branch (returning `CustomerHome` for `authedAs === "CUSTOMER"`) is planned. See `flow-auth.md` §4A.
+Post-login landing: after `auth.login` reloads, the router middleware in `website/src/app/services/router.ts` redirects to `getMyHomeIdentify(myInstance)`. Shipped: returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`. See `flow-auth.md` §4A and `flow-customer-shell.md` §6–§7.
 
 ## 6) Verification checklist
 

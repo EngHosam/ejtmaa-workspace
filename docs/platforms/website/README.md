@@ -155,8 +155,24 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 | `src/resources/configs/theme.ts` | `FontFamilies` single-quote → escaped-double-quote strings (no value change) |
 | `lib/tsconfig.tsbuildinfo` | Generated build artifact from `yarn type-check`; not narrated. |
 
+## Change set traceability — customer shell + shared drawer mark
+
+Full path map: [`flow-customer-shell.md`](flow-customer-shell.md) §12. Related landing consumer: [`landing-page.md`](landing-page.md) § Header (`DrawerMenuIcon`).
+
+| Concern | Documented where |
+|---|---|
+| `CUSTOMER_MAIN` layout / header / footer / grid drawer | `flow-customer-shell.md` |
+| Drawer tile IA ↔ `CustomerSchema` | `flow-customer-shell.md` §5.3; `.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc` |
+| Shared `DrawerMenuIcon` (not under `customer/`) | `flow-customer-shell.md` §3.1; `landing-page.md`; `.cursor/rules/website-customer-utils-composed-marks.mdc` |
+| Tile copy: المؤسسة / الاشتراك | `flow-customer-shell.md` §10 |
+| `CUSTOMER_ME` + SSR hydrate | `flow-customer-shell.md` §6; `data-flow-and-gql.md`; `ssr-boot-and-startup.md` |
+| Routes / home identify | `route-registry-contract.md`; `overview.md` §6 |
+
 ## Governance
 
 - `.cursor/rules/website-platform-governance.mdc`
 - `.cursor/rules/website-customer-only-import-boundary.mdc`
+- `.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc`
+- `.cursor/rules/website-customer-utils-composed-marks.mdc`
 - `.cursor/skills/website-platform-governance/SKILL.md`
+- `.cursor/skills/website-customer-drawer-nav/SKILL.md`

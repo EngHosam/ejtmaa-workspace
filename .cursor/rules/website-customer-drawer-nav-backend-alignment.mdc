@@ -1,0 +1,30 @@
+---
+description: Customer drawer nav tiles must align with backend CustomerSchema / customer settings surfaces — not visitor static-page leftovers
+globs:
+  - website/src/app/ui/components/customer/CustomerDrawer.tsx
+  - docs/platforms/website/flow-customer-shell.md
+  - docs/platforms/website/route-registry-contract.md
+alwaysApply: false
+---
+
+# Website Customer Drawer Nav ↔ Backend Alignment
+
+Applies when adding, removing, renaming, or reordering tiles in `CustomerDrawer`, or when documenting customer workspace routes that the drawer previews.
+
+## Rule
+
+1. **Source of truth for product nav** is the backend customer surface: `backend/src/app/gql/schemas/CustomerSchema.ts` roots plus website customer settings requesters (`readSettings` / `updateSettings`) — not masdaria-style static lists and not inventing domains absent from that surface.
+2. Drawer tile **identify** names stay `Customer*` and match the planned registry rows in `docs/platforms/website/route-registry-contract.md` §5.2 / `flow-customer-shell.md` §5.3.
+3. Tiles for routes not yet in `routes.ts` **must** stay route-gated disabled placeholders (`hasOwnProperty` on `routes`). Do not register fake pages just to enable a tile.
+4. Naming: org message templates are **message templates** (`CustomerMessageTemplates` / `messageTemplates`) — not “notification templates” (that collides with `notifications` / `CustomerNotifications`).
+5. Support / help may appear as last-tier tiles even without a GQL root; keep them labeled as placeholders until a real page or channel exists.
+
+## Why
+
+Pulling drawer IA from outdated website “static info” docs produced a wrong menu (help/about/terms as primary). Backend roots define the real customer workspace (meetings, members, organization, templates, plans/subscriptions, settings).
+
+## Authority
+
+- `backend/src/app/gql/schemas/CustomerSchema.ts`
+- `website/src/app/ui/components/customer/CustomerDrawer.tsx`
+- `docs/platforms/website/flow-customer-shell.md` §5.3
