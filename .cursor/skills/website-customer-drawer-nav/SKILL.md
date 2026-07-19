@@ -22,6 +22,7 @@ description: >-
 3. Propose or edit tiles only from that backend surface (+ explicit support/help placeholders). Prefer **message templates** naming over “notification templates”.
 4. Keep route gating: `Object.prototype.hasOwnProperty.call(routes, identify)`; do not invent pages solely to enable tiles.
 5. Home tile glyph is shared `HomeMark` (`tone="onPrimary"`), not `FiHome`. Other tiles may keep Feather `Icon` or a `mark` ReactNode via `DrawerGridItem` dual branch.
-6. When a new tile identify ships a page, also run `.cursor/skills/website-customer-breadcrumb-subpage/SKILL.md` (W38) unless it is `CustomerHome` or a bottom-tab destination.
-7. Update `flow-customer-shell.md` §5.3 and `route-registry-contract.md` §5.2 in the same change when identifies/labels change.
-8. Follow `.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc`.
+6. Hero workspace chip (not a role badge): `me.organization.name` when present; else drawer i18n `workspaceFallback` (**منصة اجتماع** / **Ejtmaa platform**). Chrome: `accentActionBackground` + `accentActionText`. Do not show a customer/عميل role label.
+7. When a new tile identify ships a page, also run `.cursor/skills/website-customer-breadcrumb-subpage/SKILL.md` (W38) unless it is `CustomerHome` or a bottom-tab destination.
+8. Update `flow-customer-shell.md` §5.2–§5.3 and `route-registry-contract.md` §5.2 in the same change when identifies/labels/hero contract change.
+9. Follow `.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc`.

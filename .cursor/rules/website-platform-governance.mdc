@@ -17,9 +17,12 @@ Use the documented website foundation before changing `website/`:
 - `docs/platforms/website/shared-ui-and-shell.md`
 - `docs/platforms/website/ssr-boot-and-startup.md`
 - `docs/platforms/website/flow-auth.md`
+- `docs/platforms/website/flow-customer-organization.md`
 - `docs/platforms/website/route-registry-contract.md`
 - `docs/invariants/website.md`
 - `.cursor/skills/website-platform-governance/SKILL.md`
+- `.cursor/rules/website-customer-organization-setup-gate.mdc`
+- `.cursor/rules/website-react-icons-export-guard.mdc`
 
 Current website constraints:
 - `website/` is its own git repository.

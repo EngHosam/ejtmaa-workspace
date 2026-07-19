@@ -35,11 +35,12 @@ Authoritative guide: `docs/platforms/website/flow-auth.md`.
 - Each auth page uses route-scoped `useShallowForm({ initProps: { api: API.FORMS.R("auth") } })`. Do not introduce mobile shared form identities on website.
 - `publicRoutes` must include `Login`, `Register`, `ResetPassword`, and `Home`.
 
-### Role-based home redirect (planned)
+### Role-based home redirect
 - Customer role home: `CustomerHome` → `/customer` on `CUSTOMER_MAIN`.
 - All customer workspace paths use `customerRouter("/…")`.
 - `getMyHomeIdentify` returns `CustomerHome` for `authedAs === "CUSTOMER"`, else `Home`.
-- Authed on public routes → redirect to `CustomerHome`. Unauthed on `/customer/*` → redirect to `Home`.
+- Authed on public routes → redirect to `getMyHomeIdentify`. Unauthed on non-public → `Login`.
+- Incomplete org setup gate runs **before** that public bounce — `.cursor/rules/website-customer-organization-setup-gate.mdc`.
 - Post-login landing is owned by middleware after `auth.login` reload.
 - Requires `/website/custom/start` auth payload under the `auth` key.
 

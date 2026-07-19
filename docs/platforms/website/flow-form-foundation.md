@@ -27,7 +27,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - the screen owns layout, `sub` selection, duplicate-submit guards (`submittingRef`), read-on-edit hydration, and after-success behavior,
   - field hooks own value/errors; submit handlers send only the `sub`,
   - temporary private `useShallowForm` forms use `removeOnExit: true` by default; create drafts that must survive SPA nav use stable `formIdentify` + `removeOnExit: false`.
-- **Read-on-edit**: edit routes pass only identity; edit mode hydrates via a `read` sub on entry. Show `Loadable` during injection + edit `read` in flight. Settings-like single-path forms (organization) always `read` on enter and may re-`read` after save while staying on the page.
+- **Read-on-edit**: edit routes pass only identity; edit mode hydrates via a `read` sub on entry. Show `Loadable` during injection + edit `read` in flight. Settings-like single-path forms (organization) always `read` on enter; after successful upsert they full-`redirect` to `CustomerHome` (see `flow-customer-organization.md`).
 - **Multi-path create+update**: one route identify with `path: { create, update }` — `.cursor/rules/website-multi-path-form-routes.mdc`. Typed href builders live under `resources/configs/customer/formRoute.ts`. Single-path settings forms do **not** use multi-path.
 - **Customer form screens**:
   - auth: `/login`, `/register`, `/reset-password` — `API.FORMS.R("auth")`; see `flow-auth.md`,
@@ -45,6 +45,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
 
 - Controlled via `useFormInput({ name })`.
 - Native direction follows the page locale (**do not** set Utils `ltr` / `ta_l` on the input). Use logical `textAlign: "start"` so Arabic caret/typing works.
+- Optional `suffix` — chrome after the input (string or node). When present, the input+suffix row is Utils `ltr` so the suffix stays on the **visual right** in both `ar` and `en`. The bare input (no suffix) still follows page direction.
 - Rule: `.cursor/rules/website-form-text-field-direction.mdc`.
 - Product convention for customer workspace forms: **no placeholders** unless the product owner explicitly asks.
 
@@ -74,7 +75,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
 
 ### 3.5 Success toasts
 
-Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSuccess`. Rule: `.cursor/rules/website-form-success-toast-automatic.mdc`. Canonical member form: `CustomerMemberFormScreen`. Organization form: stay + re-`read` after upsert (`flow-customer-organization.md`).
+Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSuccess`. Rule: `.cursor/rules/website-form-success-toast-automatic.mdc`. Canonical member form: `CustomerMemberFormScreen`. Organization form: after upsert → `useRouter().redirect` to `CustomerHome` (`flow-customer-organization.md`).
 
 ## 4) Verification checklist
 
@@ -97,7 +98,8 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/app/ui/components/form/FormAvatarField.tsx` | avatar / logo field |
 | `website/src/app/ui/components/form/FormColorField.tsx` | color field |
 | `website/src/app/helpers/entityMedia.ts` / `media.ts` | upload + URI |
-| `website/src/app/ui/components/form/FormTextField.tsx` | direction |
+| `website/src/app/ui/components/form/FormTextField.tsx` | direction + optional `suffix` |
+| `website/src/resources/configs/urls.ts` | `ORG_PUBLIC_DOMAIN` for org subdomain suffix |
 | `website/src/app/ui/components/form/FormInputWrapper.tsx` | subtitle color |
 | `docs/platforms/website/flow-customer-members.md` | end-to-end member UI |
 | `docs/platforms/website/flow-customer-organization.md` | end-to-end organization UI |

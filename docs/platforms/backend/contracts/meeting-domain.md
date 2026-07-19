@@ -171,7 +171,11 @@ Current shapes:
 
 ```ts
 // OrganizationBridge
-export type GetOneParent = MemberModel | MessageTemplateModel | MeetingModel | { me: true };
+export type GetOneParent =
+    | CustomerModel
+    | MemberModel
+    | MessageTemplateModel
+    | MeetingModel;
 
 // MemberBridge
 export type GetOneParent =

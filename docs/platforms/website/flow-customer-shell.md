@@ -71,7 +71,7 @@ Authed customer shell on `website/`: `CUSTOMER_MAIN` layout, identity-first head
 ### 5.2) Structure (top → bottom)
 
 1. Title row: i18n `drawer.title` (**تنقل سريع** / **Quick navigation**) + close button (`FiChevronLeft` + `Icn` `flp` — points out of the panel).
-2. Hero: larger `IdentityAvatar` (`size={3.4}`) + name + `roleCustomer` chip on `primaryActionBackground`.
+2. Hero: larger `IdentityAvatar` (`size={3.4}`) + customer name + workspace chip (`me.organization.name`, else drawer `workspaceFallback` / منصة اجتماع) on `accentActionBackground` / `accentActionText`.
 3. Scrollable **2-column `Grid`** of large tile buttons (`DrawerGridItem`).
 4. Utility footer: label `utilityPrefs` + `ThemeModeSwitch compact` + `LanguageSwitch compact` + full-width logout (`FormActionButton` tone `neutral` → `auth.logout`).
 
@@ -104,11 +104,12 @@ Nav is close-first: `onClose` then `nav.push({identify})`.
 - Adapter id: `DATA_ADAPTERS.CUSTOMER_ME` in `website/src/resources/configs/store/data-adapters.ts`.
 - **Must** use `api: API.DATA_ADAPTERS.CUSTOMER.GQL` (`/data_adapters/customer/gql`) — not the visitor/global `DATA_ADAPTERS.GQL`.
 - Hook: `website/src/app/ui/components/customer/hooks/useMe.tsx`.
-  - Default: `useAdapter` + core query `me { name avatar_url }`, `enterMode` `LOAD_ON_MOUNT` (or `FORCE_RELOAD_ON_MOUNT` when `updateOnEnter`).
+  - Default: `useAdapter` + core query selecting identity, `organization` (id/name/logo_url/subdomain), and `currentSubscription` snapshot + nested `plan { id name }`, `enterMode` `LOAD_ON_MOUNT` (or `FORCE_RELOAD_ON_MOUNT` when `updateOnEnter`). Full selection: `useMe.tsx` `coreQuery`.
   - With `data.query`: `useShallowAdapter` keyed by `md5(data.query)`, inherits `CUSTOMER_ME`.
   - No auth `useSelector` gate inside the hook — customer routes/shell already require `CUSTOMER`.
   - Socket: `useSocket({ registerTo: "OnCustomerEvent", ... })` → `mLoad({reload: true})`.
-- SSR: `auth.loadCurrentCustomer(myInstance)` in `website/src/app/services/auth.ts` (no-op unless `isAuthedAs(..., ["CUSTOMER"])`) calls `LoadCurrentCustomer`; invoked from `boot.server` in `website/src/app/services/index.ts` after start + permissions.
+- SSR: `auth.loadCurrentCustomer(myInstance)` in `website/src/app/services/auth.ts` (no-op unless `isAuthedAs(..., ["CUSTOMER"])`) calls `LoadCurrentCustomer`; invoked from `boot.server` in `website/src/app/services/index.ts` after start + permissions — **before** `applyRouterMiddleware` so the org setup gate can read `me.organization`.
+- Org setup gate (incomplete org → force `CustomerOrganization`): `flow-customer-organization.md` §3.1; `flow-auth.md` §2.1.
 - Socket registry key must be `OnCustomerEvent` (mirrors backend notify event name) in `website/src/resources/configs/socket/events.ts`.
 
 ## 7) Home page
@@ -187,7 +188,7 @@ Governance: `.cursor/rules/website-customer-utils-composed-marks.mdc`.
 
 - `header.*` — menu, greeting, defaultName, home/notifications aria
 - `footer.rights`
-- `drawer.*` — title (**تنقل سريع** / **Quick navigation**), close, role chip, nine tile labels, prefs, logout
+- `drawer.*` — title (**تنقل سريع** / **Quick navigation**), close, nine tile labels, prefs, logout; workspace subtitle from `me.organization.name` or `workspaceFallback` (**منصة اجتماع**)
 - `subHeader.navHome` / `subHeader.breadcrumbAriaLabel` — breadcrumb root label + nav aria
 - `ui.pages.customer.members.title` — route breadcrumb leaf label for `CustomerMembers` (full members copy set: `flow-customer-members.md` §9)
 
@@ -226,7 +227,7 @@ See `docs/invariants/website.md` W24 and `.cursor/rules/website-route-reactive-c
 | `website/src/app/ui/components/useBreadcrumbs.ts` | added | §7.1 |
 | `website/src/app/ui/components/HomeMark.tsx` | added | §5.3, §7.1 |
 | `website/src/app/ui/layouts/CustomerMainLayout.tsx` | modified | §2 |
-| `website/src/app/ui/components/customer/CustomerDrawer.tsx` | modified | §5.3 (`HomeMark` + `mark` branch) |
+| `website/src/app/ui/components/customer/CustomerDrawer.tsx` | modified | §5.2 workspace chip; §5.3 (`HomeMark` + `mark` branch) |
 | `website/src/resources/configs/routes.ts` | modified | §7.1; `route-registry-contract.md` |
 | `website/src/types/extends/global.ts` | modified | §7.1 (`BreadcrumbMeta`) |
 | `website/src/resources/translations/ar.ts` / `en.ts` | modified | §10 |

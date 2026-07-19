@@ -45,7 +45,7 @@ Paths below describe the customer portal contract inventory for `website/`.
 ## GQL mirrors
 
 - `src/types/gql/definitions/base.graphql` — shared SDL (scalars, `_Ability`, `_Notification*`, interfaces, `_Notification`)
-- `src/types/gql/definitions/customer.graphql` — customer SDL (`_Me` + `currentSubscription`, `_Organization`, `_Member`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant`, `_AgendaItem`, `_Decision`, `_Vote`, `_TalkRecord`, `_Plan`, `_Subscription` + root `Query { me, notifications, organization, members, member, messageTemplates, messageTemplate, meetings, meeting, plans, plan, subscriptions, subscription }`; nested `_Subscription.plan`, `_Meeting.participants`, `_Meeting.agendaItems`, `_Meeting.decisions`, `_Decision.votes`, `_Meeting.talkRecords`)
+- `src/types/gql/definitions/customer.graphql` — customer SDL (`_Me` + nested `organization` / `currentSubscription`, `_Organization`, `_Member`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant`, `_AgendaItem`, `_Decision`, `_Vote`, `_TalkRecord`, `_Plan`, `_Subscription` + root `Query { me, notifications, members, member, messageTemplates, messageTemplate, meetings, meeting, plans, plan, subscriptions, subscription }` — **no** root `organization`; nested `_Subscription.plan`, `_Meeting.participants`, `_Meeting.agendaItems`, `_Meeting.decisions`, `_Decision.votes`, `_Meeting.talkRecords`)
 - `src/types/gql/definitions/shared.graphql` — shared `Query { notifications }` extension stub
 - `src/types/gql/gql-types/base.ts` — shared generated types
 - `src/types/gql/gql-types/customer.ts` — customer generated types

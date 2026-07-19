@@ -67,7 +67,7 @@ Customer drawer differs from the generic `Drawer` hero (no centered logo hero; i
 - **SegmentedPills**: tab/scope semantics; a11y label per option.
 - **Loadable**: spinner/progress surface for initial loading, submit-busy, and overlay loaders.
 - **Toast**: success/error notifications; translation-backed copy.
-- **Empty / LaneFailed** (`Wrong.tsx`): absolute overlays for ResultLane; i18n `ui.components.wrong.*`. Guest / Able remain planned/target where not present.
+- **Empty / LaneFailed** (`Wrong.tsx`): absolute overlays for ResultLane; empty uses `FiLayers` (not Masdaria-style `FiInbox`). Same empty glyph on `DataTable`. i18n `ui.components.wrong.*`. Guest / Able remain planned/target where not present. Only use Feather icons that exist in the installed `react-icons/fi` export set (e.g. `FiFolderOpen` is absent in current package — causes a blank icon).
 - **ResultLane**: responsive card grid + skeleton + load-more + empty/failed; consumer supplies `renderCard`. Current `CardSkeleton` is member-card shaped — see `flow-customer-members.md` §6 and `.cursor/rules/website-result-lane-skeleton-shape.mdc`.
 - **ThemeModeSwitch** / **LanguageSwitch**: paired single-toggle buttons. `ThemeModeSwitch` shows the **target** mode icon (`FiMoon` when light, `FiSun` when dark); `LanguageSwitch` shows the **target** language letters (`EN` when current is `ar`, `ع` when current is `en`) and switches via `changeLocale` (cookie + full reload). Both use `semanticColor.inputBackground` + `inputBorder`, corner `semanticDims.card.radius` (not pills), and live in the drawer hero identity zone, the header trailing cluster, and `BasicLayout`'s top-right row. See `brand-identity-alignment.md` § Canonical consumer pairings and `ui-foundation.md` § Localization & RTL.
 

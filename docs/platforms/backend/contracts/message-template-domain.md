@@ -137,7 +137,11 @@ When `_MessageTemplate.organization` is selected, the framework prepares **`Orga
 Therefore `OrganizationBridge` must declare:
 
 ```ts
-export type GetOneParent = MemberModel | MessageTemplateModel | MeetingModel | { me: true };
+export type GetOneParent =
+    | CustomerModel
+    | MemberModel
+    | MessageTemplateModel
+    | MeetingModel;
 ```
 
 `MessageTemplateBridge.GetOneParent` also includes `MeetingModel` for nested `_Meeting.whatsappTemplate` / `emailTemplate`.

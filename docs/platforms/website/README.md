@@ -85,6 +85,31 @@ Governance: `.cursor/rules/website-auth-flow.mdc`
 | `.cursor/skills/website-customer-organization-form/SKILL.md` | Repeatable workflow |
 | `.cursor/rules/website-form-color-field.mdc` / `website-form-avatar-field.mdc` | Field contracts |
 
+## Change set traceability — Me organization + setup gate
+
+| Path | Documented where |
+|---|---|
+| `backend/src/app/gql/definitions/customer.graphql` (`_Me.organization`; drop root `Query.organization`) | `organization-domain.md` §5; `graphql-and-types.md` |
+| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` (`GetOneParent` model nests only) | `organization-domain.md` §5 |
+| `backend/src/app/gql/schemas/CustomerSchema.ts` (no root org resolver) | `organization-domain.md` §5; `graphql-and-types.md` |
+| `backend/src/app/gql/gql-types/customer.ts` | Generated — `organization-domain.md` §8 / codegen |
+| `website/src/types/gql/definitions/customer.graphql` | Mirror — `graphql-mirror-and-tooling.md` §2 |
+| `website/src/types/gql/gql-types/customer.ts` | Mirror — `graphql-mirror-and-tooling.md` §2 |
+| `website/src/app/ui/components/customer/hooks/useMe.tsx` (`coreQuery`) | `data-flow-and-gql.md`; `flow-customer-shell.md` §6 |
+| `website/src/app/services/router.ts` (org setup gate) | `flow-auth.md` §2.1; `flow-customer-organization.md` §3.1 |
+| `website/src/app/ui/components/customer/organization/CustomerOrganizationScreen.tsx` (alert + suffix + `redirect`) | `flow-customer-organization.md` §3–§4 |
+| `website/src/resources/configs/urls.ts` (`ORG_PUBLIC_DOMAIN`) | `flow-customer-organization.md` §6; `flow-form-foundation.md` §3.1 |
+| `website/src/app/ui/components/form/FormTextField.tsx` (`suffix`) | `flow-form-foundation.md` §3.1 |
+| `website/src/app/ui/components/customer/CustomerDrawer.tsx` (workspace chip) | `flow-customer-shell.md` §5.2 |
+| `website/src/app/ui/components/Wrong.tsx` / `DataTable.tsx` (empty `FiLayers`) | `shared-ui-and-shell.md` |
+| `website/src/resources/translations/ar.ts` / `en.ts` | `setupRequiredAlert`, `workspaceFallback`; org/drawer keys |
+| `website/lib/tsconfig.tsbuildinfo` | Generated; not narrated |
+| `.cursor/rules/website-customer-organization-setup-gate.mdc` | Gate invariant |
+| `.cursor/rules/website-form-text-field-direction.mdc` | Suffix row LTR exception |
+| `.cursor/rules/website-react-icons-export-guard.mdc` | Installed icon export check |
+| `.cursor/skills/website-customer-organization-form/SKILL.md` | Form + gate + suffix + alert |
+| `.cursor/skills/website-customer-drawer-nav/SKILL.md` | Workspace chip contract |
+
 ## Change set traceability — brand polish
 
 | Path (under `website/`) | Documented where |
@@ -130,7 +155,7 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 |---|---|---|
 | `src/types/requesters/requesters.website.ts` | `RequestersMap` (visitor.auth, customer.customer, customer.notification) | `repository-inventory.md` § Requesters; `data-flow-and-gql.md` § Actor maps; `overview.md` § Backend coupling |
 | `src/types/gql/definitions/base.graphql` | Shared SDL (scalars, `_Ability`, `_Notification*`, interfaces) | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors |
-| `src/types/gql/definitions/customer.graphql` | Customer SDL (`_Me` + `currentSubscription`, `_Organization`, `_Member`, `_MemberFilter`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant`, `_AgendaItem`, `_Decision`, `_Vote`, `_TalkRecord`, `_Plan`, `_Subscription`, `Query { me, notifications, organization, members(filter), member, messageTemplates, messageTemplate, meetings, meeting, plans, plan, subscriptions, subscription }`; nested `_Subscription.plan`, `_Meeting.participants`, `_Meeting.agendaItems`, `_Meeting.decisions`, `_Decision.votes`, `_Meeting.talkRecords`) | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors; `flow-customer-members.md` |
+| `src/types/gql/definitions/customer.graphql` | Customer SDL (`_Me` + nested `organization` / `currentSubscription`, `_Organization`, `_Member`, `_MemberFilter`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant`, `_AgendaItem`, `_Decision`, `_Vote`, `_TalkRecord`, `_Plan`, `_Subscription`, `Query { me, notifications, members(filter), member, messageTemplates, messageTemplate, meetings, meeting, plans, plan, subscriptions, subscription }` — no root `organization`; nested `_Subscription.plan`, `_Meeting.participants`, `_Meeting.agendaItems`, `_Meeting.decisions`, `_Decision.votes`, `_Meeting.talkRecords`) | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors; `flow-customer-members.md`; `flow-customer-organization.md` |
 | `src/types/gql/definitions/shared.graphql` | Shared `Query { notifications }` extension stub | `graphql-mirror-and-tooling.md` §2; `repository-inventory.md` § GQL mirrors |
 | `src/types/gql/gql-types/base.ts` | Generated shared types | `graphql-mirror-and-tooling.md` §2 |
 | `src/types/gql/gql-types/customer.ts` | Generated customer types | `graphql-mirror-and-tooling.md` §2; `data-flow-and-gql.md` § Read path |

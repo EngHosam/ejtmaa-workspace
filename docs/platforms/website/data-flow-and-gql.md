@@ -65,9 +65,9 @@ See `docs/platforms/website/ssr-boot-and-startup.md` and `flow-customer-shell.md
 
 | Adapter | API | Core query |
 |---|---|---|
-| `DATA_ADAPTERS.CUSTOMER_ME` | `API.DATA_ADAPTERS.CUSTOMER.GQL` | `me { name avatar_url }` |
+| `DATA_ADAPTERS.CUSTOMER_ME` | `API.DATA_ADAPTERS.CUSTOMER.GQL` | `me { id name avatar_url organization { id name logo_url subdomain } currentSubscription { id status plan_price plan_billing_period plan_max_* starts_at ends_at plan { id name } } }` |
 
-Do not point `CUSTOMER_ME` at visitor/global `DATA_ADAPTERS.GQL`. Hook: `website/src/app/ui/components/customer/hooks/useMe.tsx`.
+Do not point `CUSTOMER_ME` at visitor/global `DATA_ADAPTERS.GQL`. Hook: `website/src/app/ui/components/customer/hooks/useMe.tsx`. Organization for the portal is nested under `_Me` only (no customer root `Query.organization`). Core query feeds shell marks + router org setup gate (`flow-customer-organization.md` §3.1).
 
 ## Customer GQL inherit base + members list
 

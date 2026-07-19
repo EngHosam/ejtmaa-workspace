@@ -156,7 +156,11 @@ When `_Member.organization` is selected, the framework prepares **`OrganizationB
 Therefore `OrganizationBridge` must declare (also includes other inverse parents as they ship):
 
 ```ts
-export type GetOneParent = MemberModel | MessageTemplateModel | MeetingModel | { me: true };
+export type GetOneParent =
+    | CustomerModel
+    | MemberModel
+    | MessageTemplateModel
+    | MeetingModel;
 ```
 
 `MemberBridge.GetOneParent` also includes `MeetingModel` / `MeetingParticipantModel` / `VoteModel` / `TalkRecordModel` for nested meeting surfaces.

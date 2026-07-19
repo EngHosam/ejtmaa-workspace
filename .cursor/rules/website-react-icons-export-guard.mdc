@@ -1,0 +1,26 @@
+---
+description: Only use react-icons glyphs that exist in the installed package export set
+globs:
+  - website/src/app/ui/**/*.tsx
+  - website/src/app/ui/**/*.ts
+alwaysApply: false
+---
+
+# Website react-icons export guard
+
+Applies when adding or swapping Feather (`react-icons/fi`) or other `react-icons` glyphs under `website/`.
+
+## Rule
+
+1. Before shipping an icon import, confirm the symbol is a **function** on the installed package (not `undefined`). Example check: `node -e "console.log(typeof require('react-icons/fi').FiLayers)"`.
+2. Prefer icons already used in the customer shell / shared UI when they fit.
+3. Empty-state glyph: use `FiLayers` in `Wrong.Empty` and `DataTable` empty — do **not** reintroduce Masdaria-style `FiInbox`.
+
+## Why
+
+Missing exports render as a blank icon with no compile error (`As={undefined}`). Observed: `FiFolderOpen` is absent from the website’s current `react-icons/fi` set.
+
+## Forbidden
+
+- Assuming every Feather icon name from docs/CDN exists in the locked package version.
+- Silent icon swaps without verifying the export.

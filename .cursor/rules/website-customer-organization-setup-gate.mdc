@@ -1,0 +1,35 @@
+---
+description: Force incomplete customer org setup onto CustomerOrganization via router middleware; post-save full redirect home
+globs:
+  - website/src/app/services/router.ts
+  - website/src/app/services/auth.ts
+  - website/src/app/ui/components/customer/hooks/useMe.tsx
+  - website/src/app/ui/components/customer/organization/**
+  - docs/platforms/website/flow-customer-organization.md
+  - docs/platforms/website/flow-auth.md
+alwaysApply: false
+---
+
+# Website customer organization setup gate
+
+Authority: `docs/platforms/website/flow-customer-organization.md` §3.1, `flow-auth.md` §2.1.
+
+## Gate
+
+1. Owner: `applyRouterMiddleware` in `website/src/app/services/router.ts`, inside the authenticated block, **before** public-route home bounce.
+2. Incomplete when `CUSTOMER_ME` → `me.organization` has no `id`, or `subdomain` is empty.
+3. While incomplete, allow only `CustomerOrganization` (Error already early-returns). All other identifies → `redirect({ identify: "CustomerOrganization", replace: true })`.
+4. Do **not** put the hard gate only in `auth.loadCurrentCustomer` (boot hydrate only; does not cover every navigate).
+5. Signal comes from `useMe` / `LoadCurrentCustomer` `coreQuery` (`me.organization` nested — not a customer root `Query.organization`).
+
+## Post-save
+
+- Org form `afterSentSuccess`: `useRouter().redirect({ identify: "CustomerHome", replace: true })`.
+- Do **not** use `useNav().push` for this exit. Do **not** re-`read` the form after success when leaving the page.
+- Platform `redirect` performs a full reload; do not invent a parallel `updateMe` solely for the gate.
+
+## Forbidden
+
+- Reintroducing customer root `Query.organization` for portal setup reads.
+- Layout/drawer React effects as a substitute for the middleware gate.
+- `{ me: true }` root-one parent on customer `OrganizationBridge` (nested parents only).

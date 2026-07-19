@@ -19,14 +19,19 @@ Applies when editing shared text inputs under `website/src/app/ui/components/for
 - Use logical alignment: `textAlign: "start"` in `cssStyle`.
 - Do **not** set Utils `ltr` or `ta_l` on the native `<input>` / `<textarea>`.
 
+### Exception — optional `suffix`
+
+When `suffix` is set, the **input + suffix** wrapper `Row` uses Utils `ltr` so the suffix stays on the **visual right** in both `ar` and `en` (e.g. org subdomain + `.ejtmaa.live`). The native input still does not force `ltr`/`ta_l` on its own outside that row.
+
 ## Why
 
-Forcing `direction: ltr` + left align on an RTL page makes the caret appear stuck at the visual start when typing Arabic (and fights the product’s default `ar` locale).
+Forcing `direction: ltr` + left align on an RTL page makes the caret appear stuck at the visual start when typing Arabic (and fights the product’s default `ar` locale). Host suffixes are machine LTR chrome and must remain right-aligned regardless of page locale.
 
 ## Forbidden
 
 - Hardcoded `ltr` / `rtl` / `ta_l` / `ta_r` on shared form text fields “for email/password convenience” unless a future product decision documents a per-`type` exception in `flow-form-foundation.md`.
 - Inventing a parallel text field component to work around direction instead of fixing `FormTextField`.
+- Putting the host suffix only in `subTitle` / `actionArea` when the product requires it beside the input — use `suffix`.
 
 ## Reference
 

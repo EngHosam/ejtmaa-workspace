@@ -18,9 +18,8 @@ On-disk draft SDL (reference copy):
 ## Customer schema surface
 
 Root queries (from `customer.graphql`):
-- `me` — current customer profile
+- `me` — current customer profile (includes nested `_Me.organization` / `_Me.currentSubscription`)
 - `notifications` — paginated notifications
-- `organization` — current customer's organization (`prepareOneGQLModel({ me: true })`)
 - `members(filter: _MemberFilter)` — members of the customer's organization (`{ me: true, filter }` → Organization parent; optional `search` iLike on name/email/mobile — see `member-domain.md` §4–§5)
 - `member(id)` — single member in the customer's organization
 - `messageTemplates` — message templates of the customer's organization (same `me` → Organization parent)
@@ -34,6 +33,7 @@ Root queries (from `customer.graphql`):
 - `subscriptionPaymentMethods(planId, billingPeriod)` — MyFatoorah methods for ACTIVE plan price (helper resolver; not a Bridge)
 
 Nested (cardinality-safe):
+- `_Me.organization: _Organization` (ORM `hasOne Organization`; auto via MeBridge relations → `OrganizationBridge`; null when no org row — **no** customer root `Query.organization`)
 - `_Me.currentSubscription: _Subscription` (ORM `as: "currentSubscription"`; auto via MeBridge relations → `SubscriptionBridge`; ACTIVE + not ended)
 - `_Me.canDeleteNotifications: _Ability` / `_Me.canSubscribe(planId: ID!): _Ability` (MeBridge extras)
 - `_Subscription.plan: _Plan`

@@ -117,13 +117,14 @@ Declared mixins (organization section):
 | Mixin | Role |
 |---|---|
 | `organization?` | loaded association |
-| `getOrganization` | used by customer GQL root-one `{ me: true }` |
+| `getOrganization` | nested `_Me.organization`, org-owned GQL roots, form requester |
 | `setOrganization` | association setter |
 | `createOrganization` | seed path (`SeedPatch.seedDemoOrganizations`) — omit key `"customer_id"` |
 
 Runtime consumers of these mixins:
 
-- Customer GraphQL `organization` → framework calls `context.customer.getOrganization(...)`
+- Customer GraphQL `_Me.organization` → Sequelize `hasOne` include via registered `OrganizationBridge` (parent `CustomerModel`)
+- Org-owned customer roots (`members`, `meetings`, …) → `CustomerOrganizationOwnedBridgeBase` calls `getOrganization()`
 - Supervisor nested `_Customer.organization` → Sequelize `hasOne` include via registered `OrganizationBridge`
 - Demo seed → `customer.createOrganization({ ... })` for a subset of seeded customers
 
@@ -171,28 +172,24 @@ Not exposed on customer role:
 - `customer_id` column (ownership is implicit via me-bound root)
 - nested `customer` relation
 
-### Root query
+### Nested on `_Me` (no customer root query)
 
-- `organization: _Organization`
-
-Resolver (`CustomerSchema`):
-
-```ts
-prepareOneGQLModel({ me: true })
-```
+- `_Me.organization: _Organization` — auto-wired from `Customer.hasOne(Organization)` (association key `organization` → `OrganizationBridge.ident`).
+- There is **no** customer root `Query.organization`. Actor-scoped org reads for the portal go through `me { organization { … } }` (or the form requester).
 
 Bridge: `backend/src/app/gql/bridges/customer/OrganizationBridge.ts`
 
 - `ident = "organization"`, `typeIdent = "_Organization"`, `ormModel = OrganizationModel`
-- `GetOneParent = { me: true }`
+- `GetOneParent = CustomerModel | MemberModel | MessageTemplateModel | MeetingModel` (nested parents only — no `{ me: true }` root-one)
 - no `getRootOrmParent` / `getOrmFindOptions` overrides
 
-Resolution path:
+Resolution path for `_Me.organization`:
 
-1. `CustomerBridgeBase.getRootOrmParent({ me: true })` returns `context.customer` (throws `NOT_PERMIT` if absent).
-2. `BridgeBase.getOneModel` calls `customer.getOrganization(...)` using singular accessor from `Static.ident`.
+1. `MeBridge` loads the current `Customer` row.
+2. Framework includes / resolves association `organization` via `OrganizationBridge` with parent `CustomerModel`.
+3. Missing org row → GraphQL `null` (not a root 404).
 
-Registered in `CustomerSchema.registeredBridges` with `MeBridge` and `NotificationBridge`.
+Registered in `CustomerSchema.registeredBridges` (still required for Me + Member/Meeting/MessageTemplate nests).
 
 ## 6) Supervisor GraphQL surface
 
@@ -360,8 +357,9 @@ Verify: `yarn type-check` in `backend/`.
 
 | Surface | Condition | Behavior |
 |---|---|---|
-| Customer `organization` | no `context.customer` | `NOT_PERMIT` from role base `getRootOrmParent` |
-| Customer `organization` | customer has no org row | framework `404` from `getOneModel` empty accessor |
+| Customer `_Me.organization` | no `context.customer` | `MeBridge.willPrepare` → `NOT_PERMIT` |
+| Customer `_Me.organization` | customer has no org row | GraphQL `null` |
+| Org-owned roots (`members`, …) | customer has no org row | `404` from `CustomerOrganizationOwnedBridgeBase` |
 | Supervisor `organization(id)` | missing id | framework `404` |
 | Supervisor lists | unbounded | prevented by role `withListable` max length |
 
@@ -381,9 +379,9 @@ Note: the **form** `read` sub does **not** 404 when no org exists — it returns
 | `backend/src/resources/trans/ar/general.ts` | AR enum labels | §4 |
 | `backend/src/resources/trans/en/general.ts` | EN enum labels | §4 |
 | `backend/src/app/gql/definitions/base.graphql` | Shared status wrappers | §4 |
-| `backend/src/app/gql/definitions/customer.graphql` | Customer `_Organization` + root query | §5 |
-| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | Customer me-bound root-one | §5 |
-| `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + resolver | §5 |
+| `backend/src/app/gql/definitions/customer.graphql` | Customer `_Organization` + `_Me.organization` (no root) | §5 |
+| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | Nested Me/Member/Meeting/MessageTemplate | §5 |
+| `backend/src/app/gql/schemas/CustomerSchema.ts` | Register bridge (no root org resolver) | §5 |
 | `backend/src/app/gql/definitions/supervisor.graphql` | Supervisor type/filter/queries + customer relation | §6 |
 | `backend/src/app/gql/bridges/supervisor/OrganizationBridge.ts` | Supervisor many/one filters | §6 |
 | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Register + resolvers | §6 |

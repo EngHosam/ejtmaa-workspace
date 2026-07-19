@@ -36,6 +36,8 @@ description: >-
 - `docs/platforms/website/flow-customer-organization.md`
 - `.cursor/skills/website-customer-member-form/SKILL.md`
 - `.cursor/skills/website-customer-organization-form/SKILL.md`
+- `.cursor/rules/website-customer-organization-setup-gate.mdc`
+- `.cursor/rules/website-react-icons-export-guard.mdc`
 - `.cursor/rules/website-route-registry-governance.mdc`
 - `.cursor/rules/website-route-static-before-parametric.mdc`
 - `.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc`

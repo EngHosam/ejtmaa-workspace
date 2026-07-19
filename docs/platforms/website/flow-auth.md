@@ -30,6 +30,15 @@ Router (`src/app/services/router.ts`):
 - Authed user on a public route → redirect to `getMyHomeIdentify` (`CustomerHome` for customer).
 - Unauthed user on a non-public route → redirect to `Login`.
 
+### 2.1) Customer organization setup gate
+
+Runs inside `applyRouterMiddleware` for authenticated `CUSTOMER` **before** the public-route home bounce:
+
+- Incomplete when boot-hydrated `CUSTOMER_ME` has no `me.organization.id` or empty `me.organization.subdomain`.
+- Incomplete + current identify ≠ `CustomerOrganization` → `redirect({ identify: "CustomerOrganization", replace: true })`.
+- Allowlist while incomplete: `CustomerOrganization` only (Error page already early-returns).
+- Consistency owner is router middleware (not `auth.loadCurrentCustomer` alone). Detail: `flow-customer-organization.md` §3.1; rule: `.cursor/rules/website-customer-organization-setup-gate.mdc`.
+
 ## 3) Page composition pattern
 
 Each auth page is a `MyPage` with the same structural contract:
