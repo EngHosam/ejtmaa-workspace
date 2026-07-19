@@ -14,7 +14,7 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 
 ## 1.1) Shipped state
 
-`routes.ts` currently ships **nine** identifies with `customerRouter`, the `public → customer → base` section split, and `CustomerHome` + `CustomerMembers` + multi-path `CustomerMemberForm` on `CUSTOMER_MAIN`. Remaining `/customer/*` workspace routes are still planned (see §5.2).
+`routes.ts` currently ships **customer** identifies with `customerRouter` including `CustomerHome`, `CustomerMembers`, multi-path `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, and `CustomerOrganization` on `CUSTOMER_MAIN` (public → customer → base section split). Remaining `/customer/*` workspace routes are still planned (see §5.2).
 
 | Identify | Path | Layout |
 |---|---|---|
@@ -84,6 +84,8 @@ When a fixed URL segment shares a prefix with a parametric route, the **fixed ro
 
 1. Fixed-segment routes register before parametric siblings on the same prefix per `website-route-static-before-parametric.mdc`.
 
+**Example (meetings):** `CustomerMeetingForm` (`/customer/meetings/form`) is registered **before** `CustomerMeetingDetails` (`/customer/meetings/:id`) in `routes.ts`.
+
 Rule: `.cursor/rules/website-route-static-before-parametric.mdc`. Skill: `.cursor/skills/website-route-static-before-parametric/SKILL.md`. Invariant: `docs/invariants/website.md` W41.
 
 ### 5.1) Public (no auth)
@@ -100,12 +102,14 @@ Shipped: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`.
 
 ### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`)
 
-Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerOrganization`. Remaining workspace routes are planned.
+Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, `CustomerOrganization`. Remaining workspace routes are planned.
 
 | Identify | Path | Status |
 |----------|------|--------|
 | `CustomerHome` | `/customer` | shipped (`CUSTOMER_MAIN`) |
-| `CustomerMeetings` | `/customer/meetings` (target) | planned — drawer tile |
+| `CustomerMeetings` | `/customer/meetings` | shipped — directory (ResultLane + search + status); drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-meetings.md` |
+| `CustomerMeetingForm` | `/customer/meetings/form` | shipped — create form (`Forms.CUSTOMER_MEETING`); before `:id`; `breadcrumb: { parent: CustomerMeetings }` — `flow-customer-meetings.md` |
+| `CustomerMeetingDetails` | `/customer/meetings/:id` | shipped — empty stub; `breadcrumb: { parent: CustomerMeetings }` — `flow-customer-meetings.md` |
 | `CustomerMembers` | `/customer/members` | shipped — directory (ResultLane + search); drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-members.md` |
 | `CustomerMemberForm` | `/customer/members/form` (+ `/:id`) | shipped — multi-path create/update; `breadcrumb: { parent: CustomerMembers }`; href via `formRoute.ts` — `flow-customer-members.md` §5 |
 | `CustomerOrganization` | `/customer/organization` | shipped — settings form upsert; drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-organization.md` |

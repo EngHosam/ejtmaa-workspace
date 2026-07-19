@@ -54,4 +54,5 @@ const labels: NotificationRowLabels = {
 
 - Invariant: `docs/invariants/website.md` W42
 - Flow: `docs/platforms/website/flow-notifications.md`
+- Canonical cards: `CustomerNotificationCard`; `CustomerMeetingCard` (labels from `CustomerMeetingsScreen` — `chairpersonLabel`, `quorumLabel`, `statusLabel`, `typeLabel`)
 - Sibling rule: `.cursor/rules/website-platform-governance.mdc` (nested-translator binding, W14)

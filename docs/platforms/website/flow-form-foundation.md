@@ -15,12 +15,14 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `customer.organization`: `read` | `upsert`,
   - `customer.notification`: `deleteAll`,
   - `customer.subscription`: `subscribe`.
+  - `customer.meeting`: `create`.
   - Planned subs not yet shipped: `visitor.auth` `loginSocial` | `registerCustomerSocial` (Google social).
   - Endpoint builders (shipped): `API.FORMS.R("auth")(sub)` (visitor), `API.FORMS.CUSTOMER.R(requester)(sub)`.
 - **Shared `FORMS` registrations** — `website/src/resources/configs/store/forms.ts` stores the requester endpoint builder (not a preselected `sub`); callers pass the truthful `sub` at send time.
   - `Forms.FORM1` — empty inherit for mockups / local tools.
   - `Forms.CUSTOMER_MEMBER` — `API.FORMS.CUSTOMER.R("member")` (shipped member create/edit).
   - `Forms.CUSTOMER_ORGANIZATION` — `API.FORMS.CUSTOMER.R("organization")` (shipped org settings upsert).
+  - `Forms.CUSTOMER_MEETING` — `API.FORMS.CUSTOMER.R("meeting")` (shipped meeting create).
 - **Form hooks (web-core)** — same ownership split as cpanel:
   - `useForm` reads an already-existing form entry,
   - `useShallowForm` injects a form reducer entry on mount (route/modal/scoped forms),
@@ -32,12 +34,14 @@ Web-native requester form foundation for `website/`: the typed requester route m
 - **Customer form screens**:
   - auth: `/login`, `/register`, `/reset-password` — `API.FORMS.R("auth")`; see `flow-auth.md`,
   - member form: `/customer/members/form` (+ `/:id`) — `Forms.CUSTOMER_MEMBER`; see `flow-customer-members.md` §5,
+  - meeting form: `/customer/meetings/form` — `Forms.CUSTOMER_MEETING` create-only; see `flow-customer-meetings.md`,
   - organization settings: `/customer/organization` — `Forms.CUSTOMER_ORGANIZATION`; see `flow-customer-organization.md`,
   - account settings: `/customer/settings` — planned (`Forms.CUSTOMER_SETTINGS` not registered yet); see `flow-settings.md`,
   - notification delete-all — see `flow-notifications.md`.
 - **Shared form field surfaces** under `src/app/ui/components/form/`:
-  - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormInputWrapper`, `FormProvider`.
+  - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, `FormInputWrapper`, `FormProvider`.
   - Compose from `Utils` + semantic theme tokens.
+  - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
 
 ## 3) Field surface contracts (shipped)
 
@@ -73,9 +77,99 @@ Web-native requester form foundation for `website/`: the typed requester route m
 - W29: `baseCssStyle` holds only `...ElementStyles.inputReset`; behavior/pseudo styles in `cssStyle`; padding via `p={0}` shorthand on the swatch.
 - Rule: `.cursor/rules/website-form-color-field.mdc`.
 
-### 3.5 Success toasts
+### 3.5 `FormChoiceField`
 
-Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSuccess`. Rule: `.cursor/rules/website-form-success-toast-automatic.mdc`. Canonical member form: `CustomerMemberFormScreen`. Organization form: after upsert → `useRouter().redirect` to `CustomerHome` (`flow-customer-organization.md`).
+**File:** `website/src/app/ui/components/form/FormChoiceField.tsx`
+
+| Concern | Contract |
+|---|---|
+| Control | `useFormInput({ name })` |
+| Purpose | Discrete **form** values as equal-width tiles (e.g. meeting `type`) |
+| Not for | List/history filters — those use `FilterOptionChip(s)` (underline tabs) |
+| Selected | Soft accent fill (`canvasAccentSoftBackground`) + accent border + `FiCheck` |
+| Unselected | `inputBackground` + `inputBorder` |
+| Read-only | When `!setValue`: `opc` muted + `cursor: not-allowed` + `disabled` |
+| Wrapper | `FormInputWrapper` with transparent/zero padding field chrome (`fieldCssStyle` override) |
+| Click | `extra.onClick` → `setValue(option.value)` |
+
+Canonical consumer: `CustomerMeetingFormScreen` type field (`PERIODIC` / `EMERGENCY`).
+
+### 3.6 `FormEntityPickerField` + `ENTITY_PICKER`
+
+**Files:**
+
+- Field: `website/src/app/ui/components/form/FormEntityPickerField.tsx`
+- Modal: `website/src/app/ui/components/modals/EntityPickerModal.tsx`
+- Wrapper: `SelectableEntityCard.tsx`
+- Types: `modals/entity-picker/types.ts`
+- Registry: `modals/entity-picker/configs/index.ts` + one file per `ident`
+- Shipped config: `configs/members.tsx` (`listable: "members"`, GQL `EntityPickerMembers`, `CustomerMemberCard` + `selected`)
+
+#### Field
+
+| Concern | Contract |
+|---|---|
+| Open | `openEntityPicker({ ident, title, multi?, initValue, … })` |
+| Single store | `{ value, label, avatarUrl? }` or `""` when cleared |
+| Multi store | `EntityPickerSelection[]` |
+| Chrome | Chips with `IdentityAvatar` + label; empty uses `emptyLabel`; pick action button |
+| Read-only | When `!setValue` |
+
+#### Modal
+
+| Concern | Contract |
+|---|---|
+| Adapter id | `entity-picker-${ident}` inherit `config.inheritedAdapterIdentify` |
+| Search | Draft + Enter commits `committedSearch` → `config.buildFilter` |
+| List scroll | `Col` `minH={0}` + `maxH` cap + `customScroll` (not `ovr_y`) |
+| Pagination | Map `thereMoreRecords`; `LoadMoreButton`; `mLoad({ query })` without reload |
+| Selection | Single replaces; multi toggles; `SelectableEntityCard` + config `Card` |
+| Confirm | Passes full selection meta including `avatarUrl` |
+| Escape / route change | Closes modal |
+| i18n | `ui.modals.entityPicker.*` |
+
+Skill: `.cursor/skills/website-entity-picker/SKILL.md`. Scroll: `.cursor/rules/website-custom-scroll-contract.mdc`.
+
+Canonical consumer: meeting chairperson (`ident="members"`).
+
+### 3.7 `FormDateTimeField` + `DATETIME_PICKER`
+
+**Files:**
+
+- Field: `website/src/app/ui/components/form/FormDateTimeField.tsx`
+- Modal: `website/src/app/ui/components/modals/DateTimePickerModal.tsx`
+- Theme helper: `website/src/resources/emotion/styles/datepicker.ts` → `datepickerTheme`
+- Library CSS: `react-datepicker/dist/react-datepicker.css` via `dependencies.scss` only
+
+#### Field
+
+| Concern | Contract |
+|---|---|
+| Value | ISO string in form reducer |
+| Chrome | Date chip + time chip (or `emptyLabel`) + pick action |
+| Open | `openDateTimePicker({ title, initValue, minDate?, pastDateError })` |
+| After pick | Reject if `<= Date.now()` via `input.set(iso, [pastDateError])`; else `set(iso, [])` |
+
+#### Modal
+
+| Concern | Contract |
+|---|---|
+| Calendar | `react-datepicker` **inline**; class `ejt-datepicker` (+ `--rtl` for `ar`) |
+| Layout | Calendar **full width** of modal (flex weeks/days); not compact centered inline-block |
+| Time | 15-minute chip grid; scroll Col `minH={0}` + `maxH` + `customScroll` |
+| Theme | `getColor(semanticColor…)` → `datepickerTheme({…})` on calendar wrapper `cssStyle` |
+| Confirm | Returns ISO via `onSelect`; cancel / Escape closes |
+| Light selected day | `primaryActionBackground` / `primaryActionText` |
+| Dark selected day | `accentActionBackground` / `accentActionText` |
+| i18n | `ui.modals.dateTimePicker.*` |
+
+Rule: `.cursor/rules/website-third-party-widget-emotion-theme.mdc`. **Forbidden:** brand-hex SCSS overlay (deleted `react-datepicker-theme.scss`).
+
+Canonical consumer: meeting `datetime`.
+
+### 3.8 Success toasts
+
+Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSuccess`. Rule: `.cursor/rules/website-form-success-toast-automatic.mdc`. Canonical member form: `CustomerMemberFormScreen`. Organization form: after upsert → `useRouter().redirect` to `CustomerHome` (`flow-customer-organization.md`). Meeting create: after success → `CustomerMeetingDetails` with `replace: true` (`flow-customer-meetings.md`).
 
 ## 4) Verification checklist
 
@@ -92,25 +186,40 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 
 | Path | Role |
 |---|---|
-| `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MEMBER`, `CUSTOMER_ORGANIZATION` |
-| `website/src/resources/configs/customer/formRoute.ts` | `buildCustomerMemberFormHref` |
-| `website/src/types/requesters/requesters.website.ts` | `customer.member`, `customer.organization` |
+| `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MEMBER`, `CUSTOMER_ORGANIZATION`, `CUSTOMER_MEETING` |
+| `website/src/resources/configs/customer/formRoute.ts` | `buildCustomerMemberFormHref`, `buildCustomerMeetingFormHref` |
+| `website/src/types/requesters/requesters.website.ts` | `customer.member`, `customer.organization`, `customer.meeting` |
 | `website/src/app/ui/components/form/FormAvatarField.tsx` | avatar / logo field |
 | `website/src/app/ui/components/form/FormColorField.tsx` | color field |
+| `website/src/app/ui/components/form/FormChoiceField.tsx` | discrete form choice tiles |
+| `website/src/app/ui/components/form/FormEntityPickerField.tsx` | entity picker field → modal |
+| `website/src/app/ui/components/modals/EntityPickerModal.tsx` | `ENTITY_PICKER` shell (search + customScroll + loadMore) |
+| `website/src/app/ui/components/modals/SelectableEntityCard.tsx` | selectable wrapper around page cards |
+| `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card contracts (`members.tsx`, …) |
+| `website/src/app/ui/components/modals/entity-picker/configs/index.ts` | registry of idents |
+| `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`) |
+| `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER` |
+| `website/src/app/ui/components/form/FormDateTimeField.tsx` | datetime field → `DATETIME_PICKER` modal |
+| `website/src/app/ui/components/modals/DateTimePickerModal.tsx` | datetime modal shell |
+| `website/src/resources/emotion/styles/datepicker.ts` | `datepickerTheme` (`.ejt-datepicker`) |
+| `website/src/resources/emotion/styles/scroll.ts` | `customScroll` helper |
 | `website/src/app/helpers/entityMedia.ts` / `media.ts` | upload + URI |
 | `website/src/app/ui/components/form/FormTextField.tsx` | direction + optional `suffix` |
 | `website/src/resources/configs/urls.ts` | `ORG_PUBLIC_DOMAIN` for org subdomain suffix |
 | `website/src/app/ui/components/form/FormInputWrapper.tsx` | subtitle color |
 | `docs/platforms/website/flow-customer-members.md` | end-to-end member UI |
 | `docs/platforms/website/flow-customer-organization.md` | end-to-end organization UI |
+| `docs/platforms/website/flow-customer-meetings.md` | end-to-end meetings UI |
 | `docs/platforms/backend/contracts/member-domain.md` §9 | member requester |
 | `docs/platforms/backend/contracts/organization-domain.md` §9 | organization requester |
+| `docs/platforms/backend/contracts/meeting-domain.md` | meeting requester + filter |
 
 ## 6) Related
 
 - `docs/platforms/website/flow-auth.md`
 - `docs/platforms/website/flow-customer-members.md`
 - `docs/platforms/website/flow-customer-organization.md`
+- `docs/platforms/website/flow-customer-meetings.md`
 - `docs/platforms/website/flow-settings.md`
 - `docs/platforms/website/flow-notifications.md`
 - `docs/platforms/website/data-flow-and-gql.md`
@@ -119,5 +228,9 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 - `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc`
 - `.cursor/rules/website-form-avatar-field.mdc`
 - `.cursor/rules/website-form-color-field.mdc`
+- `.cursor/rules/website-third-party-widget-emotion-theme.mdc`
+- `.cursor/rules/website-custom-scroll-contract.mdc`
 - `.cursor/skills/website-customer-member-form/SKILL.md`
 - `.cursor/skills/website-customer-organization-form/SKILL.md`
+- `.cursor/skills/website-customer-meeting-form/SKILL.md`
+- `.cursor/skills/website-entity-picker/SKILL.md`

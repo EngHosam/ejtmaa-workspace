@@ -9,7 +9,8 @@ Current Ejtmaa meeting-roster surface:
 - invite delivery tracking (`notified`, `delivery_status`),
 - self check-in attendance (`attended_at`, optional `left_at`),
 - customer GraphQL **nested** read under `_Meeting.participants`,
-- website GQL mirrors for that nested surface.
+- website GQL mirrors for that nested surface,
+- chairperson roster row created atomically by `MeetingRequester.create` (see `meeting-domain.md` §9).
 
 Out of scope (not shipped):
 
@@ -19,7 +20,7 @@ Out of scope (not shipped):
 - GraphQL inverse `_Member.meetingParticipants` / `_Member.meetings` (not needed yet),
 - GraphQL inverse `_MeetingParticipant.meeting` (SDL exposes `member` only today),
 - permission helper implementation in code (matrix agreed; not a shipped module yet),
-- participant write requesters / mutations (including check-in / leave writers),
+- participant-dedicated write requesters / mutations (including check-in / leave writers; roster create beyond chairperson),
 - separate presence history / reconnect log table,
 - `first_online_at`, `joined_at`, or `attended` boolean (removed / declined — see §3.6),
 - chair-marked attendance override without self check-in (not in product rule for this surface),
@@ -234,7 +235,7 @@ Explicit product decision (replaces a `can_vote` boolean): permissions are **fix
 
 Notes:
 
-- `Meeting.chairperson_id` remains the meeting’s chairperson pointer; the roster row for that person should use `type = CHAIRPERSON` when writes ship (consistency rule for requesters later).
+- `Meeting.chairperson_id` remains the meeting’s chairperson pointer; `MeetingRequester.create` also inserts the roster row with `type = CHAIRPERSON` in the same transaction (consistency rule).
 - `Member` has **no** org-wide role/permission fields for meeting session actions (directory person only).
 
 ## 9) Explicit non-goals confirmed in this work

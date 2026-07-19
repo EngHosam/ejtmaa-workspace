@@ -1,0 +1,32 @@
+---
+description: Theme third-party CSS widgets via emotion/styles helpers that take resolved getColor values — never duplicate brand hex in SCSS theme overlays
+globs:
+  - website/src/resources/emotion/styles/**
+  - website/src/resources/styles/**
+  - website/src/app/ui/components/modals/**
+alwaysApply: false
+---
+
+# Website third-party widget emotion theme
+
+Applies when styling a third-party CSS widget (e.g. `react-datepicker`) on the website.
+
+## Rule
+
+1. Keep the **library's own CSS** import in `resources/styles/dependencies.scss` (layout/structure only).
+2. Put **product theming** in `website/src/resources/emotion/styles/<name>.ts` as a function that accepts **already-resolved color strings** and returns a `CSSObject` (same shape as `customScroll` in `scroll.ts`).
+3. The consumer (`DateTimePickerModal`, …) calls `useThemeManager().getColor(semanticColor.…)` (and scheme-aware picks when needed) and spreads the helper into Utils `cssStyle`.
+4. **Do not** maintain a parallel SCSS file of brand hex (`#0B2057`, `#EC6901`, …) for Ejtmaa tokens.
+5. **Do not** invent a one-off CSS-variable injection API on the modal when an `emotion/styles` helper is the repo pattern.
+
+## Canonical
+
+- Helper: `website/src/resources/emotion/styles/datepicker.ts` → `datepickerTheme`
+- Consumer: `website/src/app/ui/components/modals/DateTimePickerModal.tsx`
+- Scroll sibling: `website/src/resources/emotion/styles/scroll.ts`
+- Docs: `docs/platforms/website/flow-form-foundation.md` §3.7
+
+## Forbidden
+
+- Brand hex blocks under `[color-scheme=light|dark]` in website SCSS for Ejtmaa identity colors.
+- Inlining large third-party selector trees in the modal file instead of `emotion/styles`.

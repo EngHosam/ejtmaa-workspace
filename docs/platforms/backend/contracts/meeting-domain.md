@@ -9,6 +9,8 @@ Current Ejtmaa meeting surface:
 - chairperson FK to `Member`,
 - independent lifecycle (`status`) and invite-notify axes (`notify_status` + `notify_start_at`),
 - customer GraphQL read of meetings for the authenticated customer's organization,
+- optional server-side list filter `_MeetingFilter` on root `meetings` (`search` → `subject` iLike; `status` → `_MeetingStatusValue` equality),
+- website Meeting write path via `MeetingRequester` (`create` only) + `Customer.Ability.MEETING` — see §9,
 - nested roster via `_Meeting.participants` (see `meeting-participant-domain.md`),
 - nested agenda via `_Meeting.agendaItems` (see `agenda-item-domain.md`),
 - nested decisions via `_Meeting.decisions` (see `decision-domain.md`),
@@ -17,14 +19,15 @@ Current Ejtmaa meeting surface:
 
 Out of scope (not shipped):
 
-- meeting requesters / write mutations,
+- meeting update / delete requesters,
 - LiveKit join requesters / website client wiring (helper shipped — see `livekit-media-plane.md`),
 - Yjs collaborative session state,
 - supervisor Meeting GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for meetings,
 - nested `_Organization.meetings` (B15 — root list only),
-- `report_snapshot` / report materialization column.
+- `report_snapshot` / report materialization column,
+- plan `max_meetings_per_month` quota enforcement on create.
 
 ## 2) Domain purpose
 
@@ -114,7 +117,7 @@ Do **not** add `belongsToMany(Member)` on Meeting for the roster — join rows a
 SDL:
 
 - `backend/src/app/gql/definitions/base.graphql` — `_MeetingType`, `_MeetingStatus`, `_MeetingNotifyStatus` (+ Value enums)
-- `backend/src/app/gql/definitions/customer.graphql` — `_Meeting` + roots
+- `backend/src/app/gql/definitions/customer.graphql` — `_Meeting` + `_MeetingFilter` + roots
 
 ### Type `_Meeting`
 
@@ -135,13 +138,22 @@ Relations:
 
 ### Root queries
 
-- `meetings: [_Meeting]`
+- `meetings(filter: _MeetingFilter): [_Meeting]`
 - `meeting(id: ID!): _Meeting`
+
+Filter input:
+
+```graphql
+input _MeetingFilter {
+    search: String
+    status: _MeetingStatusValue
+}
+```
 
 Resolvers (`CustomerSchema`):
 
 ```ts
-prepareManyGQLModels({ me: true })
+prepareManyGQLModels({ me: true, filter: filter || undefined })
 prepareOneGQLModel({ me: true, id })
 ```
 
@@ -151,9 +163,15 @@ File: `backend/src/app/gql/bridges/customer/MeetingBridge.ts`
 
 - Extends `CustomerOrganizationOwnedBridgeBase`
 - `ident = "meeting"`, `typeIdent = "_Meeting"`, `ormModel = MeetingModel`
-- `GetManyParent = OrganizationOwnedMeParent`
+- `MeetingFilter` / `GetManyParent = OrganizationOwnedMeParent & { filter?: Nullable<MeetingFilter> }`
 - `GetOneParent = MeetingModel | { me: true; id: string }`
-- No `getRootOrmParent` / `getOrmFindOptions` override
+- Overrides `getOrmFindOptions` for root `many` only:
+  - When `filter.search` trims non-empty, adds `subject` `iLike`
+  - When `filter.status` is set, adds `status` equality (`_MeetingStatusValue`)
+  - Always `withListable` + `withReplacements` + `order updated_at DESC`
+  - Otherwise delegates to `super`
+
+Parent-payload discipline: `.cursor/rules/gql-root-parent-payload-contract.mdc` (§3 — filter mapping is entity-owned policy).
 
 ### Inverse / nested parent typing (mandatory)
 
@@ -198,15 +216,16 @@ export type GetOneParent = MessageTemplateModel | MeetingModel | { me: true; id:
 
 ### `meetings`
 
-1. `MeetingBridge.AsRoot` → `prepareManyGQLModels({ me: true })`
+1. `MeetingBridge.AsRoot` → `prepareManyGQLModels({ me: true, filter })`
 2. `CustomerOrganizationOwnedBridgeBase.getRootOrmParent` → customer's Organization
-3. Base list: `withListable` + `withReplacements` + `order updated_at DESC`
-4. Organization → meetings association
+3. List: `withListable` + `withReplacements` + `order updated_at DESC` + optional `_MeetingFilter` where (`search` → `subject` iLike; `status` → equality)
+4. Organization → meetings association — tenant scope remains the association; filter only narrows within the org
 
 ### `meeting(id)`
 
 1. `prepareOneGQLModel({ me: true, id })`
 2. Same org resolve
+3. `_MeetingFilter` does **not** apply to the singular root
 3. Base one: `where: { id }` scoped to that organization
 
 ## 6) Seed
@@ -230,10 +249,78 @@ Verification: `yarn generate-types`, `yarn type-check`.
 | `meetings` / `meeting` | customer has no organization | `404` |
 | `meeting(id)` | missing / other-org id | framework empty → `404` |
 
-## 9) Traceability map
+## 9) Customer write path (create)
+
+### 9.1 Ability
+
+File: `backend/src/app/orm/models/Customer.ts`
+
+```ts
+MEETING: {
+    sub: "create"
+}
+```
+
+`can("MEETING", { sub: "create" })`: requires organization; otherwise `ACTION_NOT_ALLOWED`. No plan quota gate in this slice.
+
+GQL UI exposure (same rule, `visualMode`):
+
+- SDL: `_Me.canCreateMeeting: _Ability`
+- Bridge: `MeBridge` extra `canCreateMeeting` → `me.can("MEETING", { sub: "create", visualMode: { lang } })`
+
+### 9.2 Joi
+
+- `isCustomerOwnedMember(joi, path?, optional?)` — `path` defaults to `"member"` (same order/name as `Model().Opt`); meeting create uses `"chairperson"`.
+- Create fields: `subject` trim min 2; `type` `PERIODIC` | `EMERGENCY`; `datetime` date; `min_members_count` positive int (accepts numeric string); `chairperson` owned member.
+
+### 9.3 Requester
+
+File: `backend/src/app/orchestrator/requesters/MeetingRequester.ts` (`@requester("meeting")`, platform `website`, actor `customer`).
+
+| Sub | Behavior |
+|---|---|
+| `create` | Validate → `can MEETING create` → `organization.createMeeting(...)` (defaults `status=DRAFT`, `notify_status=NOT_STARTED`) → `meeting.createParticipant({ type: "CHAIRPERSON", notified: false, delivery_status: "PENDING" })` → `other.meetingId` + `SUCCESS_CREATE` |
+
+Create payload (after Joi / Opt resolution):
+
+| Field | Joi | Persist |
+|---|---|---|
+| `subject` | `string().trim().min(2)` | `meeting.subject` |
+| `type` | `PERIODIC` \| `EMERGENCY` (select) | `meeting.type` |
+| `datetime` | `joi.date()` (any date; **no** server future check) | `meeting.datetime` |
+| `min_members_count` | `number().integer().min(1)` | `meeting.min_members_count` |
+| `chairperson` | `isCustomerOwnedMember(joi, "chairperson")` | `chairperson_id` + roster `CHAIRPERSON` row |
+
+Website UI consumer: `docs/platforms/website/flow-customer-meetings.md` §5.
+
+### 9.4 Maps
+
+| Map | Entry |
+|---|---|
+| `backend/requesters.website.ts` | `customer.meeting: "create"` |
+| `website/src/types/requesters/requesters.website.ts` | Same union |
+
+### 9.5 Failure modes (write)
+
+| Condition | Result |
+|---|---|
+| No org on create (`can`) | `ACTION_NOT_ALLOWED` |
+| Org missing after `can` succeeded | `UNEXPECTED_ERROR` |
+| Other-org / missing chairperson | `NOT_PERMIT` / Opt `404` |
+| Validation errors | field / firewall errors via `throwIfNotValid` |
+
+Verify: `yarn type-check` in `backend/`.
+
+## 10) Traceability map
 
 | Path | Role | Section |
 |---|---|---|
+| `backend/src/app/gql/bridges/customer/MeBridge.ts` | `canCreateMeeting` visualMode extra | §9.1 |
+| `backend/src/app/orm/models/Customer.ts` | `Ability.MEETING` + `can("MEETING")` | §9.1 |
+| `backend/src/app/validation/joi_rules.ts` | `isCustomerOwnedMember` (optional `prop`) | §9.2 |
+| `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | write requester (`create`) | §9.3 |
+| `backend/requesters.website.ts` | `customer.meeting` map | §9.4 |
+| `website/src/types/requesters/requesters.website.ts` | `customer.meeting` mirror | §9.4 |
 | `backend/src/app/orm/models/Meeting.ts` | ORM source of truth | §3 |
 | `backend/src/app/orm/models/MeetingParticipant.ts` | Roster join (detail contract) | `meeting-participant-domain.md` |
 | `backend/src/app/orm/models/AgendaItem.ts` | Agenda lines (detail contract) | `agenda-item-domain.md` |
@@ -243,7 +330,7 @@ Verification: `yarn generate-types`, `yarn type-check`.
 | `backend/src/resources/trans/ar/general.ts` | meeting enums AR | §3.3 |
 | `backend/src/resources/trans/en/general.ts` | meeting enums EN | §3.3 |
 | `backend/src/app/gql/definitions/base.graphql` | meeting GQL enum wrappers | §4 |
-| `backend/src/app/gql/definitions/customer.graphql` | `_Meeting` + roots + nested relations | §4 |
+| `backend/src/app/gql/definitions/customer.graphql` | `_Meeting` + `_MeetingFilter` + roots + nested relations | §4 |
 | `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | thin org-owned bridge | §4–§5 |
 | `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts` | nested roster bridge | `meeting-participant-domain.md` |
 | `backend/src/app/gql/bridges/customer/AgendaItemBridge.ts` | nested agenda bridge | `agenda-item-domain.md` |
@@ -274,6 +361,7 @@ Verification: `yarn generate-types`, `yarn type-check`.
 - `docs/platforms/backend/contracts/livekit-media-plane.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
+- `docs/platforms/website/flow-customer-meetings.md`
 - `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`
 - `docs/invariants/backend.md` (B15)
 - `.cursor/rules/gql-root-parent-payload-contract.mdc`

@@ -28,6 +28,7 @@
 | Static info | [`flow-static-info-pages.md`](flow-static-info-pages.md) | About Ejtmaa, legal pages |
 | Customer shell | [`flow-customer-shell.md`](flow-customer-shell.md) | Authed customer layout |
 | Customer members | [`flow-customer-members.md`](flow-customer-members.md) | Org member directory (search + ResultLane) |
+| Customer meetings | [`flow-customer-meetings.md`](flow-customer-meetings.md) | Org meeting directory + create form + empty details |
 | Customer organization | [`flow-customer-organization.md`](flow-customer-organization.md) | Org settings form (read + upsert) |
 
 ## Invariants
@@ -230,6 +231,22 @@ Full path map: [`flow-customer-members.md`](flow-customer-members.md) §11. Back
 | ResultLane + member-shaped `CardSkeleton` | `flow-customer-members.md` §6; `.cursor/rules/website-result-lane-skeleton-shape.mdc` |
 | Chrome-only Add/Edit (no write forms) | `flow-customer-members.md` §8 |
 
+## Change set traceability — customer meetings
+
+Full path map: [`flow-customer-meetings.md`](flow-customer-meetings.md) §12. Backend create/filter: [`../backend/contracts/meeting-domain.md`](../backend/contracts/meeting-domain.md) §4–§5, §9. Chairperson roster: [`../backend/contracts/meeting-participant-domain.md`](../backend/contracts/meeting-participant-domain.md). Shared fields/modals: [`flow-form-foundation.md`](flow-form-foundation.md) §3.5–§3.7.
+
+| Concern | Documented where |
+|---|---|
+| `_MeetingFilter` + bridge + GQL selection | `meeting-domain.md` §4–§5; `flow-customer-meetings.md` §3 |
+| History key `meetings` + status chips + `{ reset: true }` | `flow-customer-meetings.md` §3–§3.1; `.cursor/rules/website-customer-list-history-search.mdc` |
+| Card W42 labels + skeleton | `flow-customer-meetings.md` §4; `.cursor/rules/website-presentational-label-props.mdc` |
+| Create form fields + success `replace` | `flow-customer-meetings.md` §5; `meeting-domain.md` §9 |
+| `FormChoiceField` / entity / datetime modals | `flow-form-foundation.md` §3.5–§3.7; skills `website-entity-picker`, `website-customer-meeting-form` |
+| Custom scroll + datepicker emotion theme | `.cursor/rules/website-custom-scroll-contract.mdc`; `.cursor/rules/website-third-party-widget-emotion-theme.mdc` |
+| Form before `:id` | `route-registry-contract.md` §4.1 / §5.2; W41 |
+| i18n + failure modes | `flow-customer-meetings.md` §8–§9 |
+| Dependencies (`react-datepicker`) | `flow-customer-meetings.md` §10 |
+
 ## Governance
 
 - `.cursor/rules/website-platform-governance.mdc`
@@ -241,3 +258,5 @@ Full path map: [`flow-customer-members.md`](flow-customer-members.md) §11. Back
 - `.cursor/skills/website-platform-governance/SKILL.md`
 - `.cursor/skills/website-customer-drawer-nav/SKILL.md`
 - `.cursor/skills/website-customer-result-lane-list/SKILL.md`
+- `.cursor/skills/website-customer-meeting-form/SKILL.md`
+- `.cursor/skills/website-entity-picker/SKILL.md`

@@ -27,6 +27,8 @@ The scroll owner is a `Col` (from `ui/base/components/Utils`) with:
 
 - `src/app/ui/components/LandingDrawer.tsx` (landing drawer scroll body)
 - `src/app/ui/components/customer/CustomerDrawer.tsx` (customer drawer scroll body)
+- `src/app/ui/components/modals/EntityPickerModal.tsx` (entity list body; often also `maxH` capped)
+- `src/app/ui/components/modals/DateTimePickerModal.tsx` (time-slot scroll Col; `maxH` capped)
 
 Horizontal scroll strips (`Carousel`) are out of scope — they intentionally hide the scrollbar (`scrollbarWidth: "none"` + `::-webkit-scrollbar { display: "none" }`).
 

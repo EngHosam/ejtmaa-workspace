@@ -75,8 +75,11 @@ Do not point `CUSTOMER_ME` at visitor/global `DATA_ADAPTERS.GQL`. Hook: `website
 |---|---|---|
 | `DATA_ADAPTERS.CUSTOMER_GQL` | `API.DATA_ADAPTERS.CUSTOMER.GQL` | Inherit target for mount-private customer list adapters |
 | `"customer-members"` (private id) | inherits `CUSTOMER_GQL` | Members directory — `useCustomerMembers` |
+| `"customer-meetings"` (private id) | inherits `CUSTOMER_GQL` | Meetings directory — `useCustomerMeetings` |
 
 Members query uses `listable: "members"` and optional `filter: { search }` from route history key `members`. Full contract: `flow-customer-members.md`.
+
+Meetings query uses `listable: "meetings"` and optional `filter: { search, status }` from route history key `meetings`. Reload: `useEffect` → `mLoad({ reload: true, query })` when history-derived query changes (same pattern as members; no separate `enterMode`). Create writes via `Forms.CUSTOMER_MEETING` / `meeting.create`. Entity-picker modal uses private adapters `entity-picker-${ident}` (e.g. `entity-picker-members`). Full contract: `flow-customer-meetings.md` §3–§7; form fields: `flow-form-foundation.md` §3.5–§3.7.
 
 Member writes use `Forms.CUSTOMER_MEMBER` → `API.FORMS.CUSTOMER.R("member")(sub)` (`read` | `create` | `update` | `delete`). Avatar binary upload uses `API.ACTIONS.MULTIPART_UPLOAD` before storing the filename in form `avatar_file`. See `flow-form-foundation.md` and `member-domain.md` §9.
 
@@ -98,13 +101,14 @@ Rules:
 - `useMe` default path uses `LOAD_ON_MOUNT` (optional `updateOnEnter` → `FORCE_RELOAD_ON_MOUNT`).
 - Planned list/home hooks (`useCustomerDashboard`, `useCustomerNotifications`) use `FORCE_RELOAD_ON_MOUNT` when added.
 - List adapters document `enterMode` on the owning route page when a session-preserve exception applies.
-- Shipped `useCustomerMembers` reloads via `useEffect` → `mLoad({ reload: true, query: adapterQuery })` when the history-derived query changes (covers remount + search commit without a separate `enterMode` flag).
+- Shipped `useCustomerMembers` / `useCustomerMeetings` reload via `useEffect` → `mLoad({ reload: true, query: adapterQuery })` when the history-derived query changes (covers remount + search/status commit without a separate `enterMode` flag).
 
 Shipped customer adapters in `initDataAdaptersProps`: `ADAPTER1`, `CUSTOMER_ME`, `CUSTOMER_GQL`. Governance: `.cursor/rules/website-list-adapter-enter-mode.mdc`, `.cursor/rules/website-customer-list-history-search.mdc`.
 
 ## Related
 
 - `docs/platforms/website/flow-customer-members.md`
+- `docs/platforms/website/flow-customer-meetings.md`
 - `docs/platforms/website/flow-customer-organization.md`
 - `docs/platforms/website/flow-form-foundation.md`
 - `docs/platforms/website/graphql-mirror-and-tooling.md`

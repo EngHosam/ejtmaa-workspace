@@ -23,7 +23,7 @@ See `docs/platforms/website/ui-foundation.md`.
 
 ## Backend coupling
 
-- Requesters: `visitor.auth`, `customer.customer`, `customer.notification`, `customer.subscription` (`subscribe`) (see `src/types/requesters/requesters.website.ts`)
+- Requesters: `visitor.auth`, `customer.customer`, `customer.notification`, `customer.subscription` (`subscribe`), `customer.member`, `customer.organization`, `customer.meeting` (`create`) (see `src/types/requesters/requesters.website.ts`)
 - GQL mirrors: `base` + `customer` (`me` + nested `_Me.organization` / `_Me.currentSubscription` / `_Subscription`, `me.canDeleteNotifications`, `me.canSubscribe(planId)`, `notifications`, `members(filter: _MemberFilter)`, `member`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `talkRecords` / `_TalkRecord`, `plans` / `plan` / `_Plan`, `subscriptions` / `subscription`, `subscriptionPaymentMethods` / `_PaymentMethod`; no customer root `organization`)
 - Socket namespace: `customer`
 - Events: `OnCustomerEvent` (payload `OnCustomerEventDate { type: "UPDATED" }`)
@@ -40,6 +40,7 @@ See `docs/platforms/website/ui-foundation.md`.
 | Static info pages | [flow-static-info-pages.md](./flow-static-info-pages.md) |
 | Customer shell | [flow-customer-shell.md](./flow-customer-shell.md) |
 | Customer members (directory + form) | [flow-customer-members.md](./flow-customer-members.md) |
+| Customer meetings (directory + create + empty details) | [flow-customer-meetings.md](./flow-customer-meetings.md) |
 | Customer organization (settings form) | [flow-customer-organization.md](./flow-customer-organization.md) |
 
 ## 6) Route registry summary
@@ -52,11 +53,11 @@ Authoritative table: `route-registry-contract.md` §1.1 / §5.2 (includes `Custo
 
 Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`), `CustomerOrganization` (`/customer/organization`). All `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Members: `flow-customer-members.md`. Organization: `flow-customer-organization.md`. Forms: `flow-form-foundation.md`.
+Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMeetings` (`/customer/meetings`), `CustomerMeetingForm` (`/customer/meetings/form`), `CustomerMeetingDetails` (`/customer/meetings/:id`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`), `CustomerOrganization` (`/customer/organization`). All `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Meetings: `flow-customer-meetings.md`. Members: `flow-customer-members.md`. Organization: `flow-customer-organization.md`. Forms: `flow-form-foundation.md`.
 
 ### 6.2) Planned (not shipped)
 
-Remaining `/customer/*` workspace routes (meetings, message templates, subscription, settings, support, help, notifications, static info, bottom bar) — see `route-registry-contract.md` §5.2 and `flow-customer-shell.md`.
+Remaining `/customer/*` workspace routes (message templates, subscription, settings, support, help, notifications, static info, bottom bar) — see `route-registry-contract.md` §5.2 and `flow-customer-shell.md`. Meetings, members, and organization are **shipped** (see §6.1).
 
 ## Documentation stance
 

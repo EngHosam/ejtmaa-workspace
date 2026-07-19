@@ -240,8 +240,9 @@ MEMBER: {
 
 File: `backend/src/app/validation/joi_rules.ts`
 
-- `Member().Opt` + external: requires fact `customer`, loads customer org, rejects when `member.organization_id` ≠ org id (`NOT_PERMIT`).
-- Used on `read` / `update` / `delete` for the `member` ref.
+- Signature: `isCustomerOwnedMember(joi, path = "member", optional?)` — mirrors `Member().Opt(joi, path, optional)`.
+- External: requires fact `customer`, loads customer org, rejects when member org ≠ customer org (`NOT_PERMIT`).
+- Used on `read` / `update` / `delete` for the `member` path; meeting create uses `path: "chairperson"`.
 
 Field rules (requester-local helpers):
 
@@ -284,7 +285,8 @@ Messages (`backend/src/resources/trans/{ar,en}/messages.ts`):
 
 | Condition | Result |
 |---|---|
-| No org on create | `ACTION_NOT_ALLOWED` |
+| No org on create (`can`) | `ACTION_NOT_ALLOWED` |
+| Org missing after `can` succeeded | `UNEXPECTED_ERROR` |
 | Member missing | `404` |
 | Other-org member | `NOT_PERMIT` |
 | Delete while on roster | `CANNOT_DELETE_MEMBER_IN_MEETING_ROSTER` |
