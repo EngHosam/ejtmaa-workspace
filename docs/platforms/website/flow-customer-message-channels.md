@@ -1,156 +1,128 @@
-# Website Flow — Customer Message Channels (Directory)
+# Website Flow — Customer Message Channels
 
-Authenticated customer org delivery-channel directory on `CUSTOMER_MAIN`. Shell/breadcrumb contract: `flow-customer-shell.md` §7.1. Backend read contract: `docs/platforms/backend/contracts/message-channel-domain.md`.
+Authenticated customer org delivery-channel directory + multi-path form on `CUSTOMER_MAIN`. Shell/breadcrumb contract: `flow-customer-shell.md` §7.1. Backend contract: `docs/platforms/backend/contracts/message-channel-domain.md`. Form foundation: `flow-form-foundation.md` (§3.8 ConfirmModal, multi-action loading).
 
 ## 1) Scope
 
 **Shipped**
 
-- Message-channel directory for the authenticated customer's organization (GQL list + ResultLane load-more).
-- Route `CustomerMessageChannels` → `/customer/message-channels` with breadcrumb parent `CustomerHome`.
-- Drawer tile `itemMessageChannels` / `CustomerMessageChannels` / **`FiSend`**, ordered **after** Subscription and **immediately before** Settings.
-- Presentational card chrome aligned with meeting cards (accent rail, `cardBackground`, `shellBorder`, `semanticDims.card.radius`).
-- Card glyph **`FiSend`** — same Feather icon as the drawer tile (section identity consistency).
-- Meta line: `typeLabel · statusLabel` from GQL enum labels (`messageChannelType` / `messageChannelStatus`), e.g. أد واتس برو · نشط.
-- Optional detail line: `from_address` (email) or `adwhats_account_id` (WhatsApp channels).
-- Labels for type/status/detail resolved on the **screen** and passed as props (W42) — card has no `useTranslator`.
-- Secrets never selected in the list query (`smtp_password`, `adwhats_token`).
-- User-facing **section** copy (subtitle / empty) says **WhatsApp** (product language), not “Ad Whats”. Backend enum labels for `ADWHATS` / `ADWHATS_PRO` remain أد واتس / أد واتس برو on the card meta line.
+- Directory (GQL list + ResultLane load-more) with Add + card Edit.
+- Multi-path form `CustomerMessageChannelForm` (create/update/delete) via `Forms.CUSTOMER_MESSAGE_CHANNEL` → `messageChannel` requester.
+- Drawer tile `itemMessageChannels` / `CustomerMessageChannels` / **`FiSend`**, after Subscription / before Settings.
+- Card glyph **`FiSend`** (section identity consistency); presentational card with optional `editLabel` / `onEdit`.
+- Type chooser on **create** only; update shows locked type label (value kept in form from `read`).
+- Status **not** on the form: create/update set `ACTIVE` / `DISABLED` via requester `testConnection()` (model stub currently returns `false` → saves land as `DISABLED` until real connectivity ships).
+- Conditional fields by `type`: `CUSTOM_EMAIL` SMTP block vs `ADWHATS` / `ADWHATS_PRO` token + account id (type-dependent Ad Whats labels).
+- Delete: `await confirm(…, "danger")` → `sub: "delete"` → `nav.back()`.
+- Per-sub button loading: `saving` for `create`/`update`, `deleting` for `delete` (from `currentSub`), not a blanket spinner on Save during delete.
+- User-facing section copy may say **WhatsApp**; card type labels come from backend enum (أد واتس / Ad Whats).
 
 **Not shipped**
 
-- Create / edit / delete form or `MessageChannelRequester`.
 - History search / type-status filter chips (no `_MessageChannelFilter` yet).
-- Channel details route / card link.
-- Connectivity test UX / status flip on send failure.
-- Temporary design-preview cards (removed after visual review).
+- Calling `testConnection()` from the UI (requester-owned only).
+- Channel details route.
+- Seed rows for channels.
 
 ## 2) Entry points
 
 | Layer | Path / symbol |
 |---|---|
 | List route | `CustomerMessageChannels` → `/customer/message-channels` |
+| Form route | `CustomerMessageChannelForm` → `/customer/message-channels/form` (+ `/:id`) |
 | List page | `website/src/app/ui/pages/customer/CustomerMessageChannels.tsx` |
-| List screen | `website/src/app/ui/components/customer/message-channels/CustomerMessageChannelsScreen.tsx` |
-| Hook | `website/src/app/ui/components/customer/hooks/useCustomerMessageChannels.ts` |
+| Form page | `website/src/app/ui/pages/customer/CustomerMessageChannelForm.tsx` (thin `MyPage`) |
+| List screen | `…/message-channels/CustomerMessageChannelsScreen.tsx` |
+| Form screen | `…/message-channels/CustomerMessageChannelFormScreen.tsx` |
 | Card | `…/message-channels/CustomerMessageChannelCard.tsx` |
 | Skeleton | `…/message-channels/MessageChannelCardSkeleton.tsx` |
-| Drawer | `website/src/app/ui/components/customer/CustomerDrawer.tsx` |
+| Hook | `…/hooks/useCustomerMessageChannels.ts` |
+| Href helper | `buildCustomerMessageChannelFormHref` in `resources/configs/customer/formRoute.ts` |
+| Form registry | `Forms.CUSTOMER_MESSAGE_CHANNEL` → `API.FORMS.CUSTOMER.R("messageChannel")` |
+| Confirm | `confirm()` from `modals/ConfirmModal.tsx` (`Modals.CONFIRM`) |
+| Drawer | `CustomerDrawer.tsx` |
 
-Layout: `CUSTOMER_MAIN`, `mustAuthedAs: ["CUSTOMER"]`. Breadcrumb: `{ parent: "CustomerHome", label: tr => tr.ui.pages.customer.messageChannels.title }`.
+List + form: `layout: "CUSTOMER_MAIN"`, `mustAuthedAs: ["CUSTOMER"]`. List breadcrumb parent `CustomerHome`; form parent `CustomerMessageChannels` with param-aware create/edit label. Form identify registered **after** list on the same prefix (`.cursor/rules/website-route-static-before-parametric.mdc`).
 
-## 3) Directory data adapter
+## 3) Form contract
 
-| Concern | Value |
+`formType = id ? "update" : "create"` from `useCurrentParams<"CustomerMessageChannelForm">` — no parallel `isUpdate` flag. Never branch on page identify.
+
+| Mode | Behavior |
 |---|---|
-| Mount-private adapter id | `"customer-message-channels"` |
-| Inherited | `DATA_ADAPTERS.CUSTOMER_GQL` → `API.DATA_ADAPTERS.CUSTOMER.GQL` |
-| Listable | `"messageChannels"` |
-| Default page size | `initDataAdaptersProps.default.maxLoadLength` = **24** |
-| Reload | `mLoad({ reload: true, query })` on mount when adapter `exist`; same `query` on load-more / refresh |
-| History search | **none** (no GQL filter yet) |
+| create | Stable `formIdentify` (`customer-message-channel-form-create`) + `removeOnExit: false`; **`d.reset()` on create success** before `nav.back()` |
+| update | `initProps.values: { messageChannel: id }`; `didEntered` → `send({ sub: "read" })`; `Loadable` while `!exist` or read in flight; `removeOnExit` true (default generate identify). Do **not** echo `messageChannel` id from requester `read` — keep id from `initProps` |
+| header | `SectionHeading` + back + primary Save (+ neutral Delete on update) — actions not full-width under fields |
+| delete | `await confirm(t("deleteConfirm"), "danger")` → `sub: "delete"` → `nav.back()` |
+| loading | `formLoading` = any `SENDING`; `saving` = `SENDING` && (`create`\|`update`); `deleting` = `SENDING` && `delete` |
+| toast | Automatic only — no manual toast in `afterSentSuccess` |
 
-GQL (inline in hook):
+### 3.1 Fields
 
-```graphql
-query CustomerMessageChannels {
-    messageChannels {
-        id
-        name
-        type {
-            value
-            label
-        }
-        status {
-            value
-            label
-        }
-        smtp_host
-        from_address
-        adwhats_account_id
-        total_count
-    }
-}
-```
+| Field | Create | Update | Notes |
+|---|---|---|---|
+| `name` | yes | yes | |
+| `type` | `FormChoiceField` | read-only label | Update must still submit echoed `type` from `read` (backend locks) |
+| `smtp_*` / `from_*` | when `CUSTOM_EMAIL` | same | `smtp_secure` as `"true"` / `"false"` choice tiles |
+| `adwhats_token` / `adwhats_account_id` | when `ADWHATS` \| `ADWHATS_PRO` | same | Labels switch for Pro |
+| `status` | not on UI | not on UI | Server-owned |
 
-Note: `smtp_host` is selected but not currently rendered on the card (detail prefers `from_address` / `adwhats_account_id`).
+## 4) Directory data adapter
 
-## 4) Screen composition
+Mount-private `"customer-message-channels"` inheriting `DATA_ADAPTERS.CUSTOMER_GQL`, `listable: "messageChannels"`. List selection: name / type / status / `from_address` | `adwhats_account_id` (no secrets required for the card). Add → `buildCustomerMessageChannelFormHref("create")`; Edit → `…("update", id)`.
 
-`Container` → `Col pt={2} gap={1.5} pb={2}`:
+## 5) i18n
 
-1. `Helmet` title + `SectionHeading` (title + subtitle) — **no** Add button (write path not shipped).
-2. `ResultLane` → `CustomerMessageChannelCard` (not a `Link`; no details route).
-
-Card props from screen:
-
-| Prop | Source |
+| Key path | Purpose |
 |---|---|
-| `name` | `channel.name` |
-| `typeLabel` | `channel.type.label` \|\| `value` |
-| `statusLabel` | `channel.status.label` \|\| `value` |
-| `detailLabel` | `from_address` \|\| `adwhats_account_id` (trimmed; omitted if empty) |
+| `ui.pages.customer.messageChannels.*` | list title, subtitle, add, edit, empty, load-more |
+| `ui.pages.customer.messageChannelForm.*` | create/edit titles, field labels, type options, Ad Whats labels, delete confirm, buttons |
+| `ui.modals.confirm.*` | shared confirm title / confirm / cancel |
+| `ui.components.mainHeader.back` | form back control |
 
-Utils style: accent rail + icon well use shorthands (`overlay`, `flx={"0 0 auto"}`); skeleton `animation` stays in `cssStyle` (no shorthand). No `baseCssStyle` on the card.
+ar/en mirrors required.
 
-## 5) Drawer IA
+## 6) Failure / empty modes (UI)
 
-Order excerpt (`flow-customer-shell.md` §5.3):
-
-| Order | Identify | Glyph |
-|---|---|---|
-| … | `CustomerSubscription` | `FiCreditCard` |
-| **7** | `CustomerMessageChannels` | **`FiSend`** |
-| 8 | `CustomerSettings` | `FiSettings` |
-
-Route gating: tile enabled only when `routes` has `CustomerMessageChannels`.
-
-## 6) i18n
-
-| Key area | Purpose |
+| Mode | Behavior |
 |---|---|
-| `ui.layouts.customerMainLayout.drawer.itemMessageChannels` | Drawer label (قنوات الإرسال / Message channels) |
-| `ui.pages.customer.messageChannels.title` | Page + breadcrumb + Helmet |
-| `…subtitle` / `emptyTitle` / `emptyDescription` | Product copy uses **WhatsApp** wording |
-| `…loadMoreBtn` / `loadingMoreHint` | ResultLane chrome |
+| Initial injection / update `read` | Header actions hidden; centered `Loadable` |
+| List empty | ResultLane empty title/subtitle |
+| List error | ResultLane retry |
+| Delete cancel | `confirm` resolves `false` — no send |
+| Validation / ability | Form middleware / toast — server-owned |
 
-ar/en must stay mirrored.
-
-## 7) Failure modes
-
-| Condition | Behavior |
-|---|---|
-| GQL load error | ResultLane wrong overlay + retry → `refresh` |
-| Empty list | empty title/description |
-| Unauthed | `mustAuthedAs: ["CUSTOMER"]` |
-
-## 8) Traceability map
+## 7) Traceability map (this change set)
 
 | Path | Role | Section |
 |---|---|---|
-| `website/src/resources/configs/routes.ts` | Route + `MPagesRoutes` | §2 |
-| `website/src/app/ui/components/customer/CustomerDrawer.tsx` | Drawer tile + `FiSend` | §5 |
-| `website/src/app/ui/pages/customer/CustomerMessageChannels.tsx` | Thin `MyPage` | §2 |
-| `website/src/app/ui/components/customer/message-channels/CustomerMessageChannelsScreen.tsx` | Screen + W42 labels | §4 |
-| `website/src/app/ui/components/customer/message-channels/CustomerMessageChannelCard.tsx` | Presentational card | §4 |
-| `website/src/app/ui/components/customer/message-channels/MessageChannelCardSkeleton.tsx` | Skeleton shape | §4 |
-| `website/src/app/ui/components/customer/hooks/useCustomerMessageChannels.ts` | Adapter hook | §3 |
-| `website/src/resources/translations/ar.ts` / `en.ts` | Drawer + page copy | §6 |
-| `website/lib/tsconfig.tsbuildinfo` | Build artifact | excluded from narrative — local TS build cache |
-| `docs/platforms/website/flow-customer-shell.md` | Drawer order table | §5 |
-| `docs/platforms/website/route-registry-contract.md` | Registry §5.2 | indexes |
-| `docs/platforms/website/overview.md` / `component-structure.md` / `data-flow-and-gql.md` / `README.md` | Indexes | indexes |
-| `docs/platforms/backend/contracts/message-channel-domain.md` | Backend ORM/GQL | related |
-| `.cursor/rules/website-customer-section-glyph-consistency.mdc` | Drawer ↔ card icon | governance |
-| `.cursor/rules/website-presentational-label-props.mdc` | W42 channel card | governance |
-| `.cursor/skills/website-customer-message-channels/SKILL.md` | Repeatable directory slice | governance |
+| `website/…/CustomerMessageChannelForm.tsx` | Thin page | §2 |
+| `website/…/CustomerMessageChannelFormScreen.tsx` | Form screen | §3 |
+| `website/…/CustomerMessageChannelsScreen.tsx` | List Add/Edit wiring | §4 |
+| `website/…/CustomerMessageChannelCard.tsx` | Presentational card + edit | §1, §4 |
+| `website/…/MessageChannelCardSkeleton.tsx` | Lane skeleton (unchanged pattern) | §4 |
+| `website/…/modals/ConfirmModal.tsx` | Shared confirm | §3, `flow-form-foundation.md` §3.8 |
+| `website/…/form/FormActionButton.tsx` | `tone="danger"` | `flow-form-foundation.md` |
+| `website/…/members/CustomerMemberFormScreen.tsx` | Same confirm + loading pattern | `flow-customer-members.md` |
+| `website/…/meetings/CustomerMeetingFormScreen.tsx` | `d.reset()` on create success | `flow-customer-meetings.md` |
+| `website/src/resources/configs/routes.ts` | Multi-path form route | §2 |
+| `website/src/resources/configs/customer/formRoute.ts` | Href builder | §2 |
+| `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MESSAGE_CHANNEL` | §2 |
+| `website/src/resources/configs/store/modals.ts` | `CONFIRM` | §3 |
+| `website/src/resources/translations/ar.ts` / `en.ts` | i18n | §5 |
+| `website/src/types/gql/definitions/customer.graphql` | Credential fields on `_MessageChannel` | backend §4 + mirror |
+| `website/src/types/gql/gql-types/customer.ts` | Generated types | generated |
+| `website/src/types/requesters/requesters.website.ts` | `customer.messageChannel` | W18 |
+| `website/lib/tsconfig.tsbuildinfo` | Build cache | **exclude from narrative** (generated noise) |
 
-## Related
+Backend paths for the same slice: `message-channel-domain.md` §10.
 
+## 8) Related
+
+- `.cursor/skills/website-customer-message-channels/SKILL.md`
+- `.cursor/skills/website-customer-member-form/SKILL.md`
+- `.cursor/rules/website-multi-path-form-routes.mdc`
+- `.cursor/rules/website-confirm-modal.mdc`
+- `.cursor/rules/message-channel-domain.mdc`
+- `docs/platforms/website/flow-form-foundation.md`
 - `docs/platforms/backend/contracts/message-channel-domain.md`
-- `docs/platforms/website/flow-customer-shell.md`
-- `docs/platforms/website/route-registry-contract.md`
-- `.cursor/skills/website-customer-breadcrumb-subpage/SKILL.md`
-- `.cursor/skills/website-customer-drawer-nav/SKILL.md`
-- `.cursor/skills/website-customer-result-lane-list/SKILL.md`
-- `.cursor/skills/website-utils-style-prop-audit/SKILL.md`

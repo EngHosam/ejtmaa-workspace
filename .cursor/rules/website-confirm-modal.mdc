@@ -1,0 +1,39 @@
+---
+description: Website destructive confirms must use ConfirmModal.confirm — never window.confirm
+globs:
+  - website/src/app/ui/components/**/*
+  - website/src/app/ui/pages/**/*
+  - website/src/resources/configs/store/modals.ts
+  - docs/platforms/website/flow-form-foundation.md
+alwaysApply: false
+---
+
+# Website Confirm Modal
+
+Authoritative contract: `docs/platforms/website/flow-form-foundation.md` §3.8.
+
+## Rule
+
+Product confirmation (delete, irreversible actions) MUST use:
+
+```ts
+import {confirm} from "…/modals/ConfirmModal";
+
+if (!await confirm(description, "danger")) return;
+```
+
+## Registry
+
+- Identify: `CONFIRM` in `resources/configs/store/modals.ts` (`cancelable: true`).
+- Helper opens `openModal(…)("CONFIRM")` and resolves `true` on confirm / `false` on cancel or backdrop.
+- Confirm button: `closeMe({ onClosed: onConfirm })` so WILL_CLOSE replaces `onClosed`.
+
+## UI
+
+- Card chrome matches EntityPicker / DateTimePicker (`cardBackground`, border, radius, shadow).
+- Confirm action uses `FormActionButton` `tone="danger"` (or `"primary"` when passed).
+
+## Forbidden
+
+- `window.confirm` / `window.prompt` / `window.alert` for product flows.
+- Confirm panels without `bg={semanticColor.cardBackground}` (transparent content over backdrop).

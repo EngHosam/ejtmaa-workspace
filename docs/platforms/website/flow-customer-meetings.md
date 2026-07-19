@@ -163,7 +163,7 @@ Governance: `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc`, `.curso
 
 ### 5.2 Success navigation
 
-`afterSentSuccess`: read `res.data.other.meetingId` → `nav.push({ identify: "CustomerMeetingDetails", params: { id }, replace: true })`.
+`afterSentSuccess`: `d.reset()` then read `res.data.other.meetingId` → `nav.push({ identify: "CustomerMeetingDetails", params: { id }, replace: true })`.
 
 - `replace: true` drops the form from history so back from details returns to the **list**.
 - If `meetingId` missing: stay on form (axios success toast may still show).

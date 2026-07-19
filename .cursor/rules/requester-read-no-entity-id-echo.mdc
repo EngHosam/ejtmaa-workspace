@@ -1,0 +1,43 @@
+---
+description: Requester read must not echo entity id into form values — keep identity from initProps
+globs:
+  - backend/src/app/orchestrator/requesters/**/*
+  - docs/platforms/backend/contracts/**/*
+alwaysApply: false
+---
+
+# Requester Read — No Entity Id Echo
+
+## Rule
+
+For website multi-path edit forms, `read` result `values` MUST **not** include the entity identity key (`member`, `messageChannel`, …).
+
+Identity is seeded by the screen via `useShallowForm` `initProps.values` (from the route `id`). Form merge keeps that key across `read` hydration.
+
+## Why
+
+Echoing the id from `read` is redundant and caused drift (template-string / typed-object mistakes). Canonical pattern: Member + MessageChannel requesters.
+
+## Forbidden
+
+```ts
+result.setData({
+    values: {
+        member: member.get("id"), // do not
+        name: …
+    }
+});
+```
+
+## Correct
+
+```ts
+result.setData({
+    values: {
+        name: …,
+        // identity stays in form initProps only
+    }
+});
+```
+
+Authority: `docs/platforms/backend/contracts/member-domain.md` §9.3, `message-channel-domain.md` §5.

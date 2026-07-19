@@ -1,6 +1,6 @@
 ---
-description: MessageChannel ORM/GQL invariants — credentials vs templates, secrets, enum spelling, status
-globs: backend/src/app/orm/models/MessageChannel.ts,backend/src/app/gql/bridges/**/MessageChannelBridge.ts,backend/src/app/gql/definitions/**/*.graphql,backend/src/resources/trans/**/general.ts,website/src/types/gql/definitions/**/*.graphql
+description: MessageChannel ORM/GQL/requester invariants — credentials vs templates, enum spelling, status, connectivity stub
+globs: backend/src/app/orm/models/MessageChannel.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orchestrator/requesters/MessageChannelRequester.ts,backend/src/app/validation/joi_rules.ts,backend/src/app/gql/bridges/**/MessageChannelBridge.ts,backend/src/app/gql/definitions/**/*.graphql,backend/src/resources/trans/**/general.ts,website/src/types/gql/definitions/**/*.graphql
 alwaysApply: false
 ---
 
@@ -12,7 +12,6 @@ Authoritative contract: `docs/platforms/backend/contracts/message-channel-domain
 
 - `MessageChannel` stores **delivery credentials** only (SMTP / Ad Whats), not message subject/body/variable maps.
 - Do **not** add `MEETING_EMAIL` to `messageChannelType`. Platform-mailer templates use **no** channel row (future template FK null).
-- Do **not** put `smtp_password` or `adwhats_token` in GraphQL SDL. Expose non-secret fields only (`adwhats_account_id`, SMTP host/user/from, etc.).
 
 ## Naming
 
@@ -21,10 +20,20 @@ Authoritative contract: `docs/platforms/backend/contracts/message-channel-domain
 - Discriminator field on the model is `type` (repo-native with `Meeting.type`).
 - Do not confuse `_MessageChannelType` with legacy `_MessageTemplateChannel` (`WHATSAPP` | `EMAIL`).
 
-## Status
+## Status and connectivity
 
 - `messageChannelStatus`: `ACTIVE` | `DISABLED`, default **`ACTIVE`**.
-- Create-time connectivity test and send-failure disable are **write/send path** concerns (not shipped yet); do not invent alternate status values.
+- `MessageChannelModel.testConnection(): Promise<boolean>` is the connectivity hook (stub until SMTP/Ad Whats clients ship).
+- Create/update call `testConnection()` after writing credentials: `true` → `ACTIVE`, `false` → `DISABLED`. Status is not client-owned.
+
+## Write path
+
+- Customer ability: `MESSAGE_CHANNEL` (`create` | `read` | `update` | `delete`) on `Customer` with org ownership.
+- Requester `@requester("messageChannel")` — website map `customer.messageChannel`.
+- Joi requires credential columns by `type`; unused branches `optional().allow(null, "")` — **not** `.strip()`.
+- Update **locks** `type` to the existing row.
+- `read` values must **not** echo `messageChannel` id (same as member `read` / `member` id).
+- GQL SDL may expose credential columns including `smtp_password` / `adwhats_token` (product choice: no special secret omission).
 
 ## GQL / ORM wiring
 

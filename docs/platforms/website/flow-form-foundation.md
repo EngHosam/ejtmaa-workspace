@@ -12,6 +12,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `visitor.auth`: `registerCustomer` | `login` | `resetPassword`,
   - `customer.customer`: `readSettings` | `updateSettings`,
   - `customer.member`: `read` | `create` | `update` | `delete`,
+  - `customer.messageChannel`: `read` | `create` | `update` | `delete`,
   - `customer.organization`: `read` | `upsert`,
   - `customer.notification`: `deleteAll`,
   - `customer.subscription`: `subscribe`.
@@ -21,6 +22,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
 - **Shared `FORMS` registrations** — `website/src/resources/configs/store/forms.ts` stores the requester endpoint builder (not a preselected `sub`); callers pass the truthful `sub` at send time.
   - `Forms.FORM1` — empty inherit for mockups / local tools.
   - `Forms.CUSTOMER_MEMBER` — `API.FORMS.CUSTOMER.R("member")` (shipped member create/edit).
+  - `Forms.CUSTOMER_MESSAGE_CHANNEL` — `API.FORMS.CUSTOMER.R("messageChannel")` (shipped channel create/edit).
   - `Forms.CUSTOMER_ORGANIZATION` — `API.FORMS.CUSTOMER.R("organization")` (shipped org settings upsert).
   - `Forms.CUSTOMER_MEETING` — `API.FORMS.CUSTOMER.R("meeting")` (shipped meeting create).
 - **Form hooks (web-core)** — same ownership split as cpanel:
@@ -34,6 +36,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
 - **Customer form screens**:
   - auth: `/login`, `/register`, `/reset-password` — `API.FORMS.R("auth")`; see `flow-auth.md`,
   - member form: `/customer/members/form` (+ `/:id`) — `Forms.CUSTOMER_MEMBER`; see `flow-customer-members.md` §5,
+  - message-channel form: `/customer/message-channels/form` (+ `/:id`) — `Forms.CUSTOMER_MESSAGE_CHANNEL`; see `flow-customer-message-channels.md`,
   - meeting form: `/customer/meetings/form` — `Forms.CUSTOMER_MEETING` create-only; see `flow-customer-meetings.md`,
   - organization settings: `/customer/organization` — `Forms.CUSTOMER_ORGANIZATION`; see `flow-customer-organization.md`,
   - account settings: `/customer/settings` — planned (`Forms.CUSTOMER_SETTINGS` not registered yet); see `flow-settings.md`,
@@ -41,7 +44,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
 - **Shared form field surfaces** under `src/app/ui/components/form/`:
   - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, `FormInputWrapper`, `FormProvider`.
   - Compose from `Utils` + semantic theme tokens.
-  - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
+  - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`), `CONFIRM` (`confirm`) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
 
 ## 3) Field surface contracts (shipped)
 
@@ -167,9 +170,45 @@ Rule: `.cursor/rules/website-third-party-widget-emotion-theme.mdc`. **Forbidden:
 
 Canonical consumer: meeting `datetime`.
 
-### 3.8 Success toasts
+### 3.8 `ConfirmModal`
 
-Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSuccess`. Rule: `.cursor/rules/website-form-success-toast-automatic.mdc`. Canonical member form: `CustomerMemberFormScreen`. Organization form: after upsert → `useRouter().redirect` to `CustomerHome` (`flow-customer-organization.md`). Meeting create: after success → `CustomerMeetingDetails` with `replace: true` (`flow-customer-meetings.md`).
+**File:** `website/src/app/ui/components/modals/ConfirmModal.tsx`
+
+| Concern | Contract |
+|---|---|
+| API | `await confirm(description, tone?)` → `Promise<boolean>` |
+| Tone | `"danger"` (default) or `"primary"` — maps to `FormActionButton` |
+| Chrome | Same card shell as other modals: `semanticColor.cardBackground`, border, radius, shadow |
+| Confirm | `closeMe({ onClosed: onConfirm })` then resolve `true` (WILL_CLOSE replaces `onClosed`) |
+| Cancel / backdrop | resolve `false` |
+| Registry | `Modals.CONFIRM` / `cancelable: true` in `resources/configs/store/modals.ts` |
+| i18n | `ui.modals.confirm.*` |
+| Forbidden | `window.confirm` / `window.prompt` for product confirms |
+
+Canonical consumers: member + message-channel form delete. Rule: `.cursor/rules/website-confirm-modal.mdc`.
+
+### 3.9 `FormActionButton` tones
+
+`tone`: `primary` | `neutral` | `secondary` | `danger`.
+
+- `danger` uses `semanticColor.dangerActionBackground` + primary-on-fill text (confirm modal confirm action).
+- Native `<button>` always filled via `bg` shorthand + `baseCssStyle={{...ElementStyles.buttonReset}}`; hover/cursor in `cssStyle` (`extra.onClick`).
+
+### 3.10 Multi-action form loading
+
+When a screen has Save + Delete (or multiple `sub` sends on one form):
+
+- Map `saving` = `status === "SENDING" && (currentSub === "create" \|\| currentSub === "update")`
+- Map `deleting` = `status === "SENDING" && currentSub === "delete"`
+- Pass `loading={saving}` / `loading={deleting}` on the matching `FormActionButton`
+- Both stay `disabled` while any `formLoading` / `!exist`
+- Do **not** bind Save `loading` to bare `status === "SENDING"` (that spins Save during delete)
+
+Canonical: `CustomerMemberFormScreen`, `CustomerMessageChannelFormScreen`.
+
+### 3.11 Success toasts
+
+Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSuccess`. Rule: `.cursor/rules/website-form-success-toast-automatic.mdc`. Canonical member form: `CustomerMemberFormScreen`. Organization form: after upsert → `useRouter().redirect` to `CustomerHome` (`flow-customer-organization.md`). Meeting create: after success → `d.reset()` then `CustomerMeetingDetails` with `replace: true` (`flow-customer-meetings.md`).
 
 ## 4) Verification checklist
 
@@ -180,15 +219,17 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 - Shared field surfaces live under `src/app/ui/components/form/`.
 - Form success toasts are automatic — no duplicate manual toasts in `afterSentSuccess`.
 - Multi-path forms use one identify + `formRoute` href builders.
+- Destructive confirms use `confirm()` (`CONFIRM` modal), never `window.confirm`.
+- Multi-action forms scope button `loading` by `currentSub` (§3.10).
 - `yarn type-check` passes in `website/`.
 
 ## 5) Traceability (member + organization form slices)
 
 | Path | Role |
 |---|---|
-| `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MEMBER`, `CUSTOMER_ORGANIZATION`, `CUSTOMER_MEETING` |
-| `website/src/resources/configs/customer/formRoute.ts` | `buildCustomerMemberFormHref`, `buildCustomerMeetingFormHref` |
-| `website/src/types/requesters/requesters.website.ts` | `customer.member`, `customer.organization`, `customer.meeting` |
+| `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MEMBER`, `CUSTOMER_ORGANIZATION`, `CUSTOMER_MEETING`, `CUSTOMER_MESSAGE_CHANNEL` |
+| `website/src/resources/configs/customer/formRoute.ts` | `buildCustomerMemberFormHref`, `buildCustomerMeetingFormHref`, `buildCustomerMessageChannelFormHref` |
+| `website/src/types/requesters/requesters.website.ts` | `customer.member`, `customer.messageChannel`, `customer.organization`, `customer.meeting` |
 | `website/src/app/ui/components/form/FormAvatarField.tsx` | avatar / logo field |
 | `website/src/app/ui/components/form/FormColorField.tsx` | color field |
 | `website/src/app/ui/components/form/FormChoiceField.tsx` | discrete form choice tiles |
@@ -198,9 +239,10 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card contracts (`members.tsx`, …) |
 | `website/src/app/ui/components/modals/entity-picker/configs/index.ts` | registry of idents |
 | `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`) |
-| `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER` |
+| `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM` |
 | `website/src/app/ui/components/form/FormDateTimeField.tsx` | datetime field → `DATETIME_PICKER` modal |
 | `website/src/app/ui/components/modals/DateTimePickerModal.tsx` | datetime modal shell |
+| `website/src/app/ui/components/modals/ConfirmModal.tsx` | `CONFIRM` shell + `confirm()` helper |
 | `website/src/resources/emotion/styles/datepicker.ts` | `datepickerTheme` (`.ejt-datepicker`) |
 | `website/src/resources/emotion/styles/scroll.ts` | `customScroll` helper |
 | `website/src/app/helpers/entityMedia.ts` / `media.ts` | upload + URI |
@@ -208,9 +250,11 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/resources/configs/urls.ts` | `ORG_PUBLIC_DOMAIN` for org subdomain suffix |
 | `website/src/app/ui/components/form/FormInputWrapper.tsx` | subtitle color |
 | `docs/platforms/website/flow-customer-members.md` | end-to-end member UI |
+| `docs/platforms/website/flow-customer-message-channels.md` | end-to-end message-channel UI |
 | `docs/platforms/website/flow-customer-organization.md` | end-to-end organization UI |
 | `docs/platforms/website/flow-customer-meetings.md` | end-to-end meetings UI |
 | `docs/platforms/backend/contracts/member-domain.md` §9 | member requester |
+| `docs/platforms/backend/contracts/message-channel-domain.md` §5 | message-channel requester |
 | `docs/platforms/backend/contracts/organization-domain.md` §9 | organization requester |
 | `docs/platforms/backend/contracts/meeting-domain.md` | meeting requester + filter |
 
@@ -218,6 +262,7 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 
 - `docs/platforms/website/flow-auth.md`
 - `docs/platforms/website/flow-customer-members.md`
+- `docs/platforms/website/flow-customer-message-channels.md`
 - `docs/platforms/website/flow-customer-organization.md`
 - `docs/platforms/website/flow-customer-meetings.md`
 - `docs/platforms/website/flow-settings.md`
@@ -225,12 +270,17 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 - `docs/platforms/website/data-flow-and-gql.md`
 - `docs/invariants/website.md` (W11, W18)
 - `.cursor/rules/website-multi-path-form-routes.mdc`
+- `.cursor/rules/website-confirm-modal.mdc`
+- `.cursor/rules/requester-read-no-entity-id-echo.mdc`
+- `.cursor/skills/website-confirm-modal/SKILL.md`
 - `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc`
 - `.cursor/rules/website-form-avatar-field.mdc`
 - `.cursor/rules/website-form-color-field.mdc`
 - `.cursor/rules/website-third-party-widget-emotion-theme.mdc`
 - `.cursor/rules/website-custom-scroll-contract.mdc`
 - `.cursor/skills/website-customer-member-form/SKILL.md`
+- `.cursor/skills/website-customer-message-channels/SKILL.md`
+- `.cursor/skills/website-confirm-modal/SKILL.md`
 - `.cursor/skills/website-customer-organization-form/SKILL.md`
 - `.cursor/skills/website-customer-meeting-form/SKILL.md`
 - `.cursor/skills/website-entity-picker/SKILL.md`

@@ -39,11 +39,11 @@ A create+update form route MUST be **one identify** with `path: { create, update
 
 - **Thin page**: one `MyPage` file, not two. `Main()` returns only the shared screen.
 
-- **Screen**: derive `isUpdate = !!id` from `useCurrentParams<"CustomerXForm">`. **Never** branch on `useCurrentPage().identify` to detect create vs update.
+- **Screen**: derive `formType = id ? "update" : "create"` from `useCurrentParams<"CustomerXForm">` (optional local alias for UI is fine, but do not keep a redundant parallel flag). **Never** branch on `useCurrentPage().identify` to detect create vs update.
 
 - **Callers**: use typed href builders from `resources/configs/customer/formRoute.ts` when available. Do not write `nav.push({ identify: "CustomerXForm", sub, params } as never)`.
 
-- **Form identify**: stable create-only `formIdentify` + `removeOnExit: false` when the create draft must survive SPA nav; update uses auto `GenerateIdentify` + default `removeOnExit` and re-hydrates via `read`.
+- **Form identify**: when `formType === "create"`, stable create-only `formIdentify` + `removeOnExit: false` so the draft survives SPA nav; on create success call `d.reset()` before leave. Update uses auto `GenerateIdentify` + default `removeOnExit` and re-hydrates via `read`.
 
 ## Forbidden
 

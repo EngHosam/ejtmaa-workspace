@@ -14,7 +14,7 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 
 ## 1.1) Shipped state
 
-`routes.ts` currently ships **customer** identifies with `customerRouter` including `CustomerHome`, `CustomerMembers`, multi-path `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, `CustomerOrganization`, and `CustomerMessageChannels` on `CUSTOMER_MAIN` (public → customer → base section split). Remaining `/customer/*` workspace routes are still planned (see §5.2).
+`routes.ts` currently ships **customer** identifies with `customerRouter` including `CustomerHome`, `CustomerMembers`, multi-path `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, `CustomerOrganization`, `CustomerMessageChannels`, and multi-path `CustomerMessageChannelForm` on `CUSTOMER_MAIN` (public → customer → base section split). Remaining `/customer/*` workspace routes are still planned (see §5.2).
 
 | Identify | Path | Layout |
 |---|---|---|
@@ -102,7 +102,7 @@ Shipped: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`.
 
 ### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`)
 
-Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, `CustomerOrganization`, `CustomerMessageChannels`. Remaining workspace routes are planned.
+Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, `CustomerOrganization`, `CustomerMessageChannels`, `CustomerMessageChannelForm`. Remaining workspace routes are planned.
 
 | Identify | Path | Status |
 |----------|------|--------|
@@ -114,6 +114,7 @@ Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerMeeti
 | `CustomerMemberForm` | `/customer/members/form` (+ `/:id`) | shipped — multi-path create/update; `breadcrumb: { parent: CustomerMembers }`; href via `formRoute.ts` — `flow-customer-members.md` §5 |
 | `CustomerOrganization` | `/customer/organization` | shipped — settings form upsert; drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-organization.md` |
 | `CustomerMessageChannels` | `/customer/message-channels` | shipped — directory (ResultLane); drawer tile before Settings; `breadcrumb: { parent: CustomerHome }` — `flow-customer-message-channels.md` |
+| `CustomerMessageChannelForm` | `/customer/message-channels/form` (+ `/:id`) | shipped — multi-path create/update; parent `CustomerMessageChannels` — `flow-customer-message-channels.md` |
 | `CustomerMessageTemplates` | `/customer/message-templates` (target) | planned — drawer tile |
 | `CustomerSubscription` | `/customer/subscription` (target) | planned — drawer tile |
 | `CustomerSettings` | `/customer/settings` | planned — drawer tile + settings flow |

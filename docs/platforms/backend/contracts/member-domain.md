@@ -261,7 +261,7 @@ File: `backend/src/app/orchestrator/requesters/MemberRequester.ts` (`@requester(
 
 | Sub | Behavior |
 |---|---|
-| `read` | Validate facts + owned member → `can MEMBER read` → values `{ member, name, email, mobile, avatar_file }` |
+| `read` | Validate facts + owned member → `can MEMBER read` → values `{ name, email, mobile, avatar_file }` (**do not** echo `member` id — keep from form `initProps`) |
 | `create` | Validate fields → `can MEMBER create` → `organization.createMember(...)` → `SUCCESS_CREATE` |
 | `update` | Owned member + fields; apply `email` / `mobile` / `avatar_file` only when `!== undefined` (omit must not wipe) → `can MEMBER update` → `member.update` → `SUCCESS_UPDATE` |
 | `delete` | Owned member → `can MEMBER delete` (roster/chairperson block) → `member.destroy({ force: true })` (hard delete) → `SUCCESS_DELETE` |

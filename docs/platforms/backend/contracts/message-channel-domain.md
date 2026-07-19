@@ -12,8 +12,8 @@ Current Ejtmaa message-channel surface:
 
 Out of scope (not shipped):
 
-- channel requesters / write mutations / create-time connectivity test,
-- send pipeline that flips `status` to `DISABLED` on token/connection failure,
+- Real SMTP / Ad Whats connectivity inside `testConnection()` (method exists; stub returns `false`; create/update **do** call it and set `ACTIVE` / `DISABLED` from the result),
+- send pipeline that flips `status` to `DISABLED` on token/connection failure after send,
 - linking `MessageTemplate` rows to a channel (templates still use legacy `messageTemplateChannel` `WHATSAPP` | `EMAIL` — see `message-template-domain.md`),
 - `MEETING_EMAIL` as a channel type (platform mailer templates intentionally have **no** channel row — product decision; not coded on templates yet),
 - supervisor MessageChannel GraphQL,
@@ -64,7 +64,7 @@ Persistence names:
 
 | Column | Type | Null | Notes |
 |---|---|---|---|
-| `id` | BIGINT PK | no | auto-increment |
+| `id` | BIGINT PK | no | auto-increment; Attrs typed `string` like Member/Meeting |
 | `organization_id` | BIGINT | no | FK → `organizations.id`, real constraint |
 | `name` | STRING(191) | no | picker / library label |
 | `type` | STRING(191) | no | enum metadata `messageChannelType`; typed object |
@@ -73,10 +73,10 @@ Persistence names:
 | `smtp_port` | INTEGER | yes | `CUSTOM_EMAIL` |
 | `smtp_secure` | BOOLEAN | yes | `CUSTOM_EMAIL` |
 | `smtp_user` | STRING(191) | yes | `CUSTOM_EMAIL` |
-| `smtp_password` | TEXT | yes | `CUSTOM_EMAIL`; secret |
+| `smtp_password` | TEXT | yes | `CUSTOM_EMAIL` |
 | `from_name` | STRING(191) | yes | `CUSTOM_EMAIL` optional |
 | `from_address` | STRING(191) | yes | `CUSTOM_EMAIL` |
-| `adwhats_token` | TEXT | yes | `ADWHATS` / `ADWHATS_PRO`; secret |
+| `adwhats_token` | TEXT | yes | `ADWHATS` / `ADWHATS_PRO` |
 | `adwhats_account_id` | STRING(191) | yes | `ADWHATS` / `ADWHATS_PRO` |
 
 Exported TS types:
@@ -84,7 +84,7 @@ Exported TS types:
 - `MessageChannelType = keyof G_Tr["enums"]["messageChannelType"]`
 - `MessageChannelStatus = keyof G_Tr["enums"]["messageChannelStatus"]`
 
-ORM does **not** enforce per-type nullability (all credential columns nullable). Write-path Joi/requester must require/forbid columns by `type` when shipped.
+ORM does **not** enforce per-type nullability (all credential columns nullable). Write-path Joi/requester requires/forbids columns by `type`.
 
 ### 3.3 Indexes
 
@@ -101,7 +101,7 @@ ORM does **not** enforce per-type nullability (all credential columns nullable).
 `Organization.boot()` inverse:
 
 - `hasMany(MessageChannel)` on `organization_id` (real FK)
-- mixins: `getMessageChannels` / `createMessageChannel` / … (association PK type `number`)
+- mixins: `getMessageChannels` / `createMessageChannel` / … (association PK type `string`, like Member)
 
 No `hasMany(MessageTemplate)` yet (template FK not shipped).
 
@@ -115,6 +115,10 @@ Enum keys under:
 `messageChannelType`: `CUSTOM_EMAIL`, `ADWHATS`, `ADWHATS_PRO`.
 
 `messageChannelStatus`: `ACTIVE`, `DISABLED`.
+
+### 3.6 Connectivity stub
+
+`MessageChannelModel.testConnection(): Promise<boolean>` — stub returns `false` until SMTP / Ad Whats clients are implemented. Create/update requesters call it and set `ACTIVE` / `DISABLED` from the result.
 
 ## 4) Customer GraphQL surface
 
@@ -130,11 +134,9 @@ Implements `_Timestamps` & `_Pagination`.
 Exposed fields:
 
 - info: `id`, `name`, `type`, `status`
-- `CUSTOM_EMAIL` non-secrets: `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `from_name`, `from_address`
-- Ad Whats non-secret: `adwhats_account_id`
+- `CUSTOM_EMAIL`: `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password`, `from_name`, `from_address`
+- Ad Whats: `adwhats_token`, `adwhats_account_id`
 - timestamps, `organization`, `total_count`
-
-**Not in SDL (secrets):** `smtp_password`, `adwhats_token`.
 
 ### Root queries
 
@@ -165,7 +167,29 @@ File: `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts`
 
 `CustomerSchema.registeredBridges` includes `MessageChannelBridge`.
 
-## 5) Read flow (root)
+## 5) Customer write path
+
+- Ability on `Customer`: `MESSAGE_CHANNEL` with `sub: "create" | "read" | "update" | "delete"` and optional `messageChannel` target.
+  - `create`: customer must have an organization (`ACTION_NOT_ALLOWED` otherwise).
+  - `read` / `update` / `delete`: resolve channel; must belong to that organization (`404` missing, `NOT_PERMIT` other org).
+- Joi helper: `isCustomerOwnedMessageChannel` in `joi_rules.ts` (mirrors `isCustomerOwnedMember` shape).
+- Requester: `MessageChannelRequester` (`@requester("messageChannel")`) — `read` | `create` | `update` | `delete` for website/customer.
+- Website map: `customer.messageChannel` in `requesters.website.ts` (mirrored on website — W18).
+- **`read` values must not echo `messageChannel` id** — identity stays in form `initProps.values`; form merge preserves it (same rule as `MemberRequester.read`).
+- Update locks `type` to the existing row (client must echo the read value).
+- Credential columns required by `type` via Joi `when`; unused branches use `joi.any().optional().allow(null, "")` (not `.strip()`). `attrsForType` persists only the matching columns and nulls the rest.
+- `status` is **not** client-owned: create/update call `testConnection()` after credentials are written — `true` → `ACTIVE`, `false` → `DISABLED`.
+
+### 5.1 Requester subs (summary)
+
+| Sub | Behavior |
+|---|---|
+| `read` | Owned channel → values: name, type, credential columns (`smtp_secure` as `"true"`/`"false"` string for form choice) — **no** `messageChannel` id key |
+| `create` | Validate → `createMessageChannel` with `status: ACTIVE` → `testConnection` may flip to `DISABLED` → `SUCCESS_CREATE` |
+| `update` | Owned channel + locked type → update attrs → `testConnection` → `ACTIVE`/`DISABLED` → `SUCCESS_UPDATE` |
+| `delete` | Owned channel → `destroy({ force: true })` → `SUCCESS_DELETE` |
+
+## 6) Read flow (root)
 
 ### `messageChannels`
 
@@ -181,53 +205,51 @@ File: `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts`
 3. Base one options: `where: { id }`
 4. Scoped to that organization association
 
-## 6) Seed
+## 7) Seed
 
 No channel seed in this change set.
 
-## 7) Frontend mirrors
+## 8) Frontend mirrors
 
 | Platform | Status |
 |---|---|
-| `website/` | Active — `base.graphql`, `customer.graphql`, `gql-types/base.ts`, `gql-types/customer.ts` synced |
+| `website/` | Active — SDL + gql-types synced; form + directory shipped |
 | `cpanel/` | Deferred — no supervisor channel surface |
 
 Backend verification: `yarn generate-types`, `yarn type-check`.
 
 Local registry (gitignored): `backend/.types/models.ts` must include `"MessageChannel"`.
 
-## 8) Failure modes (read path)
+## 9) Failure modes
 
 | Surface | Condition | Behavior |
 |---|---|---|
 | `messageChannels` / `messageChannel` | no `context.customer` | `NOT_PERMIT` |
 | `messageChannels` / `messageChannel` | customer has no organization | `404` |
 | `messageChannel(id)` | missing / other-org id | framework empty → `404` |
+| requester update | client `type` ≠ locked row type | `NOT_PERMIT` |
+| requester create/update | wrong-type / missing credential fields | Joi field errors (`when` + optional unused branches) |
+| requester create/update | `testConnection()` false (current stub) | row saved as `DISABLED` |
 
-## 9) Traceability map
+## 10) Traceability map
 
 | Path | Role | Section |
 |---|---|---|
-| `backend/src/app/orm/models/MessageChannel.ts` | ORM source of truth | §3 |
+| `backend/src/app/orm/models/MessageChannel.ts` | ORM + `testConnection` stub | §3 |
+| `backend/src/app/orm/models/Customer.ts` | `Ability.MESSAGE_CHANNEL` | §5 |
+| `backend/src/app/orchestrator/requesters/MessageChannelRequester.ts` | CRUD requester | §5 |
+| `backend/src/app/validation/joi_rules.ts` | `isCustomerOwnedMessageChannel` | §5 |
+| `backend/requesters.website.ts` | `customer.messageChannel` map | §5 |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany MessageChannel` + mixins | §3.4 |
 | `backend/src/resources/trans/ar/general.ts` | `messageChannelType` / `messageChannelStatus` AR | §3.5 |
 | `backend/src/resources/trans/en/general.ts` | EN mirrors | §3.5 |
 | `backend/src/app/gql/definitions/base.graphql` | type/status GQL enums | §4 |
 | `backend/src/app/gql/definitions/customer.graphql` | `_MessageChannel` + roots | §4 |
-| `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts` | thin entity bridge | §4–§5 |
+| `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts` | thin entity bridge | §4–§6 |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | `GetOneParent` includes `MessageChannelModel` | §4 |
 | `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + resolvers | §4 |
-| `backend/src/app/gql/gql-types/base.ts` | Generated (includes channel enums) | §7 — generated |
-| `backend/src/app/gql/gql-types/customer.ts` | Generated | §7 — generated |
-| `backend/src/app/gql/gql-types/supervisor.ts` | Generated (base enums pulled in) | §7 — generated; no supervisor channel roots |
-| `website/src/types/gql/definitions/base.graphql` | Mirror | §7 — generated/mirror |
-| `website/src/types/gql/definitions/customer.graphql` | Mirror | §7 — generated/mirror |
-| `website/src/types/gql/gql-types/base.ts` | Mirror | §7 — generated/mirror |
-| `website/src/types/gql/gql-types/customer.ts` | Mirror | §7 — generated/mirror |
-| `backend/.types/models.ts` | Local registry key `MessageChannel` | §7 — gitignored |
-| `.cursor/rules/organization-tenant-ownership.mdc` | Tenant + GQL ownership notes | governance |
+| `website/` form + directory | portal UI | `flow-customer-message-channels.md` |
 | `.cursor/rules/message-channel-domain.mdc` | Channel invariants | governance |
-| `.cursor/skills/orm-model-generator/SKILL.md` | Model addendum | governance |
 
 ## Related
 
@@ -235,6 +257,6 @@ Local registry (gitignored): `backend/.types/models.ts` must include `"MessageCh
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/meeting-domain.md` (optional template FKs on Meeting)
 - `docs/platforms/backend/contracts/graphql-and-types.md`
-- `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`
+- `docs/platforms/website/flow-customer-message-channels.md`
 - `.cursor/rules/organization-tenant-ownership.mdc`
 - `.cursor/rules/message-channel-domain.mdc`

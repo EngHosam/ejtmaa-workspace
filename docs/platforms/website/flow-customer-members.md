@@ -79,9 +79,9 @@ Shared ResultLane chrome: §6 of the prior directory slice remains (`ResultLane`
 | Concern | Value |
 |---|---|
 | Form identity | `Forms.CUSTOMER_MEMBER` → `api: API.FORMS.CUSTOMER.R("member")` |
-| Multi-path | One identify; `isUpdate = !!id` from `useCurrentParams<"CustomerMemberForm">` — never branch on page identify |
+| Multi-path | One identify; `formType = id ? "update" : "create"` from `useCurrentParams<"CustomerMemberForm">` — never branch on page identify |
 | Create reducer key | Stable `"customer-member-form-create"` + `removeOnExit: false` |
-| Update | Auto identify; `removeOnExit: true`; `initProps.values = { member: id }`; `didEntered` → `send({ sub: "read" })` |
+| Update | Auto identify; `removeOnExit: true`; `initProps.values = { member: id }` (kept across `read` merge — do not echo `member` id from requester `read`); `didEntered` → `send({ sub: "read" })` |
 | Loading | `Loadable` while `!exist` or update `read` in flight (`INIT` / `SENDING` + `currentSub === "read"`) |
 
 Governance: `.cursor/rules/website-multi-path-form-routes.mdc`, `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc`, `.cursor/rules/website-form-success-toast-automatic.mdc`.
@@ -89,7 +89,10 @@ Governance: `.cursor/rules/website-multi-path-form-routes.mdc`, `.cursor/rules/w
 ### 5.1 Screen chrome
 
 - Header row: `SectionHeading` (`onBack` → `nav.back()`, `backLabel` from `ui.components.mainHeader.back`) + action buttons (not full-width under fields).
-- Actions: primary Save/Add (`sub: create|update`, `afterSentSuccess: nav.back()`); update-only neutral Delete (`window.confirm` → `sub: "delete"` → `nav.back()`). Guard with `submittingRef`.
+- Actions: primary Save/Add (`sub: create|update`; create success → `d.reset()` when `formType === "create"`, then `nav.back()`); update-only neutral Delete (`await confirm(…, "danger")` → `sub: "delete"` → `nav.back()`). Guard with `submittingRef`.
+- Loading: `saving` / `deleting` from `currentSub` while `SENDING` — spinner only on the active button (`flow-form-foundation.md` §3.10).
+- Create slot: `formType === "create"` → stable `formIdentify` + `removeOnExit: false`.
+- Do **not** expect `member` id in requester `read` values — keep from `initProps`.
 - Fields column `maxW={32}`: `FormAvatarField` + `FormTextField` name / email / mobile.
 - Email / mobile `subTitle`: meeting-link purpose copy (i18n). No placeholders unless product asks.
 - Avatar preview after `read`: form value `avatar_file` resolved via `mediaImageUri` (no separate `currentAvatarUrl` required).

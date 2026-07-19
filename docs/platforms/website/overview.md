@@ -53,7 +53,7 @@ Authoritative table: `route-registry-contract.md` §1.1 / §5.2 (includes `Custo
 
 Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMeetings` (`/customer/meetings`), `CustomerMeetingForm` (`/customer/meetings/form`), `CustomerMeetingDetails` (`/customer/meetings/:id`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`), `CustomerOrganization` (`/customer/organization`), `CustomerMessageChannels` (`/customer/message-channels`). All `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Meetings: `flow-customer-meetings.md`. Members: `flow-customer-members.md`. Organization: `flow-customer-organization.md`. Message channels: `flow-customer-message-channels.md`. Forms: `flow-form-foundation.md`.
+Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMeetings` (`/customer/meetings`), `CustomerMeetingForm` (`/customer/meetings/form`), `CustomerMeetingDetails` (`/customer/meetings/:id`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`), `CustomerOrganization` (`/customer/organization`), `CustomerMessageChannels` (`/customer/message-channels`), `CustomerMessageChannelForm` (`/customer/message-channels/form` + `/:id`). All `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Meetings: `flow-customer-meetings.md`. Members: `flow-customer-members.md`. Organization: `flow-customer-organization.md`. Message channels: `flow-customer-message-channels.md`. Forms: `flow-form-foundation.md`.
 
 ### 6.2) Planned (not shipped)
 

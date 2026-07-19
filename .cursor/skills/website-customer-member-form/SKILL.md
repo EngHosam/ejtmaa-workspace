@@ -21,11 +21,14 @@ description: >-
 3. Register `Forms.CUSTOMER_MEMBER` → `API.FORMS.CUSTOMER.R("member")`. Mirror `customer.member` in `website/src/types/requesters/requesters.website.ts`.
 4. Href builders only via `resources/configs/customer/formRoute.ts` (`buildCustomerMemberFormHref`). Wire list Add/Edit with `nav.push(...)`.
 5. Screen pattern (`CustomerMemberFormScreen`):
-   - `isUpdate = !!id` from `useCurrentParams`
-   - create: stable `formIdentify` + `removeOnExit: false`; update: `values: { member: id }`, `didEntered` → `send({ sub: "read" })`, `Loadable` while read in flight
+   - `formType = id ? "update" : "create"` from `useCurrentParams` (no parallel `isUpdate` flag)
+   - create: `formType === "create"` → stable `formIdentify` + `removeOnExit: false`; update: `values: { member: id }`, `didEntered` → `send({ sub: "read" })`, `Loadable` while read in flight
    - Header row: `SectionHeading` with `onBack`/`backLabel` + primary save (+ neutral delete on update). Actions are **not** full-width under the fields.
    - Fields: `FormAvatarField` + name / email / mobile. Email/mobile may use meeting-link `subTitle`. No placeholders unless product asks.
-   - Submit/delete: `submittingRef`; `afterSentSuccess: nav.back()`; no manual success toast — `.cursor/rules/website-form-success-toast-automatic.mdc`
+   - Submit/delete: `submittingRef`; create success → `d.reset()` when `formType === "create"`, then `nav.back()`; delete → `await confirm(…, "danger")` then `sub: "delete"` — `.cursor/skills/website-confirm-modal/SKILL.md`
+   - Loading: map `saving` / `deleting` from `currentSub` while `SENDING` — spinner only on the active button (`flow-form-foundation.md` §3.10)
+   - no manual success toast — `.cursor/rules/website-form-success-toast-automatic.mdc`
+   - Do **not** echo the entity id in requester `read` values (`member` / `messageChannel`). Update keeps the id from `initProps.values`; form merge preserves it.
 6. Avatar: `.cursor/rules/website-form-avatar-field.mdc`. Text inputs: `.cursor/rules/website-form-text-field-direction.mdc`. Utils styles: W29 / website-utils-style-prop-audit.
 7. i18n ar/en under `ui.pages.customer.memberForm.*`. Update `flow-customer-members.md`, `flow-form-foundation.md`, and `route-registry-contract.md` in the same task.
 8. Verify: `yarn type-check` in `website/` (and `backend/` if requester/ability changed).
