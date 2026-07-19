@@ -1,6 +1,6 @@
 ---
 description: Organization tenant ownership and me-bound hasOne GQL read invariants
-globs: backend/src/app/orm/models/Organization.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/src/app/orm/models/AgendaItem.ts,backend/src/app/orm/models/Decision.ts,backend/src/app/orm/models/Vote.ts,backend/src/app/gql/bridges/**/OrganizationBridge.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,backend/src/app/gql/bridges/**/MeetingParticipantBridge.ts,backend/src/app/gql/bridges/**/AgendaItemBridge.ts,backend/src/app/gql/bridges/**/DecisionBridge.ts,backend/src/app/gql/bridges/**/VoteBridge.ts,backend/src/app/gql/bridges/**/CustomerOrganizationOwnedBridgeBase.ts,backend/src/app/gql/schemas/*Schema.ts,backend/src/app/gql/definitions/**/*.graphql
+globs: backend/src/app/orm/models/Organization.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/MessageChannel.ts,backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/src/app/orm/models/AgendaItem.ts,backend/src/app/orm/models/Decision.ts,backend/src/app/orm/models/Vote.ts,backend/src/app/gql/bridges/**/OrganizationBridge.ts,backend/src/app/gql/bridges/**/MessageChannelBridge.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,backend/src/app/gql/bridges/**/MeetingParticipantBridge.ts,backend/src/app/gql/bridges/**/AgendaItemBridge.ts,backend/src/app/gql/bridges/**/DecisionBridge.ts,backend/src/app/gql/bridges/**/VoteBridge.ts,backend/src/app/gql/bridges/**/CustomerOrganizationOwnedBridgeBase.ts,backend/src/app/gql/schemas/*Schema.ts,backend/src/app/gql/definitions/**/*.graphql
 alwaysApply: false
 ---
 
@@ -39,6 +39,14 @@ For customer-role `organization` when `Customer.hasOne(Organization)` uses assoc
 - `Member` belongs to Organization; see `docs/platforms/backend/contracts/member-domain.md`.
 - Customer GQL: root `members` / `member(id)` only — not nested `_Organization.members` (B15).
 - Inverse `_Member.organization` requires `OrganizationBridge` `GetOneParent` to include `MemberModel`.
+
+## Message channels (related)
+
+- `MessageChannel` belongs to Organization; see `docs/platforms/backend/contracts/message-channel-domain.md` and `.cursor/rules/message-channel-domain.mdc`.
+- `message_channels` table; enum `messageChannelType`: `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; status `messageChannelStatus`: `ACTIVE` | `DISABLED` (default `ACTIVE`).
+- Credentials live on the channel row; meeting-platform email templates do not use a channel.
+- Customer GQL: root `messageChannels` / `messageChannel(id)` — secrets (`smtp_password`, `adwhats_token`) are not in SDL.
+- Inverse `_MessageChannel.organization` requires `OrganizationBridge` `GetOneParent` to include `MessageChannelModel`.
 
 ## Message templates (related)
 

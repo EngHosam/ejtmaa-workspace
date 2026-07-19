@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus`, `_PlanStatus`, `_PlanBillingPeriod`, `_SubscriptionStatus`, `_PaymentMethod` (+ Value enums where applicable)
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MessageChannelType` / `_MessageChannelStatus`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus`, `_PlanStatus`, `_PlanBillingPeriod`, `_SubscriptionStatus`, `_PaymentMethod` (+ Value enums where applicable)
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.
@@ -22,6 +22,8 @@ Root queries (from `customer.graphql`):
 - `notifications` — paginated notifications
 - `members(filter: _MemberFilter)` — members of the customer's organization (`{ me: true, filter }` → Organization parent; optional `search` iLike on name/email/mobile — see `member-domain.md` §4–§5)
 - `member(id)` — single member in the customer's organization
+- `messageChannels` — message delivery channels of the customer's organization (same `me` → Organization parent)
+- `messageChannel(id)` — single message channel in the customer's organization
 - `messageTemplates` — message templates of the customer's organization (same `me` → Organization parent)
 - `messageTemplate(id)` — single message template in the customer's organization
 - `meetings` — meetings of the customer's organization (same `me` → Organization parent)
@@ -38,6 +40,7 @@ Nested (cardinality-safe):
 - `_Me.canDeleteNotifications: _Ability` / `_Me.canSubscribe(planId: ID!): _Ability` (MeBridge extras)
 - `_Subscription.plan: _Plan`
 - `_Member.organization: _Organization` (`belongsTo`, expected count 1)
+- `_MessageChannel.organization: _Organization` (`belongsTo`, expected count 1)
 - `_MessageTemplate.organization: _Organization` (`belongsTo`, expected count 1)
 - `_Meeting.organization: _Organization`, `_Meeting.chairperson: _Member`, `_Meeting.whatsappTemplate` / `emailTemplate: _MessageTemplate`
 - `_Meeting.participants: [_MeetingParticipant]` (roster; expected board size ≤ 100 — B15); `_MeetingParticipant.member: _Member`
@@ -58,6 +61,7 @@ Bridges (`backend/src/app/gql/schemas/CustomerSchema.ts`):
 - `NotificationBridge`
 - `OrganizationBridge`
 - `MemberBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
+- `MessageChannelBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
 - `MessageTemplateBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
 - `MeetingBridge` (extends `CustomerOrganizationOwnedBridgeBase`)
 - `MeetingParticipantBridge` (nested under Meeting only; extends `CustomerBridgeBase`)

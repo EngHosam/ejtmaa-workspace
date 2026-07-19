@@ -19,6 +19,7 @@ Out of scope for this contract (not shipped):
 - accepting or writing `custom_domain` from the customer organization form/requester,
 - customer control of `status` on upsert (create always forces `ACTIVE`; update never writes status),
 - member domain (see `member-domain.md` — shipped separately),
+- message channel domain (see `message-channel-domain.md` — shipped separately),
 - message template domain (see `message-template-domain.md` — shipped separately),
 - meeting domain (see `meeting-domain.md` — shipped separately),
 - supervisor organization stats aggregate,
@@ -180,7 +181,7 @@ Not exposed on customer role:
 Bridge: `backend/src/app/gql/bridges/customer/OrganizationBridge.ts`
 
 - `ident = "organization"`, `typeIdent = "_Organization"`, `ormModel = OrganizationModel`
-- `GetOneParent = CustomerModel | MemberModel | MessageTemplateModel | MeetingModel` (nested parents only — no `{ me: true }` root-one)
+- `GetOneParent = CustomerModel | MemberModel | MessageChannelModel | MessageTemplateModel | MeetingModel` (nested parents only — no `{ me: true }` root-one)
 - no `getRootOrmParent` / `getOrmFindOptions` overrides
 
 Resolution path for `_Me.organization`:
@@ -189,7 +190,7 @@ Resolution path for `_Me.organization`:
 2. Framework includes / resolves association `organization` via `OrganizationBridge` with parent `CustomerModel`.
 3. Missing org row → GraphQL `null` (not a root 404).
 
-Registered in `CustomerSchema.registeredBridges` (still required for Me + Member/Meeting/MessageTemplate nests).
+Registered in `CustomerSchema.registeredBridges` (still required for Me + Member/Meeting/MessageChannel/MessageTemplate nests).
 
 ## 6) Supervisor GraphQL surface
 
@@ -380,7 +381,7 @@ Note: the **form** `read` sub does **not** 404 when no org exists — it returns
 | `backend/src/resources/trans/en/general.ts` | EN enum labels | §4 |
 | `backend/src/app/gql/definitions/base.graphql` | Shared status wrappers | §4 |
 | `backend/src/app/gql/definitions/customer.graphql` | Customer `_Organization` + `_Me.organization` (no root) | §5 |
-| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | Nested Me/Member/Meeting/MessageTemplate | §5 |
+| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | Nested Me/Member/Meeting/MessageChannel/MessageTemplate | §5 |
 | `backend/src/app/gql/schemas/CustomerSchema.ts` | Register bridge (no root org resolver) | §5 |
 | `backend/src/app/gql/definitions/supervisor.graphql` | Supervisor type/filter/queries + customer relation | §6 |
 | `backend/src/app/gql/bridges/supervisor/OrganizationBridge.ts` | Supervisor many/one filters | §6 |

@@ -19,6 +19,8 @@ Out of scope (not shipped):
 
 Related shipped consumer: `Meeting` optional FKs `whatsapp_template_id` / `email_template_id` — see `meeting-domain.md`.
 
+Related **new** delivery-account domain (not linked to this model yet): `message-channel-domain.md` (`MessageChannel` — `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`). Template↔ channel FK and content-by-type rules are product-locked there but **not** applied to `MessageTemplate` in this codebase yet.
+
 ## 2) Domain purpose
 
 `MessageTemplate` is a **non-actor** reusable message library row inside an `Organization`.
@@ -214,6 +216,7 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 ## Related
 
 - `docs/platforms/backend/contracts/organization-domain.md`
+- `docs/platforms/backend/contracts/message-channel-domain.md` (delivery channels; not yet linked)
 - `docs/platforms/backend/contracts/member-domain.md` (same org-owned GQL parent pattern)
 - `docs/platforms/backend/contracts/meeting-domain.md` (optional template FKs from Meeting)
 - `docs/platforms/backend/contracts/graphql-and-types.md`

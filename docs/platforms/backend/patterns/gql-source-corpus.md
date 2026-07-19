@@ -43,6 +43,7 @@ Framework contracts: `@nodejs/gql` (`BridgeBase`, `GQLSchemaBase`, `GQLProvider`
 | `backend/src/app/gql/bridges/customer/NotificationBridge.ts` | Customer notifications |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | Customer organization + inverse parents |
 | `backend/src/app/gql/bridges/customer/MemberBridge.ts` | Org members (extends org-owned base) |
+| `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts` | Org message delivery channels (extends org-owned base) |
 | `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts` | Org message templates (extends org-owned base) |
 | `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | Org meetings (extends org-owned base) |
 | `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts` | Nested meeting roster (`ident = "participants"`) |

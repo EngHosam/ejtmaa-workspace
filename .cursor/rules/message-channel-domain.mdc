@@ -1,0 +1,34 @@
+---
+description: MessageChannel ORM/GQL invariants — credentials vs templates, secrets, enum spelling, status
+globs: backend/src/app/orm/models/MessageChannel.ts,backend/src/app/gql/bridges/**/MessageChannelBridge.ts,backend/src/app/gql/definitions/**/*.graphql,backend/src/resources/trans/**/general.ts,website/src/types/gql/definitions/**/*.graphql
+alwaysApply: false
+---
+
+# Message Channel Domain
+
+Authoritative contract: `docs/platforms/backend/contracts/message-channel-domain.md`.
+
+## Separation
+
+- `MessageChannel` stores **delivery credentials** only (SMTP / Ad Whats), not message subject/body/variable maps.
+- Do **not** add `MEETING_EMAIL` to `messageChannelType`. Platform-mailer templates use **no** channel row (future template FK null).
+- Do **not** put `smtp_password` or `adwhats_token` in GraphQL SDL. Expose non-secret fields only (`adwhats_account_id`, SMTP host/user/from, etc.).
+
+## Naming
+
+- Channel type enum values: `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`.
+- Never spell Ad Whats as `AD_WHATS` / `AD_WHATS_PRO`.
+- Discriminator field on the model is `type` (repo-native with `Meeting.type`).
+- Do not confuse `_MessageChannelType` with legacy `_MessageTemplateChannel` (`WHATSAPP` | `EMAIL`).
+
+## Status
+
+- `messageChannelStatus`: `ACTIVE` | `DISABLED`, default **`ACTIVE`**.
+- Create-time connectivity test and send-failure disable are **write/send path** concerns (not shipped yet); do not invent alternate status values.
+
+## GQL / ORM wiring
+
+- Customer roots: `messageChannels` / `messageChannel(id)` via `MessageChannelBridge` + `CustomerOrganizationOwnedBridgeBase`.
+- `OrganizationBridge.GetOneParent` must include `MessageChannelModel` for `_MessageChannel.organization`.
+- Local registry `backend/.types/models.ts` must include `"MessageChannel"`.
+- After SDL changes: backend `yarn generate-types`, then mirror `base`/`customer` SDL + generated types into `website/` per `gql-schemas-bridges-general.mdc`.
