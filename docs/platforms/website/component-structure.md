@@ -26,11 +26,11 @@ Actors: **visitor** and **customer**.
 
 **Shipped layouts:** `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-**Shipped pages:** `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`, `CustomerHome` (empty `Main`), `CustomerMembers` (directory — `flow-customer-members.md`), `CustomerMemberForm`, `CustomerMeetings` / `CustomerMeetingForm` / `CustomerMeetingDetails` (`flow-customer-meetings.md`), `CustomerOrganization` (`flow-customer-organization.md`), `CustomerMessageChannels` / `CustomerMessageChannelForm` (`flow-customer-message-channels.md`).
+**Shipped pages:** `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`, `CustomerHome` (command map — `flow-customer-shell.md` §7), `CustomerMembers` (directory — `flow-customer-members.md`), `CustomerMemberForm`, `CustomerMeetings` / `CustomerMeetingForm` / `CustomerMeetingDetails` (`flow-customer-meetings.md`), `CustomerOrganization` (`flow-customer-organization.md`), `CustomerMessageChannels` / `CustomerMessageChannelForm` (`flow-customer-message-channels.md`).
 
-**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `HomeMark`, `Breadcrumb`, `useBreadcrumbs`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `FilterOptionChip`, `FilterOptionChips`, `Wrong` (`Empty` / `LaneFailed`), auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, …), modals (`EntityPickerModal`, `DateTimePickerModal`, `ConfirmModal`, `SelectableEntityCard`, `entity-picker/configs/*`), landing home sections (`home/*`), customer shell (`CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerSubHeader`, `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`, `hooks/useCustomerMembers`, `hooks/useCustomerMeetings`, `hooks/useCustomerMessageChannels`, `members/*`, `meetings/*`, `message-channels/*`).
+**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `HomeMark`, `Breadcrumb`, `useBreadcrumbs`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `FilterOptionChip`, `FilterOptionChips`, `Wrong` (`Empty` / `LaneFailed`), auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, …), modals (`EntityPickerModal`, `DateTimePickerModal`, `ConfirmModal`, `SelectableEntityCard`, `entity-picker/configs/*`), landing home sections (`home/*`), customer shell (`CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerSubHeader`, `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`, `hooks/useCustomerMembers`, `hooks/useCustomerMeetings`, `hooks/useCustomerMessageChannels`, `members/*`, `meetings/*`, `message-channels/*`, `message-templates/*`).
 
-**Planned (target contract, not yet in scaffold):** `CustomerBottomBar` / `BottomIcons`, remaining `pages/customer/*` workspace screens (templates, subscription, settings, notifications, static info, support), Google social auth UI (`SelectableCard`, `Checkbox` on Register).
+**Planned (target contract, not yet in scaffold):** `CustomerBottomBar` / `BottomIcons`, remaining `pages/customer/*` workspace screens (subscription, settings, notifications, static info, support), Google social auth UI (`SelectableCard`, `Checkbox` on Register).
 
 ## 2) `ui/base/` -- infrastructure only
 
@@ -55,6 +55,7 @@ Shipped groups:
 | Modals | `EntityPickerModal`, `DateTimePickerModal`, `ConfirmModal`, `SelectableEntityCard` |
 | Modals | `EntityPickerModal` (`ENTITY_PICKER`), `DateTimePickerModal` (`DATETIME_PICKER`), `SelectableEntityCard`, `entity-picker/configs/*` |
 | Home (visitor) | `home/Hero`, `home/Platform`, … (landing sections) |
+| Customer home | `customer/home/*`, `customer/hooks/useCustomerHome` |
 | Customer members | `customer/members/*`, `customer/hooks/useCustomerMembers` |
 | Customer meetings | `customer/meetings/*`, `customer/hooks/useCustomerMeetings` |
 
@@ -89,7 +90,7 @@ Thin route entry components bound to route identifiers.
 
 Shipped public/auth: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
 
-Customer workspace: shipped `CustomerHome`, members directory + form, meetings directory + create form + empty details, organization settings, message channels directory. Planned: templates, subscription, notifications, static info, support, bottom bar.
+Customer workspace: shipped `CustomerHome` command map, members directory + form, meetings directory + create form + details, organization settings, message channels directory, message templates directory. Planned: subscription, notifications, static info, support, bottom bar.
 
 Pages orchestrate hooks, layouts, adapters, and shared UI. Extract reusable sections to `components/`.
 

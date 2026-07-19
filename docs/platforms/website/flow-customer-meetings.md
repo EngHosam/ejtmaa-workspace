@@ -177,6 +177,8 @@ Client past-date check is **stricter** than backend `joi.date()` (any date accep
 
 Preparation journey for `DRAFT` → `WAITING_TO_START` (not a live session UI).
 
+**Home cross-link:** `CustomerHome` may surface status slices (`DRAFT` / `WAITING_TO_START` / `STARTED`), a focus meeting readiness preview, and notify-status captions — see `flow-customer-shell.md` §7. Prep writes and **approve** remain on this details screen.
+
 ### 6.1 Data
 
 Hook `useCustomerMeetingDetails` — mount-private adapter `"customer-meeting-details"` inherit `CUSTOMER_GQL`, query `meeting(id)` **without** `listable` (section.meeting). Selection includes nested participants/agenda/decisions/templates + `canUpdate` / `canDelete` / `canApprove`.

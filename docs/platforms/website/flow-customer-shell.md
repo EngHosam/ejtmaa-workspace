@@ -6,7 +6,7 @@ Customer portal contract for the customer shell (see `overview.md`).
 
 Authed customer shell on `website/`: `CUSTOMER_MAIN` layout, identity-first header, credit footer, portaled quick-nav drawer (grid tiles), and customer `me` read boundary via `CUSTOMER_ME`.
 
-**Shipped in this shell:** layout wiring, `CustomerHome`, `CustomerMembers` + form, `CustomerMeetings` + create/details, `CustomerOrganization`, `CustomerMessageChannels` + form, `CustomerMessageTemplates` + form, header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
+**Shipped in this shell:** layout wiring, `CustomerHome` command map, `CustomerMembers` + form, `CustomerMeetings` + create/details, `CustomerOrganization`, `CustomerMessageChannels` + form, `CustomerMessageTemplates` + form, header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
 
 **Not shipped yet:** `CustomerBottomBar`, `BottomIcons`, `Dims.bottomBarHeight`, and remaining drawer targets without routes (`CustomerSubscription`, `CustomerSettings`, `CustomerSupport`, `CustomerHelpGuide`, notifications page if still gated).
 
@@ -113,9 +113,89 @@ Nav is close-first: `onClose` then `nav.push({identify})`.
 - Org setup gate (incomplete org → force `CustomerOrganization`): `flow-customer-organization.md` §3.1; `flow-auth.md` §2.1.
 - Socket registry key must be `OnCustomerEvent` (mirrors backend notify event name) in `website/src/resources/configs/socket/events.ts`.
 
-## 7) Home page
+## 7) Home page — command map
 
-`website/src/app/ui/pages/customer/CustomerHome.tsx` — `MyPage` with `Main()` returning `null` (empty shell host). Authed customer landing via `getMyHomeIdentify` → `"CustomerHome"`.
+Authed customer landing via `getMyHomeIdentify` → `"CustomerHome"` (`/customer`, `CUSTOMER_MAIN`, no breadcrumb / no `CustomerSubHeader`).
+
+### Entry
+
+| Path | Role |
+|---|---|
+| `website/src/app/ui/pages/customer/CustomerHome.tsx` | Thin `MyPage` → `CustomerHomeScreen` |
+| `website/src/app/ui/components/customer/home/CustomerHomeScreen.tsx` | Composition root |
+| `website/src/app/ui/components/customer/hooks/useCustomerHome.ts` | Probes + derived model |
+
+### Job
+
+Org-admin **follow-up / command map**: what to do and what to watch. Customer is the workspace manager (not a meeting participant). `STARTED` = monitor via details — **no** LiveKit join CTA.
+
+### Zones (hide when empty / N/A)
+
+1. **Command hero** — brand tint surface, brackets, eyebrow marker, org name, subscription label, focus status card, featured CTA (navy-led, orange accent rail — not solid inverted orange), focus SVG quorum/readiness ring (`HomeFocusVisual`, HeroDashboard DNA + live counts)
+2. **Workspace lifecycle rail** — organization → members → channels → templates → meetings
+3. **Needs attention** — max 5 actionable rows
+4. **Focus readiness + agenda strip** — readiness only for focus `DRAFT`; agenda when focus has items
+5. **Action status cards** — members / channels / templates / meetings counts (brand wells; warn = accent rail only)
+6. **Others in same status** — up to remaining meetings in the focus status bucket (excludes focus)
+
+### Data
+
+Private `useShallowAdapter` ids (do **not** share directory/history adapters):
+
+- `customer-home-members` / `channels` / `templates` — `total_count` probes
+- `customer-home-meetings-draft|waiting|started` — status-filtered slices (UI cap 5)
+- `customer-home-focus-meeting` — `meeting(id)` for readiness (same facts as details, no can* abilities)
+- `customer-home-me-ability` — `me.canCreateMeeting`
+- Org + subscription from existing `useMe()`
+
+Focus priority: `STARTED` > `DRAFT` > `WAITING_TO_START`. Primary CTA: no members → add members; else no focus + can create → create; else continue/review/monitor by focus status.
+
+### Landing motif reuse (not a marketing clone)
+
+Reuse craft in `customer/home/*`: eyebrow zones (`HomeZoneShell`), lifecycle rail, featured accent CTA, attention rows, readiness stratum, hero brackets, optional `Reveal` from `components/home/Reveal.tsx`. **Do not** port Problem/Roles/Trust/Impact/Faq, ChaosIllustration, GovernanceGraph, sparklines, or fake demo dashboard data.
+
+### i18n
+
+`ui.pages.customer.home.*` in `ar.ts` / `en.ts`.
+
+### Non-goals
+
+- LiveKit join / live session UI
+- Navigation to unshipped `CustomerSubscription`
+- Fake KPI / Impact sparklines
+- Approving from home (approve stays on details)
+
+### Runtime and failure behavior
+
+`useCustomerHome` performs only customer-scoped reads. It owns no requester write, transaction, approval, or live-session action:
+
+- Each mount-private adapter loads with `reload: true`. The meeting slices must finish before a focus is selected; then `customer-home-focus-meeting` loads the full focused meeting.
+- The hero may initially render the focused status slice while the full meeting loads. Draft readiness, the agenda strip, quorum values, and attention for an incomplete focus draft appear only after the full focused meeting is available.
+- Totals use backend `total_count`; status slices are capped to five records for display. Focus priority is `STARTED`, then `DRAFT`, then `WAITING_TO_START`.
+- `HomeFocusVisual` derives its quorum ring from the real `min_members_count` and participant count. It has no fabricated fallback count.
+- If all meaningful probes fail before data is available, the page renders its retry state. If only some probes fail, the available zones remain visible and an inline retry reloads every home probe, including the current focus meeting.
+- The home hook has no page-local socket subscription. It reflects its mount reads and explicit retry; meeting preparation, approval, notifications, and live-session interactions remain owned by their existing screens.
+
+### Component ownership
+
+| Path | Responsibility |
+|---|---|
+| `website/src/app/ui/pages/customer/CustomerHome.tsx` | Route entry only; mounts `CustomerHomeScreen`. |
+| `website/src/app/ui/components/customer/hooks/useCustomerHome.ts` | Private read adapters, focus selection, totals, lifecycle state, CTA priority, attention, readiness, retry. |
+| `website/src/app/ui/components/customer/home/CustomerHomeScreen.tsx` | Translates the view model and composes zones, retry UI, cards, and navigation. |
+| `website/src/app/ui/components/customer/home/CustomerHomeCommandHero.tsx` | Hero structure, decorative brackets, and shared eyebrow marker. |
+| `website/src/app/ui/components/customer/home/CustomerHomeFeaturedCta.tsx` | Primary next-step card; delegates interaction to `FormActionButton`. |
+| `website/src/app/ui/components/customer/home/CustomerHomeStatusCard.tsx` | Focus-meeting status summary and typed details navigation. |
+| `website/src/app/ui/components/customer/home/HomeZoneShell.tsx` | Local zone heading, eyebrow marker, and optional branded surface. |
+| `website/src/app/ui/components/customer/home/WorkspaceLifecycleRail.tsx` | Responsive organization-to-meetings lifecycle navigation. |
+| `website/src/app/ui/components/customer/home/HomeAttentionList.tsx` | Capped attention rows with optional typed navigation. |
+| `website/src/app/ui/components/customer/home/HomeReadinessStratum.tsx` | Draft approval prerequisite rows. |
+| `website/src/app/ui/components/customer/home/HomeAgendaStrip.tsx` | Focus agenda preview with horizontal overflow. |
+| `website/src/app/ui/components/customer/home/HomeActionStatusCards.tsx` | Workspace totals and directory navigation. |
+| `website/src/app/ui/components/customer/home/HomeFocusVisual.tsx` | Decorative, data-backed quorum/readiness SVG; hidden from assistive technology because equivalent data is exposed in the status and readiness UI. |
+| `website/src/app/ui/components/customer/meetings/CustomerMeetingCard.tsx` | Reused meeting card; optional `notifyStatusLabel` extends its presentational metadata without changing directory behavior. |
+| `website/src/resources/translations/ar.ts` | Arabic `ui.pages.customer.home.*` copy. |
+| `website/src/resources/translations/en.ts` | English mirror of the home-copy tree. |
 
 ## 7.1) Members page + sub-header breadcrumb
 

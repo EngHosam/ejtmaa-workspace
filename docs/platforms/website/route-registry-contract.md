@@ -102,14 +102,14 @@ Shipped: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`.
 
 ### 5.2) Customer (`mustAuthedAs: ["CUSTOMER"]`)
 
-Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, `CustomerOrganization`, `CustomerMessageChannels`, `CustomerMessageChannelForm`. Remaining workspace routes are planned.
+Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, `CustomerOrganization`, `CustomerMessageChannels`, `CustomerMessageChannelForm`, `CustomerMessageTemplates`, `CustomerMessageTemplateForm`. Remaining workspace routes are planned.
 
 | Identify | Path | Status |
 |----------|------|--------|
-| `CustomerHome` | `/customer` | shipped (`CUSTOMER_MAIN`) |
+| `CustomerHome` | `/customer` | shipped — command map (`CUSTOMER_MAIN`); no breadcrumb — `flow-customer-shell.md` §7 |
 | `CustomerMeetings` | `/customer/meetings` | shipped — directory (ResultLane + search + status); drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-meetings.md` |
 | `CustomerMeetingForm` | `/customer/meetings/form` | shipped — create form (`Forms.CUSTOMER_MEETING`); before `:id`; `breadcrumb: { parent: CustomerMeetings }` — `flow-customer-meetings.md` |
-| `CustomerMeetingDetails` | `/customer/meetings/:id` | shipped — empty stub; `breadcrumb: { parent: CustomerMeetings }` — `flow-customer-meetings.md` |
+| `CustomerMeetingDetails` | `/customer/meetings/:id` | shipped — preparation and approval workspace; `breadcrumb: { parent: CustomerMeetings }` — `flow-customer-meetings.md` |
 | `CustomerMembers` | `/customer/members` | shipped — directory (ResultLane + search); drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-members.md` |
 | `CustomerMemberForm` | `/customer/members/form` (+ `/:id`) | shipped — multi-path create/update; `breadcrumb: { parent: CustomerMembers }`; href via `formRoute.ts` — `flow-customer-members.md` §5 |
 | `CustomerOrganization` | `/customer/organization` | shipped — settings form upsert; drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-organization.md` |
@@ -152,7 +152,7 @@ See `flow-auth.md` §4A and `.cursor/rules/website-auth-flow.mdc`.
 | `website/src/types/extends/global.ts` | website | `BreadcrumbMeta` on `PageRouteState` |
 | `website/src/app/services/router.ts` | website | `publicRoutes`, `getMyHomeIdentify` → `CustomerHome` for customer |
 | `website/src/app/ui/layouts/CustomerMainLayout.tsx` | website | `CUSTOMER_MAIN` shell + sub-header offset |
-| `website/src/app/ui/pages/customer/CustomerHome.tsx` | website | empty authed home |
+| `website/src/app/ui/pages/customer/CustomerHome.tsx` | website | authed home command map — `flow-customer-shell.md` §7 |
 | `website/src/app/ui/pages/customer/CustomerMembers.tsx` | website | members directory host + W38 breadcrumb (`flow-customer-members.md`) |
 | `website/src/app/ui/pages/customer/CustomerMemberForm.tsx` | website | member form host + W38 breadcrumb |
 | `docs/platforms/website/flow-customer-shell.md` | root | shell + drawer IA + breadcrumb / `HomeMark` |

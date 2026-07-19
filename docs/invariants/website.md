@@ -13,9 +13,9 @@ Interpretation rule:
 
 ## Shipped baseline (current state)
 
-The checked-in scaffold currently ships: actor model `CUSTOMER` + `visitor` on mount `/website`; `AuthedAs = "CUSTOMER"`; routes `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error` (`publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`, `getMyHomeIdentify = "Home"`); layouts `BASIC`, `LANDING`, `MAIN`; GQL mirror `base` + `customer`; requesters `visitor.auth` (`registerCustomer`, `login`, `resetPassword`), `customer.customer`, `customer.notification`; socket namespace `customer`; auth pages `Login`, `Register`, `ResetPassword` on split `AuthPageShell` with `API.FORMS.R("auth")`; `BASE_URL` on `/website`.
+The checked-in scaffold ships the `CUSTOMER` + visitor actor model on mount `/website`; `AuthedAs = "CUSTOMER"`; public routes `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, and `Error`; `getMyHomeIdentify = "CustomerHome"`; layouts `BASIC`, `LANDING`, `MAIN`, and `CUSTOMER_MAIN`; `customerRouter`; the customer workspace shell and its `CustomerHome` command map; members, meetings, organization, message-channels, and message-templates routes; GQL mirrors `base` + `customer`; and `CUSTOM.START` boot wiring. Route inventory and statuses are authoritative in `docs/platforms/website/route-registry-contract.md`.
 
-Not yet shipped: Google social auth, `CustomerHome`, `CUSTOMER_MAIN` layout, `customerRouter`, `/customer/*` workspace, `CustomerHeader`/`CustomerDrawer`/`CustomerBottomBar`, customer settings/notifications/help/about/terms screens, `CUSTOM.START` boot wiring, customer role home redirect. These remain obligated by the invariants below and the flow docs.
+Not yet shipped: Google social auth, `CustomerBottomBar`, and customer subscription, settings, notifications, support, and static-information screens. These remain obligated by the invariants below and the flow docs.
 
 ## W1. Repository Ownership
 

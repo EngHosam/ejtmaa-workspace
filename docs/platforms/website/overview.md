@@ -39,8 +39,9 @@ See `docs/platforms/website/ui-foundation.md`.
 | Notifications | [flow-notifications.md](./flow-notifications.md) |
 | Static info pages | [flow-static-info-pages.md](./flow-static-info-pages.md) |
 | Customer shell | [flow-customer-shell.md](./flow-customer-shell.md) |
+| Customer home command map | [flow-customer-shell.md](./flow-customer-shell.md) §7 |
 | Customer members (directory + form) | [flow-customer-members.md](./flow-customer-members.md) |
-| Customer meetings (directory + create + empty details) | [flow-customer-meetings.md](./flow-customer-meetings.md) |
+| Customer meetings (directory + create + preparation/details) | [flow-customer-meetings.md](./flow-customer-meetings.md) |
 | Customer organization (settings form) | [flow-customer-organization.md](./flow-customer-organization.md) |
 
 ## 6) Route registry summary
@@ -53,11 +54,11 @@ Authoritative table: `route-registry-contract.md` §1.1 / §5.2 (includes `Custo
 
 Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
 
-Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMeetings` (`/customer/meetings`), `CustomerMeetingForm` (`/customer/meetings/form`), `CustomerMeetingDetails` (`/customer/meetings/:id`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`), `CustomerOrganization` (`/customer/organization`), `CustomerMessageChannels` (`/customer/message-channels`), `CustomerMessageChannelForm` (`/customer/message-channels/form` + `/:id`). All `mustAuthedAs: ["CUSTOMER"]`, `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Meetings: `flow-customer-meetings.md`. Members: `flow-customer-members.md`. Organization: `flow-customer-organization.md`. Message channels: `flow-customer-message-channels.md`. Forms: `flow-form-foundation.md`.
+Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMeetings` (`/customer/meetings`), `CustomerMeetingForm` (`/customer/meetings/form`), `CustomerMeetingDetails` (`/customer/meetings/:id`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`), `CustomerOrganization` (`/customer/organization`), `CustomerMessageChannels` (`/customer/message-channels`), `CustomerMessageChannelForm` (`/customer/message-channels/form` + `/:id`), `CustomerMessageTemplates` (`/customer/message-templates`), and `CustomerMessageTemplateForm` (`/customer/message-templates/form` + `/:id`). All use `mustAuthedAs: ["CUSTOMER"]` and `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Meetings: `flow-customer-meetings.md`. Members: `flow-customer-members.md`. Organization: `flow-customer-organization.md`. Message channels: `flow-customer-message-channels.md`. Message templates: `flow-customer-message-templates.md`. Forms: `flow-form-foundation.md`.
 
 ### 6.2) Planned (not shipped)
 
-Remaining `/customer/*` workspace routes (message templates, subscription, settings, support, help, notifications, static info, bottom bar) — see `route-registry-contract.md` §5.2 and `flow-customer-shell.md`. Meetings, members, organization, and message channels are **shipped** (see §6.1).
+Remaining `/customer/*` workspace routes (subscription, settings, support, help, notifications, static info, bottom bar) — see `route-registry-contract.md` §5.2 and `flow-customer-shell.md`. Home, meetings, members, organization, message channels, and message templates are **shipped** (see §6.1).
 
 ## Documentation stance
 
