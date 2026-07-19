@@ -282,6 +282,21 @@ Current-state reflection of the customer-home change set. The source behavior is
 | `docs/platforms/website/README.md` | This traceability section and flow index. |
 | `website` (root nested-repository status) | Nested repository contains the source paths above; no root-repository behavior is implemented by the gitlink itself. |
 
+## Change set traceability — MicroBand footer credit spelling
+
+Current-state reflection of the footer-credit brand spelling correction in the nested `website/` repository.
+
+| Path | Documented where |
+|---|---|
+| `website/src/resources/translations/en.ts` | `shared-ui-and-shell.md` §5; `landing-page.md` § Translation contract; `invariants/website.md` W57 |
+| `website/src/resources/translations/ar.ts` | Same as `en.ts`; Arabic locale keeps the Latin brand wordmark `MicroBand` |
+| `website/src/app/ui/components/MicrobandCredit.tsx` | Consumer only; reads `ui.components.microbandCredit.brand` — no code change in this fix |
+| `website/src/app/ui/components/Footer.tsx` | Renders `MicrobandCredit` in shared footer surfaces |
+| `docs/invariants/website.md` | W57 spelling contract |
+| `docs/platforms/website/shared-ui-and-shell.md` | §5 MicrobandCredit copy + link contract |
+| `docs/platforms/website/landing-page.md` | § Header / Drawer / Footer and § Translation contract |
+| `.cursor/rules/website-semantic-color-token-discipline.mdc` | W57 exemption + wordmark spelling note |
+
 ## Governance
 
 - `.cursor/rules/website-platform-governance.mdc`

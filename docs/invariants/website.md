@@ -279,9 +279,11 @@ See `docs/platforms/website/landing-page.md` § Footer.
 
 ## W57. Third-Party Brand Color Exemption (MicrobandCredit)
 
-`MicrobandCredit.tsx` renders the Microband third-party brand wordmark/dot in its official brand blue `#096fb1`. This hardcoded hex is **intentional and exempt from W43** (semantic color token discipline): it is the external Microband brand identity color, not an Ejtmaa semantic surface/text color, so it MUST NOT be replaced with a `semanticColor` token or "fixed" for dark-mode contrast. Third-party brand colors are reproduced verbatim (the brand owns the value); Ejtmaa semantic tokens describe Ejtmaa's own surfaces only. Do not add a `semanticColor` entry for it (W43 YAGNI + brand-authority). If a third-party brand color ever reads poorly on a themed surface, the fix is to change the surrounding Ejtmaa surface, never the brand color.
+`MicrobandCredit.tsx` renders the **MicroBand** third-party brand wordmark/dot in its official brand blue `#096fb1`. This hardcoded hex is **intentional and exempt from W43** (semantic color token discipline): it is the external MicroBand brand identity color, not an Ejtmaa semantic surface/text color, so it MUST NOT be replaced with a `semanticColor` token or "fixed" for dark-mode contrast. Third-party brand colors are reproduced verbatim (the brand owns the value); Ejtmaa semantic tokens describe Ejtmaa's own surfaces only. Do not add a `semanticColor` entry for it (W43 YAGNI + brand-authority). If a third-party brand color ever reads poorly on a themed surface, the fix is to change the surrounding Ejtmaa surface, never the brand color.
 
-See `docs/platforms/website/landing-page.md` § Footer.
+The linked wordmark text comes from `ui.components.microbandCredit.brand` and MUST remain spelled **`MicroBand`** (capital `B`) in both locale files.
+
+See `docs/platforms/website/shared-ui-and-shell.md` §5 and `docs/platforms/website/landing-page.md` § Footer.
 
 ## Related
 

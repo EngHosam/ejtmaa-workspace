@@ -42,7 +42,7 @@ Applies when authoring or reviewing website UI that resolves colors through `sem
 
 ## Exemptions
 
-- **Third-party brand colors** (W57): a hardcoded hex that reproduces an EXTERNAL brand identity (e.g. `MicrobandCredit.tsx` Microband blue `#096fb1`) is exempt from non-negotiable #1. The brand owns the value; do not replace it with a `semanticColor` token, do not add a `semanticColor` entry for it (YAGNI + brand-authority), and do not "fix" it for dark-mode contrast. If a third-party brand color reads poorly on a themed Ejtmaa surface, change the Ejtmaa surface, never the brand color. This exemption is narrow: it covers only verbatim external brand wordmark/logo colors, not Ejtmaa's own UI accents.
+- **Third-party brand colors** (W57): a hardcoded hex that reproduces an EXTERNAL brand identity (e.g. `MicrobandCredit.tsx` **MicroBand** blue `#096fb1`) is exempt from non-negotiable #1. The brand owns the value; do not replace it with a `semanticColor` token, do not add a `semanticColor` entry for it (YAGNI + brand-authority), and do not "fix" it for dark-mode contrast. If a third-party brand color reads poorly on a themed Ejtmaa surface, change the Ejtmaa surface, never the brand color. This exemption is narrow: it covers only verbatim external brand wordmark/logo colors, not Ejtmaa's own UI accents. The linked wordmark text MUST stay spelled **`MicroBand`** via `ui.components.microbandCredit.brand`.
 
 ## Audit procedure
 
