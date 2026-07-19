@@ -12,7 +12,7 @@ Out of scope (not shipped):
 
 - root queries `agendaItems` / `agendaItem(id)`,
 - GraphQL inverse `_AgendaItem.meeting`,
-- agenda write requesters / mutations,
+- root agenda write requesters (writes ship as `MeetingRequester` agenda subs — see `meeting-domain.md` §9),
 - supervisor AgendaItem GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for agenda items,
@@ -107,7 +107,7 @@ Cardinality gate (B15): agenda lines for a board meeting are expected well under
 File: `backend/src/app/gql/bridges/customer/AgendaItemBridge.ts`
 
 - Extends `CustomerBridgeBase` (not org-owned root base — no root `me` path)
-- `ident = "agendaItems"` (must match Meeting default association)
+- `ident = "agendaItem"` (must match ORM `modelName`; association key `agendaItems` is the SDL/include field)
 - `typeIdent = "_AgendaItem"`
 - `ormModel = AgendaItemModel`
 - `GetManyParent = MeetingModel`

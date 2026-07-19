@@ -129,10 +129,10 @@ Enum key `messageTemplateType` under:
 
 | Value | EN label | AR label |
 |---|---|---|
-| `EJTMAA_EMAIL` | Ejtmaa email | بريد اجتماع |
-| `CUSTOM_EMAIL` | Custom email | بريد مخصص |
-| `ADWHATS` | Ad Whats | أد واتس |
-| `ADWHATS_PRO` | Ad Whats Pro | أد واتس برو |
+| `EJTMAA_EMAIL` | Platform email | بريد المنصة الإلكتروني |
+| `CUSTOM_EMAIL` | Custom email | بريد إلكتروني مخصص |
+| `ADWHATS` | Ad Whats | اد واتس |
+| `ADWHATS_PRO` | Ad Whats Pro | اد واتس برو |
 
 ## 4) Customer GraphQL surface
 
@@ -149,10 +149,10 @@ Fields: `id`, `name`, `type`, `subject`, `body`, `variables` (`JSONObject`), `me
 
 ### Root queries
 
-- `messageTemplates: [_MessageTemplate]`
+- `messageTemplates(filter: _MessageTemplateFilter): [_MessageTemplate]` — optional `type` or `types[]`
 - `messageTemplate(id: ID!): _MessageTemplate`
 
-Resolvers (`CustomerSchema`): `prepareManyGQLModels({ me: true })` / `prepareOneGQLModel({ me: true, id })`.
+Resolvers (`CustomerSchema`): `prepareManyGQLModels({ me: true, filter })` / `prepareOneGQLModel({ me: true, id })`. Bridge maps `filter.type` or `filter.types` (`Op.in`).
 
 `CustomerSchema.registeredBridges` includes `MessageTemplateBridge`.
 

@@ -128,7 +128,7 @@ Cardinality: talk-queue rows per meeting expected within board-session size (B15
 File: `backend/src/app/gql/bridges/customer/TalkRecordBridge.ts`
 
 - Extends `CustomerBridgeBase`
-- `ident = "talkRecords"`
+- `ident = "talkRecord"` (must match ORM `modelName`; association key `talkRecords` is the SDL/include field)
 - `typeIdent = "_TalkRecord"`
 - `ormModel = TalkRecordModel`
 - `GetManyParent = MeetingModel`

@@ -127,7 +127,7 @@ Cardinality: votes per decision ≤ roster size (B15 OK under meeting nest chain
 File: `backend/src/app/gql/bridges/customer/VoteBridge.ts`
 
 - Extends `CustomerBridgeBase`
-- `ident = "votes"`
+- `ident = "vote"` (must match ORM `modelName`; association key `votes` is the SDL/include field)
 - `typeIdent = "_Vote"`
 - `ormModel = VoteModel`
 - `GetManyParent = DecisionModel`

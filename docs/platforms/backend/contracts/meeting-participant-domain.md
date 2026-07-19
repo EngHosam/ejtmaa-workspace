@@ -20,7 +20,7 @@ Out of scope (not shipped):
 - GraphQL inverse `_Member.meetingParticipants` / `_Member.meetings` (not needed yet),
 - GraphQL inverse `_MeetingParticipant.meeting` (SDL exposes `member` only today),
 - permission helper implementation in code (matrix agreed; not a shipped module yet),
-- participant-dedicated write requesters / mutations (including check-in / leave writers; roster create beyond chairperson),
+- participant check-in / leave writers; roster add/remove beyond chairperson ship as `MeetingRequester` `addParticipant` / `removeParticipant` (see `meeting-domain.md` §9),
 - separate presence history / reconnect log table,
 - `first_online_at`, `joined_at`, or `attended` boolean (removed / declined — see §3.6),
 - chair-marked attendance override without self check-in (not in product rule for this surface),
@@ -169,7 +169,7 @@ Cardinality gate (B15): meeting roster is expected to stay well under 100 for bo
 File: `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts`
 
 - Extends `CustomerBridgeBase` (not org-owned root base — no root `me` path)
-- `ident = "participants"` (must match Meeting association `as: "participants"`)
+- `ident = "meetingParticipant"` (must match ORM `modelName`; association `as: "participants"` is the SDL/include field only)
 - `typeIdent = "_MeetingParticipant"`
 - `ormModel = MeetingParticipantModel`
 - `GetManyParent = MeetingModel`

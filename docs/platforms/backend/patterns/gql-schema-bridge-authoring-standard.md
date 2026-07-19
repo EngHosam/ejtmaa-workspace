@@ -24,6 +24,8 @@
 2. **Bridge policy**
    - define list/parent/query/depth/required-attrs/extras strategy.
    - root-many always bounded and ordered.
+   - bridge `ident` must equal the ORM `modelName` (auto-bridge lookup uses `association.target.name`, not the association `as` / SDL field name).
+   - SDL/include field names follow the association key (`as` or Sequelize default plural); do not set `ident` to the plural association alias.
    - rely on ORM association auto-bridging by default; do not re-declare ORM-native relations in `static relations`.
    - use manual relation mapping (`lazy`/custom tuples) only for explicitly requested non-ORM derived relations.
 3. **Mapping policy**

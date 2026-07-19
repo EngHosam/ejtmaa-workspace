@@ -15,7 +15,7 @@ Out of scope (not shipped):
 - root queries `decisions` / `decision(id)`,
 - GraphQL inverse `_Decision.meeting`,
 - nested talk records under `_Decision` (model not shipped yet),
-- decision write requesters / mutations,
+- root decision write requesters (writes ship as `MeetingRequester` decision subs — see `meeting-domain.md` §9),
 - supervisor Decision GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for decisions,
@@ -25,8 +25,8 @@ Out of scope (not shipped):
 
 `Decision` is a **non-actor** ordered decision item belonging to a `Meeting`.
 
-- `phase = PRE_START` — created/edited before the meeting starts.
-- `phase = DURING` — created or advanced during the live session.
+- `phase = PRE_START` — prepare-window decision; required for meeting approve completeness (≥1).
+- `phase = DURING` — may be pre-staged in the prepare window (same write rules as PRE_START while `notify_status === NOT_STARTED`); live-session writes are a separate Ability/UI slice.
 - Status / voting-type fields describe voting lifecycle; durable casts live on `Vote` (`vote-domain.md`).
 - Tenant isolation is inherited via `Meeting.organization_id`.
 
@@ -133,7 +133,7 @@ Cardinality gate (B15): expected board decision count well under 100 → nested 
 File: `backend/src/app/gql/bridges/customer/DecisionBridge.ts`
 
 - Extends `CustomerBridgeBase`
-- `ident = "decisions"` (matches Meeting default association)
+- `ident = "decision"` (must match ORM `modelName`; association key `decisions` is the SDL/include field)
 - `typeIdent = "_Decision"`
 - `ormModel = DecisionModel`
 - `GetManyParent = MeetingModel`

@@ -1,0 +1,31 @@
+---
+description: Meeting approve completeness, contact-aware notify templates, and edit lock on notify_status
+globs: backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/helpers/meetingNotifyTemplateMode.ts,backend/src/app/orchestrator/requesters/MeetingRequester.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,website/src/app/ui/components/customer/meetings/**,website/src/app/ui/components/customer/hooks/useCustomerMeetingDetails.ts
+alwaysApply: false
+---
+
+# Meeting lifecycle — approve + notify lock
+
+Authoritative contract: `docs/platforms/backend/contracts/meeting-domain.md` §9. Website: `docs/platforms/website/flow-customer-meetings.md` §6.
+
+## Ability (Customer)
+
+- `MEETING` subs: `create` | `read` | `update` | `delete` | `approve` with optional `meeting` target.
+- `update` (and child writes): require `notify_status === NOT_STARTED`.
+- `delete`: `DRAFT` + `NOT_STARTED` only.
+- `approve`: `DRAFT` + `NOT_STARTED` + quorum + ≥1 agenda + ≥1 PRE_START decision + template mode rules.
+- Meeting stays non-actor. GQL extras on `_Meeting` only (not on unbounded list).
+
+## Template mode
+
+Use `resolveMeetingNotifyTemplateMode` (backend helper). Do not invent a second approve engine on the website — callout may mirror the helper; Ability enforces.
+
+WhatsApp slot types: `ADWHATS` | `ADWHATS_PRO`. Email slot: `EJTMAA_EMAIL` | `CUSTOM_EMAIL`.
+
+## Forbidden
+
+- Approving without Ability completeness.
+- Mutating meeting content after notify leaves `NOT_STARTED`.
+- Starting notify pipeline inside `approve`.
+- Attaching `canApprove` to root-many `meetings` list.
+---

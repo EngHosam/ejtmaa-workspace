@@ -10,7 +10,8 @@ Current Ejtmaa meeting surface:
 - independent lifecycle (`status`) and invite-notify axes (`notify_status` + `notify_start_at`),
 - customer GraphQL read of meetings for the authenticated customer's organization,
 - optional server-side list filter `_MeetingFilter` on root `meetings` (`search` → `subject` iLike; `status` → `_MeetingStatusValue` equality),
-- website Meeting write path via `MeetingRequester` (`create` only) + `Customer.Ability.MEETING` — see §9,
+- website Meeting write path via `MeetingRequester` (`create` | `read` | `update` | `delete` | `approve` + child roster/agenda/decision subs) + `Customer.Ability.MEETING` — see §9,
+- bounded `_Meeting` Ability extras `canUpdate` / `canDelete` / `canApprove` (detail only),
 - nested roster via `_Meeting.participants` (see `meeting-participant-domain.md`),
 - nested agenda via `_Meeting.agendaItems` (see `agenda-item-domain.md`),
 - nested decisions via `_Meeting.decisions` (see `decision-domain.md`),
@@ -19,9 +20,10 @@ Current Ejtmaa meeting surface:
 
 Out of scope (not shipped):
 
-- meeting update / delete requesters,
 - LiveKit join requesters / website client wiring (helper shipped — see `livekit-media-plane.md`),
 - Yjs collaborative session state,
+- notify send pipeline / `notify_status` transitions from UI,
+- cancel-after-approve,
 - supervisor Meeting GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for meetings,
@@ -249,7 +251,7 @@ Verification: `yarn generate-types`, `yarn type-check`.
 | `meetings` / `meeting` | customer has no organization | `404` |
 | `meeting(id)` | missing / other-org id | framework empty → `404` |
 
-## 9) Customer write path (create)
+## 9) Customer write path (create / update / approve / children)
 
 ### 9.1 Ability
 
@@ -257,89 +259,120 @@ File: `backend/src/app/orm/models/Customer.ts`
 
 ```ts
 MEETING: {
-    sub: "create"
+    sub: "create" | "read" | "update" | "delete" | "approve"
+    meeting?: ModelRef<MeetingModel>
 }
 ```
 
-`can("MEETING", { sub: "create" })`: requires organization; otherwise `ACTION_NOT_ALLOWED`. No plan quota gate in this slice.
+| sub | Gate |
+|---|---|
+| `create` | org required |
+| `read` | org-owned meeting |
+| `update` | org-owned + `notify_status === NOT_STARTED` (covers basics, templates, roster, agenda, decisions) |
+| `delete` | org-owned + `DRAFT` + `NOT_STARTED` |
+| `approve` | org-owned + `DRAFT` + `NOT_STARTED` + completeness (§9.1b) |
 
-GQL UI exposure (same rule, `visualMode`):
+GQL UI exposure (`visualMode`):
 
-- SDL: `_Me.canCreateMeeting: _Ability`
-- Bridge: `MeBridge` extra `canCreateMeeting` → `me.can("MEETING", { sub: "create", visualMode: { lang } })`
+- `_Me.canCreateMeeting` — MeBridge (unchanged)
+- `_Meeting.canUpdate` / `canDelete` / `canApprove` — `MeetingBridge.loadExtra` (bounded root-one only)
+
+Helper: `backend/src/app/helpers/meetingNotifyTemplateMode.ts` (`resolveMeetingNotifyTemplateMode`, satisfy + denial keys). Website mirrors the mode resolver under `meetings/meetingNotifyTemplateMode.ts` for callout copy only — enforcement stays in Ability.
+
+### 9.1b Approve completeness
+
+1. Roster count ≥ `min_members_count` (all participant types).
+2. ≥1 agenda item.
+3. ≥1 decision with `phase === PRE_START`.
+4. Notify templates per contact mode on roster members’ `email` / `mobile`:
+
+| Mode | Rule |
+|---|---|
+| `MISSING_CONTACT` | any participant lacks both → deny |
+| `EMAIL_ONLY` | every has email → `email_template_id` required |
+| `WHATSAPP_ONLY` | every has mobile → `whatsapp_template_id` required |
+| `BOTH` | mixed coverage → both FKs required |
+| `ANY_ONE` | every has both → at least one FK |
+
+WhatsApp FK types: `ADWHATS` \| `ADWHATS_PRO`. Email FK types: `EJTMAA_EMAIL` \| `CUSTOM_EMAIL`.
+
+Approve sets `status = WAITING_TO_START` only; does **not** change `notify_status`.
 
 ### 9.2 Joi
 
-- `isCustomerOwnedMember(joi, path?, optional?)` — `path` defaults to `"member"` (same order/name as `Model().Opt`); meeting create uses `"chairperson"`.
-- Create fields: `subject` trim min 2; `type` `PERIODIC` | `EMERGENCY`; `datetime` date; `min_members_count` positive int (accepts numeric string); `chairperson` owned member.
+- `isCustomerOwnedMember`, `isCustomerOwnedMeeting`, `isCustomerOwnedAgendaItem`, `isCustomerOwnedDecision`, `isCustomerOwnedMessageTemplate` in `joi_rules.ts`.
+- Create/update basics: subject, type, datetime, min_members_count, chairperson; update may set template FKs. Type is mutable while prepare Ability allows (`notify_status === NOT_STARTED`).
 
 ### 9.3 Requester
 
-File: `backend/src/app/orchestrator/requesters/MeetingRequester.ts` (`@requester("meeting")`, platform `website`, actor `customer`).
+File: `backend/src/app/orchestrator/requesters/MeetingRequester.ts` (`@requester("meeting")`).
 
 | Sub | Behavior |
 |---|---|
-| `create` | Validate → `can MEETING create` → `organization.createMeeting(...)` (defaults `status=DRAFT`, `notify_status=NOT_STARTED`) → `meeting.createParticipant({ type: "CHAIRPERSON", notified: false, delivery_status: "PENDING" })` → `other.meetingId` + `SUCCESS_CREATE` |
+| `create` | org create + CHAIRPERSON roster → `other.meetingId` |
+| `read` | hydrate SelectOption fields; **no** `meeting` id echo |
+| `update` | basics + template FKs; chair swap demotes previous chair to `MEMBER`, promotes/creates CHAIRPERSON |
+| `delete` | destroy children then meeting (`force`) |
+| `approve` | `DRAFT` → `WAITING_TO_START` |
+| `addParticipant` / `removeParticipant` | MEMBER\|VIEWER; cannot remove chairperson |
+| `createAgendaItem` / `updateAgendaItem` / `deleteAgendaItem` | subject; `sort_order = max+1` on create |
+| `createDecision` / `updateDecision` / `deleteDecision` | create: client `phase` PRE_START\|DURING, status NEW, `voting_type null`; update/delete phase-agnostic under prepare Ability (`notify_status === NOT_STARTED`) |
 
-Create payload (after Joi / Opt resolution):
-
-| Field | Joi | Persist |
-|---|---|---|
-| `subject` | `string().trim().min(2)` | `meeting.subject` |
-| `type` | `PERIODIC` \| `EMERGENCY` (select) | `meeting.type` |
-| `datetime` | `joi.date()` (any date; **no** server future check) | `meeting.datetime` |
-| `min_members_count` | `number().integer().min(1)` | `meeting.min_members_count` |
-| `chairperson` | `isCustomerOwnedMember(joi, "chairperson")` | `chairperson_id` + roster `CHAIRPERSON` row |
-
-Website UI consumer: `docs/platforms/website/flow-customer-meetings.md` §5.
+Website UI: `docs/platforms/website/flow-customer-meetings.md` §5–§6.
 
 ### 9.4 Maps
 
 | Map | Entry |
 |---|---|
-| `backend/requesters.website.ts` | `customer.meeting: "create"` |
-| `website/src/types/requesters/requesters.website.ts` | Same union |
+| `backend/requesters.website.ts` | `customer.meeting` union of all subs above |
+| website mirror | Same (W18) |
 
 ### 9.5 Failure modes (write)
 
 | Condition | Result |
 |---|---|
-| No org on create (`can`) | `ACTION_NOT_ALLOWED` |
-| Org missing after `can` succeeded | `UNEXPECTED_ERROR` |
-| Other-org / missing chairperson | `NOT_PERMIT` / Opt `404` |
-| Validation errors | field / firewall errors via `throwIfNotValid` |
+| No org | `ACTION_NOT_ALLOWED` |
+| Notify started on mutate | `MEETING_NOTIFY_STARTED` |
+| Approve/delete not draft | `MEETING_NOT_DRAFT` |
+| Quorum / agenda / decision / template gaps | dedicated `MEETING_*` message keys |
+| Duplicate participant | `DUPLICATED` |
+| Other-org / missing | `NOT_PERMIT` / `404` |
 
-Verify: `yarn type-check` in `backend/`.
+Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 
 ## 10) Traceability map
 
 | Path | Role | Section |
 |---|---|---|
 | `backend/src/app/gql/bridges/customer/MeBridge.ts` | `canCreateMeeting` visualMode extra | §9.1 |
-| `backend/src/app/orm/models/Customer.ts` | `Ability.MEETING` + `can("MEETING")` | §9.1 |
-| `backend/src/app/validation/joi_rules.ts` | `isCustomerOwnedMember` (optional `prop`) | §9.2 |
-| `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | write requester (`create`) | §9.3 |
-| `backend/requesters.website.ts` | `customer.meeting` map | §9.4 |
-| `website/src/types/requesters/requesters.website.ts` | `customer.meeting` mirror | §9.4 |
+| `backend/src/app/orm/models/Customer.ts` | `Ability.MEETING`; org scope, notify lock, approve completeness | §9.1–§9.1b |
+| `backend/src/app/helpers/meetingNotifyTemplateMode.ts` | Contact-mode resolver, template satisfiability, denial keys, executable matrix self-check | §9.1b |
+| `backend/src/app/validation/joi_rules.ts` | Customer-owned Meeting, agenda, decision, member, and template hydration | §9.2 |
+| `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | Basics, approve, delete, participant, agenda, and decision requester subs | §9.3 |
+| `backend/requesters.website.ts` | Backend customer `meeting` sub map | §9.4 |
+| `website/src/types/requesters/requesters.website.ts` | Exact website customer `meeting` sub-map mirror | §9.4 |
 | `backend/src/app/orm/models/Meeting.ts` | ORM source of truth | §3 |
+| `backend/src/app/orm/models/Member.ts` | `forSelect(lang)` used to hydrate chairperson and roster entity references | §9.2–§9.3 |
+| `backend/src/app/orm/models/MessageTemplate.ts` | `forSelect(lang)` used to hydrate and validate notify template references | §9.2–§9.3 |
 | `backend/src/app/orm/models/MeetingParticipant.ts` | Roster join (detail contract) | `meeting-participant-domain.md` |
 | `backend/src/app/orm/models/AgendaItem.ts` | Agenda lines (detail contract) | `agenda-item-domain.md` |
 | `backend/src/app/orm/models/Decision.ts` | Decisions (detail contract) | `decision-domain.md` |
 | `backend/src/app/orm/models/TalkRecord.ts` | Talk queue (detail contract) | `talk-record-domain.md` |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany Meeting` + mixins | §3.5 |
-| `backend/src/resources/trans/ar/general.ts` | meeting enums AR | §3.3 |
-| `backend/src/resources/trans/en/general.ts` | meeting enums EN | §3.3 |
+| `backend/src/resources/trans/ar/general.ts` / `en/general.ts` | Meeting, decision, notify, and message-template enum labels | §3.3, §9.1b |
+| `backend/src/resources/trans/ar/messages.ts` / `en/messages.ts` | Ability denial messages for meeting completeness and notify lock | §9.1b |
+| `backend/src/resources/trans/ar/validation.ts` / `eng-hosam/@nodejs/validation/src/trans/ar/validation.ts` | Arabic email validation labels | localization-only |
 | `backend/src/app/gql/definitions/base.graphql` | meeting GQL enum wrappers | §4 |
 | `backend/src/app/gql/definitions/customer.graphql` | `_Meeting` + `_MeetingFilter` + roots + nested relations | §4 |
-| `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | thin org-owned bridge | §4–§5 |
+| `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | Org-scoped root filters and root-one `canUpdate` / `canDelete` / `canApprove` extras | §4–§5, §9.1 |
 | `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts` | nested roster bridge | `meeting-participant-domain.md` |
 | `backend/src/app/gql/bridges/customer/AgendaItemBridge.ts` | nested agenda bridge | `agenda-item-domain.md` |
 | `backend/src/app/gql/bridges/customer/DecisionBridge.ts` | nested decision bridge | `decision-domain.md` |
-| `backend/src/app/gql/bridges/customer/TalkRecordBridge.ts` | nested talk-record bridge | `talk-record-domain.md` |
+| `backend/src/app/gql/bridges/customer/VoteBridge.ts` / `TalkRecordBridge.ts` | Nested child bridge parent typing | `vote-domain.md` / `talk-record-domain.md` |
 | `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | shared `me` → Organization | §4 |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | inverse parent typing | §4 |
 | `backend/src/app/gql/bridges/customer/MemberBridge.ts` | chairperson + participant/vote/talkRecord.member parent typing | §4 |
-| `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts` | template parent typing | §4 |
+| `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts` | Template parent typing and `type` / `types[]` picker filters | §4, §9.2 |
 | `backend/src/app/gql/schemas/CustomerSchema.ts` | register + resolvers | §4 |
 | `backend/src/app/gql/gql-types/base.ts` | Generated | §7 |
 | `backend/src/app/gql/gql-types/customer.ts` | Generated | §7 |

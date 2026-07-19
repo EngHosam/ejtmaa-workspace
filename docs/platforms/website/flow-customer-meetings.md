@@ -1,6 +1,6 @@
-# Website Flow — Customer Meetings (Directory + Create + Empty Details)
+# Website Flow — Customer Meetings (Directory + Create + Details Roadmap)
 
-Authenticated customer org-meeting directory, create-only form, and empty details stub on `CUSTOMER_MAIN`. Shell/breadcrumb contract: `flow-customer-shell.md` §7.1. Backend read/filter/create: `docs/platforms/backend/contracts/meeting-domain.md` (§4–§5 list filter, §9 write). Chairperson roster row: `meeting-participant-domain.md`. Form foundation: `flow-form-foundation.md` §3.5–§3.7.
+Authenticated customer org-meeting directory, create form, and details readiness roadmap on `CUSTOMER_MAIN`. Shell/breadcrumb contract: `flow-customer-shell.md` §7.1. Backend: `docs/platforms/backend/contracts/meeting-domain.md` (§4–§5 list filter, §9 write/approve). Chairperson roster: `meeting-participant-domain.md`. Form foundation: `flow-form-foundation.md` (§3.5–§3.8 + FORM modal).
 
 ## 1) Scope
 
@@ -9,18 +9,17 @@ Authenticated customer org-meeting directory, create-only form, and empty detail
 - Meeting directory for the authenticated customer's organization (GQL list + server `search` + single `status` filter + ResultLane load-more).
 - Route-query persistence under history key `meetings` (`useWithHistoryState`); Enter commits search; status chips commit immediately.
 - Clearing search or status (`All`) uses `{ reset: true }` so omitted keys are removed from the history query (avoids stale `status` after merge).
-- Routes: list, create-only form (`/meetings/form` **before** `/meetings/:id`), empty details stub.
+- Routes: list, create-only form (`/meetings/form` **before** `/meetings/:id`), details roadmap.
 - List Add → form; **no Edit** on cards; card → details via typed `Link`.
 - Status filter UI: shared `FilterOptionChips` / `FilterOptionChip` (text label + orange underline when active — landing filter language, not choice tiles).
 - Create form: `Forms.CUSTOMER_MEETING` → `meeting.create`; fields `subject`, `type`, `datetime`, `min_members_count`, `chairperson`; success → details with `replace: true`.
+- Details readiness roadmap (§6): private modal forms + page form for approve/delete/remove/template FK; Ability-gated edit lock.
 - Drawer tile `CustomerMeetings` clickable (`CustomerDrawer`).
 - Shared controls: `FormChoiceField`, `FormDateTimeField` + `DATETIME_PICKER`, `FormEntityPickerField` + `ENTITY_PICKER` (config registry + loadMore + `customScroll`).
 
 **Not shipped**
 
-- Non-empty meeting details UI (route + stub heading/subtitle only).
 - GQL `canCreateMeeting` gating on Add (contract exists on `_Me`; Add always visible — same as members).
-- Meeting update / delete requesters or UI.
 - Plan `max_meetings_per_month` quota on create.
 - Multi-status filter; `notify_status` filter; distinct empty copy for “no search hits” vs “no meetings yet”.
 - Description field (product: title = `subject` only).
@@ -174,9 +173,33 @@ Validate → `can MEETING create` → `organization.createMeeting` (`status=DRAF
 
 Client past-date check is **stricter** than backend `joi.date()` (any date accepted server-side).
 
-## 6) Empty details stub
+## 6) Details roadmap — `CustomerMeetingDetails`
 
-`CustomerMeetingDetailsScreen`: `SectionHeading` title/subtitle from `ui.pages.customer.meetingDetails.*` only. No GQL load of the meeting by id in this slice. Route exists so create redirect and list card links resolve.
+Preparation journey for `DRAFT` → `WAITING_TO_START` (not a live session UI).
+
+### 6.1 Data
+
+Hook `useCustomerMeetingDetails` — mount-private adapter `"customer-meeting-details"` inherit `CUSTOMER_GQL`, query `meeting(id)` **without** `listable` (section.meeting). Selection includes nested participants/agenda/decisions/templates + `canUpdate` / `canDelete` / `canApprove`.
+
+### 6.2 Chrome
+
+`SectionHeading` back + subject title; status·type meta; Approve / Delete via `FormActionButton` when Ability allows. Approve uses `canApprove.value` only to enable/disable — do **not** render `canApprove.description` under the button (denial copy stays server-side; readiness strip covers UX guidance). Lock / edit-window notes reuse the organization setup alert chrome (`canvasAccentSoftBackground` + `FiAlertTriangle`). Basics body reuses `CustomerMeetingCard` language (accent rail, calendar/clock, chair + quorum). Section Add/Edit are `smallAction` text actions (member-card pattern), not `FormActionButton`. Roster rows follow `CustomerMemberCard` with **CHAIRPERSON first**; agenda/decision rows are quiet cards with order caption + optional status meta. Roadmap sections after basics use `MeetingDetailsSection` `divided` (`divider` hairline — primary, not `subtleDivider`) so agenda / decision phases / templates read as separate blocks in light mode.
+
+### 6.3 Sections
+
+Basics / participants / agenda / decisions write UI opens `FORM` modal shells whose **bodies** are private `useShallowForm` + `Form*` stacks (`MeetingBasicsModalForm` `read`→`update`, `MeetingParticipantAddModalForm` `addParticipant`, `MeetingSubjectModalForm` agenda/decision create|update). Page-level form stays for approve/delete/remove/template FK `update` only — never share it into modal bodies. Templates via `CustomerMeetingTemplateSlots` + `messageTemplates` entity picker (`types` family filter).
+
+**Decisions (prepare):** two sections — pre-start (`PRE_START`) and in-meeting (`DURING`). Each Add opens `createDecision` with that `phase` required in form values. While `canUpdate` (notify still `NOT_STARTED`), both phases share the same edit/delete chrome; update does not change `phase`. Approve readiness still counts **pre-start only** (≥1). Live-session writes are out of this flow.
+
+Template mode callout: `meetingNotifyTemplateMode.ts` (mirror of backend helper). Enforcement remains Ability/`approve`.
+
+### 6.4 Modals
+
+- `FORM` — thin shell `FormModal` / `openForm` (registry `modals.ts`)
+- `CONFIRM` — approve warning, deletes
+- `ENTITY_PICKER` — `members`, `messageTemplates` (`selected` on cards)
+
+Forms: `Forms.CUSTOMER_MEETING` with truthful `sub`; init identity `{ meeting: id }` — no id echo from `read`.
 
 ## 7) Shared field + modal contracts (this slice)
 
@@ -201,7 +224,7 @@ Modal scroll bodies: `minH={0}` + `customScroll`. Rule: `.cursor/rules/website-c
 |---|---|
 | `ui.pages.customer.meetings.*` | Directory title, search, status chips, empty, load-more, card chairperson/quorum labels |
 | `ui.pages.customer.meetingForm.*` | Create title, field labels, type options, datetime/chairperson chrome, create button |
-| `ui.pages.customer.meetingDetails.*` | Stub title/subtitle |
+| `ui.pages.customer.meetingDetails.*` | Details roadmap copy (sections, readiness, templates, confirms) |
 | `ui.modals.entityPicker.*` | Confirm/cancel/search/empty/loadMore |
 | `ui.modals.dateTimePicker.*` | Confirm/cancel/datePart/timePart/pickDate/pickTime |
 | `ui.components.mainHeader.back` | Form SectionHeading back |
@@ -228,6 +251,16 @@ ar/en mirrors required. Note: `meetingForm.typeEmpty` exists in translations but
 |---|---|
 | `react-datepicker` | Inline calendar inside `DateTimePickerModal` |
 | Removed | `flatpickr`, `react-flatpickr`, `@types/react-flatpickr` (unused after this slice) |
+
+### 10.1 Success feedback asset
+
+`Toast` chooses the success Lottie from the active color scheme:
+
+- `dark-success.json` is the existing colored success animation for light scheme.
+- `light-success.json` is the white success animation for dark scheme.
+
+The asset choice is presentation-only; toast status, message delivery, and
+accessibility semantics remain owned by the shared toast surface.
 
 ## 11) Verify
 
@@ -307,6 +340,45 @@ ar/en mirrors required. Note: `meetingForm.typeEmpty` exists in translations but
 | `.cursor/rules/website-third-party-widget-emotion-theme.mdc` | datepicker theme |
 | `.cursor/skills/website-customer-meeting-form/SKILL.md` | repeatable meeting UI |
 | `.cursor/skills/website-entity-picker/SKILL.md` | repeatable picker |
+
+### 12.1 Details implementation inventory
+
+The preceding map covers the original directory/form foundation. This table is the
+complete source inventory for the details, notify-template, decision-phase, and
+feedback additions in the current slice. Backend source is detailed in
+[`meeting-domain.md` §10](../backend/contracts/meeting-domain.md#10-traceability-map)
+and the relevant child contracts.
+
+| Path | Role | Section |
+|---|---|---|
+| `src/app/ui/components/customer/hooks/useCustomerMeetingDetails.ts` | Root-one Meeting GQL adapter and refresh boundary. | §6.1 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingDetailsScreen.tsx` | Details composition, readiness, Ability-gated writes, chairperson-first roster, and divided sections. | §6.2–§6.3 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingParticipantRow.tsx` | Roster presentation and chairperson-safe remove action. | §6.2 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingAgendaRow.tsx` | Ordered agenda presentation and actions. | §6.2 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingDecisionRow.tsx` | Decision row presentation contract. | §6.2 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingTemplateSlots.tsx` | Contact-mode callout and template-slot actions. | §6.3 |
+| `src/app/ui/components/customer/meetings/MeetingBasicsModalForm.tsx` | Read-then-update basics form. | §6.3–§6.4 |
+| `src/app/ui/components/customer/meetings/MeetingParticipantAddModalForm.tsx` | Participant member/type form. | §6.3–§6.4 |
+| `src/app/ui/components/customer/meetings/MeetingSubjectModalForm.tsx` | Agenda and decision subject forms; decision creation carries required phase. | §6.3 |
+| `src/app/ui/components/customer/meetings/meetingNotifyTemplateMode.ts` | UI-only mirror for readiness copy; backend remains enforcement source. | §6.3 |
+| `src/app/ui/components/modals/FormModal.tsx` | Thin registered FORM shell; each body retains a private shallow form. | §6.3–§6.4 |
+| `src/resources/configs/store/modals.ts` | FORM modal registration. | §6.4 |
+| `src/app/ui/components/modals/entity-picker/configs/index.ts` | `messageTemplates` picker registration. | §6.3 |
+| `src/app/ui/components/modals/entity-picker/configs/messageTemplates.tsx` | Non-searching template picker and type-family filter mapping. | §6.3 |
+| `src/app/ui/components/customer/message-templates/CustomerMessageTemplateCard.tsx` | Selected card presentation in the picker. | §6.3 |
+| `src/types/requesters/requesters.website.ts` | Exact customer `meeting` sub-map mirror. | §6.3 |
+| `src/types/gql/definitions/customer.graphql` | Backend customer SDL mirror. | §6.1 |
+| `src/types/gql/gql-types/customer.ts` | Generated customer type mirror; not independently authored. | §6.1 |
+| `src/resources/translations/ar.ts` / `en.ts` | Details, template-mode, message-type, and status copy. | §8 |
+| `src/app/ui/components/Toast.tsx` | Color-scheme selection for the success Lottie. | §10 |
+| `src/resources/animations/dark-success.json` | Existing success asset renamed for light-scheme use. | §10 |
+| `src/resources/animations/light-success.json` | White success asset for dark-scheme use. | §10 |
+| `src/resources/animations/success.json` | Renamed to `dark-success.json`; no remaining consumer. | §10 |
+| `lib/tsconfig.tsbuildinfo` | Generated TypeScript build state; excluded from source narrative and commits. | generated |
+| `docs/platforms/website/flow-customer-meetings.md` | This observable flow and inventory. | all |
+| `docs/platforms/website/flow-form-foundation.md` | FORM modal and shallow-form foundation update. | §6.3–§6.4 |
+| `.cursor/rules/meeting-lifecycle-approve-lock.mdc` | Durable lifecycle, approve, and notify-lock guardrail. | §6.3 |
+| `.cursor/rules/decision-meeting-child.mdc` | DURING/PRE_START prepare-write and approve-completeness guardrail. | §6.3 |
 
 ## 13) Related
 

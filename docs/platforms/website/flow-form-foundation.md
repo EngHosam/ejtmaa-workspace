@@ -17,7 +17,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `customer.organization`: `read` | `upsert`,
   - `customer.notification`: `deleteAll`,
   - `customer.subscription`: `subscribe`.
-  - `customer.meeting`: `create`.
+  - `customer.meeting`: `create` | `read` | `update` | `delete` | `approve` | participant/agenda/decision child subs (see `requesters.website.ts`).
   - Planned subs not yet shipped: `visitor.auth` `loginSocial` | `registerCustomerSocial` (Google social).
   - Endpoint builders (shipped): `API.FORMS.R("auth")(sub)` (visitor), `API.FORMS.CUSTOMER.R(requester)(sub)`.
 - **Shared `FORMS` registrations** — `website/src/resources/configs/store/forms.ts` stores the requester endpoint builder (not a preselected `sub`); callers pass the truthful `sub` at send time.
@@ -26,7 +26,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `Forms.CUSTOMER_MESSAGE_CHANNEL` — `API.FORMS.CUSTOMER.R("messageChannel")` (shipped channel create/edit).
   - `Forms.CUSTOMER_MESSAGE_TEMPLATE` — `API.FORMS.CUSTOMER.R("messageTemplate")` (shipped template create/edit).
   - `Forms.CUSTOMER_ORGANIZATION` — `API.FORMS.CUSTOMER.R("organization")` (shipped org settings upsert).
-  - `Forms.CUSTOMER_MEETING` — `API.FORMS.CUSTOMER.R("meeting")` (shipped meeting create).
+  - `Forms.CUSTOMER_MEETING` — `API.FORMS.CUSTOMER.R("meeting")` (create form + details roadmap writes).
 - **Form hooks (web-core)** — same ownership split as cpanel:
   - `useForm` reads an already-existing form entry,
   - `useShallowForm` injects a form reducer entry on mount (route/modal/scoped forms),
@@ -40,7 +40,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - member form: `/customer/members/form` (+ `/:id`) — `Forms.CUSTOMER_MEMBER`; see `flow-customer-members.md` §5,
   - message-channel form: `/customer/message-channels/form` (+ `/:id`) — `Forms.CUSTOMER_MESSAGE_CHANNEL`; see `flow-customer-message-channels.md`,
   - message-template form: `/customer/message-templates/form` (+ `/:id`) — `Forms.CUSTOMER_MESSAGE_TEMPLATE`; see `flow-customer-message-templates.md`,
-  - meeting form: `/customer/meetings/form` — `Forms.CUSTOMER_MEETING` create-only; see `flow-customer-meetings.md`,
+  - meeting form: `/customer/meetings/form` — `Forms.CUSTOMER_MEETING` create-only path; details roadmap uses the same form identity for modal/page writes — see `flow-customer-meetings.md`,
   - organization settings: `/customer/organization` — `Forms.CUSTOMER_ORGANIZATION`; see `flow-customer-organization.md`,
   - account settings: `/customer/settings` — planned (`Forms.CUSTOMER_SETTINGS` not registered yet); see `flow-settings.md`,
   - notification delete-all — see `flow-notifications.md`.
@@ -48,7 +48,8 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, `FormInputWrapper`, `FormProvider`,
   - template helpers: `FormTemplateVariableInsert`, `FormMessageTemplateVariablesField` (see §3.2c; consumer `flow-customer-message-templates.md`),
   - Compose from `Utils` + semantic theme tokens.
-  - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`), `CONFIRM` (`confirm`) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
+  - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`), `CONFIRM` (`confirm`), `FORM` (`openForm` thin chrome shell) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
+  - **`FORM` modal bodies are real forms** — each body owns `useShallowForm` + `FormProvider` + shared `Form*` fields + `d.send({ sub })` exactly like route screens (`CustomerMeetingFormScreen` / `CustomerMemberFormScreen`). Do **not** share the parent page form context, raw `<input>` state, or `setValues`+custom chrome inside the modal. `FormModal` / `openForm` only supply title/subtitle/shell; field errors, loading, and submit stay on the form stack. Canonical meeting examples: `MeetingBasicsModalForm`, `MeetingParticipantAddModalForm`, `MeetingSubjectModalForm`.
 
 ## 3) Field surface contracts (shipped)
 
@@ -275,7 +276,11 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card (`members.tsx`, `messageChannels.tsx`, …) |
 | `website/src/app/ui/components/modals/entity-picker/configs/index.ts` | registry of idents |
 | `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`, `searchable?`) |
-| `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM` |
+| `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM`, `FORM` |
+| `website/src/app/ui/components/modals/FormModal.tsx` | Thin `FORM` chrome + `openForm` (body owns form stack) |
+| `website/src/app/ui/components/customer/meetings/MeetingBasicsModalForm.tsx` | Meeting basics modal form (`read`/`update`) |
+| `website/src/app/ui/components/customer/meetings/MeetingParticipantAddModalForm.tsx` | Add participant modal form |
+| `website/src/app/ui/components/customer/meetings/MeetingSubjectModalForm.tsx` | Agenda/decision subject modal form |
 | `website/src/app/ui/components/form/FormDateTimeField.tsx` | datetime field → `DATETIME_PICKER` modal |
 | `website/src/app/ui/components/modals/DateTimePickerModal.tsx` | datetime modal shell |
 | `website/src/app/ui/components/modals/ConfirmModal.tsx` | `CONFIRM` shell + `confirm()` helper |

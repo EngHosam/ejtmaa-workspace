@@ -16,6 +16,16 @@ Authoritative contract: `docs/platforms/backend/contracts/decision-domain.md`.
 - Durable SQL (`phase` PRE_START / DURING); not Yjs source of truth.
 - Enums: `decisionPhase`, `decisionStatus` (default `NEW`), optional `decisionVotingType`.
 
+## Prepare writes
+
+- `MeetingRequester.createDecision` accepts only `PRE_START` or `DURING`; persist
+  the validated client phase with `NEW` status and null `voting_type`.
+- While the Meeting update Ability permits the prepare window
+  (`notify_status === NOT_STARTED`), update and delete apply equally to both
+  phases. Do not reintroduce a PRE_START-only requester gate.
+- Approve completeness remains separate: it requires at least one `PRE_START`
+  decision, never a `DURING` decision.
+
 ## Customer GQL
 
 - Nested only: `_Meeting.decisions: [_Decision]`.

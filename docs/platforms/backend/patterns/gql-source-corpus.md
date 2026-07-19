@@ -46,11 +46,11 @@ Framework contracts: `@nodejs/gql` (`BridgeBase`, `GQLSchemaBase`, `GQLProvider`
 | `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts` | Org message delivery channels (extends org-owned base) |
 | `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts` | Org message templates (extends org-owned base) |
 | `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | Org meetings (extends org-owned base) |
-| `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts` | Nested meeting roster (`ident = "participants"`) |
-| `backend/src/app/gql/bridges/customer/AgendaItemBridge.ts` | Nested agenda (`ident = "agendaItems"`) |
-| `backend/src/app/gql/bridges/customer/DecisionBridge.ts` | Nested decisions (`ident = "decisions"`) |
-| `backend/src/app/gql/bridges/customer/VoteBridge.ts` | Nested votes under decision (`ident = "votes"`) |
-| `backend/src/app/gql/bridges/customer/TalkRecordBridge.ts` | Nested talk records under meeting (`ident = "talkRecords"`) |
+| `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts` | Nested meeting roster (`ident = "meetingParticipant"`) |
+| `backend/src/app/gql/bridges/customer/AgendaItemBridge.ts` | Nested agenda (`ident = "agendaItem"`) |
+| `backend/src/app/gql/bridges/customer/DecisionBridge.ts` | Nested decisions (`ident = "decision"`) |
+| `backend/src/app/gql/bridges/customer/VoteBridge.ts` | Nested votes under decision (`ident = "vote"`) |
+| `backend/src/app/gql/bridges/customer/TalkRecordBridge.ts` | Nested talk records under meeting (`ident = "talkRecord"`) |
 | `backend/src/app/gql/bridges/customer/PlanBridge.ts` | Public plan catalog (`ident = "plan"`; `{ public: true }`) |
 | `backend/src/app/gql/bridges/customer/SubscriptionBridge.ts` | Customer subscriptions + `_Me.currentSubscription` (`ident = "subscription"`; `{ me: true }`; contract `subscription-domain.md`) |
 | `backend/src/app/gql/bridges/supervisor/MeBridge.ts` | Supervisor profile |
