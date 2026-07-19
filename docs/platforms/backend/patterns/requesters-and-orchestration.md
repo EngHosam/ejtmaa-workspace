@@ -135,6 +135,26 @@ For enum-like business fields in requesters:
 3. Use `raw: true` when requester execution expects the persisted enum value.
 4. Keep TypeScript contracts aligned with model-exported enum type (single source of truth).
 
+### Read Hydrate — SelectOption Shape
+
+When `read` fills website `FormChoiceField` / `FormEntityPickerField`, return select-ready values:
+
+- Enums → `RequesterBase.toEnumForSelect(value, enumKey)`
+- Related entities → `relatedModel.forSelect(lang)` (per-model method)
+
+Full contract: [`requester-read-select-hydrate.md`](requester-read-select-hydrate.md). Rule: `.cursor/rules/requester-read-select-hydrate.mdc`. Skill: `.cursor/skills/backend-requester-read-select-hydrate/SKILL.md`.
+
+### Type-Conditional Unused Fields — `.strip()` Then Flat Write
+
+When content/credential columns apply only for some discriminator values:
+
+1. Define `unused = () => joi.any().optional().allow(null, "").strip()`.
+2. Use `joi.when(discriminator, { is: …, then: requiredRule, otherwise: unused() })`.
+3. Persist with a **flat** object (`props.field ?? null`) — do **not** reintroduce per-type `attrsForType` maps whose only job is nulling stripped columns.
+4. Prefer `.strip()` over `forbidden()` when the form may still send stale keys after UI branching.
+
+Rule: `.cursor/rules/requester-type-conditional-strip.mdc`. Canonical: `MessageTemplateRequester`, `MessageChannelRequester`.
+
 `withJoiFirewall` note:
 - Presence is `required` by default in engine configuration.
 - Do not add `.required()` redundantly unless intentionally overriding behavior.

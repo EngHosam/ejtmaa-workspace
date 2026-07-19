@@ -115,7 +115,8 @@ Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerMeeti
 | `CustomerOrganization` | `/customer/organization` | shipped — settings form upsert; drawer tile; `breadcrumb: { parent: CustomerHome }` — `flow-customer-organization.md` |
 | `CustomerMessageChannels` | `/customer/message-channels` | shipped — directory (ResultLane); drawer tile before Settings; `breadcrumb: { parent: CustomerHome }` — `flow-customer-message-channels.md` |
 | `CustomerMessageChannelForm` | `/customer/message-channels/form` (+ `/:id`) | shipped — multi-path create/update; parent `CustomerMessageChannels` — `flow-customer-message-channels.md` |
-| `CustomerMessageTemplates` | `/customer/message-templates` (target) | planned — drawer tile |
+| `CustomerMessageTemplates` | `/customer/message-templates` | shipped — `flow-customer-message-templates.md` |
+| `CustomerMessageTemplateForm` | `/customer/message-templates/form` (+ `/:id`) | shipped — multi-path form |
 | `CustomerSubscription` | `/customer/subscription` (target) | planned — drawer tile |
 | `CustomerSettings` | `/customer/settings` | planned — drawer tile + settings flow |
 | `CustomerSupport` | `/customer/support` (target) | planned — drawer tile (no GQL root yet) |

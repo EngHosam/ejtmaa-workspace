@@ -63,6 +63,8 @@ This rule is a self-contained Ejtmaa requester contract. Do not mention, cite, c
 - Requesters must not create domain notifications directly with `Notification().create(...)`. Emit the appropriate `notify<...>(...)` event after commit and let the notify event/listener own notification creation and broadcasting.
 - Manual commit before side effects requires a documented reason and explicit user approval.
 - Also apply `.cursor/rules/backend-requester-whitespace-normalization.mdc`; human/business text must not lose internal spaces.
+- `read` values for website `FormChoiceField` / `FormEntityPickerField` must use SelectOption hydrate — `.cursor/rules/requester-read-select-hydrate.mdc` (authority: `docs/platforms/backend/patterns/requester-read-select-hydrate.md`).
+- `read` must not echo the edited entity id into values — `.cursor/rules/requester-read-no-entity-id-echo.mdc`.
 
 ## Forbidden Patterns
 

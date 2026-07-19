@@ -41,3 +41,5 @@ result.setData({
 ```
 
 Authority: `docs/platforms/backend/contracts/member-domain.md` §9.3, `message-channel-domain.md` §5.
+
+Related select hydrate (enums / entity refs on the same `read`): `docs/platforms/backend/patterns/requester-read-select-hydrate.md`.

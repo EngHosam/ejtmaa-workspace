@@ -9,8 +9,8 @@ Authenticated customer org delivery-channel directory + multi-path form on `CUST
 - Directory (GQL list + ResultLane load-more) with Add + card Edit.
 - Multi-path form `CustomerMessageChannelForm` (create/update/delete) via `Forms.CUSTOMER_MESSAGE_CHANNEL` → `messageChannel` requester.
 - Drawer tile `itemMessageChannels` / `CustomerMessageChannels` / **`FiSend`**, after Subscription / before Settings.
-- Card glyph **`FiSend`** (section identity consistency); presentational card with optional `editLabel` / `onEdit`.
-- Type chooser on **create** only; update shows locked type label (value kept in form from `read`).
+- Card glyph **`FiSend`** (section identity consistency); presentational card with optional `editLabel` / `onEdit`; optional **`selected`** (accent fill/border) for entity-picker parity with members.
+- Type chooser on create; update uses the same `FormChoiceField` with `readOnly` (value kept in form from `read` / `toEnumForSelect`).
 - Status **not** on the form: create/update set `ACTIVE` / `DISABLED` via requester `testConnection()` (model stub currently returns `false` → saves land as `DISABLED` until real connectivity ships).
 - Conditional fields by `type`: `CUSTOM_EMAIL` SMTP block vs `ADWHATS` / `ADWHATS_PRO` token + account id (type-dependent Ad Whats labels).
 - Delete: `await confirm(…, "danger")` → `sub: "delete"` → `nav.back()`.
@@ -19,7 +19,7 @@ Authenticated customer org delivery-channel directory + multi-path form on `CUST
 
 **Not shipped**
 
-- History search / type-status filter chips (no `_MessageChannelFilter` yet).
+- History search / type-status filter chips on the directory list (picker already filters via `_MessageChannelFilter`).
 - Calling `testConnection()` from the UI (requester-owned only).
 - Channel details route.
 - Seed rows for channels.
@@ -62,7 +62,7 @@ List + form: `layout: "CUSTOMER_MAIN"`, `mustAuthedAs: ["CUSTOMER"]`. List bread
 | Field | Create | Update | Notes |
 |---|---|---|---|
 | `name` | yes | yes | |
-| `type` | `FormChoiceField` | read-only label | Update must still submit echoed `type` from `read` (backend locks) |
+| `type` | `FormChoiceField` | same + `readOnly` | Update must still submit echoed `type` from `read` (backend locks). Branch credentials via `choiceFieldValue(values.type)` |
 | `smtp_*` / `from_*` | when `CUSTOM_EMAIL` | same | `smtp_secure` as `"true"` / `"false"` choice tiles |
 | `adwhats_token` / `adwhats_account_id` | when `ADWHATS` \| `ADWHATS_PRO` | same | Labels switch for Pro |
 | `status` | not on UI | not on UI | Server-owned |
@@ -99,7 +99,7 @@ ar/en mirrors required.
 | `website/…/CustomerMessageChannelForm.tsx` | Thin page | §2 |
 | `website/…/CustomerMessageChannelFormScreen.tsx` | Form screen | §3 |
 | `website/…/CustomerMessageChannelsScreen.tsx` | List Add/Edit wiring | §4 |
-| `website/…/CustomerMessageChannelCard.tsx` | Presentational card + edit | §1, §4 |
+| `website/…/CustomerMessageChannelCard.tsx` | Presentational card + edit + **`selected`** for picker | §1, §4 |
 | `website/…/MessageChannelCardSkeleton.tsx` | Lane skeleton (unchanged pattern) | §4 |
 | `website/…/modals/ConfirmModal.tsx` | Shared confirm | §3, `flow-form-foundation.md` §3.8 |
 | `website/…/form/FormActionButton.tsx` | `tone="danger"` | `flow-form-foundation.md` |
@@ -120,9 +120,12 @@ Backend paths for the same slice: `message-channel-domain.md` §10.
 ## 8) Related
 
 - `.cursor/skills/website-customer-message-channels/SKILL.md`
+- `.cursor/skills/website-customer-message-templates/SKILL.md` (channel picker consumer)
+- `.cursor/skills/website-entity-picker/SKILL.md`
 - `.cursor/skills/website-customer-member-form/SKILL.md`
 - `.cursor/rules/website-multi-path-form-routes.mdc`
 - `.cursor/rules/website-confirm-modal.mdc`
 - `.cursor/rules/message-channel-domain.mdc`
+- `.cursor/rules/requester-type-conditional-strip.mdc`
 - `docs/platforms/website/flow-form-foundation.md`
 - `docs/platforms/backend/contracts/message-channel-domain.md`

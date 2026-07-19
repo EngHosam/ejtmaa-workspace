@@ -290,6 +290,28 @@ Use `outPropsType` to reflect the final persisted type:
 
 Do not manually extract `SelectOption.value` in requester code unless the existing local contract requires it and the reason is clear.
 
+### Read Hydrate (FormChoice / EntityPicker)
+
+When `read` returns values for website choice tiles or entity pickers, return SelectOption shapes — do not leave bare enum strings or bare FK ids.
+
+- Enums: `await this.toEnumForSelect(value, enumKey)` (`RequesterBase`).
+- Related entities: per-model `forSelect(lang)` on the related ORM model; call from `read`.
+- `ReadResult` types those fields as `SelectOption` / `Nullable<SelectOption>`.
+- Write path stays `joi.select` — do not require SelectOption-only writes.
+
+Authority: `docs/platforms/backend/patterns/requester-read-select-hydrate.md`. Skill: `.cursor/skills/backend-requester-read-select-hydrate/SKILL.md`. Rule: `.cursor/rules/requester-read-select-hydrate.mdc`.
+
+### Type-Conditional Unused Fields
+
+When columns apply only for some `type` (or similar discriminator) values:
+
+- Unused branches: `joi.any().optional().allow(null, "").strip()`.
+- Persist flat: `props.field ?? null`.
+- Do **not** rebuild per-type `attrsForType` maps whose only job is nulling.
+- Prefer `.strip()` over `forbidden()` when the UI may still send stale keys.
+
+Authority: `.cursor/rules/requester-type-conditional-strip.mdc`. Canonical: `MessageTemplateRequester`, `MessageChannelRequester`.
+
 ## `outPropsType` Rules
 
 `outPropsType` is part of the contract. It must describe what validation returns, not what the client sent.

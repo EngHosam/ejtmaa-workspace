@@ -14,7 +14,7 @@ Out of scope (not shipped):
 
 - Real SMTP / Ad Whats connectivity inside `testConnection()` (method exists; stub returns `false`; create/update **do** call it and set `ACTIVE` / `DISABLED` from the result),
 - send pipeline that flips `status` to `DISABLED` on token/connection failure after send,
-- linking `MessageTemplate` content rules to requesters (ORM/GQL kinds + FK shipped — see `message-template-domain.md`),
+- linking `MessageTemplate` content rules to requesters (shipped — see `message-template-domain.md` §5b),
 - `EJTMAA_EMAIL` as a channel type (platform mailer templates intentionally have **no** channel row — product decision),
 - supervisor MessageChannel GraphQL,
 - cpanel mirrors/UI,
@@ -40,7 +40,7 @@ Authoritative on `MessageTemplate` now — see `message-template-domain.md`:
 | `EJTMAA_EMAIL` (platform mailer) | none (`message_channel_id` null) | `subject` + `body` required |
 | `CUSTOM_EMAIL` | required matching channel | `subject` + `body` required |
 | `ADWHATS` | required matching channel | `body` only |
-| `ADWHATS_PRO` | required matching channel | provider variable map only (`{{key}}` → `{{n}}`); no free subject/body |
+| `ADWHATS_PRO` | required matching channel | `meta_template_id` + provider variable map (`{{key}}` → `{{n}}`); no free subject/body |
 
 Enum spelling: `ADWHATS` / `ADWHATS_PRO` (not `AD_WHATS`). Write-path enforcement is requester todo.
 
@@ -125,7 +125,18 @@ Enum keys under:
 SDL:
 
 - `backend/src/app/gql/definitions/base.graphql` — `_MessageChannelTypeValue` / `_MessageChannelType`, `_MessageChannelStatusValue` / `_MessageChannelStatus`
-- `backend/src/app/gql/definitions/customer.graphql` — `_MessageChannel` + roots
+- `backend/src/app/gql/definitions/customer.graphql` — `_MessageChannel` + `_MessageChannelFilter` + roots
+
+### Filter `_MessageChannelFilter`
+
+| Field | Type | Behavior |
+|---|---|---|
+| `type` | `_MessageChannelTypeValue` | Exact match on channel `type` (org-scoped list still via association) |
+| `status` | `_MessageChannelStatusValue` | Exact match on channel `status` (e.g. template picker uses `ACTIVE` only) |
+
+Root: `messageChannels(filter: _MessageChannelFilter)`. Singular `messageChannel(id)` ignores filter.
+
+Bridge: `MessageChannelBridge.getOrmFindOptions` maps `filter.type` / `filter.status` when root-many (same pattern as `_MemberFilter` / `_MeetingFilter`).
 
 ### Type `_MessageChannel`
 
@@ -140,7 +151,7 @@ Exposed fields:
 
 ### Root queries
 
-- `messageChannels: [_MessageChannel]`
+- `messageChannels(filter: _MessageChannelFilter): [_MessageChannel]`
 - `messageChannel(id: ID!): _MessageChannel`
 
 Resolvers (`CustomerSchema`):
@@ -180,17 +191,19 @@ File: `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts`
 - Website map: `customer.messageChannel` in `requesters.website.ts` (mirrored on website — W18).
 - **`read` values must not echo `messageChannel` id** — identity stays in form `initProps.values`; form merge preserves it (same rule as `MemberRequester.read`).
 - Update locks `type` to the existing row (client must echo the read value).
-- Credential columns required by `type` via Joi `when`; unused branches use `joi.any().optional().allow(null, "")` (not `.strip()`). `attrsForType` persists only the matching columns and nulls the rest.
+- Credential columns required by `type` via Joi `when`; unused branches use `joi.any().optional().allow(null, "").strip()`. Write path persists stripped props with `?? null` (no per-type attrs helper).
 - `status` is **not** client-owned: create/update call `testConnection()` after credentials are written — `true` → `ACTIVE`, `false` → `DISABLED`.
 
 ### 5.1 Requester subs (summary)
 
 | Sub | Behavior |
 |---|---|
-| `read` | Owned channel → values: name, type, credential columns (`smtp_secure` as `"true"`/`"false"` string for form choice) — **no** `messageChannel` id key |
+| `read` | Owned channel → values: name, `type` via `toEnumForSelect(..., "messageChannelType")`, credential columns (`smtp_secure` as `"true"`/`"false"` string for form choice) — **no** `messageChannel` id key |
 | `create` | Validate → `createMessageChannel` with `status: ACTIVE` → `testConnection` may flip to `DISABLED` → `SUCCESS_CREATE` |
 | `update` | Owned channel + locked type → update attrs → `testConnection` → `ACTIVE`/`DISABLED` → `SUCCESS_UPDATE` |
 | `delete` | Owned channel → `destroy({ force: true })` → `SUCCESS_DELETE` |
+
+Select hydrate pattern (enums / entity refs on `read`): [`../patterns/requester-read-select-hydrate.md`](../patterns/requester-read-select-hydrate.md).
 
 ## 6) Read flow (root)
 
@@ -238,21 +251,22 @@ Local registry (gitignored): `backend/.types/models.ts` must include `"MessageCh
 
 | Path | Role | Section |
 |---|---|---|
-| `backend/src/app/orm/models/MessageChannel.ts` | ORM + `testConnection` stub | §3 |
+| `backend/src/app/orm/models/MessageChannel.ts` | ORM + `testConnection` stub + `forSelect(lang)` | §3 / hydrate |
 | `backend/src/app/orm/models/Customer.ts` | `Ability.MESSAGE_CHANNEL` | §5 |
-| `backend/src/app/orchestrator/requesters/MessageChannelRequester.ts` | CRUD requester | §5 |
+| `backend/src/app/orchestrator/requesters/MessageChannelRequester.ts` | CRUD; credential `.strip()` + `?? null` | §5 |
 | `backend/src/app/validation/joi_rules.ts` | `isCustomerOwnedMessageChannel` | §5 |
 | `backend/requesters.website.ts` | `customer.messageChannel` map | §5 |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany MessageChannel` + mixins | §3.4 |
 | `backend/src/resources/trans/ar/general.ts` | `messageChannelType` / `messageChannelStatus` AR | §3.5 |
 | `backend/src/resources/trans/en/general.ts` | EN mirrors | §3.5 |
 | `backend/src/app/gql/definitions/base.graphql` | type/status GQL enums | §4 |
-| `backend/src/app/gql/definitions/customer.graphql` | `_MessageChannel` + roots | §4 |
-| `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts` | thin entity bridge | §4–§6 |
+| `backend/src/app/gql/definitions/customer.graphql` | `_MessageChannel` + `_MessageChannelFilter` (`type`+`status`) | §4 |
+| `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts` | filter map + nest parents | §4–§6 |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | `GetOneParent` includes `MessageChannelModel` | §4 |
-| `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + resolvers | §4 |
+| `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + resolvers pass `filter` | §4 |
 | `website/` form + directory | portal UI | `flow-customer-message-channels.md` |
 | `.cursor/rules/message-channel-domain.mdc` | Channel invariants | governance |
+| `.cursor/rules/requester-type-conditional-strip.mdc` | Unused credential `.strip()` | §5 |
 
 ## Related
 

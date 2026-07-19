@@ -1,0 +1,40 @@
+---
+description: Requester read must hydrate FormChoice/EntityPicker fields as SelectOption via toEnumForSelect and model.forSelect
+globs:
+  - backend/src/app/orchestrator/requesters/**/*
+  - backend/src/app/orchestrator/RequesterBase.ts
+  - backend/src/app/orm/models/**/*
+  - docs/platforms/backend/patterns/requester-read-select-hydrate.md
+  - docs/platforms/backend/contracts/**/*
+alwaysApply: false
+---
+
+# Requester Read — Select Hydrate
+
+Authoritative contract: `docs/platforms/backend/patterns/requester-read-select-hydrate.md`.
+
+## Rule
+
+When `read` values hydrate website `FormChoiceField` or `FormEntityPickerField`:
+
+| Kind | Required |
+|---|---|
+| Domain enum | `await this.toEnumForSelect(value, enumKey)` |
+| Related entity | `related?.forSelect(this.context.lang()) ?? null` |
+
+`ReadResult` types those fields as `SelectOption` (or `Nullable<SelectOption>`).
+
+## Model `forSelect`
+
+- Per related model instance method — **not** a generic Model base.
+- Return `{ value: id, label: display }`; keep `lang` param for multilang labels.
+
+## Forbidden
+
+- Bare enum string or bare FK id for choice/picker-bound `read` fields.
+- Hand-built `{ value, label }` in the requester when `toEnumForSelect` / `forSelect` already covers it.
+- Echoing the edited entity id in `read` values (see `requester-read-no-entity-id-echo.mdc`).
+
+## Write path unchanged
+
+Creates/updates still use `joi.select({ validValues })` / Opt helpers. Do not require SelectOption-only writes.

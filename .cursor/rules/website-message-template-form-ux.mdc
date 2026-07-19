@@ -1,0 +1,26 @@
+---
+description: Customer message-template form UX locks — human chip labels, headerArea, Pro variable numbers, ACTIVE channel picker
+globs: website/src/app/ui/components/customer/message-templates/**,website/src/app/ui/components/form/FormTemplateVariableInsert.tsx,website/src/app/ui/components/form/FormMessageTemplateVariablesField.tsx,website/src/resources/configs/customer/messageTemplatePlaceholders.ts,website/src/app/ui/components/modals/entity-picker/configs/messageChannels.tsx
+alwaysApply: false
+---
+
+# Website message-template form UX
+
+Authoritative flow: `docs/platforms/website/flow-customer-message-templates.md` §6.
+
+## Locked
+
+- Placeholder **chip labels** are human-readable i18n strings — never show `{{token}}` on the chip. Tokens appear only inside the text field value after insert.
+- Insert chips live in `FormInputWrapper.headerArea` **above** the input — not in `actionArea` beside the title.
+- `ADWHATS_PRO` variables table: human labels + editable **variable number** (slot). Do not label UI “Meta slot”.
+- `ADWHATS_PRO` requires `meta_template_id` on the form (write-required on backend).
+- Channel picker `messageChannels`: `searchable: false`; always filter `status: ACTIVE` + matching `type`; forward `selected` into `CustomerMessageChannelCard`.
+- Kind content unused on other types: backend Joi `.strip()` — do not require frontend to clear unused keys as the primary contract.
+
+## Forbidden
+
+- Reverting chip copy to raw `{{memberName}}`-style labels.
+- Putting insert tools beside the field title instead of above the field.
+- Showing raw placeholder tokens in the Pro variables table.
+- Channel picker without `ACTIVE` (unless product explicitly changes picker policy).
+---

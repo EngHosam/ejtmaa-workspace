@@ -1,6 +1,6 @@
 ---
 description: MessageTemplate delivery-kind + optional MessageChannel FK invariants
-globs: backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/MessageChannel.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MessageChannelBridge.ts,backend/src/app/gql/definitions/**/*.graphql,backend/src/resources/trans/**/general.ts,website/src/types/gql/definitions/**/*.graphql
+globs: backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/MessageChannel.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orchestrator/requesters/MessageTemplateRequester.ts,backend/src/app/validation/joi_rules.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MessageChannelBridge.ts,backend/src/app/gql/definitions/**/*.graphql,backend/src/resources/trans/**/general.ts,website/src/types/gql/definitions/**/*.graphql,backend/requesters.website.ts,website/src/types/requesters/requesters.website.ts
 alwaysApply: false
 ---
 
@@ -26,19 +26,25 @@ Authoritative contract: `docs/platforms/backend/contracts/message-template-domai
 - Other kinds require an org-owned channel whose `type` matches the template kind (`CUSTOM_EMAIL` / `ADWHATS` / `ADWHATS_PRO`).
 - Write-path Joi/requester enforces this (not ORM nullability).
 - ORM: `MessageTemplate.belongsTo(MessageChannel)` only. Do **not** add `MessageChannel.hasMany(MessageTemplate)` unless product/GQL also needs `_MessageChannel.messageTemplates` (circular import risk).
+- Requester: `@requester("messageTemplate")` — website map `customer.messageTemplate`. Ability `MESSAGE_TEMPLATE` on `Customer`.
+- Content by kind enforced in Joi with unused `.strip()`; persist flat `?? null` — **no** `attrsForType` (see `requester-type-conditional-strip.mdc`).
+- `ADWHATS_PRO` requires `meta_template_id` + `variables` JSONB map.
+- `read` must **not** echo `messageTemplate` id. Update locks `type`.
+- `read` hydrate for choice/picker fields follows `requester-read-select-hydrate.md` (`toEnumForSelect` + `MessageChannel.forSelect`).
+- `delete` blocked when a Meeting still references the template (`whatsapp_template_id` / `email_template_id`) via `CANNOT_DELETE_USED`.
 
 ## Content by kind
 
-| type | subject/body | variables |
-|---|---|---|
-| `EJTMAA_EMAIL` / `CUSTOM_EMAIL` | required on write | null |
-| `ADWHATS` | body only | null |
-| `ADWHATS_PRO` | null | JSONB `Record<string, string>` |
+| type | subject/body | meta_template_id | variables |
+|---|---|---|---|
+| `EJTMAA_EMAIL` / `CUSTOM_EMAIL` | required on write | null | null |
+| `ADWHATS` | body only | null | null |
+| `ADWHATS_PRO` | null | required on write | JSONB `Record<string, string>` |
 
 ## GQL
 
-- `_MessageTemplateType` / `_MessageTemplateTypeValue` in `base.graphql`.
-- `_MessageTemplate` exposes `type`, `messageChannel`, `subject`, `body`, `variables` (`JSONObject`).
+- `_MessageTemplate` exposes `type`, `messageChannel`, `subject`, `body`, `variables` (`JSONObject`), `meta_template_id`.
+- `_MessageChannelFilter` supports `type` + `status` (picker: `ACTIVE` + matching type).
 - `MessageChannelBridge.GetOneParent` must include `MessageTemplateModel` for nested `messageChannel`.
 - Meeting FKs stay `whatsapp_template_id` / `email_template_id` until an explicit rename slice.
 

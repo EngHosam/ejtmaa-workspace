@@ -30,9 +30,11 @@ Authoritative contract: `docs/platforms/backend/contracts/message-channel-domain
 
 - Customer ability: `MESSAGE_CHANNEL` (`create` | `read` | `update` | `delete`) on `Customer` with org ownership.
 - Requester `@requester("messageChannel")` — website map `customer.messageChannel`.
-- Joi requires credential columns by `type`; unused branches `optional().allow(null, "")` — **not** `.strip()`.
+- Joi requires credential columns by `type`; unused branches `joi.any().optional().allow(null, "").strip()` then flat `?? null` writes (see `requester-type-conditional-strip.mdc`).
+- List filter `_MessageChannelFilter`: optional `type` + `status`. Template channel picker always sends `status: ACTIVE`.
 - Update **locks** `type` to the existing row.
 - `read` values must **not** echo `messageChannel` id (same as member `read` / `member` id).
+- `read` `type` uses `toEnumForSelect(..., "messageChannelType")` — see `docs/platforms/backend/patterns/requester-read-select-hydrate.md`.
 - GQL SDL may expose credential columns including `smtp_password` / `adwhats_token` (product choice: no special secret omission).
 
 ## GQL / ORM wiring

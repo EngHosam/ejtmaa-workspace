@@ -1,0 +1,48 @@
+---
+description: Type-conditional requester fields use Joi unused().strip() and flat ?? null writes — no attrsForType; forbidden only when key must be absent
+globs: backend/src/app/orchestrator/requesters/**/*.ts
+alwaysApply: false
+---
+
+# Requester type-conditional field strip
+
+## Rule
+
+When a write field applies only for some discriminator values (`type`, etc.):
+
+```ts
+const unused = () => joi.any().optional().allow(null, "").strip();
+
+subject: joi.when("type", {
+    is: joi.valid("EJTMAA_EMAIL", "CUSTOM_EMAIL"),
+    then: joi.string().trim().min(1),
+    otherwise: unused()
+}),
+```
+
+Then persist with a **flat** object:
+
+```ts
+subject: props.subject ?? null,
+body: props.body ?? null,
+// …
+```
+
+## Why
+
+- `.strip()` removes leftovers from `outProps` (form may still send stale keys after UI branching).
+- `?? null` clears DB columns for unused kinds without a per-type attrs helper.
+- `forbidden()` rejects any present key — only use when the client never sends the field (or clears it). Do not require frontend clears solely to enable `forbidden` when `.strip()` covers leftovers.
+
+## Forbidden
+
+- `unused` without `.strip()` that leaves wrong-kind values in `outProps`.
+- Reintroducing large per-type `attrsForType` / switch maps that only null columns already handled by strip + `?? null`.
+- Documenting “must clear on frontend” as the primary fix for leftover keys.
+
+## Canonical
+
+- `MessageTemplateRequester` content + channel fields
+- `MessageChannelRequester` credential fields
+
+Docs: `message-template-domain.md` §5b, `message-channel-domain.md` §5.

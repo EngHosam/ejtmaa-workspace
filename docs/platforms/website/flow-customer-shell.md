@@ -6,9 +6,9 @@ Customer portal contract for the customer shell (see `overview.md`).
 
 Authed customer shell on `website/`: `CUSTOMER_MAIN` layout, identity-first header, credit footer, portaled quick-nav drawer (grid tiles), and customer `me` read boundary via `CUSTOMER_ME`.
 
-**Shipped in this shell:** layout wiring, `CustomerHome` empty page, `CustomerMembers` directory + `CustomerMemberForm` create/edit (see `flow-customer-members.md`), header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
+**Shipped in this shell:** layout wiring, `CustomerHome`, `CustomerMembers` + form, `CustomerMeetings` + create/details, `CustomerOrganization`, `CustomerMessageChannels` + form, `CustomerMessageTemplates` + form, header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
 
-**Not shipped yet:** `CustomerBottomBar`, `BottomIcons`, `Dims.bottomBarHeight`, and the remaining drawer target routes other than `CustomerHome` / `CustomerMembers` (tiles render disabled until registered; form is reached from the members list, not as a drawer tile).
+**Not shipped yet:** `CustomerBottomBar`, `BottomIcons`, `Dims.bottomBarHeight`, and remaining drawer targets without routes (`CustomerSubscription`, `CustomerSettings`, `CustomerSupport`, `CustomerHelpGuide`, notifications page if still gated).
 
 ## 2) Layout wiring
 
@@ -89,7 +89,7 @@ Order (product-aligned to backend `CustomerSchema` roots / customer settings; us
 | 2 | `itemMeetings` | `CustomerMeetings` | `FiCalendar` | `meetings` / `meeting` |
 | 3 | `itemMembers` | `CustomerMembers` | `FiUsers` | `members` / `member` (shipped directory — `flow-customer-members.md`) |
 | 4 | `itemOrganization` | `CustomerOrganization` | `FiBriefcase` | `organization` (shipped settings form — `flow-customer-organization.md`) |
-| 5 | `itemMessageTemplates` | `CustomerMessageTemplates` | `FiMessageSquare` | `messageTemplates` / `messageTemplate` |
+| 5 | `itemMessageTemplates` | `CustomerMessageTemplates` | `FiMessageSquare` | `messageTemplates` / `messageTemplate` (shipped — `flow-customer-message-templates.md`) |
 | 6 | `itemSubscription` | `CustomerSubscription` | `FiCreditCard` | `plans` / `subscriptions` |
 | 7 | `itemMessageChannels` | `CustomerMessageChannels` | `FiSend` | `messageChannels` / `messageChannel` (shipped directory — `flow-customer-message-channels.md`) |
 | 8 | `itemSettings` | `CustomerSettings` | `FiSettings` | `CustomerRequester` read/update settings |

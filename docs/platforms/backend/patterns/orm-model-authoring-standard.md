@@ -92,6 +92,7 @@ If polymorphic:
 - Keep `attributes/initOptions/boot` complete.
 - Prefer minimal scopes and minimal custom security logic.
 - Keep helper functions pure and typed.
+- When the model is a website entity-picker / form-ref hydrate target, prefer instance `forSelect(lang): SelectOption` over requester-local `{ value, label }` maps — see `requester-read-select-hydrate.md`.
 
 ### 3) Security Contracts
 

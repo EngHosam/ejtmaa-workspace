@@ -80,6 +80,7 @@ Rules:
 - Include virtual fields used by callers in `Attrs`.
 - Keep indexes/scopes minimal and purposeful.
 - Keep relations aligned with expected requester/bridge traversal paths.
+- When the model is a website entity-picker / form ref hydrate target, add instance `forSelect(lang): SelectOption` — see `docs/platforms/backend/patterns/requester-read-select-hydrate.md` and `.cursor/skills/backend-requester-read-select-hydrate/SKILL.md`. Do **not** invent a generic Model-base `forSelect`.
 
 ## Step 3: Ability Contract (Actor Only)
 

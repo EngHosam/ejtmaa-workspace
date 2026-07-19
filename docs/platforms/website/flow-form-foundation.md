@@ -13,6 +13,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `customer.customer`: `readSettings` | `updateSettings`,
   - `customer.member`: `read` | `create` | `update` | `delete`,
   - `customer.messageChannel`: `read` | `create` | `update` | `delete`,
+  - `customer.messageTemplate`: `read` | `create` | `update` | `delete`,
   - `customer.organization`: `read` | `upsert`,
   - `customer.notification`: `deleteAll`,
   - `customer.subscription`: `subscribe`.
@@ -23,6 +24,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `Forms.FORM1` — empty inherit for mockups / local tools.
   - `Forms.CUSTOMER_MEMBER` — `API.FORMS.CUSTOMER.R("member")` (shipped member create/edit).
   - `Forms.CUSTOMER_MESSAGE_CHANNEL` — `API.FORMS.CUSTOMER.R("messageChannel")` (shipped channel create/edit).
+  - `Forms.CUSTOMER_MESSAGE_TEMPLATE` — `API.FORMS.CUSTOMER.R("messageTemplate")` (shipped template create/edit).
   - `Forms.CUSTOMER_ORGANIZATION` — `API.FORMS.CUSTOMER.R("organization")` (shipped org settings upsert).
   - `Forms.CUSTOMER_MEETING` — `API.FORMS.CUSTOMER.R("meeting")` (shipped meeting create).
 - **Form hooks (web-core)** — same ownership split as cpanel:
@@ -37,12 +39,14 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - auth: `/login`, `/register`, `/reset-password` — `API.FORMS.R("auth")`; see `flow-auth.md`,
   - member form: `/customer/members/form` (+ `/:id`) — `Forms.CUSTOMER_MEMBER`; see `flow-customer-members.md` §5,
   - message-channel form: `/customer/message-channels/form` (+ `/:id`) — `Forms.CUSTOMER_MESSAGE_CHANNEL`; see `flow-customer-message-channels.md`,
+  - message-template form: `/customer/message-templates/form` (+ `/:id`) — `Forms.CUSTOMER_MESSAGE_TEMPLATE`; see `flow-customer-message-templates.md`,
   - meeting form: `/customer/meetings/form` — `Forms.CUSTOMER_MEETING` create-only; see `flow-customer-meetings.md`,
   - organization settings: `/customer/organization` — `Forms.CUSTOMER_ORGANIZATION`; see `flow-customer-organization.md`,
   - account settings: `/customer/settings` — planned (`Forms.CUSTOMER_SETTINGS` not registered yet); see `flow-settings.md`,
   - notification delete-all — see `flow-notifications.md`.
 - **Shared form field surfaces** under `src/app/ui/components/form/`:
-  - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, `FormInputWrapper`, `FormProvider`.
+  - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, `FormInputWrapper`, `FormProvider`,
+  - template helpers: `FormTemplateVariableInsert`, `FormMessageTemplateVariablesField` (see §3.2c; consumer `flow-customer-message-templates.md`),
   - Compose from `Utils` + semantic theme tokens.
   - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`), `CONFIRM` (`confirm`) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
 
@@ -61,6 +65,28 @@ Web-native requester form foundation for `website/`: the typed requester route m
 - Title: `variant="inputTitle"`.
 - Subtitle: `variant="caption"` + `semanticColor.textTertiary` (must read quieter than the title).
 - Errors: `semanticColor.stateError`.
+- Optional `actionArea` — beside title (legacy/rare).
+- Optional `headerArea` — **above** the input chrome (e.g. template placeholder insert chips). Prefer this over packing tools into `actionArea` next to the title.
+- Optional `bareField` — no pad/border/fill chrome (choice lists, Pro variables table).
+- Optional field shorthands: `fieldMinH`, `fieldPt`, `fieldPb`, `fieldAi_fs`; `fieldCssStyle` only for non-shorthand escapes.
+
+### 3.2b `FormTextField`
+
+- Supports `headerArea` / `actionArea` forwarded to the wrapper.
+- Native input/textarea uses `ElementStyles.inputReset` in `baseCssStyle` (not `buttonReset`).
+- Multiline chrome via wrapper `fieldMinH` / `fieldPt` / `fieldPb` / `fieldAi_fs`.
+
+### 3.2c Template placeholder helpers (message templates)
+
+| Component | Role |
+|---|---|
+| `FormTemplateVariableInsert` | Human-labeled chips; inserts `{{key}}` into named text field |
+| `FormMessageTemplateVariablesField` | Fixed Pro variable → slot number rows; seeds defaults `1`–`4` |
+| `messageTemplatePlaceholders.ts` | Shared keys + i18n label keys + `normalizeMessageTemplateVariables` |
+
+UX locks: chip **labels** are human text (tokens only after insert into the field value); chips use `headerArea` above the input, not `actionArea` beside the title; Pro table uses “variable number” wording (not “Meta slot”). Full consumer: `flow-customer-message-templates.md` §6.
+
+List these under shared form surfaces in §1 when adding more template helpers.
 
 ### 3.3 `FormAvatarField`
 
@@ -91,11 +117,13 @@ Web-native requester form foundation for `website/`: the typed requester route m
 | Not for | List/history filters — those use `FilterOptionChip(s)` (underline tabs) |
 | Selected | Soft accent fill (`canvasAccentSoftBackground`) + accent border + `FiCheck` |
 | Unselected | `inputBackground` + `inputBorder` |
-| Read-only | When `!setValue`: `opc` muted + `cursor: not-allowed` + `disabled` |
-| Wrapper | `FormInputWrapper` with transparent/zero padding field chrome (`fieldCssStyle` override) |
+| Read-only | When `!setValue` **or** `readOnly` prop: `opc` muted + `cursor: not-allowed` + `disabled` |
+| Wrapper | `FormInputWrapper` — default chrome via Utils shorthands; `bareField` for chrome-less lists/tables; optional `fieldMinH` / `fieldPt` / `fieldPb` / `fieldAi_fs`; `fieldCssStyle` only for non-shorthand escapes |
 | Click | `extra.onClick` → `setValue(option.value)` |
+| Value normalize | `choiceFieldValue(value)` — string or SelectOption `{ value }` → string (shared with conditional form branching) |
+| Read hydrate | Backend `read` should return SelectOption via `toEnumForSelect` for enum-backed choices — `docs/platforms/backend/patterns/requester-read-select-hydrate.md` |
 
-Canonical consumer: `CustomerMeetingFormScreen` type field (`PERIODIC` / `EMERGENCY`).
+Canonical consumers: `CustomerMeetingFormScreen` type field; `CustomerMessageChannelFormScreen` / `CustomerMessageTemplateFormScreen` type (create editable / update `readOnly`).
 
 ### 3.6 `FormEntityPickerField` + `ENTITY_PICKER`
 
@@ -106,15 +134,17 @@ Canonical consumer: `CustomerMeetingFormScreen` type field (`PERIODIC` / `EMERGE
 - Wrapper: `SelectableEntityCard.tsx`
 - Types: `modals/entity-picker/types.ts`
 - Registry: `modals/entity-picker/configs/index.ts` + one file per `ident`
-- Shipped config: `configs/members.tsx` (`listable: "members"`, GQL `EntityPickerMembers`, `CustomerMemberCard` + `selected`)
+- Shipped config: `configs/members.tsx` (`listable: "members"`, GQL `EntityPickerMembers`, `CustomerMemberCard` + **`selected`**)
+- Shipped config: `configs/messageChannels.tsx` (`listable: "messageChannels"`, `searchable: false`, filter `status: ACTIVE` + optional `type`, `CustomerMessageChannelCard` + **`selected`** — same selection chrome as members)
 
 #### Field
 
 | Concern | Contract |
 |---|---|
-| Open | `openEntityPicker({ ident, title, multi?, initValue, … })` |
+| Open | `openEntityPicker({ ident, title, multi?, initValue, filter?, … })` |
 | Single store | `{ value, label, avatarUrl? }` or `""` when cleared |
 | Multi store | `EntityPickerSelection[]` |
+| Read hydrate | Backend `read` should return `{ value, label }` via related `model.forSelect(lang)` — `docs/platforms/backend/patterns/requester-read-select-hydrate.md` |
 | Chrome | Chips with `IdentityAvatar` + label; empty uses `emptyLabel`; pick action button |
 | Read-only | When `!setValue` |
 
@@ -123,8 +153,9 @@ Canonical consumer: `CustomerMeetingFormScreen` type field (`PERIODIC` / `EMERGE
 | Concern | Contract |
 |---|---|
 | Adapter id | `entity-picker-${ident}` inherit `config.inheritedAdapterIdentify` |
-| Search | Draft + Enter commits `committedSearch` → `config.buildFilter` |
-| List scroll | `Col` `minH={0}` + `maxH` cap + `customScroll` (not `ovr_y`) |
+| Search | Optional: `searchable` (config/prop, default true). When on: draft + Enter → `committedSearch` → `buildFilter`. When off: no `SearchField` |
+| Filter extras | `filter` prop → `buildFilter(search, extras)` (e.g. channel `type`) |
+| List scroll | `Col` `minH` when empty/busy + `maxH` cap + `customScroll` (not `ovr_y`) so `Empty` overlay has height |
 | Pagination | Map `thereMoreRecords`; `LoadMoreButton`; `mLoad({ query })` without reload |
 | Selection | Single replaces; multi toggles; `SelectableEntityCard` + config `Card` |
 | Confirm | Passes full selection meta including `avatarUrl` |
@@ -133,7 +164,7 @@ Canonical consumer: `CustomerMeetingFormScreen` type field (`PERIODIC` / `EMERGE
 
 Skill: `.cursor/skills/website-entity-picker/SKILL.md`. Scroll: `.cursor/rules/website-custom-scroll-contract.mdc`.
 
-Canonical consumer: meeting chairperson (`ident="members"`).
+Canonical consumers: meeting chairperson (`ident="members"`); template channel (`ident="messageChannels"`).
 
 ### 3.7 `FormDateTimeField` + `DATETIME_PICKER`
 
@@ -223,22 +254,27 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 - Multi-action forms scope button `loading` by `currentSub` (§3.10).
 - `yarn type-check` passes in `website/`.
 
-## 5) Traceability (member + organization form slices)
+## 5) Traceability (form foundation — shared surfaces)
 
 | Path | Role |
 |---|---|
-| `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MEMBER`, `CUSTOMER_ORGANIZATION`, `CUSTOMER_MEETING`, `CUSTOMER_MESSAGE_CHANNEL` |
-| `website/src/resources/configs/customer/formRoute.ts` | `buildCustomerMemberFormHref`, `buildCustomerMeetingFormHref`, `buildCustomerMessageChannelFormHref` |
-| `website/src/types/requesters/requesters.website.ts` | `customer.member`, `customer.messageChannel`, `customer.organization`, `customer.meeting` |
+| `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MEMBER`, `CUSTOMER_ORGANIZATION`, `CUSTOMER_MEETING`, `CUSTOMER_MESSAGE_CHANNEL`, `CUSTOMER_MESSAGE_TEMPLATE` |
+| `website/src/resources/configs/customer/formRoute.ts` | `buildCustomerMemberFormHref`, `buildCustomerMeetingFormHref`, `buildCustomerMessageChannelFormHref`, `buildCustomerMessageTemplateFormHref` |
+| `website/src/types/requesters/requesters.website.ts` | `customer.member`, `customer.messageChannel`, `customer.messageTemplate`, `customer.organization`, `customer.meeting` |
+| `website/src/app/ui/components/form/FormInputWrapper.tsx` | `headerArea`, `bareField`, field shorthands |
+| `website/src/app/ui/components/form/FormTextField.tsx` | `headerArea` / `inputReset` / field chrome |
+| `website/src/app/ui/components/form/FormTemplateVariableInsert.tsx` | human-label insert chips (§3.2c) |
+| `website/src/app/ui/components/form/FormMessageTemplateVariablesField.tsx` | Pro variable → number rows (§3.2c) |
+| `website/src/resources/configs/customer/messageTemplatePlaceholders.ts` | placeholder keys + normalize |
 | `website/src/app/ui/components/form/FormAvatarField.tsx` | avatar / logo field |
 | `website/src/app/ui/components/form/FormColorField.tsx` | color field |
 | `website/src/app/ui/components/form/FormChoiceField.tsx` | discrete form choice tiles |
 | `website/src/app/ui/components/form/FormEntityPickerField.tsx` | entity picker field → modal |
 | `website/src/app/ui/components/modals/EntityPickerModal.tsx` | `ENTITY_PICKER` shell (search + customScroll + loadMore) |
 | `website/src/app/ui/components/modals/SelectableEntityCard.tsx` | selectable wrapper around page cards |
-| `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card contracts (`members.tsx`, …) |
+| `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card (`members.tsx`, `messageChannels.tsx`, …) |
 | `website/src/app/ui/components/modals/entity-picker/configs/index.ts` | registry of idents |
-| `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`) |
+| `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`, `searchable?`) |
 | `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM` |
 | `website/src/app/ui/components/form/FormDateTimeField.tsx` | datetime field → `DATETIME_PICKER` modal |
 | `website/src/app/ui/components/modals/DateTimePickerModal.tsx` | datetime modal shell |
@@ -272,6 +308,9 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 - `.cursor/rules/website-multi-path-form-routes.mdc`
 - `.cursor/rules/website-confirm-modal.mdc`
 - `.cursor/rules/requester-read-no-entity-id-echo.mdc`
+- `docs/platforms/backend/patterns/requester-read-select-hydrate.md`
+- `.cursor/rules/requester-read-select-hydrate.mdc`
+- `.cursor/skills/backend-requester-read-select-hydrate/SKILL.md`
 - `.cursor/skills/website-confirm-modal/SKILL.md`
 - `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc`
 - `.cursor/rules/website-form-avatar-field.mdc`

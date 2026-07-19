@@ -30,7 +30,8 @@
 | Customer members | [`flow-customer-members.md`](flow-customer-members.md) | Org member directory (search + ResultLane) |
 | Customer meetings | [`flow-customer-meetings.md`](flow-customer-meetings.md) | Org meeting directory + create form + empty details |
 | Customer organization | [`flow-customer-organization.md`](flow-customer-organization.md) | Org settings form (read + upsert) |
-| Customer message channels | [`flow-customer-message-channels.md`](flow-customer-message-channels.md) | Org delivery-channel directory (read-only list) |
+| Customer message channels | [`flow-customer-message-channels.md`](flow-customer-message-channels.md) | Org delivery-channel directory + form |
+| Customer message templates | [`flow-customer-message-templates.md`](flow-customer-message-templates.md) | Org message-template directory + form |
 
 ## Invariants
 
@@ -262,5 +263,6 @@ Full path map: [`flow-customer-meetings.md`](flow-customer-meetings.md) §12. Ba
 - `.cursor/skills/website-customer-drawer-nav/SKILL.md`
 - `.cursor/skills/website-customer-result-lane-list/SKILL.md`
 - `.cursor/skills/website-customer-message-channels/SKILL.md`
+- `.cursor/skills/website-customer-message-templates/SKILL.md`
 - `.cursor/skills/website-customer-meeting-form/SKILL.md`
 - `.cursor/skills/website-entity-picker/SKILL.md`
