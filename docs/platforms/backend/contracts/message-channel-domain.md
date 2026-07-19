@@ -14,8 +14,8 @@ Out of scope (not shipped):
 
 - Real SMTP / Ad Whats connectivity inside `testConnection()` (method exists; stub returns `false`; create/update **do** call it and set `ACTIVE` / `DISABLED` from the result),
 - send pipeline that flips `status` to `DISABLED` on token/connection failure after send,
-- linking `MessageTemplate` rows to a channel (templates still use legacy `messageTemplateChannel` `WHATSAPP` | `EMAIL` — see `message-template-domain.md`),
-- `MEETING_EMAIL` as a channel type (platform mailer templates intentionally have **no** channel row — product decision; not coded on templates yet),
+- linking `MessageTemplate` content rules to requesters (ORM/GQL kinds + FK shipped — see `message-template-domain.md`),
+- `EJTMAA_EMAIL` as a channel type (platform mailer templates intentionally have **no** channel row — product decision),
 - supervisor MessageChannel GraphQL,
 - cpanel mirrors/UI,
 - seed rows for channels,
@@ -29,20 +29,20 @@ Out of scope (not shipped):
 - `type` discriminates which credential columns apply.
 - `status` gates usability: default `ACTIVE` (create flow is expected to connectivity-test before leaving active); future send failures / bad tokens may set `DISABLED`.
 - Tenant boundary is `organization_id` (not `customer_id` directly).
-- Distinct from legacy `_MessageTemplateChannel` enum (`WHATSAPP` | `EMAIL`) on `MessageTemplate`.
+- Aligns with `MessageTemplate.type` delivery kinds (`message-template-domain.md`); credentials stay on `MessageChannel` only.
 
-### Locked product decisions (templates — not yet implemented)
+### Locked product decisions (templates)
 
-These constrain the next template refactor; they are **not** present on `MessageTemplate` today:
+Authoritative on `MessageTemplate` now — see `message-template-domain.md`:
 
-| Delivery kind | Channel row | Template content |
+| Template `type` | Channel row | Template content |
 |---|---|---|
-| Meeting email (platform mailer) | none (`message_channel_id` null) | `subject` + `body` required |
-| Custom email | required `CUSTOM_EMAIL` channel | `subject` + `body` required |
-| Ad Whats (unofficial) | required `ADWHATS` channel | `body` only |
-| Ad Whats Pro (official) | required `ADWHATS_PRO` channel | provider variable map only (`{{key}}` → `{{n}}`); no free subject/body |
+| `EJTMAA_EMAIL` (platform mailer) | none (`message_channel_id` null) | `subject` + `body` required |
+| `CUSTOM_EMAIL` | required matching channel | `subject` + `body` required |
+| `ADWHATS` | required matching channel | `body` only |
+| `ADWHATS_PRO` | required matching channel | provider variable map only (`{{key}}` → `{{n}}`); no free subject/body |
 
-Enum spelling: `ADWHATS` / `ADWHATS_PRO` (not `AD_WHATS`).
+Enum spelling: `ADWHATS` / `ADWHATS_PRO` (not `AD_WHATS`). Write-path enforcement is requester todo.
 
 ## 3) ORM model
 
@@ -103,7 +103,7 @@ ORM does **not** enforce per-type nullability (all credential columns nullable).
 - `hasMany(MessageChannel)` on `organization_id` (real FK)
 - mixins: `getMessageChannels` / `createMessageChannel` / … (association PK type `string`, like Member)
 
-No `hasMany(MessageTemplate)` yet (template FK not shipped).
+No `hasMany(MessageTemplate)` on `MessageChannel` in this slice (template `belongsTo` channel only; avoids circular import).
 
 ### 3.5 Localization
 
@@ -157,11 +157,14 @@ File: `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts`
 - Extends `CustomerOrganizationOwnedBridgeBase`
 - `ident = "messageChannel"`, `typeIdent = "_MessageChannel"`, `ormModel = MessageChannelModel`
 - `GetManyParent = OrganizationOwnedMeParent` (`{ me: true }`)
-- `GetOneParent = MessageChannelModel | { me: true; id: string }`
+- `GetOneParent = MessageChannelModel | MessageTemplateModel | { me: true; id: string }`
+  - `MessageTemplateModel` for nested `_MessageTemplate.messageChannel`
 
 ### Inverse relation parent typing
 
 `OrganizationBridge.GetOneParent` includes `MessageChannelModel` so `_MessageChannel.organization` resolves.
+
+`MessageChannelBridge.GetOneParent` includes `MessageTemplateModel` so `_MessageTemplate.messageChannel` resolves (see `message-template-domain.md`).
 
 ### Registered bridges
 
@@ -253,7 +256,7 @@ Local registry (gitignored): `backend/.types/models.ts` must include `"MessageCh
 
 ## Related
 
-- `docs/platforms/backend/contracts/message-template-domain.md` (legacy template channel enum; not yet linked to `MessageChannel`)
+- `docs/platforms/backend/contracts/message-template-domain.md` (template kinds + optional channel FK)
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/meeting-domain.md` (optional template FKs on Meeting)
 - `docs/platforms/backend/contracts/graphql-and-types.md`

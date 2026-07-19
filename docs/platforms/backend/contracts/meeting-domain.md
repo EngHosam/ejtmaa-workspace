@@ -5,7 +5,7 @@
 Current Ejtmaa meeting surface:
 
 - ORM persistence for organization-owned meetings,
-- optional FKs to WhatsApp/Email `MessageTemplate` rows (no inline template text on the meeting),
+- optional FKs `whatsapp_template_id` / `email_template_id` → `MessageTemplate` rows (legacy column names; template kinds are `messageTemplateType` — see `message-template-domain.md`; no inline template text on the meeting),
 - chairperson FK to `Member`,
 - independent lifecycle (`status`) and invite-notify axes (`notify_status` + `notify_start_at`),
 - customer GraphQL read of meetings for the authenticated customer's organization,

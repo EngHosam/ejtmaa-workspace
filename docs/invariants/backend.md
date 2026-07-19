@@ -82,7 +82,7 @@ Shared enums in `base.graphql` only. Mirror sync to frontends is command-based c
 Add relations only when expected count is `<= 100`. Clarify ambiguous cases before schema expansion.
 
 - High-cardinality collections (example: organization members) use **root list/detail** with `withListable`, not nested `parent.many`.
-- Cardinality-safe inverses (`belongsTo` / expected count 1) may be nested (examples: `_Member.organization`, `_MessageTemplate.organization`, `_Meeting.organization` / `chairperson` / template refs).
+- Cardinality-safe inverses (`belongsTo` / expected count 1) may be nested (examples: `_Member.organization`, `_MessageTemplate.organization`, `_MessageTemplate.messageChannel` (optional), `_Meeting.organization` / `chairperson` / template refs).
 - When adding any nested SDL relation, update the preparing bridge's `GetOneParent` / `GetManyParent` (see `.cursor/rules/gql-root-parent-payload-contract.mdc` §5).
 - Customer org-owned children that resolve `{ me: true }` to the customer's Organization must extend `CustomerOrganizationOwnedBridgeBase` — do not re-copy that `getRootOrmParent` per entity bridge.
 - Meeting invite timing is `notify_start_at` (independent of lifecycle `status`); invite progress is `notify_status`. Do not derive notify start from status transitions alone.

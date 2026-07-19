@@ -1,0 +1,47 @@
+---
+description: MessageTemplate delivery-kind + optional MessageChannel FK invariants
+globs: backend/src/app/orm/models/MessageTemplate.ts,backend/src/app/orm/models/MessageChannel.ts,backend/src/app/gql/bridges/**/MessageTemplateBridge.ts,backend/src/app/gql/bridges/**/MessageChannelBridge.ts,backend/src/app/gql/definitions/**/*.graphql,backend/src/resources/trans/**/general.ts,website/src/types/gql/definitions/**/*.graphql
+alwaysApply: false
+---
+
+# Message Template Domain
+
+Authoritative contract: `docs/platforms/backend/contracts/message-template-domain.md`.
+
+## Separation
+
+- `MessageTemplate` stores **message library content** (and optional channel link), not SMTP/Ad Whats credentials.
+- Credentials live on `MessageChannel` only (or the platform mailer for `EJTMAA_EMAIL`).
+
+## Naming
+
+- Template kind enum: `messageTemplateType` — `EJTMAA_EMAIL` | `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`.
+- Discriminator field on the model is `type` (not legacy `channel`).
+- **Forbidden:** `messageTemplateChannel`, `WHATSAPP`, `EMAIL` as template kinds; do not confuse with `_MessageChannelType`.
+- Do not invent a channel type `EJTMAA_EMAIL` — platform mail uses **no** channel row.
+
+## Channel FK
+
+- `message_channel_id` null **only** for `EJTMAA_EMAIL`.
+- Other kinds require an org-owned channel whose `type` matches the template kind (`CUSTOM_EMAIL` / `ADWHATS` / `ADWHATS_PRO`).
+- Write-path Joi/requester enforces this (not ORM nullability).
+- ORM: `MessageTemplate.belongsTo(MessageChannel)` only. Do **not** add `MessageChannel.hasMany(MessageTemplate)` unless product/GQL also needs `_MessageChannel.messageTemplates` (circular import risk).
+
+## Content by kind
+
+| type | subject/body | variables |
+|---|---|---|
+| `EJTMAA_EMAIL` / `CUSTOM_EMAIL` | required on write | null |
+| `ADWHATS` | body only | null |
+| `ADWHATS_PRO` | null | JSONB `Record<string, string>` |
+
+## GQL
+
+- `_MessageTemplateType` / `_MessageTemplateTypeValue` in `base.graphql`.
+- `_MessageTemplate` exposes `type`, `messageChannel`, `subject`, `body`, `variables` (`JSONObject`).
+- `MessageChannelBridge.GetOneParent` must include `MessageTemplateModel` for nested `messageChannel`.
+- Meeting FKs stay `whatsapp_template_id` / `email_template_id` until an explicit rename slice.
+
+## After SDL changes
+
+Backend `yarn generate-types`, then mirror `base`/`customer` SDL + gql-types into `website/`.

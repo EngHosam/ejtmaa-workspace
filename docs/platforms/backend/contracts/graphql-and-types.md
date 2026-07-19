@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateChannel` / `_MessageTemplateChannelValue`, `_MessageChannelType` / `_MessageChannelStatus`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus`, `_PlanStatus`, `_PlanBillingPeriod`, `_SubscriptionStatus`, `_PaymentMethod` (+ Value enums where applicable)
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateType` / `_MessageTemplateTypeValue`, `_MessageChannelType` / `_MessageChannelStatus`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus`, `_PlanStatus`, `_PlanBillingPeriod`, `_SubscriptionStatus`, `_PaymentMethod` (+ Value enums where applicable)
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.
@@ -42,6 +42,7 @@ Nested (cardinality-safe):
 - `_Member.organization: _Organization` (`belongsTo`, expected count 1)
 - `_MessageChannel.organization: _Organization` (`belongsTo`, expected count 1)
 - `_MessageTemplate.organization: _Organization` (`belongsTo`, expected count 1)
+- `_MessageTemplate.messageChannel: _MessageChannel` (`belongsTo`, optional)
 - `_Meeting.organization: _Organization`, `_Meeting.chairperson: _Member`, `_Meeting.whatsappTemplate` / `emailTemplate: _MessageTemplate`
 - `_Meeting.participants: [_MeetingParticipant]` (roster; expected board size ≤ 100 — B15); `_MeetingParticipant.member: _Member`
 - `_Meeting.agendaItems: [_AgendaItem]` (agenda lines; nested only — see `agenda-item-domain.md`)

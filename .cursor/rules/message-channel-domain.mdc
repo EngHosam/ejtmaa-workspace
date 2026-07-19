@@ -11,14 +11,14 @@ Authoritative contract: `docs/platforms/backend/contracts/message-channel-domain
 ## Separation
 
 - `MessageChannel` stores **delivery credentials** only (SMTP / Ad Whats), not message subject/body/variable maps.
-- Do **not** add `MEETING_EMAIL` to `messageChannelType`. Platform-mailer templates use **no** channel row (future template FK null).
+- Do **not** add `EJTMAA_EMAIL` to `messageChannelType`. Platform-mailer templates use **no** channel row (template FK null).
 
 ## Naming
 
 - Channel type enum values: `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`.
 - Never spell Ad Whats as `AD_WHATS` / `AD_WHATS_PRO`.
 - Discriminator field on the model is `type` (repo-native with `Meeting.type`).
-- Do not confuse `_MessageChannelType` with legacy `_MessageTemplateChannel` (`WHATSAPP` | `EMAIL`).
+- Do not confuse `_MessageChannelType` with `_MessageTemplateType` (template kinds include `EJTMAA_EMAIL`).
 
 ## Status and connectivity
 

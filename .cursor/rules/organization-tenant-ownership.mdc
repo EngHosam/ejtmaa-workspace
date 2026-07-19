@@ -44,15 +44,18 @@ For customer-role `organization` when `Customer.hasOne(Organization)` uses assoc
 
 - `MessageChannel` belongs to Organization; see `docs/platforms/backend/contracts/message-channel-domain.md` and `.cursor/rules/message-channel-domain.mdc`.
 - `message_channels` table; enum `messageChannelType`: `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; status `messageChannelStatus`: `ACTIVE` | `DISABLED` (default `ACTIVE`).
-- Credentials live on the channel row; meeting-platform email templates do not use a channel.
-- Customer GQL: root `messageChannels` / `messageChannel(id)` — secrets (`smtp_password`, `adwhats_token`) are not in SDL.
+- Credentials live on the channel row; platform email templates (`EJTMAA_EMAIL`) do not use a channel.
+- Customer GQL: root `messageChannels` / `messageChannel(id)` — credential columns including `smtp_password` / `adwhats_token` are in SDL (product choice).
 - Inverse `_MessageChannel.organization` requires `OrganizationBridge` `GetOneParent` to include `MessageChannelModel`.
 
 ## Message templates (related)
 
-- `MessageTemplate` belongs to Organization; see `docs/platforms/backend/contracts/message-template-domain.md`.
-- Customer GQL: root `messageTemplates` / `messageTemplate(id)` — not nested under `_Organization`.
+- `MessageTemplate` belongs to Organization; see `docs/platforms/backend/contracts/message-template-domain.md` and `.cursor/rules/message-template-domain.mdc`.
+- Kind enum `messageTemplateType`: `EJTMAA_EMAIL` | `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; optional `message_channel_id` (null only for `EJTMAA_EMAIL`).
+- Customer GQL: root `messageTemplates` / `messageTemplate(id)` — not nested under `_Organization`; fields include `type`, `variables`, `messageChannel`.
 - Inverse `_MessageTemplate.organization` requires `OrganizationBridge` `GetOneParent` to include `MessageTemplateModel`.
+- Inverse `_MessageTemplate.messageChannel` requires `MessageChannelBridge` `GetOneParent` to include `MessageTemplateModel`.
+- No `MessageChannel.hasMany(MessageTemplate)` in current slice (template `belongsTo` only).
 - Org-owned customer bridges extend `CustomerOrganizationOwnedBridgeBase` for `{ me: true }` → Organization.
 
 ## Meetings (related)

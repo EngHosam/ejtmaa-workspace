@@ -4,31 +4,44 @@
 
 Current Ejtmaa message-template surface:
 
-- ORM persistence for organization-owned notification message templates,
-- channel types WhatsApp and Email,
-- customer GraphQL read of templates for the authenticated customer's organization,
-- website GQL mirrors for that customer surface.
+- ORM persistence for organization-owned reusable notification templates,
+- delivery kinds `EJTMAA_EMAIL` | `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`,
+- optional FK to `MessageChannel` (`message_channel_id` null only for `EJTMAA_EMAIL`),
+- content columns by kind (`subject` / `body` / `variables`),
+- customer GraphQL **read** of templates for the authenticated customer's organization,
+- website GQL mirrors for that customer surface (`base` + `customer` SDL + gql-types).
 
-Out of scope (not shipped):
+Out of scope (not shipped in this slice):
 
-- template requesters / write mutations,
+- template requesters / write mutations / `Customer.Ability.MESSAGE_TEMPLATE`,
 - supervisor MessageTemplate GraphQL,
-- cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
+- cpanel mirrors/UI,
 - seed rows for templates,
-- nested `_Organization.messageTemplates` (use root list; same org-scoped root pattern as members).
+- nested `_Organization.messageTemplates` (use root list),
+- inverse `MessageChannel.hasMany(MessageTemplate)` (template `belongsTo` only; see §3.4),
+- renaming Meeting FKs `whatsapp_template_id` / `email_template_id` (still point at `MessageTemplate` rows; column names are legacy).
 
-Related shipped consumer: `Meeting` optional FKs `whatsapp_template_id` / `email_template_id` — see `meeting-domain.md`.
-
-Related **new** delivery-account domain (not linked to this model yet): `message-channel-domain.md` (`MessageChannel` — `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`). Template↔ channel FK and content-by-type rules are product-locked there but **not** applied to `MessageTemplate` in this codebase yet.
+Related: `message-channel-domain.md` (delivery credentials). Meeting optional template FKs: `meeting-domain.md`.
 
 ## 2) Domain purpose
 
 `MessageTemplate` is a **non-actor** reusable message library row inside an `Organization`.
 
-- Channel is `WHATSAPP` or `EMAIL` (localized enum `messageTemplateChannel`).
-- Email may carry `subject`; WhatsApp uses `body` only (`subject` null).
+| `type` | `message_channel_id` | Content (write-path product rules; not ORM-enforced) |
+|---|---|---|
+| `EJTMAA_EMAIL` | null (platform mailer) | `subject` + `body` required on write |
+| `CUSTOM_EMAIL` | required, channel `type=CUSTOM_EMAIL` | `subject` + `body` required on write |
+| `ADWHATS` | required, channel `type=ADWHATS` | `body` only (`subject` null) |
+| `ADWHATS_PRO` | required, channel `type=ADWHATS_PRO` | `variables` map only (no free subject/body) |
+
 - Tenant boundary is `organization_id` (not `customer_id` directly).
-- Templates are referenced by meetings via optional FKs; meetings do not store inline template text columns.
+- Templates are referenced by meetings via optional FKs; meetings do not store inline template text.
+- ORM does **not** enforce per-type nullability; write-path Joi/requester (todo) must.
+- Credentials never live on the template row — only on `MessageChannel` (or the platform mailer for `EJTMAA_EMAIL`).
+
+`variables` shape (Ad Whats Pro): `Record<string, string>` — template placeholder key → provider slot (e.g. `name` → `1` meaning `{{name}}` → `{{1}}`). Stored as JSONB (`isTypedObject: true`).
+
+**Retired (do not reintroduce):** column/enum `channel` / `messageTemplateChannel` / values `WHATSAPP` | `EMAIL`; GQL `_MessageTemplateChannel*`.
 
 ## 3) ORM model
 
@@ -43,114 +56,114 @@ Persistence names:
 
 ### 3.1 Attrs layout
 
-- `//relations` — `organization_id`
-- `//info` — `name`, `channel`, `subject`, `body`
+- `//relations` — `organization_id`, `message_channel_id`
+- `//info` — `name`, `type`, `subject`, `body`, `variables`
 
 ### 3.2 Columns
 
 | Column | Type | Null | Notes |
 |---|---|---|---|
-| `id` | BIGINT PK | no | auto-increment |
-| `organization_id` | BIGINT | no | FK → `organizations.id`, real constraint |
+| `id` | BIGINT PK | no | auto-increment; Attrs typed `string` |
+| `organization_id` | BIGINT | no | FK → `organizations.id` |
+| `message_channel_id` | BIGINT | yes | FK → `message_channels.id`; null for `EJTMAA_EMAIL` |
 | `name` | STRING(191) | no | library label |
-| `channel` | STRING(191) | no | enum metadata `messageTemplateChannel`; typed object |
-| `subject` | STRING(191) | yes | email subject; null for WhatsApp |
-| `body` | TEXT | no | message body |
+| `type` | STRING(191) | no | enum metadata `messageTemplateType`; typed object |
+| `subject` | STRING(191) | yes | email kinds |
+| `body` | TEXT | yes | email / Ad Whats |
+| `variables` | JSONB | yes | Ad Whats Pro map; typed object |
 
-Exported TS type: `MessageTemplateChannel = keyof G_Tr["enums"]["messageTemplateChannel"]`.
+Exported TS types:
+
+- `MessageTemplateType = keyof G_Tr["enums"]["messageTemplateType"]`
+- `MessageTemplateVariables = Record<string, string>`
 
 ### 3.3 Indexes
 
-- `message_templates_organization_id` — list by org
-- `message_templates_organization_id_channel` — list/filter by org + channel
+- `message_templates_organization_id`
+- `message_templates_organization_id_type` (replaces legacy `…_channel`)
+- `message_templates_message_channel_id`
 
 ### 3.4 Relations
 
 `MessageTemplate.boot()`:
 
-- `belongsTo(Organization)` on `organization_id` (real FK)
+- `belongsTo(Organization)` on `organization_id`
+- `belongsTo(MessageChannel)` on `message_channel_id`
 
 `Organization.boot()` inverse:
 
-- `hasMany(MessageTemplate)` on `organization_id` (real FK)
-- mixins: `getMessageTemplates` / `createMessageTemplate` / … (association PK type `number`)
+- `hasMany(MessageTemplate)` on `organization_id`
+- association mixins use PK type `string` (aligned with MessageChannel mixins)
 
-No direct `Customer` ↔ `MessageTemplate` association.
+**No** `hasMany(MessageTemplate)` on `MessageChannel` in this slice:
+
+- avoids circular import (`MessageTemplate` already imports `MessageChannel`),
+- no GQL field `_MessageChannel.messageTemplates`,
+- no current read path that loads templates from the channel parent.
+
+GQL nests `messageChannel` via template `belongsTo` only.
 
 ### 3.5 Localization
 
-Enum key `messageTemplateChannel` under:
+Enum key `messageTemplateType` under:
 
 - `backend/src/resources/trans/ar/general.ts`
 - `backend/src/resources/trans/en/general.ts`
 
-Values: `WHATSAPP`, `EMAIL`.
+| Value | EN label | AR label |
+|---|---|---|
+| `EJTMAA_EMAIL` | Ejtmaa email | بريد اجتماع |
+| `CUSTOM_EMAIL` | Custom email | بريد مخصص |
+| `ADWHATS` | Ad Whats | أد واتس |
+| `ADWHATS_PRO` | Ad Whats Pro | أد واتس برو |
 
 ## 4) Customer GraphQL surface
 
 SDL:
 
-- `backend/src/app/gql/definitions/base.graphql` — `_MessageTemplateChannelValue` / `_MessageTemplateChannel`
+- `backend/src/app/gql/definitions/base.graphql` — `_MessageTemplateTypeValue` / `_MessageTemplateType`
 - `backend/src/app/gql/definitions/customer.graphql` — `_MessageTemplate` + roots
 
 ### Type `_MessageTemplate`
 
 Implements `_Timestamps` & `_Pagination`.
 
-Fields: `id`, `name`, `channel`, `subject`, `body`, timestamps, `organization`, `total_count`.
+Fields: `id`, `name`, `type`, `subject`, `body`, `variables` (`JSONObject`), timestamps, `organization`, `messageChannel`, `total_count`.
 
 ### Root queries
 
 - `messageTemplates: [_MessageTemplate]`
 - `messageTemplate(id: ID!): _MessageTemplate`
 
-Resolvers (`CustomerSchema`):
+Resolvers (`CustomerSchema`): `prepareManyGQLModels({ me: true })` / `prepareOneGQLModel({ me: true, id })`.
 
-```ts
-prepareManyGQLModels({ me: true })
-prepareOneGQLModel({ me: true, id })
-```
+`CustomerSchema.registeredBridges` includes `MessageTemplateBridge`.
 
 ### Bridge: `MessageTemplateBridge`
 
 File: `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts`
 
-- Extends `CustomerOrganizationOwnedBridgeBase` (not bare `CustomerBridgeBase`)
+- Extends `CustomerOrganizationOwnedBridgeBase`
 - `ident = "messageTemplate"`, `typeIdent = "_MessageTemplate"`, `ormModel = MessageTemplateModel`
 - `GetManyParent = OrganizationOwnedMeParent` (`{ me: true }`)
-- `GetOneParent = MessageTemplateModel | MeetingModel | { me: true; id: string }` (`MeetingModel` for `_Meeting` template nests)
-- Does **not** override `getRootOrmParent` or `getOrmFindOptions` (inherited / role defaults)
+- `GetOneParent = MessageTemplateModel | MeetingModel | { me: true; id: string }`
+  - `MeetingModel` for nested `_Meeting.whatsappTemplate` / `emailTemplate`
 
 ### Shared base: `CustomerOrganizationOwnedBridgeBase`
 
 File: `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts`
 
-For org-owned customer children (`Member`, `MessageTemplate`, …):
-
-- On `{ me: true }`: require `context.customer`, load `getOrganization()`, return Organization or throw `NOT_PERMIT` / `404`
-- Otherwise delegate to `CustomerBridgeBase.getRootOrmParent`
-
-Do **not** copy this resolve into each entity bridge. Do **not** put this logic on `CustomerBridgeBase` (other customer bridges resolve differently).
+On `{ me: true }`: require `context.customer`, load `getOrganization()`, return Organization or throw `NOT_PERMIT` / `404`.
 
 ### Inverse relation parent typing (mandatory)
 
-When `_MessageTemplate.organization` is selected, the framework prepares **`OrganizationBridge`** with parent = `MessageTemplateModel`.
+| Nested field | Prepared bridge | Parent type that must be on `GetOneParent` |
+|---|---|---|
+| `_MessageTemplate.organization` | `OrganizationBridge` | `MessageTemplateModel` |
+| `_MessageTemplate.messageChannel` | `MessageChannelBridge` | `MessageTemplateModel` |
+| `_Meeting.whatsappTemplate` / `emailTemplate` | `MessageTemplateBridge` | `MeetingModel` |
 
-Therefore `OrganizationBridge` must declare:
-
-```ts
-export type GetOneParent =
-    | CustomerModel
-    | MemberModel
-    | MessageTemplateModel
-    | MeetingModel;
-```
-
-`MessageTemplateBridge.GetOneParent` also includes `MeetingModel` for nested `_Meeting.whatsappTemplate` / `emailTemplate`.
-
-### Registered bridges
-
-`CustomerSchema.registeredBridges` includes `MessageTemplateBridge`.
+`MessageChannelBridge.GetOneParent` therefore includes `MessageTemplateModel` (shipped in this change set).
 
 ## 5) Read flow (root)
 
@@ -168,18 +181,25 @@ export type GetOneParent =
 3. Base one options: `where: { id }`
 4. Scoped to that organization association
 
-## 6) Seed
+## 6) Seed / migration note
 
 No template seed in this change set.
+
+Applying the new columns against DBs that still have legacy `channel` / `WHATSAPP`|`EMAIL` requires schema sync and a data migration — **not** automated here. Ops must plan before promote.
 
 ## 7) Frontend mirrors
 
 | Platform | Status |
 |---|---|
-| `website/` | Active — `base.graphql`, `customer.graphql`, `gql-types/base.ts`, `gql-types/customer.ts` synced |
-| `cpanel/` | Deferred — platform checkout absent; no supervisor template surface |
+| `website/` | Active — mirrored `base.graphql`, `customer.graphql`, `gql-types/base.ts`, `gql-types/customer.ts` |
+| `cpanel/` | Deferred — no supervisor template surface |
 
-Backend verification: `yarn generate-types`, `yarn type-check`.
+Verification scripts (existing):
+
+- Backend: `yarn generate-types`, `yarn type-check`
+- Website (after mirror copy): `yarn type-check`
+
+Generated codegen also refreshes `backend/src/app/gql/gql-types/supervisor.ts` (shared base enum types) even though supervisor has no template roots.
 
 ## 8) Failure modes (read path)
 
@@ -189,38 +209,66 @@ Backend verification: `yarn generate-types`, `yarn type-check`.
 | `messageTemplates` / `messageTemplate` | customer has no organization | `404` |
 | `messageTemplate(id)` | missing / other-org id | framework empty → `404` |
 
-## 9) Traceability map
+## 9) Traceability map (change-set inventory)
+
+### Backend (`backend/` repo) — modified
 
 | Path | Role | Section |
 |---|---|---|
-| `backend/src/app/orm/models/MessageTemplate.ts` | ORM source of truth | §3 |
-| `backend/src/app/orm/models/Organization.ts` | `hasMany MessageTemplate` + mixins | §3.4 |
-| `backend/src/resources/trans/ar/general.ts` | `messageTemplateChannel` AR | §3.5 |
-| `backend/src/resources/trans/en/general.ts` | `messageTemplateChannel` EN | §3.5 |
-| `backend/src/app/gql/definitions/base.graphql` | channel GQL enum wrapper | §4 |
-| `backend/src/app/gql/definitions/customer.graphql` | `_MessageTemplate` + roots + inverse | §4 |
-| `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | shared `me` → Organization | §4 |
-| `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts` | thin entity bridge | §4–§5 |
-| `backend/src/app/gql/bridges/customer/MemberBridge.ts` | same org-owned base (refactor) | §4 |
-| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | `GetOneParent` includes `MessageTemplateModel` | §4 |
-| `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + resolvers | §4 |
-| `backend/src/app/gql/gql-types/base.ts` | Generated (includes channel types) | §7 |
-| `backend/src/app/gql/gql-types/customer.ts` | Generated | §7 |
-| `backend/src/app/gql/gql-types/supervisor.ts` | Generated (base enum types pulled in) | §7 — no supervisor template roots |
-| `website/src/types/gql/definitions/base.graphql` | Mirror | §7 |
-| `website/src/types/gql/definitions/customer.graphql` | Mirror | §7 |
-| `website/src/types/gql/gql-types/base.ts` | Mirror | §7 |
-| `website/src/types/gql/gql-types/customer.ts` | Mirror | §7 |
-| `backend/.types/models.ts` | Generated registry (gitignored) | excluded from narrative — regenerated on ORM boot / local tooling |
+| `src/app/orm/models/MessageTemplate.ts` | ORM attrs/indexes/relations | §3 |
+| `src/app/orm/models/Organization.ts` | `hasMany` mixin PK `string` (templates + channels) | §3.4 |
+| `src/app/gql/bridges/customer/MessageChannelBridge.ts` | `GetOneParent` += `MessageTemplateModel` | §4 |
+| `src/app/gql/definitions/base.graphql` | `_MessageTemplateType*` | §4 |
+| `src/app/gql/definitions/customer.graphql` | `_MessageTemplate` fields | §4 |
+| `src/resources/trans/ar/general.ts` | `messageTemplateType` AR | §3.5 |
+| `src/resources/trans/en/general.ts` | `messageTemplateType` EN | §3.5 |
+| `src/app/gql/gql-types/base.ts` | Generated | §7 |
+| `src/app/gql/gql-types/customer.ts` | Generated | §7 |
+| `src/app/gql/gql-types/supervisor.ts` | Generated (base enums) | §7 |
+
+### Backend — unchanged but required for the surface
+
+| Path | Role | Section |
+|---|---|---|
+| `src/app/gql/bridges/customer/MessageTemplateBridge.ts` | Thin entity bridge | §4 |
+| `src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | `me` → Organization | §4–§5 |
+| `src/app/gql/bridges/customer/OrganizationBridge.ts` | `GetOneParent` includes `MessageTemplateModel` | §4 |
+| `src/app/gql/schemas/CustomerSchema.ts` | Register + root resolvers | §4–§5 |
+| `src/app/orm/models/MessageChannel.ts` | Credential peer; no inverse `hasMany` | §3.4 |
+
+### Website (`website/` repo) — modified
+
+| Path | Role | Section |
+|---|---|---|
+| `src/types/gql/definitions/base.graphql` | Mirror | §7 |
+| `src/types/gql/definitions/customer.graphql` | Mirror | §7 |
+| `src/types/gql/gql-types/base.ts` | Generated mirror | §7 |
+| `src/types/gql/gql-types/customer.ts` | Generated mirror | §7 |
+| `lib/tsconfig.tsbuildinfo` | Build cache noise | excluded from narrative |
+
+### Workspace root — docs / governance
+
+| Path | Role | Section |
+|---|---|---|
+| `docs/platforms/backend/contracts/message-template-domain.md` | This contract | — |
+| `docs/platforms/backend/contracts/message-channel-domain.md` | Cross-ref + locked content table | related |
+| `docs/platforms/backend/contracts/graphql-and-types.md` | Index: enum + nest | related |
+| `docs/platforms/backend/overview.md` | Model one-liner | related |
+| `docs/platforms/backend/README.md` | Contracts index blurb | related |
+| `.cursor/rules/message-template-domain.mdc` | Agent invariants | governance |
+| `.cursor/rules/message-channel-domain.mdc` | No `EJTMAA_EMAIL` channel type | governance |
+| `.cursor/rules/organization-tenant-ownership.mdc` | Org ownership bullets | governance |
+| `.cursor/skills/orm-model-generator/SKILL.md` | Model addendum | governance |
 
 ## Related
 
+- `docs/platforms/backend/contracts/message-channel-domain.md`
+- `docs/platforms/backend/contracts/meeting-domain.md`
 - `docs/platforms/backend/contracts/organization-domain.md`
-- `docs/platforms/backend/contracts/message-channel-domain.md` (delivery channels; not yet linked)
 - `docs/platforms/backend/contracts/member-domain.md` (same org-owned GQL parent pattern)
-- `docs/platforms/backend/contracts/meeting-domain.md` (optional template FKs from Meeting)
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`
-- `docs/invariants/backend.md` (B15, B18)
+- `docs/platforms/website/graphql-mirror-and-tooling.md`
+- `.cursor/rules/message-template-domain.mdc`
 - `.cursor/rules/gql-root-parent-payload-contract.mdc`
 - `.cursor/rules/organization-tenant-ownership.mdc`
