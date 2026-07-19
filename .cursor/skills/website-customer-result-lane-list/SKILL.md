@@ -34,5 +34,6 @@ description: >-
 
 - Hook: `website/src/app/ui/components/customer/hooks/useCustomerMembers.ts`
 - Flow: `docs/platforms/website/flow-customer-members.md`
+- Also: `docs/platforms/website/flow-customer-message-channels.md` (list without history filter yet)
 - Backend: `docs/platforms/backend/contracts/member-domain.md`
 - Subpage shell/breadcrumb: `.cursor/skills/website-customer-breadcrumb-subpage/SKILL.md`

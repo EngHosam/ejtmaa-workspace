@@ -16,7 +16,7 @@ Applies when adding, removing, renaming, or reordering tiles in `CustomerDrawer`
 1. **Source of truth for product nav** is the backend customer surface: `backend/src/app/gql/schemas/CustomerSchema.ts` roots plus website customer settings requesters (`readSettings` / `updateSettings`) — not masdaria-style static lists and not inventing domains absent from that surface.
 2. Drawer tile **identify** names stay `Customer*` and match the planned registry rows in `docs/platforms/website/route-registry-contract.md` §5.2 / `flow-customer-shell.md` §5.3.
 3. Tiles for routes not yet in `routes.ts` **must** stay route-gated disabled placeholders (`hasOwnProperty` on `routes`). Do not register fake pages just to enable a tile.
-4. Naming: org message templates are **message templates** (`CustomerMessageTemplates` / `messageTemplates`) — not “notification templates” (that collides with `notifications` / `CustomerNotifications`).
+4. Naming: org message templates are **message templates** (`CustomerMessageTemplates` / `messageTemplates`) — not “notification templates” (that collides with `notifications` / `CustomerNotifications`). Message **channels** are delivery accounts (`CustomerMessageChannels` / `messageChannels`) — distinct from templates; drawer glyph `FiSend`, placed before Settings when shipped.
 5. Support / help may appear as last-tier tiles even without a GQL root; keep them labeled as placeholders until a real page or channel exists.
 
 ## Why

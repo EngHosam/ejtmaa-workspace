@@ -76,10 +76,13 @@ Do not point `CUSTOMER_ME` at visitor/global `DATA_ADAPTERS.GQL`. Hook: `website
 | `DATA_ADAPTERS.CUSTOMER_GQL` | `API.DATA_ADAPTERS.CUSTOMER.GQL` | Inherit target for mount-private customer list adapters |
 | `"customer-members"` (private id) | inherits `CUSTOMER_GQL` | Members directory — `useCustomerMembers` |
 | `"customer-meetings"` (private id) | inherits `CUSTOMER_GQL` | Meetings directory — `useCustomerMeetings` |
+| `"customer-message-channels"` (private id) | inherits `CUSTOMER_GQL` | Message channels directory — `useCustomerMessageChannels` |
 
 Members query uses `listable: "members"` and optional `filter: { search }` from route history key `members`. Full contract: `flow-customer-members.md`.
 
 Meetings query uses `listable: "meetings"` and optional `filter: { search, status }` from route history key `meetings`. Reload: `useEffect` → `mLoad({ reload: true, query })` when history-derived query changes (same pattern as members; no separate `enterMode`). Create writes via `Forms.CUSTOMER_MEETING` / `meeting.create`. Entity-picker modal uses private adapters `entity-picker-${ident}` (e.g. `entity-picker-members`). Full contract: `flow-customer-meetings.md` §3–§7; form fields: `flow-form-foundation.md` §3.5–§3.7.
+
+Message channels query uses `listable: "messageChannels"` with no filter yet (mount reload only). Full contract: `flow-customer-message-channels.md`.
 
 Member writes use `Forms.CUSTOMER_MEMBER` → `API.FORMS.CUSTOMER.R("member")(sub)` (`read` | `create` | `update` | `delete`). Avatar binary upload uses `API.ACTIONS.MULTIPART_UPLOAD` before storing the filename in form `avatar_file`. See `flow-form-foundation.md` and `member-domain.md` §9.
 
@@ -109,6 +112,7 @@ Shipped customer adapters in `initDataAdaptersProps`: `ADAPTER1`, `CUSTOMER_ME`,
 
 - `docs/platforms/website/flow-customer-members.md`
 - `docs/platforms/website/flow-customer-meetings.md`
+- `docs/platforms/website/flow-customer-message-channels.md`
 - `docs/platforms/website/flow-customer-organization.md`
 - `docs/platforms/website/flow-form-foundation.md`
 - `docs/platforms/website/graphql-mirror-and-tooling.md`

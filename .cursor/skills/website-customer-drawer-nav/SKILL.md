@@ -19,7 +19,7 @@ description: >-
 
 1. Read `backend/src/app/gql/schemas/CustomerSchema.ts` Query roots and website customer requesters (`requesters.website.ts` → `customer`).
 2. Read current tiles in `website/src/app/ui/components/customer/CustomerDrawer.tsx` and the table in `docs/platforms/website/flow-customer-shell.md` §5.3.
-3. Propose or edit tiles only from that backend surface (+ explicit support/help placeholders). Prefer **message templates** naming over “notification templates”.
+3. Propose or edit tiles only from that backend surface (+ explicit support/help placeholders). Prefer **message templates** naming over “notification templates”. Prefer **message channels** (`CustomerMessageChannels`) for delivery accounts — not conflated with templates; shipped tile uses `FiSend` before Settings.
 4. Keep route gating: `Object.prototype.hasOwnProperty.call(routes, identify)`; do not invent pages solely to enable tiles.
 5. Home tile glyph is shared `HomeMark` (`tone="onPrimary"`), not `FiHome`. Other tiles may keep Feather `Icon` or a `mark` ReactNode via `DrawerGridItem` dual branch.
 6. Hero workspace chip (not a role badge): `me.organization.name` when present; else drawer i18n `workspaceFallback` (**منصة اجتماع** / **Ejtmaa platform**). Chrome: `accentActionBackground` + `accentActionText`. Do not show a customer/عميل role label.

@@ -91,9 +91,10 @@ Order (product-aligned to backend `CustomerSchema` roots / customer settings; us
 | 4 | `itemOrganization` | `CustomerOrganization` | `FiBriefcase` | `organization` (shipped settings form — `flow-customer-organization.md`) |
 | 5 | `itemMessageTemplates` | `CustomerMessageTemplates` | `FiMessageSquare` | `messageTemplates` / `messageTemplate` |
 | 6 | `itemSubscription` | `CustomerSubscription` | `FiCreditCard` | `plans` / `subscriptions` |
-| 7 | `itemSettings` | `CustomerSettings` | `FiSettings` | `CustomerRequester` read/update settings |
-| 8 | `itemSupport` | `CustomerSupport` | `FiLifeBuoy` | no GQL root yet — placeholder |
-| 9 | `itemHelp` | `CustomerHelpGuide` | `FiBookOpen` | static info (planned route) |
+| 7 | `itemMessageChannels` | `CustomerMessageChannels` | `FiSend` | `messageChannels` / `messageChannel` (shipped directory — `flow-customer-message-channels.md`) |
+| 8 | `itemSettings` | `CustomerSettings` | `FiSettings` | `CustomerRequester` read/update settings |
+| 9 | `itemSupport` | `CustomerSupport` | `FiLifeBuoy` | no GQL root yet — placeholder |
+| 10 | `itemHelp` | `CustomerHelpGuide` | `FiBookOpen` | static info (planned route) |
 
 Tile chrome: card background, navy icon well (`primaryActionBackground`) + white Feather glyph (`primaryActionText`) **or** `HomeMark` on-primary tone. Hover (available only): icon-well background → `accentActionBackground` (orange) + `scale(1.06)`; no tile fill swap and no shadow.
 
@@ -202,6 +203,7 @@ Shipped tile label contract (user-approved wording):
 | `itemOrganization` | المؤسسة | Organization |
 | `itemMessageTemplates` | قوالب الرسائل | Message templates |
 | `itemSubscription` | الاشتراك | Subscription |
+| `itemMessageChannels` | قنوات الإرسال | Message channels |
 | `itemSettings` | الإعدادات | Settings |
 | `itemSupport` | الدعم الفني | Support |
 | `itemHelp` | المساعدة | Help |

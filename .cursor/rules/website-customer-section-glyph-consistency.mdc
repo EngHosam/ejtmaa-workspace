@@ -1,0 +1,28 @@
+---
+description: Keep customer drawer tile Feather glyph and directory card section icon the same
+globs:
+  - website/src/app/ui/components/customer/CustomerDrawer.tsx
+  - website/src/app/ui/components/customer/**/*Card.tsx
+  - docs/platforms/website/flow-customer-shell.md
+alwaysApply: false
+---
+
+# Website customer section glyph consistency
+
+Applies when a customer workspace section has both a `CustomerDrawer` tile and a directory/list card with a section icon well.
+
+## Rule
+
+1. The Feather icon on the **drawer tile** and the **card section glyph** for the same identify/feature MUST match (same `react-icons/fi` symbol).
+2. Canonical example: `CustomerMessageChannels` uses `FiSend` in `CustomerDrawer` and in `CustomerMessageChannelCard`.
+3. Do not invent a second “generic” icon for the card (e.g. `FiServer`) when the drawer already defines the section mark.
+4. Meeting/member cards that use content icons (`FiCalendar`, avatar) instead of a section glyph are unaffected — this rule is for **section identity** icons shared with the drawer.
+
+## Why
+
+Mismatched icons break IA recognition between drawer and list.
+
+## Authority
+
+- `docs/platforms/website/flow-customer-message-channels.md` §4–§5
+- `docs/platforms/website/flow-customer-shell.md` §5.3
