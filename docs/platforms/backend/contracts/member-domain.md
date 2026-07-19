@@ -263,7 +263,7 @@ File: `backend/src/app/orchestrator/requesters/MemberRequester.ts` (`@requester(
 | `read` | Validate facts + owned member → `can MEMBER read` → values `{ member, name, email, mobile, avatar_file }` |
 | `create` | Validate fields → `can MEMBER create` → `organization.createMember(...)` → `SUCCESS_CREATE` |
 | `update` | Owned member + fields; apply `email` / `mobile` / `avatar_file` only when `!== undefined` (omit must not wipe) → `can MEMBER update` → `member.update` → `SUCCESS_UPDATE` |
-| `delete` | Owned member → `can MEMBER delete` (roster/chairperson block) → `member.destroy` → `SUCCESS_DELETE` |
+| `delete` | Owned member → `can MEMBER delete` (roster/chairperson block) → `member.destroy({ force: true })` (hard delete) → `SUCCESS_DELETE` |
 
 `outPropsType`: `Modify` only for `member → MemberModel` on read/update/delete; create = `CreateProps & { customer }`.
 
