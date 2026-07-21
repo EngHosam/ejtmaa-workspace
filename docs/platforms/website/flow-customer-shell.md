@@ -172,7 +172,7 @@ Reuse craft in `customer/home/*`: eyebrow zones (`HomeZoneShell`), lifecycle rai
 - Each mount-private adapter loads with `reload: true`. The meeting slices must finish before a focus is selected; then `customer-home-focus-meeting` loads the full focused meeting.
 - The hero may initially render the focused status slice while the full meeting loads. Draft readiness, the agenda strip, quorum values, and attention for an incomplete focus draft appear only after the full focused meeting is available.
 - Totals use backend `total_count`; status slices are capped to five records for display. Focus priority is `STARTED`, then `DRAFT`, then `WAITING_TO_START`.
-- `HomeFocusVisual` derives its quorum ring from the real `min_members_count` and participant count. It has no fabricated fallback count.
+- `HomeFocusVisual` derives its quorum ring from the real `min_members_count` and participant count. It has no fabricated fallback count. The center percent label resolves `getColor(semanticColor.textPrimary)` so it stays readable on the scheme-flipped hub fill (`cardBackground`); navy/`primaryActionBackground` is wrong for that glyph (dark-on-dark in dark mode).
 - If all meaningful probes fail before data is available, the page renders its retry state. If only some probes fail, the available zones remain visible and an inline retry reloads every home probe, including the current focus meeting.
 - The home hook has no page-local socket subscription. It reflects its mount reads and explicit retry; meeting preparation, approval, notifications, and live-session interactions remain owned by their existing screens.
 
@@ -185,14 +185,14 @@ Reuse craft in `customer/home/*`: eyebrow zones (`HomeZoneShell`), lifecycle rai
 | `website/src/app/ui/components/customer/home/CustomerHomeScreen.tsx` | Translates the view model and composes zones, retry UI, cards, and navigation. |
 | `website/src/app/ui/components/customer/home/CustomerHomeCommandHero.tsx` | Hero structure, decorative brackets, and shared eyebrow marker. |
 | `website/src/app/ui/components/customer/home/CustomerHomeFeaturedCta.tsx` | Primary next-step card; delegates interaction to `FormActionButton`. |
-| `website/src/app/ui/components/customer/home/CustomerHomeStatusCard.tsx` | Focus-meeting status summary and typed details navigation. |
+| `website/src/app/ui/components/customer/home/CustomerHomeStatusCard.tsx` | Focus-meeting status summary and typed details navigation. Renders `MeetingMetaChips` (type/status/notify) — **not** a joined `metaLine`; screen passes `*Label` + `*Value` (same contract as directory cards — `flow-customer-meetings.md` §4.1–§4.2). |
 | `website/src/app/ui/components/customer/home/HomeZoneShell.tsx` | Local zone heading, eyebrow marker, and optional branded surface. |
 | `website/src/app/ui/components/customer/home/WorkspaceLifecycleRail.tsx` | Responsive organization-to-meetings lifecycle navigation. |
 | `website/src/app/ui/components/customer/home/HomeAttentionList.tsx` | Capped attention rows with optional typed navigation. |
 | `website/src/app/ui/components/customer/home/HomeReadinessStratum.tsx` | Draft approval prerequisite rows. |
 | `website/src/app/ui/components/customer/home/HomeAgendaStrip.tsx` | Focus agenda preview with horizontal overflow. |
 | `website/src/app/ui/components/customer/home/HomeActionStatusCards.tsx` | Workspace totals and directory navigation. |
-| `website/src/app/ui/components/customer/home/HomeFocusVisual.tsx` | Decorative, data-backed quorum/readiness SVG; hidden from assistive technology because equivalent data is exposed in the status and readiness UI. |
+| `website/src/app/ui/components/customer/home/HomeFocusVisual.tsx` | Decorative, data-backed quorum/readiness SVG; hidden from assistive technology because equivalent data is exposed in the status and readiness UI. Hub **percent** SVG `fill` uses `semanticColor.textPrimary` (scheme-flipped with `cardBackground`); do **not** use `primaryActionBackground` (navy stays dark in both schemes → invisible on dark card). Seat strokes may still use navy. |
 | `website/src/app/ui/components/customer/meetings/CustomerMeetingCard.tsx` | Reused meeting card; renders `MeetingMetaChips` (type/status/notify pills). Home passes `*Label` + `*Value` discriminators (`notify_status` now on the list query); see `flow-customer-meetings.md` §4.1–§4.2. |
 | `website/src/resources/translations/ar.ts` | Arabic `ui.pages.customer.home.*` copy. |
 | `website/src/resources/translations/en.ts` | English mirror of the home-copy tree. |
@@ -317,6 +317,28 @@ See `docs/invariants/website.md` W24 and `.cursor/rules/website-route-reactive-c
 
 Prior shell inventory (header/footer/drawer/`useMe`/…) remains in earlier go-doc passes; see §3–§6 and related docs.
 
+### 12.1 Home focus chips + hero percent contrast (this go-doc slice)
+
+Exhaustive inventory for aligning the home focus status card with `MeetingMetaChips` and fixing dark-mode contrast on the hero quorum percent.
+
+#### Website (`website/` repo)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `src/app/ui/components/customer/home/CustomerHomeStatusCard.tsx` | modified | Dropped `metaLine`; renders `MeetingMetaChips`; `*Label`/`*Value` props | §7 Component ownership |
+| `src/app/ui/components/customer/home/CustomerHomeScreen.tsx` | modified | Focus card passes chip props (no `·` join / no `NotStarted` notify gate) | §7 |
+| `src/app/ui/components/customer/home/HomeFocusVisual.tsx` | modified | Percent SVG `fill` → `textPrimary` (was `primaryActionBackground`) | §7 Runtime / ownership |
+| `lib/tsconfig.tsbuildinfo` | modified (generated) | TS incremental build cache; no narrative | generated |
+
+#### Root (`docs/` + `.cursor/`)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `docs/platforms/website/flow-customer-shell.md` | modified | Status card chips + hero percent contrast; this inventory | §7, §12.1 |
+| `docs/platforms/website/flow-customer-meetings.md` | modified | §12.4 cross-slice inventory | meetings §12.4 |
+| `.cursor/rules/website-meeting-meta-chips.mdc` | modified | Explicit home status-card consumer | meetings §4.2 |
+| `.cursor/rules/website-semantic-color-token-discipline.mdc` | modified | SVG text on scheme-flipped surfaces | §7 / W43 |
+
 ## 13) Related
 
 - `docs/platforms/website/route-registry-contract.md`
@@ -334,4 +356,6 @@ Prior shell inventory (header/footer/drawer/`useMe`/…) remains in earlier go-d
 - `.cursor/rules/website-customer-utils-composed-marks.mdc`
 - `.cursor/rules/website-route-reactive-components.mdc`
 - `.cursor/rules/website-utils-style-prop-precedence.mdc`
+- `.cursor/rules/website-meeting-meta-chips.mdc`
+- `.cursor/rules/website-semantic-color-token-discipline.mdc`
 - `.cursor/skills/website-customer-breadcrumb-subpage/SKILL.md`

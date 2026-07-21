@@ -499,6 +499,28 @@ Exhaustive inventory for surfacing type/status/notify as distinct icon+color chi
 | `.cursor/rules/website-meeting-meta-chips.mdc` | added | Distinct-chip + discriminator + soft-tint invariant | §4.2 |
 | `.cursor/skills/website-semantic-color-audit/SKILL.md` | modified | Baseline map += four `stateSoft*` keys | audit map |
 
+### 12.4 Home focus status card chips + hero percent (this go-doc slice)
+
+Home command-hero follow-up: `CustomerHomeStatusCard` had remained on the old joined `metaLine` after directory/details chips shipped; hero percent used navy fill and vanished in dark mode. Ownership narrative: `flow-customer-shell.md` §7 / §12.1.
+
+#### Website (`website/` repo)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `src/app/ui/components/customer/home/CustomerHomeStatusCard.tsx` | modified | `MeetingMetaChips` instead of `metaLine` | shell §7; §4.2 |
+| `src/app/ui/components/customer/home/CustomerHomeScreen.tsx` | modified | Passes focus `*Label`/`*Value` into status card | shell §7 |
+| `src/app/ui/components/customer/home/HomeFocusVisual.tsx` | modified | Percent `fill` = `textPrimary` | shell §7 |
+| `lib/tsconfig.tsbuildinfo` | modified (generated) | no narrative | generated |
+
+#### Root (`docs/` + `.cursor/`)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `docs/platforms/website/flow-customer-shell.md` | modified | §7 ownership + §12.1 inventory | shell |
+| `docs/platforms/website/flow-customer-meetings.md` | modified | this cross-ref inventory | §12.4 |
+| `.cursor/rules/website-meeting-meta-chips.mdc` | modified | Home status card listed as consumer | §4.2 |
+| `.cursor/rules/website-semantic-color-token-discipline.mdc` | modified | SVG content fill pairing | W43 |
+
 ## 13) Related
 
 - `docs/platforms/website/flow-customer-shell.md`
