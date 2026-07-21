@@ -189,7 +189,7 @@ Hook `useCustomerMeetingDetails` — mount-private adapter `"customer-meeting-de
 
 ### 6.3 Sections
 
-Basics / participants / agenda / decisions write UI opens `FORM` modal shells whose **bodies** are private `useShallowForm` + `Form*` stacks (`MeetingBasicsModalForm` `read`→`update`, `MeetingParticipantAddModalForm` `addParticipant`, `MeetingSubjectModalForm` agenda/decision create|update). Page-level form stays for approve/delete/remove/template FK `update` only — never share it into modal bodies. Templates via `CustomerMeetingTemplateSlots` + `messageTemplates` entity picker (`types` family filter).
+Basics / participants / agenda / decisions write UI opens **registered meeting modals** whose bodies are private `useShallowForm` + `Form*` stacks (`MeetingBasicsModal` `read`→`update`, `MeetingParticipantAddModal` `addParticipant`, `MeetingSubjectModal` agenda/decision create|update). Each modal composes presentational `FormModal` chrome and opens via its own helper (`openMeetingBasics`, `openMeetingParticipantAdd`, `openMeetingSubject`) — never a shared `render` factory. Page-level form stays for approve/delete/remove/template FK `update` only — never share it into modal bodies. Templates via `CustomerMeetingTemplateSlots` + `messageTemplates` entity picker (`types` family filter).
 
 **Decisions (prepare):** two sections — pre-start (`PRE_START`) and in-meeting (`DURING`). Each Add opens `createDecision` with that `phase` required in form values. While `canUpdate` (notify still `NOT_STARTED`), both phases share the same edit/delete chrome; update does not change `phase`. Approve readiness still counts **pre-start only** (≥1). Live-session writes are out of this flow.
 
@@ -197,11 +197,24 @@ Template mode callout: `meetingNotifyTemplateMode.ts` (mirror of backend helper)
 
 ### 6.4 Modals
 
-- `FORM` — thin shell `FormModal` / `openForm` (registry `modals.ts`)
+Customer-only form modals live under `src/app/ui/components/customer/modals/` (not shared `components/modals/`, not under `meetings/`). Shared registry: `resources/configs/store/modals.ts`. Deep chrome + placement contract: `flow-form-foundation.md` §3.8b.
+
+| Identity | Component / open helper | Open props (data + callbacks) | Form `sub` |
+|---|---|---|---|
+| `MEETING_BASICS` | `MeetingBasicsModal` / `openMeetingBasics` | `title`, `meetingId`, optional `subtitle`, `onSuccess` | enter `read` → save `update` |
+| `MEETING_PARTICIPANT_ADD` | `MeetingParticipantAddModal` / `openMeetingParticipantAdd` | `title`, `meetingId`, optional `subtitle`, `onSuccess` | `addParticipant` (default type `MEMBER`) |
+| `MEETING_SUBJECT` | `MeetingSubjectModal` / `openMeetingSubject` | `title`, `meetingId`, `mode`, `subjectLabel`, `submitLabel`, optional `initialSubject`, `onSuccess`; `entityId` / `phase` by mode | `createAgendaItem` / `updateAgendaItem` / `createDecision` / `updateDecision` |
+
+Also on this screen:
+
+- `FormModal` — presentational chrome only (shared `components/modals/`; **not** registered); composed by the meeting modals above
 - `CONFIRM` — approve warning, deletes
 - `ENTITY_PICKER` — `members`, `messageTemplates` (`selected` on cards)
+- `DATETIME_PICKER` — nested from basics datetime field
 
-Forms: `Forms.CUSTOMER_MEETING` with truthful `sub`; init identity `{ meeting: id }` — no id echo from `read`.
+**Invariant:** one registered Component per identity; never a generic `FORM` + Redux `render` JSX factory. Do not edit `ModalBase` for product form bugs. After success: `onSuccess` (details `refresh`) then `closeMe({})`. Forms: `Forms.CUSTOMER_MEETING` with truthful `sub`; init identity `{ meeting: id }` — no id echo from `read`.
+
+Deleted anti-pattern files (do not resurrect): `meetings/MeetingBasicsModalForm.tsx`, `MeetingParticipantAddModalForm.tsx`, `MeetingSubjectModalForm.tsx`.
 
 ## 7) Shared field + modal contracts (this slice)
 
@@ -246,6 +259,9 @@ ar/en mirrors required. Note: `meetingForm.typeEmpty` exists in translations but
 | Form validation | Field errors via form reducer (Joi mirror) |
 | Create ability fail (no org) | Backend main message toast; form stays |
 | Create success without `meetingId` | Toast may fire; form stays |
+| Details modal open with missing Component/props | Must not happen — registered Component + typed open helpers; former `render is not a function` white screen was the generic `FORM` anti-pattern |
+| Details modal cancel / backdrop | `cancelable: true` → close; no save |
+| Details modal save while sending | Save/Add `loading` scoped by `currentSub`; `submittingRef` blocks double-send |
 
 ## 10) Dependencies (website)
 
@@ -267,7 +283,7 @@ accessibility semantics remain owned by the shared toast surface.
 ## 11) Verify
 
 - `yarn type-check` in `website/` and `backend/` (when SDL/requester changed).
-- Smoke: drawer → list; Enter search; status chip + All clear; create → details (`replace`); back details → list; back form → list; chairperson picker empty/load-more/avatar after pick; datetime full-width calendar + time scroll.
+- Smoke: drawer → list; Enter search; status chip + All clear; create → details (`replace`); back details → list; back form → list; chairperson picker empty/load-more/avatar after pick; datetime full-width calendar + time scroll; details Add/Edit opens registered modals (basics/participant/subject) without white screen; cancel closes; save refreshes details.
 
 ## 12) Traceability map (this change set)
 
@@ -331,7 +347,7 @@ accessibility semantics remain owned by the shared toast surface.
 | `docs/platforms/website/flow-customer-meetings.md` | this flow |
 | `docs/platforms/website/flow-form-foundation.md` | shared fields/modals |
 | `docs/platforms/website/route-registry-contract.md` | routes §5.2 |
-| `docs/platforms/website/component-structure.md` | ownership |
+| `docs/platforms/website/component-structure.md` | ownership (incl. `customer/modals`) |
 | `docs/platforms/website/overview.md` / `README.md` | indexes |
 | `docs/platforms/website/data-flow-and-gql.md` | adapter index |
 | `docs/platforms/website/graphql-mirror-and-tooling.md` | mirror index |
@@ -359,12 +375,12 @@ and the relevant child contracts.
 | `src/app/ui/components/customer/meetings/CustomerMeetingAgendaRow.tsx` | Ordered agenda presentation and actions. | §6.2 |
 | `src/app/ui/components/customer/meetings/CustomerMeetingDecisionRow.tsx` | Decision row presentation contract. | §6.2 |
 | `src/app/ui/components/customer/meetings/CustomerMeetingTemplateSlots.tsx` | Contact-mode callout and template-slot actions. | §6.3 |
-| `src/app/ui/components/customer/meetings/MeetingBasicsModalForm.tsx` | Read-then-update basics form. | §6.3–§6.4 |
-| `src/app/ui/components/customer/meetings/MeetingParticipantAddModalForm.tsx` | Participant member/type form. | §6.3–§6.4 |
-| `src/app/ui/components/customer/meetings/MeetingSubjectModalForm.tsx` | Agenda and decision subject forms; decision creation carries required phase. | §6.3 |
+| `src/app/ui/components/customer/modals/MeetingBasicsModal.tsx` | Registered basics modal (`read`→`update`) + `openMeetingBasics`. | §6.3–§6.4 |
+| `src/app/ui/components/customer/modals/MeetingParticipantAddModal.tsx` | Registered participant add modal + `openMeetingParticipantAdd`. | §6.3–§6.4 |
+| `src/app/ui/components/customer/modals/MeetingSubjectModal.tsx` | Registered agenda/decision subject modal + `openMeetingSubject`. | §6.3 |
 | `src/app/ui/components/customer/meetings/meetingNotifyTemplateMode.ts` | UI-only mirror for readiness copy; backend remains enforcement source. | §6.3 |
-| `src/app/ui/components/modals/FormModal.tsx` | Thin registered FORM shell; each body retains a private shallow form. | §6.3–§6.4 |
-| `src/resources/configs/store/modals.ts` | FORM modal registration. | §6.4 |
+| `src/app/ui/components/modals/FormModal.tsx` | Presentational form-modal chrome (not registered). | §6.3–§6.4 |
+| `src/resources/configs/store/modals.ts` | Meeting modal identities + shared pickers/confirm. | §6.4 |
 | `src/app/ui/components/modals/entity-picker/configs/index.ts` | `messageTemplates` picker registration. | §6.3 |
 | `src/app/ui/components/modals/entity-picker/configs/messageTemplates.tsx` | Non-searching template picker and type-family filter mapping. | §6.3 |
 | `src/app/ui/components/customer/message-templates/CustomerMessageTemplateCard.tsx` | Selected card presentation in the picker. | §6.3 |
@@ -378,15 +394,49 @@ and the relevant child contracts.
 | `src/resources/animations/success.json` | Renamed to `dark-success.json`; no remaining consumer. | §10 |
 | `lib/tsconfig.tsbuildinfo` | Generated TypeScript build state; excluded from source narrative and commits. | generated |
 | `docs/platforms/website/flow-customer-meetings.md` | This observable flow and inventory. | all |
-| `docs/platforms/website/flow-form-foundation.md` | FORM modal and shallow-form foundation update. | §6.3–§6.4 |
+| `docs/platforms/website/flow-form-foundation.md` | Form-modal chrome + registered meeting modals foundation. | §6.3–§6.4 |
 | `.cursor/rules/meeting-lifecycle-approve-lock.mdc` | Durable lifecycle, approve, and notify-lock guardrail. | §6.3 |
 | `.cursor/rules/decision-meeting-child.mdc` | DURING/PRE_START prepare-write and approve-completeness guardrail. | §6.3 |
+| `.cursor/rules/website-customer-form-modal-placement.mdc` | Customer form-modal placement + no Redux JSX `render`. | §6.4; form-foundation §3.8b |
+| `.cursor/skills/website-customer-form-modal/SKILL.md` | Repeatable customer registered form-modal workflow. | §6.4 |
+| `.cursor/skills/website-customer-meeting-form/SKILL.md` | Create/list + pointer to details modals skill. | §5–§6 |
+
+### 12.2 Registered meeting form-modals refactor (this go-doc slice)
+
+Exhaustive inventory for replacing generic `FORM` + `openForm({ render })` with ConfirmModal-style registered Components under `customer/modals/`.
+
+#### Website (`website/` repo)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `src/app/ui/components/customer/modals/MeetingBasicsModal.tsx` | added | Registered basics modal + `openMeetingBasics` | §6.3–§6.4; form-foundation §3.8b |
+| `src/app/ui/components/customer/modals/MeetingParticipantAddModal.tsx` | added | Registered participant add + `openMeetingParticipantAdd` | §6.3–§6.4; §3.8b |
+| `src/app/ui/components/customer/modals/MeetingSubjectModal.tsx` | added | Registered subject modal + `openMeetingSubject` | §6.3–§6.4; §3.8b |
+| `src/app/ui/components/modals/FormModal.tsx` | modified | Presentational chrome only (`FormModalChromeProps`); not registered | §6.4; §3.8b |
+| `src/resources/configs/store/modals.ts` | modified | Dropped generic `FORM`; added three meeting identities | §6.4 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingDetailsScreen.tsx` | modified | Wires open helpers; no `openForm` / `*ModalForm` | §6.2–§6.4 |
+| `src/app/ui/components/customer/meetings/MeetingBasicsModalForm.tsx` | deleted | Former body used with `openForm({ render })` | do not resurrect |
+| `src/app/ui/components/customer/meetings/MeetingParticipantAddModalForm.tsx` | deleted | Former body used with `openForm({ render })` | do not resurrect |
+| `src/app/ui/components/customer/meetings/MeetingSubjectModalForm.tsx` | deleted | Former body used with `openForm({ render })` | do not resurrect |
+| `src/app/ui/base/components/ModalBase.tsx` | unchanged | Intentionally not edited for this bug | out of scope |
+| `lib/tsconfig.tsbuildinfo` | modified (generated) | TS incremental build cache; do not commit / no behavior narrative | generated |
+
+#### Root (`docs/` + `.cursor/`)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `docs/platforms/website/component-structure.md` | modified | Folder ownership (shared modals vs `customer/modals`) | structure §1.1 / §3 |
+| `docs/platforms/website/flow-customer-meetings.md` | modified | Details modals contract + this inventory | all / §12.2 |
+| `docs/platforms/website/flow-form-foundation.md` | modified | §3.8b FormModal + customer form modals | §3.8b, §5 |
+| `.cursor/rules/website-customer-form-modal-placement.mdc` | added | Placement + forbidden Redux JSX factory | §6.4 |
+| `.cursor/skills/website-customer-form-modal/SKILL.md` | added | Repeatable customer form-modal workflow | §6.4 |
+| `.cursor/skills/website-customer-meeting-form/SKILL.md` | modified | Points details writes at form-modal skill/rule | skill §8 |
 
 ## 13) Related
 
 - `docs/platforms/website/flow-customer-shell.md`
 - `docs/platforms/website/flow-customer-members.md` (list/form pattern sibling)
-- `docs/platforms/website/flow-form-foundation.md`
+- `docs/platforms/website/flow-form-foundation.md` (§3.8b registered customer form modals)
 - `docs/platforms/website/data-flow-and-gql.md`
 - `docs/platforms/website/route-registry-contract.md`
 - `docs/platforms/backend/contracts/meeting-domain.md`
@@ -394,5 +444,8 @@ and the relevant child contracts.
 - `.cursor/rules/website-route-static-before-parametric.mdc`
 - `.cursor/rules/website-customer-list-history-search.mdc`
 - `.cursor/rules/website-result-lane-skeleton-shape.mdc`
+- `.cursor/rules/website-customer-form-modal-placement.mdc`
 - `.cursor/skills/website-customer-result-lane-list/SKILL.md`
 - `.cursor/skills/website-customer-breadcrumb-subpage/SKILL.md`
+- `.cursor/skills/website-customer-form-modal/SKILL.md`
+- `.cursor/skills/website-customer-meeting-form/SKILL.md`

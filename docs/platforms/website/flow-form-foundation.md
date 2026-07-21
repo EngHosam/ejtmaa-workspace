@@ -48,8 +48,8 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, `FormInputWrapper`, `FormProvider`,
   - template helpers: `FormTemplateVariableInsert`, `FormMessageTemplateVariablesField` (see §3.2c; consumer `flow-customer-message-templates.md`),
   - Compose from `Utils` + semantic theme tokens.
-  - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`), `CONFIRM` (`confirm`), `FORM` (`openForm` thin chrome shell) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
-  - **`FORM` modal bodies are real forms** — each body owns `useShallowForm` + `FormProvider` + shared `Form*` fields + `d.send({ sub })` exactly like route screens (`CustomerMeetingFormScreen` / `CustomerMemberFormScreen`). Do **not** share the parent page form context, raw `<input>` state, or `setValues`+custom chrome inside the modal. `FormModal` / `openForm` only supply title/subtitle/shell; field errors, loading, and submit stay on the form stack. Canonical meeting examples: `MeetingBasicsModalForm`, `MeetingParticipantAddModalForm`, `MeetingSubjectModalForm`.
+  - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`), `CONFIRM` (`confirm`), plus registered meeting form modals (`MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT`) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
+  - **Meeting form modals are real forms** — each registered modal owns `useShallowForm` + `FormProvider` + shared `Form*` fields + `d.send({ sub })` exactly like route screens. Do **not** share the parent page form context, raw `<input>` state, or inject JSX via a generic `render` callback. Presentational `FormModal` supplies title/subtitle/chrome only. Canonical: `MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal`.
 
 ## 3) Field surface contracts (shipped)
 
@@ -219,6 +219,34 @@ Canonical consumer: meeting `datetime`.
 
 Canonical consumers: member + message-channel form delete. Rule: `.cursor/rules/website-confirm-modal.mdc`.
 
+### 3.8b `FormModal` chrome + registered customer form modals
+
+**Problem solved:** A generic registered `FORM` identity that accepted `render: (close) => ReactNode` stored a JSX factory on Redux modal state. That path crashed intermittently (`render is not a function`) and white-screened the customer details page.
+
+**Shipped contract:**
+
+| Layer | Path / identity | Role |
+|---|---|---|
+| Presentational chrome | `website/src/app/ui/components/modals/FormModal.tsx` | Title / optional subtitle / card shell only. **Not** registered. No `openForm`. |
+| Customer form modals | `website/src/app/ui/components/customer/modals/` | One Component per write surface; each owns `useShallowForm` + `FormProvider` + `Form*` + `submittingRef`. |
+| Registry | `resources/configs/store/modals.ts` | `MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT` (+ shared pickers/confirm). |
+
+**Open helpers (data + callbacks only — ConfirmModal pattern):**
+
+| Helper | Identity | Required open props | Form `sub`(s) |
+|---|---|---|---|
+| `openMeetingBasics` | `MEETING_BASICS` | `title`, `meetingId`, optional `subtitle`, `onSuccess` | `read` on enter → `update` on save |
+| `openMeetingParticipantAdd` | `MEETING_PARTICIPANT_ADD` | `title`, `meetingId`, optional `subtitle`, `onSuccess` | `addParticipant` (default type `MEMBER`) |
+| `openMeetingSubject` | `MEETING_SUBJECT` | `title`, `meetingId`, `mode`, `subjectLabel`, `submitLabel`, optional `initialSubject`, `onSuccess`; mode-specific `entityId` / `phase` | `createAgendaItem` / `updateAgendaItem` / `createDecision` / `updateDecision` |
+
+**Placement (non-negotiable):** customer-only registered form modals live under `customer/modals/` — not shared `components/modals/`, not under `customer/meetings/` (screens/rows/cards). Rule: `.cursor/rules/website-customer-form-modal-placement.mdc`. Skill: `.cursor/skills/website-customer-form-modal/SKILL.md`.
+
+**Forbidden:** Redux `render` / JSX body factories; module-level “current body” maps; editing `ModalBase` for product form bugs; sharing the parent page form into modal bodies; manual success toasts in `afterSentSuccess`.
+
+**Failure / UX:** field Joi errors via form reducer; `Loadable` while basics `read` / inject; Save/Add `loading` scoped by `currentSub`; cancel / backdrop closes via `cancelable: true`; success → `onSuccess` (typically details `refresh`) then `closeMe({})`. Nested `ENTITY_PICKER` / `DATETIME_PICKER` remain separate registered modals.
+
+Canonical consumer: `CustomerMeetingDetailsScreen` — `flow-customer-meetings.md` §6.3–§6.4.
+
 ### 3.9 `FormActionButton` tones
 
 `tone`: `primary` | `neutral` | `secondary` | `danger`.
@@ -253,6 +281,7 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 - Multi-path forms use one identify + `formRoute` href builders.
 - Destructive confirms use `confirm()` (`CONFIRM` modal), never `window.confirm`.
 - Multi-action forms scope button `loading` by `currentSub` (§3.10).
+- Customer write form modals: one registered identity each under `customer/modals/`; compose `FormModal` chrome; open with data + callbacks only (§3.8b).
 - `yarn type-check` passes in `website/`.
 
 ## 5) Traceability (form foundation — shared surfaces)
@@ -276,14 +305,16 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card (`members.tsx`, `messageChannels.tsx`, …) |
 | `website/src/app/ui/components/modals/entity-picker/configs/index.ts` | registry of idents |
 | `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`, `searchable?`) |
-| `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM`, `FORM` |
-| `website/src/app/ui/components/modals/FormModal.tsx` | Thin `FORM` chrome + `openForm` (body owns form stack) |
-| `website/src/app/ui/components/customer/meetings/MeetingBasicsModalForm.tsx` | Meeting basics modal form (`read`/`update`) |
-| `website/src/app/ui/components/customer/meetings/MeetingParticipantAddModalForm.tsx` | Add participant modal form |
-| `website/src/app/ui/components/customer/meetings/MeetingSubjectModalForm.tsx` | Agenda/decision subject modal form |
+| `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM`, `MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT` (no generic `FORM`) |
 | `website/src/app/ui/components/form/FormDateTimeField.tsx` | datetime field → `DATETIME_PICKER` modal |
 | `website/src/app/ui/components/modals/DateTimePickerModal.tsx` | datetime modal shell |
 | `website/src/app/ui/components/modals/ConfirmModal.tsx` | `CONFIRM` shell + `confirm()` helper |
+| `website/src/app/ui/components/modals/FormModal.tsx` | Presentational form-modal chrome (§3.8b; not registered) |
+| `website/src/app/ui/components/customer/modals/MeetingBasicsModal.tsx` | `MEETING_BASICS` + `openMeetingBasics` |
+| `website/src/app/ui/components/customer/modals/MeetingParticipantAddModal.tsx` | `MEETING_PARTICIPANT_ADD` + `openMeetingParticipantAdd` |
+| `website/src/app/ui/components/customer/modals/MeetingSubjectModal.tsx` | `MEETING_SUBJECT` + `openMeetingSubject` |
+| `.cursor/rules/website-customer-form-modal-placement.mdc` | Placement + no Redux JSX-body factory |
+| `.cursor/skills/website-customer-form-modal/SKILL.md` | Repeatable customer form-modal workflow |
 | `website/src/resources/emotion/styles/datepicker.ts` | `datepickerTheme` (`.ejt-datepicker`) |
 | `website/src/resources/emotion/styles/scroll.ts` | `customScroll` helper |
 | `website/src/app/helpers/entityMedia.ts` / `media.ts` | upload + URI |
@@ -322,9 +353,11 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 - `.cursor/rules/website-form-color-field.mdc`
 - `.cursor/rules/website-third-party-widget-emotion-theme.mdc`
 - `.cursor/rules/website-custom-scroll-contract.mdc`
+- `.cursor/rules/website-customer-form-modal-placement.mdc`
 - `.cursor/skills/website-customer-member-form/SKILL.md`
 - `.cursor/skills/website-customer-message-channels/SKILL.md`
 - `.cursor/skills/website-confirm-modal/SKILL.md`
 - `.cursor/skills/website-customer-organization-form/SKILL.md`
 - `.cursor/skills/website-customer-meeting-form/SKILL.md`
+- `.cursor/skills/website-customer-form-modal/SKILL.md`
 - `.cursor/skills/website-entity-picker/SKILL.md`

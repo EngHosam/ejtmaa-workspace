@@ -28,7 +28,7 @@ Actors: **visitor** and **customer**.
 
 **Shipped pages:** `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`, `CustomerHome` (command map — `flow-customer-shell.md` §7), `CustomerMembers` (directory — `flow-customer-members.md`), `CustomerMemberForm`, `CustomerMeetings` / `CustomerMeetingForm` / `CustomerMeetingDetails` (`flow-customer-meetings.md`), `CustomerOrganization` (`flow-customer-organization.md`), `CustomerMessageChannels` / `CustomerMessageChannelForm` (`flow-customer-message-channels.md`).
 
-**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `HomeMark`, `Breadcrumb`, `useBreadcrumbs`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `FilterOptionChip`, `FilterOptionChips`, `Wrong` (`Empty` / `LaneFailed`), auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, …), modals (`EntityPickerModal`, `DateTimePickerModal`, `ConfirmModal`, `SelectableEntityCard`, `entity-picker/configs/*`), landing home sections (`home/*`), customer shell (`CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerSubHeader`, `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`, `hooks/useCustomerMembers`, `hooks/useCustomerMeetings`, `hooks/useCustomerMessageChannels`, `members/*`, `meetings/*`, `message-channels/*`, `message-templates/*`).
+**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `HomeMark`, `Breadcrumb`, `useBreadcrumbs`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `FilterOptionChip`, `FilterOptionChips`, `Wrong` (`Empty` / `LaneFailed`), auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, …), modals (`FormModal` chrome, `EntityPickerModal`, `DateTimePickerModal`, `ConfirmModal`, `SelectableEntityCard`, `entity-picker/configs/*`), landing home sections (`home/*`), customer shell (`CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerSubHeader`, `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`, `hooks/useCustomerMembers`, `hooks/useCustomerMeetings`, `hooks/useCustomerMessageChannels`, `members/*`, `meetings/*`, `modals/*` registered form modals, `message-channels/*`, `message-templates/*`).
 
 **Planned (target contract, not yet in scaffold):** `CustomerBottomBar` / `BottomIcons`, remaining `pages/customer/*` workspace screens (subscription, settings, notifications, static info, support), Google social auth UI (`SelectableCard`, `Checkbox` on Register).
 
@@ -52,12 +52,12 @@ Shipped groups:
 | Shell (visitor landing) | `LandingHeader`, `LandingFooter`, `LandingMobileDrawer` |
 | Auth | `AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton` |
 | Form | `FormTextField`, `FormActionButton`, `FormInputWrapper`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField` |
-| Modals | `EntityPickerModal`, `DateTimePickerModal`, `ConfirmModal`, `SelectableEntityCard` |
-| Modals | `EntityPickerModal` (`ENTITY_PICKER`), `DateTimePickerModal` (`DATETIME_PICKER`), `SelectableEntityCard`, `entity-picker/configs/*` |
+| Modals (shared visitor + customer) | `FormModal` (presentational chrome only), `EntityPickerModal`, `DateTimePickerModal`, `ConfirmModal`, `SelectableEntityCard`, `entity-picker/configs/*` |
 | Home (visitor) | `home/Hero`, `home/Platform`, … (landing sections) |
 | Customer home | `customer/home/*`, `customer/hooks/useCustomerHome` |
 | Customer members | `customer/members/*`, `customer/hooks/useCustomerMembers` |
-| Customer meetings | `customer/meetings/*`, `customer/hooks/useCustomerMeetings` |
+| Customer meetings | `customer/meetings/*` (screens, rows, cards), `customer/hooks/useCustomerMeetings` |
+| Customer form modals | `customer/modals/*` (`MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal` — registered; see `flow-form-foundation.md` §3.8b) |
 
 Planned groups (target contract):
 

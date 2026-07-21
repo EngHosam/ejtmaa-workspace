@@ -1,0 +1,43 @@
+---
+description: >-
+  Customer-only registered form modals live under website customer/modals;
+  shared modals/ holds cross-actor chrome and pickers only. Forbidden: JSX
+  render factories in Redux modal state (openForm render anti-pattern).
+globs:
+  - website/src/app/ui/components/modals/**
+  - website/src/app/ui/components/customer/modals/**
+  - website/src/resources/configs/store/modals.ts
+alwaysApply: false
+---
+
+# Website registered modal placement + form shells
+
+## Placement
+
+| Kind | Path |
+|---|---|
+| Shared (visitor + customer) | `website/src/app/ui/components/modals/` — e.g. `ConfirmModal`, `EntityPickerModal`, `DateTimePickerModal`, presentational `FormModal` chrome |
+| Customer-only product form modals | `website/src/app/ui/components/customer/modals/` — e.g. `MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal` |
+
+Do **not** put customer-only registered modals in shared `modals/`. Do **not** bury registered modal Components inside feature folders like `customer/meetings/` — those folders own screens/rows/cards; modals open from helpers and register in `resources/configs/store/modals.ts`.
+
+## Registration contract (ConfirmModal pattern)
+
+1. One **Component** per modal identity in `initModalsProps`.
+2. Open via `openModal(myInstance)(IDENT)({ ...typed props })` — data + small callbacks (`onSuccess`, `onConfirm`).
+3. Own `useShallowForm` + `FormProvider` + shared `Form*` fields inside the modal when it is a write form.
+4. Compose presentational `FormModal` for title/subtitle/card chrome when that chrome fits; do not register `FormModal` itself as a body host.
+
+## Forbidden
+
+- Generic `FORM` + `render: (close) => <Body/>` (or any JSX factory) stored on Redux modal state.
+- Module-level “current body” hacks to paper over that pattern.
+- Editing `ModalBase` for product form bugs.
+- Customer meeting form modals under `components/modals/` or under `customer/meetings/`.
+
+## Canonical
+
+- Chrome: `website/src/app/ui/components/modals/FormModal.tsx`
+- Customer forms: `website/src/app/ui/components/customer/modals/Meeting*.tsx`
+- Registry: `website/src/resources/configs/store/modals.ts`
+- Flows: `docs/platforms/website/flow-form-foundation.md`, `flow-customer-meetings.md` §6.4

@@ -23,12 +23,14 @@ description: >-
 5. List: `useCustomerMeetings` history key `meetings`; Enter search + status chips with `{ reset: true }` when clearing; `ResultLane` + `MeetingCardSkeleton`; **no Edit** on cards; W42 labels from screen into `CustomerMeetingCard`.
 6. Shared controls: entity picker skill `.cursor/skills/website-entity-picker/SKILL.md`; datetime theme `.cursor/rules/website-third-party-widget-emotion-theme.mdc`.
 7. i18n `ui.pages.customer.meetings*` / `meetingForm` / `meetingDetails`. Update `flow-customer-meetings.md` + `flow-form-foundation.md` + `route-registry-contract.md` in the same task.
-8. Verify: `yarn type-check` in `website/` (and `backend/` if requester/SDL changed).
+8. Details write modals: `.cursor/skills/website-customer-form-modal/SKILL.md` + `.cursor/rules/website-customer-form-modal-placement.mdc` (`customer/modals/`, not shared `modals/` or `meetings/`).
+9. Verify: `yarn type-check` in `website/` (and `backend/` if requester/SDL changed).
 
 ## Canonical reference
 
 - Form: `website/src/app/ui/components/customer/meetings/CustomerMeetingFormScreen.tsx`
 - List: `website/src/app/ui/components/customer/meetings/CustomerMeetingsScreen.tsx`
+- Details modals: `website/src/app/ui/components/customer/modals/Meeting*.tsx`
 - Flow: `docs/platforms/website/flow-customer-meetings.md`
 - Backend: `docs/platforms/backend/contracts/meeting-domain.md` §9
 - Sibling list skill: `.cursor/skills/website-customer-result-lane-list/SKILL.md`
