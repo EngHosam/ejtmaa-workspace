@@ -193,7 +193,7 @@ Reuse craft in `customer/home/*`: eyebrow zones (`HomeZoneShell`), lifecycle rai
 | `website/src/app/ui/components/customer/home/HomeAgendaStrip.tsx` | Focus agenda preview with horizontal overflow. |
 | `website/src/app/ui/components/customer/home/HomeActionStatusCards.tsx` | Workspace totals and directory navigation. |
 | `website/src/app/ui/components/customer/home/HomeFocusVisual.tsx` | Decorative, data-backed quorum/readiness SVG; hidden from assistive technology because equivalent data is exposed in the status and readiness UI. |
-| `website/src/app/ui/components/customer/meetings/CustomerMeetingCard.tsx` | Reused meeting card; optional `notifyStatusLabel` extends its presentational metadata without changing directory behavior. |
+| `website/src/app/ui/components/customer/meetings/CustomerMeetingCard.tsx` | Reused meeting card; renders `MeetingMetaChips` (type/status/notify pills). Home passes `*Label` + `*Value` discriminators (`notify_status` now on the list query); see `flow-customer-meetings.md` §4.1–§4.2. |
 | `website/src/resources/translations/ar.ts` | Arabic `ui.pages.customer.home.*` copy. |
 | `website/src/resources/translations/en.ts` | English mirror of the home-copy tree. |
 

@@ -1,0 +1,42 @@
+---
+description: Website meeting type/status/notify render as distinct MeetingMetaChips (icon + soft-tint tone), never a joined text line
+globs:
+  - website/src/app/ui/components/customer/meetings/**/*.tsx
+  - website/src/app/ui/components/customer/home/**/*.tsx
+alwaysApply: false
+---
+
+# Website Meeting Meta Chips
+
+Applies when rendering a meeting's type, lifecycle status, or invite-notify status on the customer portal (cards, home, details header).
+
+Flow: `docs/platforms/website/flow-customer-meetings.md` §4.1–§4.2.
+
+## Rule
+
+Render each meeting axis (type, status, notify) as its own `MeetingMetaChips` pill — leading Feather icon + resolved label + scheme-aware tone. Do NOT concatenate the three into one `·`-joined `Text` line: joining conflates lifecycle status with notify status and reads as ambiguous.
+
+- One distinct icon per enum value (no icon reused across axes); one tone per value.
+- Tone colors come from `semanticColor`: soft feedback fill (`stateSoft*`) as chip background paired with the matching `state*` foreground (icon + text); `neutral` uses `sectionBrandBackground` / `iconSecondary` / `textSecondary`. Both resolve per light/dark automatically — no per-scheme branching, no hardcoded hex.
+- Unified `caption` weight across chips (no per-chip bold).
+- Empty axis label → omit that chip; all empty → render `null`.
+
+## Discriminator props (W42 still holds)
+
+Pass the enum **value** (`typeValue` / `statusValue` / `notifyStatusValue`) alongside the already-resolved label. The value is an icon/tone discriminator only — the presentational component still receives resolved label strings and does NOT translate (see `.cursor/rules/website-presentational-label-props.mdc`).
+
+## Data
+
+`notify_status { value label }` must be selected on the meeting **list** query (`useCustomerMeetings.ts`), not only on details, so directory cards can render the notify chip.
+
+## Forbidden
+
+- `[typeLabel, statusLabel, notifyStatusLabel].join(" · ")` (or any joined meta string) for these axes.
+- Hardcoded state colors instead of `semanticColor.stateSoft*` / `semanticColor.state*`.
+- Reusing the same icon for two different values.
+
+## Reference
+
+- Component: `website/src/app/ui/components/customer/meetings/MeetingMetaChips.tsx`
+- Tokens: `website/src/resources/configs/utils.ts` (`stateSoftError|Warning|Success|Info`); audit `.cursor/skills/website-semantic-color-audit/SKILL.md`
+- Sibling rule: `.cursor/rules/website-presentational-label-props.mdc` (W42)

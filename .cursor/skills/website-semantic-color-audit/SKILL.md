@@ -35,7 +35,10 @@ description: >-
 
 `resources/configs/utils.ts`; `pages/UiMockup.tsx`; `pages/Error.tsx`; `pages/Customer.tsx`; `layouts/MainLayout.tsx`; `layouts/BasicLayout.tsx`; `components/form/FormTextField.tsx`; `components/form/FormInputWrapper.tsx`; `components/form/FormActionButton.tsx`; `components/customer/CustomersTable.tsx`; `components/customer/CustomerStatsSection.tsx`; `components/customer/CustomerIdentityCell.tsx`; `components/auth/AuthPageShell.tsx`; `components/Toast.tsx`; `components/ThemeModeSwitch.tsx`; `components/MicrobandCredit.tsx`; `components/Header.tsx`; `components/GlobalLoadable.tsx`; `components/Footer.tsx`; `components/Drawer.tsx`; `components/DataTable.tsx`.
 
-## 48-key → theme.ts line map (baseline)
+## 52-key → theme.ts line map (baseline)
+
+The four `stateSoft*` keys pair the soft feedback fill (chip/badge background) with the matching `state*` foreground (icon + text); both auto-resolve per scheme. Consumer: `components/customer/meetings/MeetingMetaChips.tsx`.
+
 
 | semanticColor key | path | theme.ts line |
 |---|---|---|
@@ -86,6 +89,10 @@ description: >-
 | stateWarning | base.state.feedback.default.warning | 372 |
 | stateSuccess | base.state.feedback.default.success | 373 |
 | stateInfo | base.state.feedback.default.info | 374 |
+| stateSoftError | base.state.feedback.soft.error | 377 |
+| stateSoftWarning | base.state.feedback.soft.warning | 378 |
+| stateSoftSuccess | base.state.feedback.soft.success | 379 |
+| stateSoftInfo | base.state.feedback.soft.info | 380 |
 | stateDisabled | base.state.interaction.default.disabled | 391 |
 
 ## Related

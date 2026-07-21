@@ -91,6 +91,10 @@ query CustomerMeetings($filter: _MeetingFilter) {
             value
             label
         }
+        notify_status {
+            value
+            label
+        }
         chairperson {
             id
             name
@@ -101,7 +105,7 @@ query CustomerMeetings($filter: _MeetingFilter) {
 }
 ```
 
-History search rule: `.cursor/rules/website-customer-list-history-search.mdc`.
+`notify_status { value label }` is selected on the **list** query (not only details) so directory cards can render the invite-notify chip. History search rule: `.cursor/rules/website-customer-list-history-search.mdc`.
 
 ### 3.1 Status filter commit
 
@@ -128,11 +132,48 @@ Presentational `CustomerMeetingCard` does **not** call `useTranslator`. Screen p
 |---|---|
 | `subject`, `datetime`, `chairpersonName`, `chairpersonAvatarUrl`, `id` | GQL row |
 | `statusLabel` | `status.label` \|\| `status.value` \|\| `"—"` |
+| `statusValue` | `status.value` (chip icon/tone discriminator) |
 | `typeLabel` | `type.label` \|\| `type.value` |
+| `typeValue` | `type.value` (chip icon/tone discriminator) |
+| `notifyStatusLabel` | `notify_status.label` \|\| `notify_status.value` |
+| `notifyStatusValue` | `notify_status.value` (chip icon/tone discriminator) |
 | `chairpersonLabel` | `t("cardChairperson")` |
 | `quorumLabel` | `t("cardQuorum", { count })` when `min_members_count > 0` |
 
-Card UI: accent start rail; subject; meta line `type · status`; `useMoment` date + time rows; footer divider with chairperson avatar/name + quorum caption. Navigation: `Col As={Link}` typed `To<"CustomerMeetingDetails">`. Rule: `.cursor/rules/website-presentational-label-props.mdc`.
+Card UI: accent start rail; subject; **meta chips row** (`MeetingMetaChips` — type · status · notify as separate icon+label pills, **not** a joined `·` text line); `useMoment` date + time rows; footer divider with chairperson avatar/name + quorum caption. Navigation: `Col As={Link}` typed `To<"CustomerMeetingDetails">`.
+
+`*Value` props are enum **discriminators** for icon + semantic color only — labels stay resolved strings, so W42 (no translator in presentational components) still holds. Chip component + tone/icon/color contract: `MeetingMetaChips` (§4.2). Rules: `.cursor/rules/website-presentational-label-props.mdc`, `.cursor/rules/website-meeting-meta-chips.mdc`.
+
+### 4.2 Meeting meta chips (`MeetingMetaChips`)
+
+Shared presentational component for the three meeting axes, used by `CustomerMeetingCard` (directory + home + details basics reuse) and the `CustomerMeetingDetails` header. Renders one pill per non-empty axis: leading Feather icon + label, pill background + icon + text from a scheme-aware tone.
+
+**Distinct icon per value (no repeat across axes):**
+
+| Axis | Value | Icon | Tone |
+|---|---|---|---|
+| type | `PERIODIC` | `FiRepeat` | info |
+| type | `EMERGENCY` | `FiAlertTriangle` | danger |
+| status | `DRAFT` | `FiEdit3` | neutral |
+| status | `WAITING_TO_START` | `FiClock` | warning |
+| status | `STARTED` | `FiPlayCircle` | success |
+| status | `COMPLETED` | `FiCheckCircle` | info |
+| status | `CANCELED` | `FiXCircle` | danger |
+| notify | `NOT_STARTED` | `FiBellOff` | neutral |
+| notify | `WAITING_TO_NOTIFY` | `FiSend` | warning |
+| notify | `NOTIFIED` | `FiBell` | success |
+
+**Tone → tokens (light / dark auto via `ThemeMap`):**
+
+| Tone | bg | icon + text |
+|---|---|---|
+| neutral | `sectionBrandBackground` | `iconSecondary` / `textSecondary` |
+| info | `stateSoftInfo` | `stateInfo` |
+| warning | `stateSoftWarning` | `stateWarning` |
+| success | `stateSoftSuccess` | `stateSuccess` |
+| danger | `stateSoftError` | `stateError` |
+
+Soft-tint tokens (`stateSoft*`) resolve to pastel fills in light and translucent dark fills in dark; `state*` foregrounds resolve to the default feedback color in light and the brighter `onDark` variant in dark — correct contrast in both schemes without per-scheme branches (added in `semanticColor`, §semantic color). Icon size `0.78`; unified `caption` weight (no bold). Empty axis label → chip omitted; all empty → renders `null`.
 
 ## 5) Create form — `Forms.CUSTOMER_MEETING`
 
@@ -185,7 +226,7 @@ Hook `useCustomerMeetingDetails` — mount-private adapter `"customer-meeting-de
 
 ### 6.2 Chrome
 
-`SectionHeading` back + subject title; status·type meta; Approve / Delete via `FormActionButton` when Ability allows. Approve uses `canApprove.value` only to enable/disable — do **not** render `canApprove.description` under the button (denial copy stays server-side; readiness strip covers UX guidance). Lock / edit-window notes reuse the organization setup alert chrome (`canvasAccentSoftBackground` + `FiAlertTriangle`). Basics body reuses `CustomerMeetingCard` language (accent rail, calendar/clock, chair + quorum). Section Add/Edit are `smallAction` text actions (member-card pattern), not `FormActionButton`. Roster rows follow `CustomerMemberCard` with **CHAIRPERSON first**; agenda/decision rows are quiet cards with order caption + optional status meta. Roadmap sections after basics use `MeetingDetailsSection` `divided` (`divider` hairline — primary, not `subtleDivider`) so agenda / decision phases / templates read as separate blocks in light mode.
+`SectionHeading` back + subject title, wrapped in a `Col` with a `MeetingMetaChips` row beneath it (type · status · notify pills — replaces the former status·type subtitle text; §4.2); Approve / Delete via `FormActionButton` when Ability allows. Approve uses `canApprove.value` only to enable/disable — do **not** render `canApprove.description` under the button (denial copy stays server-side; readiness strip covers UX guidance). Lock / edit-window notes reuse the organization setup alert chrome (`canvasAccentSoftBackground` + `FiAlertTriangle`). Basics body reuses `CustomerMeetingCard` language (accent rail, calendar/clock, chair + quorum). Section Add/Edit are `smallAction` text actions (member-card pattern), not `FormActionButton`. Roster rows follow `CustomerMemberCard` with **CHAIRPERSON first**; agenda/decision rows are quiet cards with order caption + optional status meta. Roadmap sections after basics use `MeetingDetailsSection` `divided` (`divider` hairline — primary, not `subtleDivider`) so agenda / decision phases / templates read as separate blocks in light mode.
 
 ### 6.3 Sections
 
@@ -431,6 +472,32 @@ Exhaustive inventory for replacing generic `FORM` + `openForm({ render })` with 
 | `.cursor/rules/website-customer-form-modal-placement.mdc` | added | Placement + forbidden Redux JSX factory | §6.4 |
 | `.cursor/skills/website-customer-form-modal/SKILL.md` | added | Repeatable customer form-modal workflow | §6.4 |
 | `.cursor/skills/website-customer-meeting-form/SKILL.md` | modified | Points details writes at form-modal skill/rule | skill §8 |
+
+### 12.3 Meeting meta chips + notify status (this go-doc slice)
+
+Exhaustive inventory for surfacing type/status/notify as distinct icon+color chips on cards and the details header (replacing the joined `·` meta line and the status·type subtitle).
+
+#### Website (`website/` repo)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `src/app/ui/components/customer/meetings/MeetingMetaChips.tsx` | added | Presentational chips (icon + tone per value); `*Value` discriminators | §4.2 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingCard.tsx` | modified | Dropped `metaLine`; renders `MeetingMetaChips`; added `statusValue`/`typeValue`/`notifyStatusValue` props | §4.1 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingsScreen.tsx` | modified | Passes `*Value` + `notifyStatusLabel` to card | §4.1 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingDetailsScreen.tsx` | modified | Header `Col` wraps `SectionHeading` + `MeetingMetaChips`; drops `headerSubtitle` | §6.2 |
+| `src/app/ui/components/customer/home/CustomerHomeScreen.tsx` | modified | Passes `*Value` to reused card; drops local `notifyLabel` gate | §4.1 |
+| `src/app/ui/components/customer/hooks/useCustomerMeetings.ts` | modified | List GQL selects `notify_status { value label }` | §3 |
+| `src/resources/configs/utils.ts` | modified | Added `stateSoftError`/`stateSoftWarning`/`stateSoftSuccess`/`stateSoftInfo` tokens | §4.2 |
+| `lib/tsconfig.tsbuildinfo` | modified (generated) | TS incremental build cache; no narrative | generated |
+
+#### Root (`docs/` + `.cursor/`)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `docs/platforms/website/flow-customer-meetings.md` | modified | §3 list GQL, §4.1 card, §4.2 chips, §6.2 header, this inventory | §3–§6, §12.3 |
+| `docs/platforms/website/flow-customer-shell.md` | modified | Card reuse note (chips + `*Value`) | shell §196 |
+| `.cursor/rules/website-meeting-meta-chips.mdc` | added | Distinct-chip + discriminator + soft-tint invariant | §4.2 |
+| `.cursor/skills/website-semantic-color-audit/SKILL.md` | modified | Baseline map += four `stateSoft*` keys | audit map |
 
 ## 13) Related
 
