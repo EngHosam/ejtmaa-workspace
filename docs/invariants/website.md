@@ -285,6 +285,16 @@ The linked wordmark text comes from `ui.components.microbandCredit.brand` and MU
 
 See `docs/platforms/website/shared-ui-and-shell.md` §5 and `docs/platforms/website/landing-page.md` § Footer.
 
+## W58. Host Mode Comes From The Store, Gate Runs Before Auth
+
+Host mode for routing is `organizationHost.isOrganizationHost(myInstance)` — derived from `state.organizationHost.id`, which the organization boot hydrates. It works on SSR **and** CSR. Do not re-derive host mode inside routing, socket, or UI code from the request `Host`: `myInstance.resolveRequestHost()` is SSR-only and belongs to `organization-host.start` alone.
+
+Every route is bound to exactly one host mode: a route with `orgHostOnly: true` is reachable only on an organization host, every other route only on the apex host. The check lives in `applyRouterMiddleware` **before** the authenticated/unauthenticated branches, so a wrong-host request resolves to `Error` `404` (`redirect` + `RESOLVED` throw) and never becomes a login redirect. Do not gate a host-bound surface by route identify (`identify === "Meeting"`); the flag is the contract.
+
+Identification sent to the backend (`organizationId` HTTP header, socket handshake query) is added only when a value exists — never as an `undefined` placeholder.
+
+See `docs/platforms/website/organization-host-routing.md` §1.2, §2, §3 and `.cursor/rules/website-org-host-routing.mdc`.
+
 ## Related
 
 - `docs/platforms/website/overview.md`

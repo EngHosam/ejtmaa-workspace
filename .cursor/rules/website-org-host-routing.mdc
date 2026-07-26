@@ -1,0 +1,52 @@
+---
+description: Website apex vs organization host — store-backed host mode, orgHostOnly route gate, and organizationId transport identification
+globs:
+  - website/src/app/services/router.ts
+  - website/src/app/services/socket.ts
+  - website/src/app/services/organization-host.ts
+  - website/src/app/services/index.ts
+  - website/src/app/helpers/RequestHostHelper.ts
+  - website/src/resources/configs/routes.ts
+  - website/src/resources/configs/socket.ts
+  - website/src/resources/configs/axios.ts
+  - backend/src/app/http/controllers/website/custom/OrgStartController.ts
+alwaysApply: false
+---
+
+# Website Organization Host Routing
+
+Applies when touching the apex/organization host split on `website/` or the backend surfaces that serve it.
+
+Authority: `docs/platforms/website/organization-host-routing.md`, invariant W58.
+
+## Host mode
+
+1. Runtime host mode is `organizationHost.isOrganizationHost(myInstance)` — it reads `state.organizationHost.id` and works on SSR and CSR.
+2. `myInstance.resolveRequestHost()` (`RequestHostHelper.ts`) is **SSR-only** request classification. Its single consumer is `organization-host.start`. Do not call it from routing, socket, UI, or hooks.
+3. The website classifies the host and sends `{ subdomain }` or `{ customDomain }` to the backend. The backend must not re-derive host semantics from the proxied `Host` header.
+4. Read environment through `myInstance.getEnv`, never `process.env`.
+
+## Route gating
+
+1. A host-bound route declares `orgHostOnly: true` on its `routes.ts` entry. Never gate by route identify (`identify === "Meeting"`) — the flag is the contract.
+2. Binding is exclusive both ways: `orgHostOnly` routes exist only on an organization host; every other route only on the apex host.
+3. The gate lives in `applyRouterMiddleware` **before** the authed/unauthed branches, after the `Error` early-exit.
+4. A mismatch resolves locally: `redirect({ identify: "Error", params: { error: 404 }, replace: true })` then `throwWebCoreError({ target: "RESOLVED", type: "RESOLVED", myInstance })`. Do **not** use `target: "REMOTE"` — nothing remote failed.
+5. `orgHost && orgHostOnly` returns early so organization pages skip customer auth rules (org setup gate, public-route bounce, `canDoAction`). Both operands are required; `orgHostOnly` alone would also bypass auth on the apex host.
+
+## Boot
+
+`boot.server` calls `organizationHost.start(myInstance)` and returns when it resolves `true`. The organization boot must not fall through to `API.CUSTOM.START`, route access permissions, or `CUSTOMER_ME`.
+
+## Transport identification
+
+1. Send `organizationId` only when a value exists — HTTP header in `axios.ts` `otherHeaders`, socket handshake query in `socket.ts`. Build the socket query object before the config literal; an absent value must be omitted, never serialized as the string `"undefined"`.
+2. Socket namespace order in `prepareSocket`: organization host → `org`; else authed customer → `customer`; else no socket.
+3. Backend reads the HTTP value as the lowercase `organizationid` header (Express normalizes header names).
+
+## Backend pairing
+
+1. `/website/custom/org/start` returns public branding only (`id`, `name`, `description`, `logo_url`, `primary_color`, `secondary_color`). Never auth, customer, or permission data on an unauthenticated host boot.
+2. Organization lookups require `status === "ACTIVE"`.
+3. `org_host` middleware is the only way a route gets `currentOrganization`; do not read the header ad hoc in a controller.
+4. `/org` socket access is currently proven by a public organization id alone. Any surface that needs participant-level trust must add its own proof — do not treat `socket.data.organization` as authentication.

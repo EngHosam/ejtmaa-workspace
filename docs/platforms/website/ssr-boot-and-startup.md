@@ -12,13 +12,14 @@ Boot sequence for the customer portal:
 
 - **Server phase** (`boot.server`):
   - early-exits on the error page,
+  - calls `organizationHost.start(myInstance)` and **returns immediately when it resolves `true`** (organization host boot; the apex steps below are skipped — see `organization-host-routing.md` §1.1),
   - calls `API.CUSTOM.START` (`/website/custom/start` via axios base) with `throwMode` + `throwWithErrorsFunnel` + `autoShowMainMessages`,
   - dispatches the startup payload through `global.setServerStartData(myInstance, res.data)`,
   - computes route access permissions via `router.setRouterAccessPermission(myInstance)` **after** startup data is written,
   - when `authedAs === "CUSTOMER"`, loads `CUSTOMER_ME` via `auth.loadCurrentCustomer(myInstance)` → `LoadCurrentCustomer` (`useMe.tsx`) so `me` is available for SSR shell render.
-- **Client phase** (`boot.client`):
+- **Client phase** (`boot.client`, shared by both host modes):
   - early-exits on the error page (marks client started and returns),
-  - prepares socket via `socket.prepareSocket(myInstance)`,
+  - prepares socket via `socket.prepareSocket(myInstance)` — namespace `org` on an organization host, `customer` for an authed customer, no socket otherwise,
   - marks the client started via `global.setClientIsStarted(myInstance)`,
   - shows pre-messages (1500ms delay before display).
 
@@ -47,9 +48,14 @@ Start payload: `/website/custom/start` returns the auth payload under the **`aut
 
 Post-login landing: after `auth.login` reloads, the router middleware in `website/src/app/services/router.ts` redirects to `getMyHomeIdentify(myInstance)`. Shipped: returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`. See `flow-auth.md` §4A and `flow-customer-shell.md` §6–§7.
 
+## 5) Host-split boot
+
+The server phase serves two hosts. On an organization host (`{subdomain}.ejtmaa.live` or a custom domain) the boot calls `POST /website/custom/org/start` instead of `/website/custom/start`, hydrates the `organizationHost` store slice, and skips route access permissions and `CUSTOMER_ME`. Full contract, including the `orgHostOnly` route gate: `docs/platforms/website/organization-host-routing.md`.
+
 ## 6) Verification checklist
 
 - Server phase calls `/website/custom/start` before route access is computed.
+- Organization hosts call `/website/custom/org/start` and return before the apex steps.
 - Route middleware runs from `MyPage` lifecycle, not `web-core.router.beforePageLoading`.
 - `/website/custom/start` returns the auth payload under the `auth` key so `isAuthed` / `authedAs` populate.
 - `login` sets the cookie token and reloads; post-login redirect uses `getMyHomeIdentify`.
@@ -61,6 +67,7 @@ Post-login landing: after `auth.login` reloads, the router middleware in `websit
 
 - `docs/platforms/website/overview.md`
 - `docs/platforms/website/component-structure.md`
+- `docs/platforms/website/organization-host-routing.md`
 - `docs/platforms/website/flow-auth.md`
 - `docs/platforms/cpanel/login-runtime-and-feedback.md` (shared SSR pattern)
 - `docs/invariants/website.md` (W2, W16)

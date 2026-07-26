@@ -31,6 +31,7 @@ Main groups:
 - http (`EXPRESS_PORT`, `EXPRESS_BASE_URL`, install mode ports)
 - db (`DB_*`)
 - socket (`IO_PORT`)
+- organization host testing (`TEST_ORGANIZATION_ID`) — non-production organization resolved by `/website/custom/org/start`
 - payment (`PAYMENT_MODE`, MyFatoorah keys)
 - LiveKit media (`LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`) — see `docs/platforms/backend/contracts/livekit-media-plane.md`
 
@@ -70,12 +71,16 @@ Mirror contract:
 
 Socket provider config:
 - `backend/src/resources/configs/socket/io.ts`
-- namespaces: `/customer`, `/supervisor`
+- namespaces: `/customer`, `/supervisor`, `/org`
 - auth middleware: `AuthenticationIOMiddleware`
-- connection controller: `ConnectionIOController`
+- connection controllers: `ConnectionIOController` (`/customer`, `/supervisor`), `OrgConnectionIOController` (`/org`)
+
+`AuthenticationIOMiddleware` has two paths: a handshake **token** resolves the customer/supervisor actor as before; **no token** requires an `organizationId` in the handshake, loads the `ACTIVE` organization, and stores it as `socket.data.organization` (`isAuthed` is not set). An unresolved organization throws `NOT_VALID_CREDENTIAL`. `OrgConnectionIOController` then joins `Rooms.ORGANIZATION(id)`; the `/org` namespace currently carries no events.
 
 Room conventions are centralized in:
-- `backend/src/resources/consts/NotificationsConsts.ts`
+- `backend/src/resources/consts/NotificationsConsts.ts` — `Namespaces.ORGANIZATION` (`/org`), `FCM_Namespaces.ORGANIZATION` (`-org`), `Rooms.ORGANIZATION(organizationId)`
+
+Organization-host contract (website boot, HTTP start, gating): `docs/platforms/website/organization-host-routing.md`.
 
 ## 6) Mailer and Templates
 

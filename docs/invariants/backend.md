@@ -124,3 +124,15 @@ Enum-like output fields use object wrappers (`type _X { value: _XValue!, label: 
 When a customer-role root-one resolves a `hasOne` from the authenticated customer (`Static.ident` matches association key), use `prepareOneGQLModel({ me: true })` and let role base + framework accessor resolve the row.
 
 Do not invent `as` aliases or override `getRootOrmParent` / `getOrmFindOptions` unless the association key differs from bridge `ident` or scoping cannot use the default accessor.
+
+## B24. Organization Host Identification Is Not Authentication
+
+An organization id supplied by a client — `organizationid` HTTP header (`org_host` middleware) or socket handshake `organizationId` (`AuthenticationIOMiddleware` no-token path) — identifies **which tenant a request claims**, nothing more. The id is public: `POST /website/custom/org/start` returns it to any visitor on an organization host.
+
+Consequences:
+
+- resolution always requires `status === "ACTIVE"` and throws (`404` on HTTP, `NOT_VALID_CREDENTIAL` on socket) when it does not resolve,
+- `socket.data.organization` must never be read as proof of an authenticated actor (`isAuthed` stays unset on that path),
+- any organization-scoped surface that needs actor trust (meeting participation, writes, private reads) must add its own credential — a member/participant token or an authenticated user — on top of the organization id.
+
+Contracts: `docs/platforms/backend/contracts/client-portal-http-website.md`, `docs/platforms/website/organization-host-routing.md` §8.

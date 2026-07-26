@@ -81,6 +81,7 @@ Local `graphql.config.yml` is allowed when the subtree hosts GraphQL-aware code.
 | `LandingLayout` | Public `Home` landing page | shipped |
 | `MainLayout` | `UiMockup` and future authed subpages | shipped |
 | `CustomerMainLayout` | Authed customer workspace (`CUSTOMER_MAIN`) | shipped |
+| `MeetingLayout` | Organization-host `Meeting` route (`MEETING`) | shipped — `organization-host-routing.md` §5 |
 
 `MyApp` resolves layout from route metadata.
 
@@ -89,6 +90,8 @@ Local `graphql.config.yml` is allowed when the subtree hosts GraphQL-aware code.
 Thin route entry components bound to route identifiers.
 
 Shipped public/auth: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
+
+Organization host: `Meeting` (route + layout shell only — `organization-host-routing.md` §5).
 
 Customer workspace: shipped `CustomerHome` command map, members directory + form, meetings directory + create form + details, organization settings, message channels directory, message templates directory. Planned: subscription, notifications, static info, support, bottom bar.
 

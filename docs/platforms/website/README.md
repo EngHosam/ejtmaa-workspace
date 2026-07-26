@@ -13,6 +13,7 @@
 | [`graphql-mirror-and-tooling.md`](graphql-mirror-and-tooling.md) | GQL mirror sync |
 | [`route-registry-contract.md`](route-registry-contract.md) | Customer route registry |
 | [`ssr-boot-and-startup.md`](ssr-boot-and-startup.md) | SSR boot lifecycle |
+| [`organization-host-routing.md`](organization-host-routing.md) | Apex vs organization host: boot split, `orgHostOnly` gate, org socket namespace |
 | [`shared-ui-and-shell.md`](shared-ui-and-shell.md) | Shell components |
 | [`page-error.md`](page-error.md) | Error (403/404/500) page composition |
 | [`landing-page.md`](landing-page.md) | Public landing page (10 sections, shell, style/color invariants) |
@@ -281,6 +282,22 @@ Current-state reflection of the customer-home change set. The source behavior is
 | `docs/platforms/website/route-registry-contract.md` | §5.2 customer-home route status and current route inventory. |
 | `docs/platforms/website/README.md` | This traceability section and flow index. |
 | `website` (root nested-repository status) | Nested repository contains the source paths above; no root-repository behavior is implemented by the gitlink itself. |
+
+## Change set traceability — organization host routing
+
+Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10.
+
+| Concern | Documented where |
+|---|---|
+| Host classification (`resolveRequestHost`) + `extendMyInstance` | `organization-host-routing.md` §2 |
+| Boot split (`organizationHost.start` before apex start) | `organization-host-routing.md` §1.1; `ssr-boot-and-startup.md` §2, §5 |
+| `organizationHost` store slice + `organizationId` header/query | `organization-host-routing.md` §3 |
+| `orgHostOnly` route gate + `Meeting` route/layout | `organization-host-routing.md` §1.2, §5; `route-registry-contract.md` §5.4; invariant W58 |
+| Socket namespace selection (`org` / `customer`) | `organization-host-routing.md` §4 |
+| `POST /website/custom/org/start` + `org_host` middleware | `../backend/contracts/client-portal-http-website.md` |
+| Socket `/org` namespace, org handshake auth, `Rooms.ORGANIZATION` | `../backend/modules/runtime-integrations.md` §5; `organization-host-routing.md` §6.3 |
+| Known limits (unwired `org_host`, id-only socket auth, empty `Meeting`) | `organization-host-routing.md` §8 |
+| `.cursor/rules/website-org-host-routing.mdc` | Host-mode gating + transport invariants |
 
 ## Change set traceability — MicroBand footer credit spelling
 

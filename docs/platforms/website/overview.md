@@ -25,9 +25,10 @@ See `docs/platforms/website/ui-foundation.md`.
 
 - Requesters: `visitor.auth`, `customer.customer`, `customer.notification`, `customer.subscription` (`subscribe`), `customer.member`, `customer.organization`, `customer.meeting` (`create`) (see `src/types/requesters/requesters.website.ts`)
 - GQL mirrors: `base` + `customer` (`me` + nested `_Me.organization` / `_Me.currentSubscription` / `_Subscription`, `me.canDeleteNotifications`, `me.canSubscribe(planId)`, `notifications`, `members(filter: _MemberFilter)`, `member`, `messageChannels`, `messageChannel`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `talkRecords` / `_TalkRecord`, `plans` / `plan` / `_Plan`, `subscriptions` / `subscription`, `subscriptionPaymentMethods` / `_PaymentMethod`; no customer root `organization`)
-- Socket namespace: `customer`
-- Events: `OnCustomerEvent` (payload `OnCustomerEventDate { type: "UPDATED" }`)
+- Socket namespace: `customer` (apex authed customer) / `org` (organization host — `organization-host-routing.md` §4)
+- Events: `OnCustomerEvent` (payload `OnCustomerEventDate { type: "UPDATED" }`); the `org` namespace carries no events yet
 - Backend mount: `/website` (test `http://192.168.1.10:3206/website`, prod `https://backend.ejtmaa.live/website`)
+- Host modes: apex boot via `POST /website/custom/start`; organization host boot via `POST /website/custom/org/start`
 
 ## Flow documentation
 
@@ -43,6 +44,7 @@ See `docs/platforms/website/ui-foundation.md`.
 | Customer members (directory + form) | [flow-customer-members.md](./flow-customer-members.md) |
 | Customer meetings (directory + create + preparation/details) | [flow-customer-meetings.md](./flow-customer-meetings.md) |
 | Customer organization (settings form) | [flow-customer-organization.md](./flow-customer-organization.md) |
+| Organization host (apex vs org boot, `orgHostOnly`, `Meeting`) | [organization-host-routing.md](./organization-host-routing.md) |
 
 ## 6) Route registry summary
 
@@ -52,7 +54,9 @@ Authoritative table: `route-registry-contract.md` §1.1 / §5.2 (includes `Custo
 
 `publicRoutes` = `["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`.
 
-Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
+Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`), `MeetingLayout` (`MEETING`).
+
+Organization-host routes: `Meeting` (`/meeting/:memberId/:memberToken/:meetingId`, `orgHostOnly: true`) — route + layout shell only; see `route-registry-contract.md` §5.4 and `organization-host-routing.md`.
 
 Shipped customer workspace: `CustomerHome` (`/customer`), `CustomerMeetings` (`/customer/meetings`), `CustomerMeetingForm` (`/customer/meetings/form`), `CustomerMeetingDetails` (`/customer/meetings/:id`), `CustomerMembers` (`/customer/members`), `CustomerMemberForm` (`/customer/members/form` + `/:id`), `CustomerOrganization` (`/customer/organization`), `CustomerMessageChannels` (`/customer/message-channels`), `CustomerMessageChannelForm` (`/customer/message-channels/form` + `/:id`), `CustomerMessageTemplates` (`/customer/message-templates`), and `CustomerMessageTemplateForm` (`/customer/message-templates/form` + `/:id`). All use `mustAuthedAs: ["CUSTOMER"]` and `CUSTOMER_MAIN`. Shell: `flow-customer-shell.md`. Meetings: `flow-customer-meetings.md`. Members: `flow-customer-members.md`. Organization: `flow-customer-organization.md`. Message channels: `flow-customer-message-channels.md`. Message templates: `flow-customer-message-templates.md`. Forms: `flow-form-foundation.md`.
 

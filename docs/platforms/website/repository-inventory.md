@@ -41,6 +41,8 @@ Paths below describe the customer portal contract inventory for `website/`.
 | `src/resources/configs/web-core.ts` | `@my-ssr/web-core` bootstrap |
 | `src/resources/configs/axios/api.ts` | `/website` endpoint map |
 | `src/app/services/auth.ts` | Auth state and `AuthedAs` type |
+| `src/app/services/organization-host.ts` | Organization-host boot + store-backed host predicate |
+| `src/app/helpers/RequestHostHelper.ts` | SSR request-host classification (apex / subdomain / custom domain) |
 
 ## GQL mirrors
 

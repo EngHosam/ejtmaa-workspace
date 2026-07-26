@@ -18,6 +18,8 @@ Client portals are SSR frontends on `/website` and `/cpanel`. Payment gateway ca
 - `external` — compression, json only (no granting / local / errors_funnel / query_values)
 - `cpanel` — CORS, compression, json, query_values, granting (visitor for login, supervisor for authed), local, errors_funnel
 
+`org_host` (`OrganizationHostMiddleware`) is registered in `backend/src/resources/configs/http/middlewares/index.ts` but is **not attached to any route group yet**; it resolves an `ACTIVE` organization from the `organizationid` header for future organization-scoped endpoints.
+
 ## Requester dispatch
 
 Controllers use `ControllerBase.requesterHandle(platform, actor)`.
@@ -56,8 +58,11 @@ SSR boot hydration endpoints:
 | Path | Response auth key | Shape |
 |---|---|---|
 | `/website/custom/start` | `auth` | `{ token?, authedAs?, user? }` |
+| `/website/custom/org/start` | — (no auth key) | `{ organizationHost: { id, name, description, logo_url, primary_color, secondary_color } }` |
 | `/cpanel/custom/start` | `auth` | `{ token?, authedAs: "SUPERVISOR"?, user? }` |
 
-Both mounts return `auth` (not `authentication`). See `backend/src/app/http/controllers/website/custom/StartController.ts` and `backend/src/app/http/controllers/cpanel/custom/StartController.ts`.
+Both `/custom/start` mounts return `auth` (not `authentication`). See `backend/src/app/http/controllers/website/custom/StartController.ts` and `backend/src/app/http/controllers/cpanel/custom/StartController.ts`.
+
+`/website/custom/org/start` is the organization-host boot: unauthenticated, resolves the organization from the request body (`subdomain` / `customDomain`), and returns public branding only. Contract: `client-portal-http-website.md` § Organization host start; website side: `docs/platforms/website/organization-host-routing.md`.
 
 See `docs/platforms/backend/contracts/client-portal-http-website.md` and `docs/platforms/cpanel/login-runtime-and-feedback.md`.

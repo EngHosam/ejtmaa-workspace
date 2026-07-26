@@ -57,7 +57,7 @@ Both `const routes: RouterRoutes` and `export interface MPagesRoutes` use the sa
 
 | Section | Route keys |
 |---------|------------|
-| **public** | `Login`, `Home`, `Register`, `ResetPassword`, `UiMockup` |
+| **public** | `Login`, `Home`, `Register`, `ResetPassword`, `UiMockup`, `Meeting` (organization host — §5.4) |
 | **customer** | `CustomerHome` and all customer `mustAuthedAs` routes |
 | **base** | `Error` (routes only; `MPagesRoutes` has an empty base section — `Error` has no typed nav params) |
 
@@ -132,6 +132,18 @@ Drawer tile identifies and gating: `flow-customer-shell.md` §5.3. Paths marked 
 | Identify | Path | Layout |
 |----------|------|--------|
 | `Error` | `/:error(404|500|403)` | `BASIC` |
+
+### 5.4) Organization host (`orgHostOnly: true`)
+
+`PageRouteState` carries `orgHostOnly?: boolean` (`website/src/types/extends/global.ts`). A route that sets it is reachable **only** on an organization host; every route without it is reachable **only** on the apex host.
+
+| Identify | Path | Layout | Status |
+|----------|------|--------|--------|
+| `Meeting` | `/meeting/:memberId/:memberToken/:meetingId` | `MEETING` | shipped as route + layout shell (page renders `null`) — `organization-host-routing.md` §5 |
+
+Enforcement lives in `applyRouterMiddleware` (`website/src/app/services/router.ts`), **before** the auth branches: a host/flag mismatch redirects to `Error` with `404` and throws `RESOLVED`; an `orgHostOnly` route on an organization host returns early and skips the authed-customer rules. Host mode comes from `organizationHost.isOrganizationHost` (store slice), not from the request `Host`.
+
+Full contract: `docs/platforms/website/organization-host-routing.md`. Invariant: `docs/invariants/website.md` W58.
 
 ## 6) Role redirect alignment
 
