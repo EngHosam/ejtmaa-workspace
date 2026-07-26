@@ -25,12 +25,18 @@ Namespace paths, FCM namespaces, and room names come from
 `backend/src/resources/consts/NotificationsConsts.ts`. Never inline a room string in a controller or
 notify event.
 
-## Connection controllers own the join
+## Connection controllers own the room join and child bind set
 
 Joining rooms happens in the `connection` controller after the auth middleware has populated
 `socket.data`. Refuse the connection by throwing when the expected `socket.data` actor or
 organization is missing — `OrgConnectionIOController` throwing `NOT_VALID_CREDENTIAL` is the
 reference shape.
+
+The connection `handle()` return array is the absolute set of child event aliases to bind.
+`/org` currently returns `["meeting.join"]`. Meeting child controllers live under
+`backend/src/app/socket/controllers/meeting/` and register as dotted `/org` routes
+(`"meeting.join": "meeting_join"`). A child handler that returns `[]` unbinds those aliases
+until the next connection bind.
 
 ## Emitting
 

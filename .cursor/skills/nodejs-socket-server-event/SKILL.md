@@ -24,17 +24,19 @@ description: >-
 - `.cursor/rules/nodejs-socket-handler-contract.mdc`
 - `.cursor/rules/nodejs-socket-namespace-registration.mdc`
 - `backend/src/resources/configs/socket/io.ts` — the only registration point
-- `backend/src/app/socket/controllers/OrgConnectionIOController.ts` — reference controller
+- `backend/src/app/socket/controllers/OrgConnectionIOController.ts` — reference org connection controller
+- `backend/src/app/socket/controllers/meeting/MeetingJoinIOController.ts` — reference meeting child event
 
 ## Instructions
 
 1. **Decide the surface.** New namespace, new event on an existing namespace, or a change to an
    existing connection controller. A namespace key is the literal Socket.IO path.
 
-2. **Write the controller** under `backend/src/app/socket/controllers/`, extending
+2. **Write the controller** under `backend/src/app/socket/controllers/` (domain subfolders allowed, e.g. `controllers/meeting/`), extending
    `SocketServerControllerBase<any>`. Narrow the loose base fields with `declare` (`socket` typed
    with the `SocketData` payload from `AuthenticationIOMiddleware`, `driver`, `namespace`).
-   Read the request from `this.args`, `this.socket.data`, and `this.refs`.
+   Read the request from `this.args`, `this.socket.data`, and `this.refs`. Prefer dotted event
+   names for domain groups (`meeting.join`, `meeting.leave`).
 
 3. **Return the listener set.** `handle()` returns the complete array of event aliases that must
    stay bound to this socket — `[]` unbinds everything. Every returned alias must be declared in the

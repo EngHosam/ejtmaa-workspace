@@ -1,8 +1,10 @@
 ﻿# Socket Event Mirroring Contract
 
-## Purpose
+## Scope boundary
 
-Defines how backend user-facing socket events are mirrored into `website/` (customer) and `cpanel/` (supervisor).
+This contract covers **backend → frontend outbound** user-facing notify/socket events (`OnCustomerEvent` / `OnUserEvent`).
+
+**Out of scope:** client → server inbound emits such as `/org` `meeting.join`. Those are registered only in `backend/src/resources/configs/socket/io.ts` and consumed by server controllers; do not add them to frontend event registries. See `docs/platforms/website/organization-host-routing.md` §5.1.
 
 ## Backend source of truth
 

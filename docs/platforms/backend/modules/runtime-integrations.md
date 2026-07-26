@@ -77,7 +77,15 @@ Socket provider config:
 
 Framework reference for the underlying package (`@nodejs/socket` drivers, route grammar, handler-array listener contract, execution queue, known limitations): `docs/platforms/backend/modules/nodejs-socket-library.md`.
 
-`AuthenticationIOMiddleware` has two paths: a handshake **token** resolves the customer/supervisor actor as before; **no token** requires an `organizationId` in the handshake, loads the `ACTIVE` organization, and stores it as `socket.data.organization` (`isAuthed` is not set). An unresolved organization throws `NOT_VALID_CREDENTIAL`. `OrgConnectionIOController` then joins `Rooms.ORGANIZATION(id)`; the `/org` namespace currently carries no events.
+`AuthenticationIOMiddleware` has two paths: a handshake **token** resolves the customer/supervisor actor as before; **no token** requires an `organizationId` in the handshake, loads the `ACTIVE` organization, and stores it as `socket.data.organization` (`isAuthed` is not set). An unresolved organization throws `NOT_VALID_CREDENTIAL`. `OrgConnectionIOController` then joins `Rooms.ORGANIZATION(id)` and returns `["meeting.join"]` so the `/org` child route binds.
+
+`/org` child event (shipped probe):
+
+| Event | Controller alias | Class | Behavior |
+|---|---|---|---|
+| `meeting.join` | `meeting_join` | `controllers/meeting/MeetingJoinIOController` | log-only; returns `[]` (unbinds the listener until reconnect) |
+
+This is a **client → server** inbound event. It is **not** an outbound notify event and is **not** mirrored into `website`/`cpanel` event registries (`socket-event-mirroring.md` does not apply). Website consumer: `docs/platforms/website/organization-host-routing.md` §5.1.
 
 Room conventions are centralized in:
 - `backend/src/resources/consts/NotificationsConsts.ts` — `Namespaces.ORGANIZATION` (`/org`), `FCM_Namespaces.ORGANIZATION` (`-org`), `Rooms.ORGANIZATION(organizationId)`

@@ -1,0 +1,48 @@
+---
+description: Organization-host Meeting page socket — useMeetingSocket, meeting.join, reconnect after server disconnect
+globs:
+  - website/src/app/ui/components/meeting/**/*
+  - website/src/app/ui/pages/Meeting.tsx
+  - backend/src/app/socket/controllers/meeting/**/*
+  - backend/src/app/socket/controllers/OrgConnectionIOController.ts
+  - backend/src/resources/configs/socket/io.ts
+alwaysApply: false
+---
+
+# Website meeting org socket
+
+Authority: `docs/platforms/website/organization-host-routing.md` §5.1, §6.3.
+
+## Placement
+
+- Product hook: `website/src/app/ui/components/meeting/hooks/useMeetingSocket.ts` — **not** under `ui/base/hooks`.
+- Backend meeting child controllers: `backend/src/app/socket/controllers/meeting/`.
+- Register only in `backend/src/resources/configs/socket/io.ts`.
+
+## Event naming
+
+Use dotted inbound names under `/org`: `meeting.join`, then `meeting.leave`, …  
+Connection controller returns the aliases that must stay bound (e.g. `["meeting.join"]`).
+
+## Hook contract
+
+`useMeetingSocket({ memberId, memberToken, meetingId })` must:
+
+1. Gate on `useClientPreparing` / CSR readiness.
+2. Return `{ connected, socket }` for further Meeting wiring.
+3. Emit `meeting.join` with `{ meetingId, memberId, memberToken }` when already connected and on every `connect`.
+4. On `disconnect` reason `io server disconnect`, call `socket.connect()` (no Socket.IO auto-reconnect).
+5. Use native `socket.on("connect"|"disconnect")`, not `registerListener` for those built-ins.
+6. Clean up listeners on unmount.
+
+## Backend pairing
+
+- `MeetingJoinIOController` is currently log-only and may return `[]` (unbinds until reconnect). Do not treat that as participant auth.
+- Inbound `meeting.join` is **not** mirrored into frontend event registries.
+
+## Forbidden
+
+- Putting this hook in `ui/base/hooks`.
+- Emitting bare `join` instead of `meeting.join`.
+- Relying on global `onConnect` in `socket.ts` for meeting payload join.
+- Assuming `/org` organization id proves meeting participant identity.

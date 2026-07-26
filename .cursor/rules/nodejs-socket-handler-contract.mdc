@@ -14,9 +14,11 @@ A controller `handle()` (server or client) returns the **complete** array of eve
 stay bound to that socket. The driver diffs it against the currently bound listeners: missing
 aliases are unbound, new aliases are bound.
 
-- `[]` / `undefined` → unbind everything. Current Ejtmaa connection controllers return `[]`.
+- `[]` / `undefined` → unbind everything. `/customer` and `/supervisor` connection controllers return `[]`.
+- `/org` connection returns `["meeting.join"]` so that child stays bound after connect.
 - The array is absolute, never additive. An event that must survive has to be re-returned by every
-  handler that runs while it should stay bound.
+  handler that runs while it should stay bound — including child handlers. Returning `[]` from a
+  child (e.g. current `MeetingJoinIOController`) intentionally drops the listener until reconnect.
 - Every returned alias must exist in the same namespace `routes`, otherwise the bind throws and the
   listener silently never attaches.
 - Never return domain payloads from `handle()`. Send data with `socket.emit` or through

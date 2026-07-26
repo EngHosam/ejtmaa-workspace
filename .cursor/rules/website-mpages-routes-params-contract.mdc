@@ -1,0 +1,49 @@
+---
+description: MPagesRoutes must nest params/query for web-core ParamsFor/Href typing
+globs:
+  - website/src/resources/configs/routes.ts
+  - website/src/resources/configs/customer/formRoute.ts
+  - website/src/app/ui/pages/**/*.tsx
+  - website/src/app/ui/components/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Website `MPagesRoutes` params contract
+
+Authority: `docs/platforms/website/route-registry-contract.md` §3.1.
+
+## Required shape
+
+Declare route params under a nested `params` key (and query under `query` when needed):
+
+```ts
+CustomerMeetingDetails: {
+    params: {
+        id: string;
+    };
+};
+
+CustomerMemberForm: {
+    params: {
+        id?: string;
+    };
+};
+```
+
+Empty routes stay `{}`.
+
+## Why
+
+`ParamsFor` / `ParamsQuery` / `Href` / `To` in `@my-ssr/web-core` only see nested `params` / `query`. A flat `{ id: string }` makes `ParamsFor` → `unknown`, breaks `mapParams: p => p`, and forces `as To<"…">` casts.
+
+## Consumers
+
+1. `useCurrentParams({ ident: "…", mapParams: p => p })` — no manual remapping/casts when the nested contract is correct.
+2. Href builders: pass `params` explicitly (`params: id ? { id } : {}` for optional-id forms). Do not use `as To` to hide a wrong route type.
+3. Match `Error` (`params: { error: number }` on web-core `PagesRoutes`).
+
+## Forbidden
+
+- Flat `MPagesRoutes` members such as `SomeRoute: { id: string }`.
+- `as To<"SomeRoute">` / `as Href<"SomeRoute">` to paper over a flat params type.
+- Re-inventing per-page param mapper objects when `p => p` is enough.

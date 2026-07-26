@@ -28,7 +28,7 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 | `CustomerMemberForm` | create `/customer/members/form`; update `/customer/members/form/:id` | `CUSTOMER_MAIN` (breadcrumb → `CustomerMembers`) |
 | `Error` | `/:error(404|500|403)` | `BASIC` (last entry) |
 
-`MPagesRoutes` mirrors the same identifies; `CustomerMemberForm: { id?: string }` (`id` present ⇒ update). `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
+`MPagesRoutes` mirrors the same identifies. **Route params and query must use the nested web-core shape** (`params` / `query` keys) — see §3.1. Examples: `Meeting.params.{memberId,memberToken,meetingId}`; `CustomerMeetingDetails.params.id`; multi-path forms use `params: { id?: string }` (`id` present ⇒ update). `publicRoutes = ["Login", "Register", "ResetPassword", "UiMockup", "Home"]`. `getMyHomeIdentify` returns `"CustomerHome"` when `authedAs === "CUSTOMER"`, else `"Home"`. Layouts shipped: `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`), `MeetingLayout` (`MEETING`).
 
 ## 2) Path helper (mandatory for workspace routes)
 
@@ -66,6 +66,39 @@ When adding a route:
 1. Place the `routes` entry in the correct section block.
 2. Add the matching `MPagesRoutes` member in the **same** section block (same relative order within the section).
 3. Keep **identify key order** stable inside each section.
+
+### 3.1) `MPagesRoutes` params / query shape (mandatory)
+
+`@my-ssr/web-core` types `ParamsFor` / `ParamsQuery` / `Href` / `To` read **nested** keys:
+
+```ts
+SomeRoute: {
+    params: {
+        id: string;
+    };
+    // optional:
+    // query: { … };
+};
+```
+
+Flat shapes such as `SomeRoute: { id: string }` make `ParamsFor<"SomeRoute">` resolve to `unknown`, break `useCurrentParams({ mapParams: p => p })`, and force unsafe `as To<"…">` casts on navigation.
+
+| Identify | Shipped `MPagesRoutes` member |
+|---|---|
+| `Meeting` | `params: { memberId; memberToken; meetingId }` (all `string`) |
+| `CustomerMeetingDetails` | `params: { id: string }` |
+| `CustomerMemberForm` | `params: { id?: string }` |
+| `CustomerMessageChannelForm` | `params: { id?: string }` |
+| `CustomerMessageTemplateForm` | `params: { id?: string }` |
+| Empty routes (`Login`, `CustomerHome`, …) | `{}` |
+
+**Consumers**
+
+- Params read: `useCurrentParams({ ident: "…", mapParams: p => p })` — do not re-map or cast the params object when the nested contract is correct.
+- Href builders (`formRoute.ts`): always pass `params` for form routes (`params: id ? { id } : {}`); no `as To` needed when the nested contract matches.
+- `Error` is defined on web-core `PagesRoutes` as `params: { error: number }` (not redeclared in `MPagesRoutes`).
+
+Rule: `.cursor/rules/website-mpages-routes-params-contract.mdc`.
 
 ## 4) Registration order and first-match semantics
 
@@ -139,7 +172,7 @@ Drawer tile identifies and gating: `flow-customer-shell.md` §5.3. Paths marked 
 
 | Identify | Path | Layout | Status |
 |----------|------|--------|--------|
-| `Meeting` | `/meeting/:memberId/:memberToken/:meetingId` | `MEETING` | shipped as route + layout shell (page renders `null`) — `organization-host-routing.md` §5 |
+| `Meeting` | `/meeting/:memberId/:memberToken/:meetingId` | `MEETING` | organization-host meeting shell + org socket join probe — `organization-host-routing.md` §5 |
 
 Enforcement lives in `applyRouterMiddleware` (`website/src/app/services/router.ts`), **before** the auth branches: a host/flag mismatch redirects to `Error` with `404` and throws `RESOLVED`; an `orgHostOnly` route on an organization host returns early and skips the authed-customer rules. Host mode comes from `organizationHost.isOrganizationHost` (store slice), not from the request `Host`.
 

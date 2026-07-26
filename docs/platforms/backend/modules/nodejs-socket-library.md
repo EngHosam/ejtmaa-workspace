@@ -302,13 +302,20 @@ failures reject the handshake while connection and event failures are log-only.
 Config: `backend/src/resources/configs/socket/io.ts` (server driver alias `io`, port `6000` default,
 env `IO_PORT` / `INSTALL_IO_PORT`, `HTTPS` toggle, `transports: ["websocket"]`).
 
-| Namespace | Global middlewares | `connection` controller | Room joined |
-|---|---|---|---|
-| `/customer` | `auth` | `ConnectionIOController` | `Rooms.CUSTOMER(customerId)` |
-| `/supervisor` | `auth` | `ConnectionIOController` | `Rooms.ALL_SUPERVISORS` |
-| `/org` | `auth` | `OrgConnectionIOController` | `Rooms.ORGANIZATION(organizationId)` |
+| Namespace | Global middlewares | `connection` controller | Room joined | Child events (bound by connection return) |
+|---|---|---|---|---|
+| `/customer` | `auth` | `ConnectionIOController` | `Rooms.CUSTOMER(customerId)` | none (`return []`) |
+| `/supervisor` | `auth` | `ConnectionIOController` | `Rooms.ALL_SUPERVISORS` | none (`return []`) |
+| `/org` | `auth` | `OrgConnectionIOController` | `Rooms.ORGANIZATION(organizationId)` | `meeting.join` → `meeting_join` |
 
-Both connection controllers return `[]` today: no child events are declared in any namespace.
+`/customer` and `/supervisor` connection controllers still return `[]`.
+
+`/org` connection returns `["meeting.join"]`, which binds the child route declared in the same namespace. Controller alias `meeting_join` resolves to
+`backend/src/app/socket/controllers/meeting/MeetingJoinIOController.ts`.
+
+`MeetingJoinIOController.handle()` currently **logs only** (`console.log` of `socketId`, `organizationId`, `args`) and returns `[]`. Because the handler-array return is absolute (§7), that **unbinds** `meeting.join` after the first successful handle on that socket. A later `meeting.join` on the **same** connection will not fire until the socket reconnects and `OrgConnectionIOController` binds the alias again. Re-join from the website is owned by `useMeetingSocket` on `connect` (see `docs/platforms/website/organization-host-routing.md` §5.1).
+
+Meeting domain child controllers live under `backend/src/app/socket/controllers/meeting/`. Register every new meeting event in `io.ts` (`controllers` + `/org` `routes`) with a dotted event name (`meeting.*`) for clean extension (`meeting.leave`, …).
 
 `AuthenticationIOMiddleware` (`backend/src/app/socket/middlewares/AuthenticationIOMiddleware.ts`)
 has two handshake paths — a `token` header/query resolves the customer or supervisor actor and sets
@@ -397,6 +404,7 @@ Do not hand-edit `lib/` — it is Babel output.
 | `backend/src/resources/configs/socket/io.ts` | §3, §9, §10 |
 | `backend/src/app/socket/controllers/ConnectionIOController.ts` | §8, §10 |
 | `backend/src/app/socket/controllers/OrgConnectionIOController.ts` | §10 |
+| `backend/src/app/socket/controllers/meeting/MeetingJoinIOController.ts` | §10 |
 | `backend/src/app/socket/middlewares/AuthenticationIOMiddleware.ts` | §10 |
 | `backend/src/resources/consts/NotificationsConsts.ts` | §10 |
 
@@ -410,3 +418,5 @@ Do not hand-edit `lib/` — it is Babel output.
 - `.cursor/rules/eng-hosam-vendored-package-sync.mdc`
 - `.cursor/skills/nodejs-socket-server-event/SKILL.md`
 - `.cursor/skills/nodejs-socket-client-driver/SKILL.md`
+- `.cursor/skills/website-meeting-socket/SKILL.md`
+- `.cursor/rules/website-meeting-org-socket.mdc`
