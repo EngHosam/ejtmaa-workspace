@@ -243,6 +243,10 @@ No meeting seed in this change set.
 
 Verification: `yarn generate-types`, `yarn type-check`.
 
+### 7.1 Realtime surface
+
+Meeting realtime is not part of the customer GQL surface. It is socket namespace `/meeting`, entered by a `Member` with `access_token` plus a `MeetingParticipant` roster row, and it joins room `Rooms.MEETING(meetingId)`. Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`; website consumer: `docs/platforms/website/organization-host-routing.md` §5.1.
+
 ## 8) Failure modes (read path)
 
 | Surface | Condition | Behavior |

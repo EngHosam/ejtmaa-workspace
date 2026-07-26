@@ -88,8 +88,10 @@ Provider config: `backend/src/resources/configs/gql/index.ts`
 ### Socket
 
 Config: `backend/src/resources/configs/socket/io.ts`
-- Namespaces: `/customer`, `/supervisor`
-- Events: `OnUserEvent` (supervisor broadcast), `OnCustomerEvent` (per-customer)
+- Namespaces: `/customer`, `/supervisor` (actor `auth`), `/meeting` (`meeting_auth` — member token + meeting roster)
+- Outbound events: `OnUserEvent` (supervisor broadcast), `OnCustomerEvent` (per-customer)
+- Inbound event: `meeting.join` on `/meeting` (`MeetingJoinIOController`)
+- Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`; `docs/platforms/backend/modules/runtime-integrations.md` §5
 
 ## 5) Related docs
 

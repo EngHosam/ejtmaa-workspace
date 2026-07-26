@@ -33,6 +33,7 @@ Out of scope (not shipped):
 - Access model is link-oriented: stable UUID `id` plus separate unique `access_token`.
 - No `User` row; Customer remains the login actor and is **not** a Member row.
 - Tenant boundary is `organization_id` (not `customer_id` directly).
+- `access_token` is the credential the Meeting socket handshake consumes as `memberToken` on namespace `/meeting` (`MeetingAuthenticationIOMiddleware`); rotating or exposing it grants or revokes meeting access. Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md` §2.
 
 ## 3) ORM model
 

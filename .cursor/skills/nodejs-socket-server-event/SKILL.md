@@ -24,8 +24,9 @@ description: >-
 - `.cursor/rules/nodejs-socket-handler-contract.mdc`
 - `.cursor/rules/nodejs-socket-namespace-registration.mdc`
 - `backend/src/resources/configs/socket/io.ts` — the only registration point
-- `backend/src/app/socket/controllers/OrgConnectionIOController.ts` — reference org connection controller
+- `backend/src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` — reference meeting connection controller
 - `backend/src/app/socket/controllers/meeting/MeetingJoinIOController.ts` — reference meeting child event
+- `backend/src/app/socket/middlewares/MeetingAuthenticationIOMiddleware.ts` — `/meeting` handshake + `current*` helpers
 
 ## Instructions
 
@@ -34,8 +35,8 @@ description: >-
 
 2. **Write the controller** under `backend/src/app/socket/controllers/` (domain subfolders allowed, e.g. `controllers/meeting/`), extending
    `SocketServerControllerBase<any>`. Narrow the loose base fields with `declare` (`socket` typed
-   with the `SocketData` payload from `AuthenticationIOMiddleware`, `driver`, `namespace`).
-   Read the request from `this.args`, `this.socket.data`, and `this.refs`. Prefer dotted event
+   with the matching middleware data type — actor `SocketData` or `MeetingSocketData` — plus `driver`, `namespace`).
+   Read the request from `this.args`, `this.socket.data` / `current*` helpers, and `this.refs`. Prefer dotted event
    names for domain groups (`meeting.join`, `meeting.leave`).
 
 3. **Return the listener set.** `handle()` returns the complete array of event aliases that must
@@ -44,7 +45,7 @@ description: >-
 
 4. **Register in `io.ts`** in one place:
    - controller alias under `controllers`
-   - namespace entry with `globalMiddlewares` (include `auth` when actor or tenant data is needed)
+   - namespace entry with `globalMiddlewares` (`auth` for actor namespaces; `meeting_auth` for `/meeting`)
      and `routes.connection`
    - child events as `event: "alias"`, `["alias", refs]`, `["alias", refs, "once"]`, or
      `"alias@method"`

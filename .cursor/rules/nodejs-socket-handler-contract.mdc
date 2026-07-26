@@ -15,7 +15,7 @@ stay bound to that socket. The driver diffs it against the currently bound liste
 aliases are unbound, new aliases are bound.
 
 - `[]` / `undefined` → unbind everything. `/customer` and `/supervisor` connection controllers return `[]`.
-- `/org` connection returns `["meeting.join"]` so that child stays bound after connect.
+- `/meeting` connection returns `["meeting.join"]` so that child stays bound after connect.
 - The array is absolute, never additive. An event that must survive has to be re-returned by every
   handler that runs while it should stay bound — including child handlers. Returning `[]` from a
   child (e.g. current `MeetingJoinIOController`) intentionally drops the listener until reconnect.

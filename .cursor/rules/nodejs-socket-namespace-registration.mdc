@@ -12,29 +12,28 @@ Authoritative reference: `docs/platforms/backend/modules/nodejs-socket-library.m
 
 `backend/src/resources/configs/socket/io.ts` owns namespaces, controllers, middlewares, and routes.
 A controller class is inert until it is registered there, and a namespace key is the literal
-Socket.IO path (`/customer`, `/supervisor`, `/org`).
+Socket.IO path (`/customer`, `/supervisor`, `/meeting`).
 
 Required per namespace:
 
-- `globalMiddlewares` including `auth` for any namespace that carries actor or tenant data
+- `globalMiddlewares` — `auth` for actor namespaces; `meeting_auth` for `/meeting`
 - `routes.connection` pointing at a registered controller alias
 
 ## Rooms and namespaces are constants
 
 Namespace paths, FCM namespaces, and room names come from
 `backend/src/resources/consts/NotificationsConsts.ts`. Never inline a room string in a controller or
-notify event.
+notify event. Meeting uses `Namespaces.MEETING`, `FCM_Namespaces.MEETING`, `Rooms.MEETING(meetingId)`.
 
 ## Connection controllers own the room join and child bind set
 
-Joining rooms happens in the `connection` controller after the auth middleware has populated
-`socket.data`. Refuse the connection by throwing when the expected `socket.data` actor or
-organization is missing — `OrgConnectionIOController` throwing `NOT_VALID_CREDENTIAL` is the
-reference shape.
+Joining rooms happens in the `connection` controller after the namespace middleware has populated
+`socket.data`. Refuse the connection by throwing when the expected context is missing —
+`MeetingConnectionIOController` uses `currentMeeting(socket, true)` as the reference shape.
 
 The connection `handle()` return array is the absolute set of child event aliases to bind.
-`/org` currently returns `["meeting.join"]`. Meeting child controllers live under
-`backend/src/app/socket/controllers/meeting/` and register as dotted `/org` routes
+`/meeting` currently returns `["meeting.join"]`. Meeting controllers live under
+`backend/src/app/socket/controllers/meeting/` and register as dotted `/meeting` routes
 (`"meeting.join": "meeting_join"`). A child handler that returns `[]` unbinds those aliases
 until the next connection bind.
 

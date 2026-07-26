@@ -306,25 +306,25 @@ env `IO_PORT` / `INSTALL_IO_PORT`, `HTTPS` toggle, `transports: ["websocket"]`).
 |---|---|---|---|---|
 | `/customer` | `auth` | `ConnectionIOController` | `Rooms.CUSTOMER(customerId)` | none (`return []`) |
 | `/supervisor` | `auth` | `ConnectionIOController` | `Rooms.ALL_SUPERVISORS` | none (`return []`) |
-| `/org` | `auth` | `OrgConnectionIOController` | `Rooms.ORGANIZATION(organizationId)` | `meeting.join` → `meeting_join` |
+| `/meeting` | `meeting_auth` | `MeetingConnectionIOController` | `Rooms.MEETING(meetingId)` | `meeting.join` → `meeting_join` |
 
 `/customer` and `/supervisor` connection controllers still return `[]`.
 
-`/org` connection returns `["meeting.join"]`, which binds the child route declared in the same namespace. Controller alias `meeting_join` resolves to
+`/meeting` connection returns `["meeting.join"]`, which binds the child route declared in the same namespace. Controller alias `meeting_join` resolves to
 `backend/src/app/socket/controllers/meeting/MeetingJoinIOController.ts`.
 
-`MeetingJoinIOController.handle()` currently **logs only** (`console.log` of `socketId`, `organizationId`, `args`) and returns `[]`. Because the handler-array return is absolute (§7), that **unbinds** `meeting.join` after the first successful handle on that socket. A later `meeting.join` on the **same** connection will not fire until the socket reconnects and `OrgConnectionIOController` binds the alias again. Re-join from the website is owned by `useMeetingSocket` on `connect` (see `docs/platforms/website/organization-host-routing.md` §5.1).
+`MeetingJoinIOController.handle()` currently **logs only** (`console.log` of `socketId`, `organizationId` via `currentOrganization`, `args`) and returns `[]`. Because the handler-array return is absolute (§7), that **unbinds** `meeting.join` after the first successful handle on that socket. A later `meeting.join` on the **same** connection will not fire until the socket reconnects and `MeetingConnectionIOController` binds the alias again. Re-join from the website is owned by `useMeetingSocket` on `connect` (see `docs/platforms/backend/contracts/meeting-realtime-socket.md` §3 and `docs/platforms/website/organization-host-routing.md` §5.1).
 
-Meeting domain child controllers live under `backend/src/app/socket/controllers/meeting/`. Register every new meeting event in `io.ts` (`controllers` + `/org` `routes`) with a dotted event name (`meeting.*`) for clean extension (`meeting.leave`, …).
+Meeting domain controllers live under `backend/src/app/socket/controllers/meeting/`. Register every new meeting event in `io.ts` (`controllers` + `/meeting` `routes`) with a dotted event name (`meeting.*`) for clean extension (`meeting.leave`, …).
 
 `AuthenticationIOMiddleware` (`backend/src/app/socket/middlewares/AuthenticationIOMiddleware.ts`)
-has two handshake paths — a `token` header/query resolves the customer or supervisor actor and sets
-`isAuthed`, while a tokenless handshake requires `organizationId` and loads the `ACTIVE`
-organization into `socket.data.organization`. Both unresolved cases throw `NOT_VALID_CREDENTIAL`.
-Its `SocketData` type is the shared contract for `socket.data` across controllers.
+is token-only for actor namespaces: a `token` header/query resolves the customer or supervisor actor and sets
+`isAuthed`. Missing/invalid token throws `NOT_VALID_CREDENTIAL`. Actor `SocketData` has no organization field.
+
+`MeetingAuthenticationIOMiddleware` (`meeting_auth`) owns `/meeting` handshake proof (member token + meeting + roster + ACTIVE org) and exports `MeetingSocketData` plus `currentOrganization` / `currentMeeting` / `currentMember` / `currentParticipant`.
 
 Namespace, FCM namespace, and room name constants are centralized in
-`backend/src/resources/consts/NotificationsConsts.ts`.
+`backend/src/resources/consts/NotificationsConsts.ts` (`Namespaces.MEETING`, `FCM_Namespaces.MEETING`, `Rooms.MEETING`).
 
 ### Outbound emit path
 
@@ -403,20 +403,22 @@ Do not hand-edit `lib/` — it is Babel output.
 | `backend/src/resources/configs/socket/index.ts` | §2, §11 |
 | `backend/src/resources/configs/socket/io.ts` | §3, §9, §10 |
 | `backend/src/app/socket/controllers/ConnectionIOController.ts` | §8, §10 |
-| `backend/src/app/socket/controllers/OrgConnectionIOController.ts` | §10 |
+| `backend/src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | §10 |
 | `backend/src/app/socket/controllers/meeting/MeetingJoinIOController.ts` | §10 |
 | `backend/src/app/socket/middlewares/AuthenticationIOMiddleware.ts` | §10 |
+| `backend/src/app/socket/middlewares/MeetingAuthenticationIOMiddleware.ts` | §10 |
 | `backend/src/resources/consts/NotificationsConsts.ts` | §10 |
 
 ## Related
 
 - `docs/platforms/backend/modules/runtime-integrations.md` — provider-level runtime summary
 - `docs/platforms/backend/contracts/socket-event-mirroring.md` — backend → frontend event mirror
-- `docs/platforms/website/organization-host-routing.md` — `/org` namespace consumer contract
+- `docs/platforms/backend/contracts/meeting-realtime-socket.md` — `/meeting` namespace contract
+- `docs/platforms/website/organization-host-routing.md` — website `/meeting` consumer + org-host boot contract
 - `.cursor/rules/nodejs-socket-handler-contract.mdc`
 - `.cursor/rules/nodejs-socket-namespace-registration.mdc`
 - `.cursor/rules/eng-hosam-vendored-package-sync.mdc`
 - `.cursor/skills/nodejs-socket-server-event/SKILL.md`
 - `.cursor/skills/nodejs-socket-client-driver/SKILL.md`
-- `.cursor/skills/website-meeting-socket/SKILL.md`
-- `.cursor/rules/website-meeting-org-socket.mdc`
+- `.cursor/skills/meeting-realtime-socket/SKILL.md`
+- `.cursor/rules/meeting-realtime-socket.mdc`

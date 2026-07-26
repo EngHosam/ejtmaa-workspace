@@ -172,7 +172,7 @@ Drawer tile identifies and gating: `flow-customer-shell.md` §5.3. Paths marked 
 
 | Identify | Path | Layout | Status |
 |----------|------|--------|--------|
-| `Meeting` | `/meeting/:memberId/:memberToken/:meetingId` | `MEETING` | organization-host meeting shell + org socket join probe — `organization-host-routing.md` §5 |
+| `Meeting` | `/meeting/:memberId/:memberToken/:meetingId` | `MEETING` | organization-host meeting shell + hook-owned `/meeting` socket — `organization-host-routing.md` §5 |
 
 Enforcement lives in `applyRouterMiddleware` (`website/src/app/services/router.ts`), **before** the auth branches: a host/flag mismatch redirects to `Error` with `404` and throws `RESOLVED`; an `orgHostOnly` route on an organization host returns early and skips the authed-customer rules. Host mode comes from `organizationHost.isOrganizationHost` (store slice), not from the request `Host`.
 

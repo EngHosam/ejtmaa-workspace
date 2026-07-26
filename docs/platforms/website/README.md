@@ -13,7 +13,7 @@
 | [`graphql-mirror-and-tooling.md`](graphql-mirror-and-tooling.md) | GQL mirror sync |
 | [`route-registry-contract.md`](route-registry-contract.md) | Customer route registry |
 | [`ssr-boot-and-startup.md`](ssr-boot-and-startup.md) | SSR boot lifecycle |
-| [`organization-host-routing.md`](organization-host-routing.md) | Apex vs organization host: boot split, `orgHostOnly` gate, org socket namespace, Meeting `meeting.join` |
+| [`organization-host-routing.md`](organization-host-routing.md) | Apex vs organization host: boot split, `orgHostOnly` gate, Meeting `/meeting` socket session |
 | [`shared-ui-and-shell.md`](shared-ui-and-shell.md) | Shell components |
 | [`page-error.md`](page-error.md) | Error (403/404/500) page composition |
 | [`landing-page.md`](landing-page.md) | Public landing page (10 sections, shell, style/color invariants) |
@@ -173,7 +173,7 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 |---|---|---|
 | `src/resources/configs/urls.ts` | `BASE_URL` test mode `/cpanel` → `/website` | `overview.md` § Backend coupling; invariant W44 |
 | `src/app/services/auth.ts` | `AuthedAs = "CUSTOMER"`; `canDoAction` reads `customer.permissions` | `ssr-boot-and-startup.md` §4; `shared-ui-and-shell.md` §1.1 |
-| `src/app/services/socket.ts` | Authed socket namespace `customer` | `data-flow-and-gql.md` § Socket |
+| `src/app/services/socket.ts` | Boot socket: namespace `customer` for an authed customer; none on an organization host | `data-flow-and-gql.md` § Socket; `organization-host-routing.md` §4 |
 | `src/app/services/router.ts` | `publicRoutes` includes `Register`, `ResetPassword`; `getMyHomeIdentify = "Home"` | `route-registry-contract.md` §1.1; `flow-auth.md` §2 |
 | `src/app/services/global.ts` | Trailing semicolon fix only | — (trivial) |
 | `src/resources/configs/axios/api.ts` | `FORMS.SUPERVISOR.R` → `FORMS.CUSTOMER.R` (`/forms/customer/requester/...`); imports `requesters.website` | `data-flow-and-gql.md` § Write path table |
@@ -291,14 +291,15 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 |---|---|
 | Host classification (`resolveRequestHost`) + `extendMyInstance` | `organization-host-routing.md` §2 |
 | Boot split (`organizationHost.start` before apex start) | `organization-host-routing.md` §1.1; `ssr-boot-and-startup.md` §2, §5 |
-| `organizationHost` store slice + `organizationId` header/query | `organization-host-routing.md` §3 |
+| `organizationHost` store slice + `organizationId` HTTP header; Meeting handshake query | `organization-host-routing.md` §3 |
 | `orgHostOnly` route gate + `Meeting` route/layout + `useMeetingSocket` | `organization-host-routing.md` §1.2, §5, §5.1; `route-registry-contract.md` §3.1, §5.4; invariant W58 |
-| Socket namespace selection (`org` / `customer`) | `organization-host-routing.md` §4 |
+| Meeting socket config (`src/resources/configs/meeting-socket.ts`) | `organization-host-routing.md` §3, §5.1 |
+| Shared boot socket (`prepareSocket`: org host none / customer `/customer`) | `organization-host-routing.md` §4 |
 | Nested `MPagesRoutes.params` contract | `route-registry-contract.md` §3.1 |
 | `POST /website/custom/org/start` + `org_host` middleware | `../backend/contracts/client-portal-http-website.md` |
-| Socket `/org` namespace, org handshake auth, `Rooms.ORGANIZATION`, `meeting.join` | `../backend/modules/runtime-integrations.md` §5; `organization-host-routing.md` §6.3 |
-| Known limits (unwired `org_host`, id-only socket auth, log-only join, status probe UI) | `organization-host-routing.md` §8 |
-| `.cursor/rules/website-org-host-routing.mdc` | Host-mode gating + transport invariants |
+| Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.join` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
+| Known limits (unwired `org_host`, log-only join, status probe UI) | `organization-host-routing.md` §8 |
+| `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` | Host-mode gating + Meeting `/meeting` session contract |
 
 ## Change set traceability — MicroBand footer credit spelling
 

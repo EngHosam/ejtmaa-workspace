@@ -8,12 +8,13 @@ globs:
   - website/src/app/helpers/RequestHostHelper.ts
   - website/src/resources/configs/routes.ts
   - website/src/resources/configs/socket.ts
+  - website/src/resources/configs/meeting-socket.ts
   - website/src/resources/configs/axios.ts
   - backend/src/app/http/controllers/website/custom/OrgStartController.ts
 alwaysApply: false
 ---
 
-# Website Organization Host Routing
+# Organization Host Routing
 
 Applies when touching the apex/organization host split on `website/` or the backend surfaces that serve it.
 
@@ -40,13 +41,15 @@ Authority: `docs/platforms/website/organization-host-routing.md`, invariant W58.
 
 ## Transport identification
 
-1. Send `organizationId` only when a value exists — HTTP header in `axios.ts` `otherHeaders`, socket handshake query in `socket.ts`. Build the socket query object before the config literal; an absent value must be omitted, never serialized as the string `"undefined"`.
-2. Socket namespace order in `prepareSocket`: organization host → `org`; else authed customer → `customer`; else no socket.
-3. Backend reads the HTTP value as the lowercase `organizationid` header (Express normalizes header names).
+1. Send HTTP `organizationId` only when a value exists — `axios.ts` `otherHeaders`. Never serialize `"undefined"`.
+2. Shared boot `configs/socket.ts` sends `token` only for authed customer `/customer`. It must **not** send `organizationId`.
+3. Organization host `prepareSocket` returns without creating a socket. Meeting realtime uses `meeting-socket.ts` + `useMeetingSocket` on `/meeting`.
+4. Optional Meeting handshake `organizationId` (from store) is defense-in-depth only; required proof is member token + meeting ids.
+5. Backend reads the HTTP value as the lowercase `organizationid` header (Express normalizes header names).
 
 ## Backend pairing
 
 1. `/website/custom/org/start` returns public branding only (`id`, `name`, `description`, `logo_url`, `primary_color`, `secondary_color`). Never auth, customer, or permission data on an unauthenticated host boot.
 2. Organization lookups require `status === "ACTIVE"`.
-3. `org_host` middleware is the only way a route gets `currentOrganization`; do not read the header ad hoc in a controller.
-4. `/org` socket access is currently proven by a public organization id alone. Any surface that needs participant-level trust must add its own proof — do not treat `socket.data.organization` as authentication. Inbound `meeting.join` is log-only today and does not validate member tokens.
+3. `org_host` middleware is the only way an HTTP route gets `currentOrganization`; do not read the header ad hoc in a controller.
+4. Meeting socket trust is `MeetingAuthenticationIOMiddleware` on `/meeting`; a public organization id is never sufficient on its own. Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`.

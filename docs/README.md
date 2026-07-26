@@ -43,6 +43,7 @@ Patterns are grounded in:
 - `docs/platforms/backend/contracts/supervisor-admin-read-surfaces.md` — Supervisor admin read surfaces.
 - `docs/platforms/backend/contracts/supervisor-customers-and-stats.md` — Supervisor customer reads and stats.
 - `docs/platforms/backend/contracts/socket-event-mirroring.md` — Socket event mirror contract.
+- `docs/platforms/backend/contracts/meeting-realtime-socket.md` — `/meeting` socket namespace, handshake auth, rooms.
 - `docs/platforms/backend/modules/nodejs-socket-library.md` — `@nodejs/socket` framework reference.
 - `docs/invariants/backend.md` — Backend invariants.
 
@@ -61,7 +62,7 @@ Patterns are grounded in:
 - `docs/platforms/website/README.md` — Website documentation index and flow table.
 - `docs/platforms/website/overview.md` — Customer portal foundation.
 - `docs/platforms/website/route-registry-contract.md` — Customer route registry.
-- `docs/platforms/website/organization-host-routing.md` — Apex vs organization host boot, route gating, org socket namespace.
+- `docs/platforms/website/organization-host-routing.md` — Apex vs organization host boot, route gating, Meeting `/meeting` socket.
 - `docs/platforms/website/data-flow-and-gql.md` — Adapters, requesters, GQL.
 - `docs/platforms/website/ui-foundation.md` — Utils + theme.ts UI contract.
 - `docs/invariants/website.md` — Website invariants.

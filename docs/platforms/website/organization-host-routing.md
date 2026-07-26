@@ -7,9 +7,10 @@ Host-based split of the SSR customer portal (`website/`) into two boots:
 - **Apex (main) host** — visitor landing plus the authed `/customer/*` workspace.
 - **Organization host** — a tenant surface reached through `{subdomain}.ejtmaa.live` or an organization custom domain.
 
-The page covers host classification, the organization boot request, the `organizationHost` store slice, transport identification (`axios` header and socket query), the `orgHostOnly` route gate, and the backend surfaces that answer them (`POST /website/custom/org/start`, socket namespace `/org`).
+The page covers host classification, the organization boot request, the `organizationHost` store slice, transport identification (`axios` header; meeting handshake query on `/meeting`), the `orgHostOnly` route gate, and the backend surfaces that answer them (`POST /website/custom/org/start`, socket namespace `/meeting` for Meeting realtime).
 
-Backend contract: `docs/platforms/backend/contracts/client-portal-http-website.md`.
+Backend HTTP contract: `docs/platforms/backend/contracts/client-portal-http-website.md`.
+Backend socket contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
 Socket runtime: `docs/platforms/backend/modules/runtime-integrations.md` §5.
 
 ## 1) End-to-end flow
@@ -50,7 +51,8 @@ The gate runs **before** the auth branches; a wrong-host request never reaches a
 
 `boot.client` is shared. On an organization host:
 
-- `socket.prepareSocket` selects namespace `org` (see §4),
+- `socket.prepareSocket` returns without creating a socket (see §4),
+- Meeting realtime is owned later by `useMeetingSocket` on the Meeting page (§5.1),
 - `global.setClientIsStarted` and pre-message display behave as on apex,
 - no customer permissions or `CUSTOMER_ME` load happens, because the server phase skipped them.
 
@@ -86,7 +88,7 @@ Environment is read through `myInstance.getEnv`, not `process.env`.
 | `myInstance.resolveRequestHost()` | request `Host` header | SSR only | How the browser reached us |
 | `organizationHost.isOrganizationHost(myInstance)` | `state.organizationHost.id` | SSR + CSR | Whether the current boot hydrated an organization |
 
-Route gating and socket selection use the **store** predicate; only `organization-host.start` uses the request classifier.
+Route gating and Meeting socket config use the **store** predicate; only `organization-host.start` uses the request classifier. Shared boot `prepareSocket` also uses the store predicate to **skip** creating a socket on an organization host.
 
 ## 3) Store slice and transport identification
 
@@ -110,19 +112,23 @@ Outgoing identification, sent only when a value exists:
 | Transport | Where | Payload |
 |---|---|---|
 | HTTP | `website/src/resources/configs/axios.ts` → `ReqHeaderMiddleware.otherHeaders` | header `organizationId` from `state.organizationHost.id` |
-| Socket | `website/src/resources/configs/socket.ts` → `opts.query` | `token` and/or `organizationId`, each added only when non-empty |
+| Shared boot socket | `website/src/resources/configs/socket.ts` → `opts.query` | `token` only (authed customer `/customer`); **no** `organizationId` |
+| Meeting socket | `website/src/resources/configs/meeting-socket.ts` → `opts.query` | required `memberId`, `memberToken`, `meetingId`; optional `organizationId` from `state.organizationHost.id` when present |
 
-The socket query object is built before the config literal; absent values are omitted rather than sent as the string `"undefined"`.
+Query objects are built before the config literal; absent values are omitted rather than sent as the string `"undefined"`.
 
-## 4) Socket namespace selection
+Config layout: root entry `configs/socket.ts` is the shared boot factory; `configs/socket/events.ts` is a boot fragment; Meeting uses a **sibling root** entry `configs/meeting-socket.ts` (not nested under `socket/`).
+
+## 4) Shared boot socket (`prepareSocket`)
 
 `website/src/app/services/socket.ts` `prepareSocket`:
 
-1. organization host → namespace `org`,
-2. else authed customer → namespace `customer` (`throw "wrong namespace"` when the actor is unknown),
-3. else → return without creating a socket.
+1. organization host → **return** (no boot socket),
+2. else not authed → return,
+3. else authed customer → namespace `customer` (`throw "wrong namespace"` when the actor is not `CUSTOMER`),
+4. `createSocketInstance(getSocketInstanceConfig(..., "customer"))` + `asyncConnect`; expose via `myInstance.getSocket`.
 
-`URLS(...).SOCKET_URL(namespace)` produces the connection URL as before.
+`URLS(...).SOCKET_URL(namespace)` produces the connection URL as before. Meeting does **not** use `getSocket`.
 
 ## 5) Meeting route (only organization-host route today)
 
@@ -137,24 +143,25 @@ The socket query object is built before the config literal; absent values are om
 
 `Layout` in `website/src/types/extends/global.ts` includes the `"MEETING"` member; `PageRouteState` includes `orgHostOnly?: boolean`.
 
-### 5.1) Organization meeting socket (`useMeetingSocket` + `meeting.join`)
+### 5.1) Meeting socket session (`useMeetingSocket` + `/meeting`)
 
-On an organization host, `prepareSocket` connects the website client to namespace `org` (§4). The Meeting page then owns application-level join:
+Meeting realtime is a **hook-owned** session on namespace `/meeting`, independent of the shared boot socket (§4).
 
-1. Gate on CSR readiness via `useClientPreparing` inside the hook.
-2. Resolve `myInstance.getSocket?.()`.
-3. Expose `{ connected, socket }` for further Meeting UI wiring.
-4. Emit **`meeting.join`** with payload `{ meetingId, memberId, memberToken }`:
-   - immediately when `socket.connected` is already true (boot already connected),
-   - again on every Socket.IO `connect` (including auto-reconnect after transport failure).
-5. On `disconnect` with reason `io server disconnect` (backend forced drop), call `socket.connect()` manually — Socket.IO does **not** auto-reconnect in that case.
-6. Cleanup: `socket.off("connect" | "disconnect", …)` on unmount / deps change.
+`website/src/app/ui/components/meeting/hooks/useMeetingSocket.ts`:
 
-Backend pairing (§6.3): `/org` connection binds `meeting.join`; `MeetingJoinIOController` is log-only and returns `[]` (listener unbound until the next connection bind). The hook’s re-emit on `connect` is therefore the supported way to join again after reconnect.
+1. Gate on CSR readiness (`useClientPreparing`) and require `memberId`, `memberToken`, `meetingId`.
+2. `createSocketInstance(getMeetingSocketInstanceConfig(...))` with handshake query from `meeting-socket.ts` (§3).
+3. Expose `{ connected, socket }` immediately after create (socket may still be disconnected; `connected` is the readiness flag).
+4. Native `socket.on("connect")` → set `connected` and emit **`meeting.join`** with `{ meetingId, memberId, memberToken }`.
+5. Native `socket.on("disconnect")` → clear `connected`; if reason is `io server disconnect`, call `socket.connect()` (Socket.IO does not auto-reconnect after a server-forced drop).
+6. Open the session with `socket.connect()`.
+7. Cleanup on unmount / deps change: `off` → `disconnect` → clear state.
+
+Backend pairing (`docs/platforms/backend/contracts/meeting-realtime-socket.md`): handshake auth is `MeetingAuthenticationIOMiddleware` (`meeting_auth`); connection joins `Rooms.MEETING(meetingId)` and returns `["meeting.join"]`; `MeetingJoinIOController` is log-only and returns `[]` (listener unbound until the next connection bind). Re-emit on `connect` is the supported re-join after reconnect.
 
 **Not mirrored:** `meeting.join` is inbound client → server. Do not add it to `website/src/types/events.ts` / socket event registries.
 
-Authority: `.cursor/rules/website-meeting-org-socket.mdc`, `.cursor/skills/website-meeting-socket/SKILL.md`.
+Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/skills/meeting-realtime-socket/SKILL.md`.
 
 ## 6) Backend surfaces
 
@@ -194,34 +201,16 @@ No auth, customer, or permission data is returned; the website consumes it as st
 
 **Not attached to any route in this change set** — see §8.
 
-### 6.3 Socket `/org`
+### 6.3 Socket `/meeting`
 
-`backend/src/resources/configs/socket/io.ts`:
+Full backend contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
 
-- controller key `org_connection` → `OrgConnectionIOController`,
-- controller key `meeting_join` → `controllers/meeting/MeetingJoinIOController`,
-- namespace `/org` with global middleware `auth`, `connection: "org_connection"`, and child route `"meeting.join": "meeting_join"`.
+What the website side depends on:
 
-`AuthenticationIOMiddleware` has two linear paths:
-
-1. **token present** — unchanged customer/supervisor resolution, then `this.next()` and `return`,
-2. **no token** — reads `organizationId` from the handshake, loads the `ACTIVE` organization, throws `NOT_VALID_CREDENTIAL` when it does not resolve, and stores it as `socket.data.organization`. `isAuthed` is not set on this path.
-
-`SocketData` includes `organization: OrganizationModel | undefined`.
-
-`OrgConnectionIOController` refuses a connection without `socket.data.organization`, joins `Rooms.ORGANIZATION(id)`, and returns `["meeting.join"]` so the child listener binds.
-
-`MeetingJoinIOController` logs the inbound payload and returns `[]` (absolute listener set → unbinds `meeting.join` until reconnect). No participant/token validation ships yet — see §8.
-
-`NotificationsConsts` entries:
-
-| Map | Key | Value |
-|---|---|---|
-| `Namespaces` | `ORGANIZATION` | `/org` |
-| `FCM_Namespaces` | `ORGANIZATION` | `-org` |
-| `Rooms` | `ORGANIZATION(organizationId)` | `notification-organization-{id}` |
-
-Framework detail: `docs/platforms/backend/modules/nodejs-socket-library.md` §10. Runtime summary: `runtime-integrations.md` §5.
+- namespace `/meeting`, registered in `backend/src/resources/configs/socket/io.ts` with `globalMiddlewares: ["meeting_auth"]`,
+- `MeetingAuthenticationIOMiddleware` proves member token + meeting + roster row + `ACTIVE` organization before any controller runs, so a refused handshake surfaces as a connect error, not a partial session,
+- `MeetingConnectionIOController` joins `Rooms.MEETING(meetingId)` and binds `["meeting.join"]`,
+- `MeetingJoinIOController` returns `[]`, so the client must re-emit `meeting.join` on every `connect` (§5.1).
 
 ## 7) Failure modes
 
@@ -233,17 +222,17 @@ Framework detail: `docs/platforms/backend/modules/nodejs-socket-library.md` §10
 | Non-production without `TEST_ORGANIZATION_ID` | `org/start` `404` |
 | Apex request to `/meeting/...` | route gate → `Error` `404` |
 | Organization-host request to any non-`orgHostOnly` route (`/`, `/login`, `/customer/*`) | route gate → `Error` `404` |
-| Socket `/org` handshake without a resolvable organization | `NOT_VALID_CREDENTIAL` |
+| Socket `/meeting` handshake missing ids, bad token, org mismatch, or no roster row | `NOT_VALID_CREDENTIAL` |
 
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
-2. **`/org` socket authorization is organization-id only.** The id is public (returned by `org/start`), so the namespace currently proves *which* organization a client claims, not that the client is an authorized participant. `meeting.join` does not yet validate `memberId` / `memberToken` / `meetingId`.
-3. **`Meeting` UI is a connection-status probe only** (`connected` / `disconnected` text). No meeting content, media, or participant UX ships yet.
-4. **`MeetingJoinIOController` is log-only** and returns `[]`, so `meeting.join` is one-shot per connection until reconnect re-binds it via `OrgConnectionIOController`.
-5. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
-6. **`handshake.headers.organizationId` is effectively inert.** Node lowercases header names, so the socket value is carried by the handshake **query** built in `website/src/resources/configs/socket.ts`.
-7. **`meeting.join` is not mirrored** into frontend event registries — it is inbound only. Outbound org/meeting notify events, when added, still follow `socket-event-mirroring.md`.
+2. **`Meeting` UI is a connection-status probe only** (`connected` / `disconnected` text). No meeting content, media, or participant UX ships yet.
+3. **`MeetingJoinIOController` is log-only** and returns `[]`, so `meeting.join` is one-shot per connection until reconnect re-binds it via `MeetingConnectionIOController`.
+4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
+5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
+6. **`meeting.join` is not mirrored** into frontend event registries — it is inbound only. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
+7. **Organization-host pages other than `Meeting` have no realtime channel.** A tenant-wide org socket is not part of the shipped surface.
 
 ## 9) Environment
 
@@ -255,19 +244,20 @@ Framework detail: `docs/platforms/backend/modules/nodejs-socket-library.md` §10
 
 ## 10) Traceability
 
-Every path in the change set, with the section that describes it.
+Every path that implements this contract, with the section that describes it.
 
 ### Website (`website/`)
 
-| Path | Change | Documented in |
+| Path | Role | Documented in |
 |---|---|---|
 | `src/app/helpers/RequestHostHelper.ts` | new — `resolveRequestHost`, `RequestHostResult` | §2 |
 | `src/resources/configs/server.ts` | `extendMyInstance` exposes `resolveRequestHost` | §1.1, §2 |
 | `src/app/services/organization-host.ts` | new — `isOrganizationHost`, `start` | §1.1, §2 |
 | `src/app/services/index.ts` | server boot branches on `organizationHost.start` | §1.1 |
 | `src/app/services/router.ts` | `orgHostOnly` gate before auth branches | §1.2 |
-| `src/app/services/socket.ts` | namespace selection `org` / `customer` / none | §4 |
-| `src/resources/configs/socket.ts` | conditional `token` / `organizationId` query | §3, §4 |
+| `src/app/services/socket.ts` | org host → no boot socket; customer → `/customer` | §4 |
+| `src/resources/configs/socket.ts` | boot query: `token` only (no `organizationId`) | §3, §4 |
+| `src/resources/configs/meeting-socket.ts` | Meeting handshake factory → `SOCKET_URL("meeting")` | §3, §5.1 |
 | `src/resources/configs/axios.ts` | `organizationId` request header | §3 |
 | `src/resources/configs/axios/api.ts` | `CUSTOM.ORG_START` | §1.1, §6.1 |
 | `src/resources/configs/store/reduces/organization-host.ts` | new slice | §3 |
@@ -275,7 +265,7 @@ Every path in the change set, with the section that describes it.
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
 | `src/app/ui/pages/Meeting.tsx` | params + `useMeetingSocket`; temporary connected status UI | §5, §5.1 |
-| `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | org socket join + reconnect + `{ connected, socket }` | §5.1 |
+| `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | hook-owned `/meeting` session + `meeting.join` + reconnect | §5.1 |
 | `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout | §5 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
 | `src/resources/configs/customer/formRoute.ts` | nested `params` href builders without `as To` | `route-registry-contract.md` §3.1 |
@@ -292,25 +282,38 @@ Every path in the change set, with the section that describes it.
 
 ### Backend (`backend/`)
 
-| Path | Change | Documented in |
+| Path | Role | Documented in |
 |---|---|---|
 | `src/app/http/controllers/website/custom/OrgStartController.ts` | org start payload + resolution | §6.1 |
 | `src/app/http/routes/website.ts` | `OrgCustomRouter` + `POST /custom/org/start` | §6.1 |
 | `src/app/http/middlewares/OrganizationHostMiddleware.ts` | header-based org resolve + `currentOrganization` | §6.2, §8 |
 | `src/resources/configs/http/middlewares/index.ts` | `org_host` registration | §6.2 |
-| `src/app/socket/middlewares/AuthenticationIOMiddleware.ts` | org handshake path + `SocketData.organization` | §6.3 |
-| `src/app/socket/controllers/OrgConnectionIOController.ts` | `/org` connection → org room; returns `["meeting.join"]` | §6.3 |
-| `src/app/socket/controllers/meeting/MeetingJoinIOController.ts` | log-only `meeting.join` | §6.3, §8 |
-| `src/resources/configs/socket/io.ts` | `/org` + `org_connection` + `meeting_join` / `meeting.join` | §6.3 |
-| `src/resources/consts/NotificationsConsts.ts` | `ORGANIZATION` namespace / FCM / room | §6.3 |
+| `src/app/socket/middlewares/AuthenticationIOMiddleware.ts` | actor handshake `token` + `SocketData` for `/customer`, `/supervisor` | `../backend/contracts/meeting-realtime-socket.md` §2 |
+| `src/app/socket/middlewares/MeetingAuthenticationIOMiddleware.ts` | `/meeting` handshake + `MeetingSocketData` + `current*` helpers | `../backend/contracts/meeting-realtime-socket.md` §2 |
+| `src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | join `Rooms.MEETING`; return `["meeting.join"]` | `../backend/contracts/meeting-realtime-socket.md` §3 |
+| `src/app/socket/controllers/meeting/MeetingJoinIOController.ts` | log-only `meeting.join`; return `[]` | `../backend/contracts/meeting-realtime-socket.md` §3, §6 |
+| `src/resources/configs/socket/io.ts` | `/meeting` namespace + `meeting_auth` + meeting controllers | `../backend/contracts/meeting-realtime-socket.md` §1 |
+| `src/resources/consts/NotificationsConsts.ts` | `MEETING` namespace / FCM / room | `../backend/contracts/meeting-realtime-socket.md` §4 |
 | `.env.example` | `TEST_ORGANIZATION_ID=1` | §9 |
+
+### Governance
+
+| Path | Role |
+|---|---|
+| `.cursor/rules/organization-host-routing.mdc` | host mode, route gate, transport identification |
+| `.cursor/rules/meeting-realtime-socket.mdc` | Meeting session placement, hook contract, backend pairing |
+| `.cursor/rules/nodejs-socket-namespace-registration.mdc` | namespace / controller / room registration |
+| `.cursor/rules/nodejs-socket-handler-contract.mdc` | connection return = absolute listener set |
+| `.cursor/rules/socket-event-mirroring.mdc` | outbound mirror scope |
+| `.cursor/skills/meeting-realtime-socket/SKILL.md` | Meeting realtime workflow |
+| `.cursor/skills/nodejs-socket-server-event/SKILL.md` | backend socket surface workflow |
 
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
 - Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` shows temporary connected/disconnected status on `MEETING` layout; `/customer/...` renders `Error` `404`.
-- Socket: organization host connects to `/org`, joins `notification-organization-{id}`, and receives `meeting.join` on connect (server log); apex authed customer still connects to `/customer`.
+- Socket: organization host opens **no** boot socket; Meeting page opens `/meeting` via `useMeetingSocket`, joins `meeting-{id}`, and emits `meeting.join` (server log); apex authed customer still connects to `/customer`.
 - Forced server disconnect: client reconnects via `useMeetingSocket` and re-emits `meeting.join`.
 
 ## 12) Related
@@ -318,10 +321,12 @@ Every path in the change set, with the section that describes it.
 - `docs/platforms/website/ssr-boot-and-startup.md` — boot phases
 - `docs/platforms/website/route-registry-contract.md` §3.1, §5.4 — nested params + organization-host route block
 - `docs/platforms/backend/contracts/client-portal-http-website.md` — `/website` mount contract
+- `docs/platforms/backend/contracts/meeting-realtime-socket.md` — `/meeting` namespace, handshake auth, rooms
 - `docs/platforms/backend/modules/runtime-integrations.md` §5 — socket namespaces, rooms, `meeting.join`
-- `docs/platforms/backend/modules/nodejs-socket-library.md` §10 — `/org` child events
+- `docs/platforms/backend/modules/nodejs-socket-library.md` §10 — `/meeting` child events
 - `docs/invariants/website.md` W58
-- `.cursor/rules/website-org-host-routing.mdc`
-- `.cursor/rules/website-meeting-org-socket.mdc`
+- `docs/invariants/backend.md` B24
+- `.cursor/rules/organization-host-routing.mdc`
+- `.cursor/rules/meeting-realtime-socket.mdc`
 - `.cursor/rules/website-mpages-routes-params-contract.mdc`
-- `.cursor/skills/website-meeting-socket/SKILL.md`
+- `.cursor/skills/meeting-realtime-socket/SKILL.md`

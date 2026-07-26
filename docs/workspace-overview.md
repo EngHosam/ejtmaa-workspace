@@ -58,7 +58,7 @@ Detail:
 - Customer writes/reads: `/website` + `customer` GQL schema
 - Supervisor writes/reads: `/cpanel` + `supervisor` GQL schema
 - Payment callbacks (target): `/external` + MyFatoorah finalize contract — `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md`
-- Socket namespaces: `/customer`, `/supervisor`
+- Socket namespaces: `/customer`, `/supervisor`, `/meeting`
 - Active notify events:
   - `OnUserEvent` — supervisor broadcast; payload kind `NEW_CUSTOMER`
   - `OnCustomerEvent` — per-customer channel; payload kind `UPDATED`

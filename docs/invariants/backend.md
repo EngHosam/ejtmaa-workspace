@@ -127,12 +127,14 @@ Do not invent `as` aliases or override `getRootOrmParent` / `getOrmFindOptions` 
 
 ## B24. Organization Host Identification Is Not Authentication
 
-An organization id supplied by a client — `organizationid` HTTP header (`org_host` middleware) or socket handshake `organizationId` (`AuthenticationIOMiddleware` no-token path) — identifies **which tenant a request claims**, nothing more. The id is public: `POST /website/custom/org/start` returns it to any visitor on an organization host.
+An organization id supplied by a client — `organizationid` HTTP header (`org_host` middleware) or optional meeting-socket handshake `organizationId` — identifies **which tenant a request claims**, nothing more. The id is public: `POST /website/custom/org/start` returns it to any visitor on an organization host.
 
 Consequences:
 
-- resolution always requires `status === "ACTIVE"` and throws (`404` on HTTP, `NOT_VALID_CREDENTIAL` on socket) when it does not resolve,
-- `socket.data.organization` must never be read as proof of an authenticated actor (`isAuthed` stays unset on that path),
-- any organization-scoped surface that needs actor trust (meeting participation, writes, private reads) must add its own credential — a member/participant token or an authenticated user — on top of the organization id.
+- HTTP `org_host` resolution always requires `status === "ACTIVE"` and throws `404` when it does not resolve,
+- optional meeting handshake `organizationId` is defense-in-depth against `meeting.organization_id`; it is **not** sufficient alone to join `/meeting`,
+- `/meeting` proof is `MeetingAuthenticationIOMiddleware`: `memberId` + `memberToken` (`Member.access_token`) + `meetingId` + roster row + ACTIVE organization,
+- actor namespaces (`/customer`, `/supervisor`) authenticate through the handshake `token` in `AuthenticationIOMiddleware`,
+- any other organization-scoped surface that needs actor trust must add its own credential on top of a public organization id.
 
-Contracts: `docs/platforms/backend/contracts/client-portal-http-website.md`, `docs/platforms/website/organization-host-routing.md` §8.
+Contracts: `docs/platforms/backend/contracts/client-portal-http-website.md`, `docs/platforms/backend/contracts/meeting-realtime-socket.md` §2, `docs/platforms/website/organization-host-routing.md` §8.

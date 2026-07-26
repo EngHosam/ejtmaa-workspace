@@ -30,6 +30,7 @@
 | [`subscription-domain.md`](contracts/subscription-domain.md) | Subscription (الاشتراك) entitlement ORM + GQL reads + `subscribe` static + expire task |
 | [`livekit-media-plane.md`](contracts/livekit-media-plane.md) | LiveKit helper + env + token/room media plane |
 | [`socket-event-mirroring.md`](contracts/socket-event-mirroring.md) | Socket notify events |
+| [`meeting-realtime-socket.md`](contracts/meeting-realtime-socket.md) | `/meeting` namespace: handshake auth, room, `meeting.join` |
 
 ## Patterns
 
