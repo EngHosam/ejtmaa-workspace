@@ -62,6 +62,7 @@
 ## Modules
 
 - [`modules/runtime-integrations.md`](modules/runtime-integrations.md) — Provider integrations.
+- [`modules/nodejs-socket-library.md`](modules/nodejs-socket-library.md) — `@nodejs/socket` framework reference (drivers, routing, handler array, limitations).
 
 ## Playbooks
 

@@ -75,6 +75,8 @@ Socket provider config:
 - auth middleware: `AuthenticationIOMiddleware`
 - connection controllers: `ConnectionIOController` (`/customer`, `/supervisor`), `OrgConnectionIOController` (`/org`)
 
+Framework reference for the underlying package (`@nodejs/socket` drivers, route grammar, handler-array listener contract, execution queue, known limitations): `docs/platforms/backend/modules/nodejs-socket-library.md`.
+
 `AuthenticationIOMiddleware` has two paths: a handshake **token** resolves the customer/supervisor actor as before; **no token** requires an `organizationId` in the handshake, loads the `ACTIVE` organization, and stores it as `socket.data.organization` (`isAuthed` is not set). An unresolved organization throws `NOT_VALID_CREDENTIAL`. `OrgConnectionIOController` then joins `Rooms.ORGANIZATION(id)`; the `/org` namespace currently carries no events.
 
 Room conventions are centralized in:

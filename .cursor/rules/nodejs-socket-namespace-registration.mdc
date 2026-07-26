@@ -1,0 +1,49 @@
+---
+description: Registration invariants for socket namespaces, controllers, middlewares, rooms, and emit paths in the Ejtmaa backend
+globs: backend/src/resources/configs/socket/**/*.ts,backend/src/app/socket/**/*.ts,backend/src/app/notify/**/*.ts,backend/src/resources/consts/NotificationsConsts.ts
+alwaysApply: false
+---
+
+# Socket namespace registration
+
+Authoritative reference: `docs/platforms/backend/modules/nodejs-socket-library.md` §3, §10.
+
+## Single registration point
+
+`backend/src/resources/configs/socket/io.ts` owns namespaces, controllers, middlewares, and routes.
+A controller class is inert until it is registered there, and a namespace key is the literal
+Socket.IO path (`/customer`, `/supervisor`, `/org`).
+
+Required per namespace:
+
+- `globalMiddlewares` including `auth` for any namespace that carries actor or tenant data
+- `routes.connection` pointing at a registered controller alias
+
+## Rooms and namespaces are constants
+
+Namespace paths, FCM namespaces, and room names come from
+`backend/src/resources/consts/NotificationsConsts.ts`. Never inline a room string in a controller or
+notify event.
+
+## Connection controllers own the join
+
+Joining rooms happens in the `connection` controller after the auth middleware has populated
+`socket.data`. Refuse the connection by throwing when the expected `socket.data` actor or
+organization is missing — `OrgConnectionIOController` throwing `NOT_VALID_CREDENTIAL` is the
+reference shape.
+
+## Emitting
+
+The library has no emit helper. Broadcast through `@nodejs/notify` event classes under
+`backend/src/app/notify/events/`, declaring `channels()` as `{ namespace, room }`.
+
+Room emit is the only working outbound path. Targeted single-socket emit (`channel.id`) is inert
+because `driver.socketsMap` is never populated — the broadcaster lookup itself was fixed in
+`@nodejs/notify` `7.0.0`. Prefer a dedicated room over reviving it: rooms already handle multi-device
+clients and clean themselves up on disconnect, while the map needs a manual writer plus manual
+deletion.
+
+## Mirroring
+
+User-facing events must stay mirrored into the frontends — see
+`.cursor/rules/socket-event-mirroring.mdc`.

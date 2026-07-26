@@ -1,0 +1,32 @@
+---
+description: Build and resync workflow for vendored eng-hosam framework packages consumed as file dependencies
+globs: backend/eng-hosam/**,website/eng-hosam/**
+alwaysApply: false
+---
+
+# Vendored `eng-hosam` package sync
+
+Vendored framework packages are consumed as `file:` dependencies — `@nodejs/*` in
+`backend/package.json`, `@my-ssr/*` and `@typescript/*` in `website/package.json` — and each
+package's `main` points at its built `lib/`.
+
+## Editing a vendored package
+
+1. Change `src` only. `lib/` is Babel/build output — never hand-edit it.
+2. Run the package's own `type-check`, then its `build` (`build:types` + `build:js`).
+3. Commit the regenerated `lib/` together with the `src` change — `lib/` is git-tracked, and the
+   runtime loads it, not `src`.
+4. Refresh the dependency copy in `node_modules`. `file:` dependencies are installed as plain
+   copies, not symlinks, so a package build alone never reaches the consuming app.
+5. Run the consumer's `type-check`.
+
+Use only scripts that already exist in the relevant `package.json`.
+
+## Scope discipline
+
+A framework package is shared infrastructure. Prefer solving a problem in `backend/src` before
+changing a vendored package, and when a package change is unavoidable, keep it behavior-preserving
+for the other consumers in the same package tree.
+
+Reference for the socket package specifically:
+`docs/platforms/backend/modules/nodejs-socket-library.md` §12.

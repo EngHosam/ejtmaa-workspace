@@ -1,0 +1,57 @@
+---
+description: Contract for @nodejs/socket controllers and middlewares — handler return value, route grammar, execution queue, error paths
+globs: backend/src/app/socket/**/*.ts,backend/eng-hosam/@nodejs/socket/src/**/*.ts
+alwaysApply: false
+---
+
+# `@nodejs/socket` handler contract
+
+Authoritative reference: `docs/platforms/backend/modules/nodejs-socket-library.md`.
+
+## Handler return value is a listener set, not a result
+
+A controller `handle()` (server or client) returns the **complete** array of event aliases that must
+stay bound to that socket. The driver diffs it against the currently bound listeners: missing
+aliases are unbound, new aliases are bound.
+
+- `[]` / `undefined` → unbind everything. Current Ejtmaa connection controllers return `[]`.
+- The array is absolute, never additive. An event that must survive has to be re-returned by every
+  handler that runs while it should stay bound.
+- Every returned alias must exist in the same namespace `routes`, otherwise the bind throws and the
+  listener silently never attaches.
+- Never return domain payloads from `handle()`. Send data with `socket.emit` or through
+  `@nodejs/notify`.
+
+## Route grammar
+
+```ts
+event: "alias"
+event: ["alias", refs]
+event: ["alias", refs, "on" | "once"]
+event: "alias@customHandler"
+```
+
+`refs` reaches the controller as `this.refs`. Any listener type other than `on` / `once` throws at
+resolution. `alias@method` is the only supported way to serve several events from one controller.
+
+## Execution and state
+
+- Events of one socket run **serialized** in a per-socket promise queue; do not assume parallelism
+  and do not build cross-event locks on top of it.
+- A fresh controller instance handles each event. Only `shared` survives between events — treat it
+  as boot-time state, never as per-socket state. Per-socket state belongs in `socket.data`.
+- Payload arrives as `args[0]` for a single emitted argument, as an array for several.
+- There is **no** ack support. Do not design events that rely on a Socket.IO acknowledgement
+  callback.
+
+## Middlewares
+
+- A `SocketServerMiddlewareBase` subclass must call `this.next()` itself on success.
+- Throw a string/error to reject; the configured `errorsFunnel` decides what reaches the client.
+- Aliases in `middlewares` and `bootableMiddlewares` share one registry — never reuse an alias.
+
+## Error visibility
+
+`errorsFunnel` receives `next` only for middleware failures. Connection and child-event failures are
+log-only under the current Ejtmaa funnel (`next?.(err)`), so a handler that throws leaves the client
+with no signal. Emit an explicit failure event when the client must react.
