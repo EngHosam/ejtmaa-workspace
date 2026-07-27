@@ -25,7 +25,8 @@ description: >-
 - `.cursor/rules/nodejs-socket-namespace-registration.mdc`
 - `backend/src/resources/configs/socket/io.ts` — the only registration point
 - `backend/src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` — reference meeting connection controller
-- `backend/src/app/socket/controllers/meeting/MeetingJoinIOController.ts` — reference meeting child event
+- `backend/src/app/socket/controllers/meeting/MeetingIOControllerBase.ts` — reference domain controller base (shared socket typing + bound-event set)
+- `backend/src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` — reference child event with validation, gating, and an explicit rejection reply
 - `backend/src/app/socket/middlewares/MeetingAuthenticationIOMiddleware.ts` — `/meeting` handshake + `current*` helpers
 
 ## Instructions
@@ -36,8 +37,10 @@ description: >-
 2. **Write the controller** under `backend/src/app/socket/controllers/` (domain subfolders allowed, e.g. `controllers/meeting/`), extending
    `SocketServerControllerBase<any>`. Narrow the loose base fields with `declare` (`socket` typed
    with the matching middleware data type — actor `SocketData` or `MeetingSocketData` — plus `driver`, `namespace`).
+   When a domain has more than one controller, put those `declare`s and the shared bound-event set on a domain
+   base class instead of repeating them (`MeetingIOControllerBase`).
    Read the request from `this.args`, `this.socket.data` / `current*` helpers, and `this.refs`. Prefer dotted event
-   names for domain groups (`meeting.join`, `meeting.leave`).
+   names for domain groups (`meeting.live.sync`, `meeting.live.update`).
 
 3. **Return the listener set.** `handle()` returns the complete array of event aliases that must
    stay bound to this socket — `[]` unbinds everything. Every returned alias must be declared in the

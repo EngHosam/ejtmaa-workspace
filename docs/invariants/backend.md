@@ -138,3 +138,16 @@ Consequences:
 - any other organization-scoped surface that needs actor trust must add its own credential on top of a public organization id.
 
 Contracts: `docs/platforms/backend/contracts/client-portal-http-website.md`, `docs/platforms/backend/contracts/meeting-realtime-socket.md` §2, `docs/platforms/website/organization-host-routing.md` §8.
+
+## B25. Live Session State Is Not A Public Column
+
+A collaborative document persisted as a BLOB (`meetings.live_state`) is **internal transport state**, not a readable field.
+
+Consequences:
+
+- the column must be excluded from the bridge's auto-registered attrs (`registerOrmAttrs = { expect: [...] }`); the same applies to every ORM column that must never leave through GraphQL,
+- while a session is live, the document owns its fields and the SQL columns are stale by design; readers of the columns must not be told otherwise,
+- reflecting document fields back onto columns happens in one explicit, transactional step — never as a side effect of a socket event,
+- the document codec is fixed (Yjs V2 on the BLOB, on the wire, and on both ends); mixing V1 and V2 throws at runtime, so the `yjs` version stays pinned and equal in `backend/` and `website/`.
+
+Contracts: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/platforms/backend/contracts/meeting-realtime-socket.md` §3.

@@ -77,6 +77,7 @@ Task Progress:
 2. Map args to typed parent payload.
 3. Ensure any sort/filter/extra attr is loaded.
 4. If root-one is actor-bound and parent is `STATIC`, enforce ownership scope in `where`.
+5. Exclude every ORM column that must never leave through GraphQL: `registerOrmAttrs = { expect: ["column"] }`. Attr registration is **opt-out** — `BridgeBase.bootRegisteredAttrs()` registers all model attributes by default, so internal state (`Meeting.live_state`) leaks unless it is listed. Reference: `MeetingBridge`.
 
 ### Union-Ready Template
 
@@ -164,7 +165,7 @@ Rules:
 - Customer `organization` root-one: `prepareOneGQLModel({ me: true })` when bridge `ident` matches `Customer.hasOne` association key; do not invent `as` / `getRootOrmParent` overrides.
 - Customer `members` / `member(id)`: `{ me: true }` resolves root parent to the customer's Organization (Member belongs to Organization, not Customer); no supervisor Member surface yet.
 - Customer `messageTemplates` / `messageTemplate(id)`: same `{ me: true }` → Organization parent pattern as members; inverse `_MessageTemplate.organization` requires `OrganizationBridge` `GetOneParent` to include `MessageTemplateModel`.
-- Customer `meetings` / `meeting(id)`: same org-owned base; nested `chairperson` / `whatsappTemplate` / `emailTemplate` require `MemberBridge` / `MessageTemplateBridge` `GetOneParent` to include `MeetingModel`; inverse `_Meeting.organization` requires `OrganizationBridge` `GetOneParent` to include `MeetingModel`.
+- Customer `meetings` / `meeting(id)`: `MeetingBridge` sets `registerOrmAttrs = { expect: ["live_state"] }` so the live-session BLOB stays out of the contract (`meeting-live-state.md` §4); same org-owned base; nested `chairperson` / `whatsappTemplate` / `emailTemplate` require `MemberBridge` / `MessageTemplateBridge` `GetOneParent` to include `MeetingModel`; inverse `_Meeting.organization` requires `OrganizationBridge` `GetOneParent` to include `MeetingModel`.
 - Customer `_Meeting.participants: [_MeetingParticipant]` (nested only; no root): join-row fields (`type`, `notified`, `delivery_status`, `attended_at`, `left_at`) + `member`; no FK scalars on `_MeetingParticipant`. ORM: `Meeting.hasMany(MeetingParticipant, { as: "participants" })` only (no `belongsToMany`). `MeetingParticipantBridge.ident = "participants"`; `MemberBridge.GetOneParent` includes `MeetingParticipantModel`. Contract: `meeting-participant-domain.md`.
 - Customer `_Meeting.agendaItems: [_AgendaItem]` (nested only; no root): `id`, `sort_order`, `subject`; no `meeting_id` scalar. ORM: `Meeting.hasMany(AgendaItem)` (default association; no `as`). `AgendaItemBridge.ident = "agendaItems"`.
 - Customer `_Meeting.decisions: [_Decision]` (nested only; no root): `id`, `sort_order`, `subject`, `phase`, `status`, `voting_type`; no `meeting_id` scalar. ORM: `Meeting.hasMany(Decision)` (default association; no `as`). `DecisionBridge.ident = "decisions"`. Base enums: `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`.

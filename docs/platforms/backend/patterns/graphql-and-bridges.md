@@ -130,6 +130,18 @@ Current Ejtmaa registration:
 | `CustomerSchema` | `MeBridge`, `NotificationBridge` |
 | `SupervisorSchema` | `MeBridge`, `NotificationBridge`, `CustomerBridge`, `CustomerStatsBridge` |
 
+## 7.1) ORM attr registration is opt-out
+
+`BridgeBase.bootRegisteredAttrs()` walks `ormModel.attributes()` and registers **every** column as a bridge attr (plus the timestamp/paranoid columns). A column that must never leave through GraphQL has to be excluded explicitly:
+
+```ts
+static registerOrmAttrs = {
+    expect: ["live_state"]
+};
+```
+
+`expect` is the exclusion list, not an allow-list, and `registerOrmAttrs = false` disables auto-registration entirely. Shipped use: `MeetingBridge` keeps the live-session BLOB out of the contract (`contracts/meeting-live-state.md` §4, invariant B25). Treat this as part of the security review whenever a model gains an internal column.
+
 ## 8) Resolver pattern
 
 In all role schemas:

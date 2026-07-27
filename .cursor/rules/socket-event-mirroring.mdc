@@ -32,7 +32,7 @@ Note: customer events mirror into `website/` only, never into `cpanel/`.
 3. Do not leave placeholder/example event names when the real project event exists.
 4. If an old mirrored event is no longer used by the current project, remove it from the frontend mirror in the same task.
 5. Update `docs/platforms/backend/contracts/socket-event-mirroring.md` whenever the contract changes.
-6. Do **not** mirror client→server inbound emits (e.g. `/meeting` `meeting.join`) into frontend event registries.
+6. Do **not** mirror namespace session protocols (e.g. `/meeting` `meeting.live.sync` / `meeting.live.update` / `meeting.live.error`) into frontend event registries, in either direction.
 
 ## Verification
 

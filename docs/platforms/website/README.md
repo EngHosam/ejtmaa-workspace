@@ -292,13 +292,14 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | Host classification (`resolveRequestHost`) + `extendMyInstance` | `organization-host-routing.md` §2 |
 | Boot split (`organizationHost.start` before apex start) | `organization-host-routing.md` §1.1; `ssr-boot-and-startup.md` §2, §5 |
 | `organizationHost` store slice + `organizationId` HTTP header; Meeting handshake query | `organization-host-routing.md` §3 |
-| `orgHostOnly` route gate + `Meeting` route/layout + `useMeetingSocket` | `organization-host-routing.md` §1.2, §5, §5.1; `route-registry-contract.md` §3.1, §5.4; invariant W58 |
+| `orgHostOnly` route gate + `Meeting` route/layout + `useLiveMeeting` | `organization-host-routing.md` §1.2, §5, §5.1; `route-registry-contract.md` §3.1, §5.4; invariant W58 |
+| Live meeting document (Yjs + SyncedStore) + probe screen | `organization-host-routing.md` §5.1, §5.2; `../backend/contracts/meeting-live-state.md` |
 | Meeting socket config (`src/resources/configs/meeting-socket.ts`) | `organization-host-routing.md` §3, §5.1 |
 | Shared boot socket (`prepareSocket`: org host none / customer `/customer`) | `organization-host-routing.md` §4 |
 | Nested `MPagesRoutes.params` contract | `route-registry-contract.md` §3.1 |
 | `POST /website/custom/org/start` + `org_host` middleware | `../backend/contracts/client-portal-http-website.md` |
-| Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.join` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
-| Known limits (unwired `org_host`, log-only join, status probe UI) | `organization-host-routing.md` §8 |
+| Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
+| Known limits (unwired `org_host`, probe-only meeting UI, no participant-type gate) | `organization-host-routing.md` §8 |
 | `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` | Host-mode gating + Meeting `/meeting` session contract |
 
 ## Change set traceability — MicroBand footer credit spelling

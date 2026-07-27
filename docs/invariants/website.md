@@ -291,7 +291,7 @@ Host mode for routing is `organizationHost.isOrganizationHost(myInstance)` — d
 
 Every route is bound to exactly one host mode: a route with `orgHostOnly: true` is reachable only on an organization host, every other route only on the apex host. The check lives in `applyRouterMiddleware` **before** the authenticated/unauthenticated branches, so a wrong-host request resolves to `Error` `404` (`redirect` + `RESOLVED` throw) and never becomes a login redirect. Do not gate a host-bound surface by route identify (`identify === "Meeting"`); the flag is the contract.
 
-Identification sent to the backend (`organizationId` HTTP header on axios; optional `organizationId` on the Meeting handshake in `meeting-socket.ts`) is added only when a value exists — never as an `undefined` placeholder. Shared boot `configs/socket.ts` does **not** send `organizationId`. Organization hosts open no boot socket; Meeting owns `/meeting` via `useMeetingSocket`.
+Identification sent to the backend (`organizationId` HTTP header on axios; optional `organizationId` on the Meeting handshake in `meeting-socket.ts`) is added only when a value exists — never as an `undefined` placeholder. Shared boot `configs/socket.ts` does **not** send `organizationId`. Organization hosts open no boot socket; Meeting owns `/meeting` via `useLiveMeeting`.
 
 See `docs/platforms/website/organization-host-routing.md` §1.2, §2, §3, §4, §5.1 and `.cursor/rules/organization-host-routing.mdc`.
 

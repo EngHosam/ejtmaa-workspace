@@ -79,15 +79,16 @@ Framework reference for the underlying package (`@nodejs/socket` drivers, route 
 
 `AuthenticationIOMiddleware` serves the actor namespaces (`/customer`, `/supervisor`) on a handshake `token` and throws `NOT_VALID_CREDENTIAL` when it does not resolve to a customer or supervisor.
 
-`/meeting` uses `meeting_auth`: handshake requires `memberId` + `memberToken` (`Member.access_token`) + `meetingId`, proves roster membership and ACTIVE organization, optionally checks `organizationId` against the meeting tenant, and stores `MeetingSocketData`. `MeetingConnectionIOController` joins `Rooms.MEETING(meetingId)` and returns `["meeting.join"]`.
+`/meeting` uses `meeting_auth`: handshake requires `memberId` + `memberToken` (`Member.access_token`) + `meetingId`, proves roster membership and ACTIVE organization, optionally checks `organizationId` against the meeting tenant, and stores `MeetingSocketData`. `MeetingConnectionIOController` joins `Rooms.MEETING(meetingId)` and binds the live event set.
 
-`/meeting` child event (shipped probe):
+`/meeting` child events (collaborative session):
 
 | Event | Controller alias | Class | Behavior |
 |---|---|---|---|
-| `meeting.join` | `meeting_join` | `controllers/meeting/MeetingJoinIOController` | log-only; returns `[]` (unbinds the listener until reconnect) |
+| `meeting.live.sync` | `meeting_live_sync` | `controllers/meeting/MeetingLiveSyncIOController` | answers the caller with the missing document diff + the server state vector |
+| `meeting.live.update` | `meeting_live_update` | `controllers/meeting/MeetingLiveUpdateIOController` | validates + status-gates the update, applies it, broadcasts to the room |
 
-This is a **client → server** inbound event. It is **not** an outbound notify event and is **not** mirrored into `website`/`cpanel` event registries (`socket-event-mirroring.md` does not apply). Namespace contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`. Website consumer: `docs/platforms/website/organization-host-routing.md` §5.1.
+Both are **client → server** inbound events; the server replies on the same names plus `meeting.live.error` for a rejection. None of them are notify events, and none are mirrored into `website`/`cpanel` event registries (`socket-event-mirroring.md` does not apply). Namespace contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`. State plane (Yjs document + `live_state` BLOB): `docs/platforms/backend/contracts/meeting-live-state.md`. Website consumer: `docs/platforms/website/organization-host-routing.md` §5.1.
 
 Room conventions are centralized in:
 - `backend/src/resources/consts/NotificationsConsts.ts` — `Namespaces.MEETING` (`/meeting`), `FCM_Namespaces.MEETING` (`-meeting`), `Rooms.MEETING(meetingId)`

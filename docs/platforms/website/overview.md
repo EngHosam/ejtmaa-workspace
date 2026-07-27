@@ -26,7 +26,7 @@ See `docs/platforms/website/ui-foundation.md`.
 - Requesters: `visitor.auth`, `customer.customer`, `customer.notification`, `customer.subscription` (`subscribe`), `customer.member`, `customer.organization`, `customer.meeting` (`create`) (see `src/types/requesters/requesters.website.ts`)
 - GQL mirrors: `base` + `customer` (`me` + nested `_Me.organization` / `_Me.currentSubscription` / `_Subscription`, `me.canDeleteNotifications`, `me.canSubscribe(planId)`, `notifications`, `members(filter: _MemberFilter)`, `member`, `messageChannels`, `messageChannel`, `messageTemplates`, `messageTemplate`, `meetings`, `meeting` with nested `participants` / `_MeetingParticipant`, `agendaItems` / `_AgendaItem`, `decisions` / `_Decision` / `votes` / `_Vote`, `talkRecords` / `_TalkRecord`, `plans` / `plan` / `_Plan`, `subscriptions` / `subscription`, `subscriptionPaymentMethods` / `_PaymentMethod`; no customer root `organization`)
 - Socket namespaces: `customer` (apex authed customer boot socket — `organization-host-routing.md` §4) / `meeting` (Meeting page session — `organization-host-routing.md` §5.1)
-- Events: `OnCustomerEvent` (payload `OnCustomerEventDate { type: "UPDATED" }`) on `customer`; `meeting` carries the inbound `meeting.join` only
+- Events: `OnCustomerEvent` (payload `OnCustomerEventDate { type: "UPDATED" }`) on `customer`; `meeting` carries the live session protocol `meeting.live.sync` / `meeting.live.update` / `meeting.live.error`, which is not part of the event registries
 - Backend mount: `/website` (test `http://192.168.1.10:3206/website`, prod `https://backend.ejtmaa.live/website`)
 - Host modes: apex boot via `POST /website/custom/start`; organization host boot via `POST /website/custom/org/start`
 

@@ -32,10 +32,10 @@ Joining rooms happens in the `connection` controller after the namespace middlew
 `MeetingConnectionIOController` uses `currentMeeting(socket, true)` as the reference shape.
 
 The connection `handle()` return array is the absolute set of child event aliases to bind.
-`/meeting` currently returns `["meeting.join"]`. Meeting controllers live under
-`backend/src/app/socket/controllers/meeting/` and register as dotted `/meeting` routes
-(`"meeting.join": "meeting_join"`). A child handler that returns `[]` unbinds those aliases
-until the next connection bind.
+`/meeting` returns `["meeting.live.sync", "meeting.live.update"]`. Meeting controllers live under
+`backend/src/app/socket/controllers/meeting/`, share `MeetingIOControllerBase` (which owns that
+tuple), and register as dotted `/meeting` routes (`"meeting.live.sync": "meeting_live_sync"`).
+A child handler that returns `[]` unbinds those aliases until the next connection bind.
 
 ## Emitting
 

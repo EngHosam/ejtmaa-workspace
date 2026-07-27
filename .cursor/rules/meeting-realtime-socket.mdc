@@ -1,5 +1,5 @@
 ---
-description: Meeting realtime on /meeting — website useMeetingSocket owns the session, backend meeting_auth namespace, meeting.join, reconnect after server disconnect
+description: Meeting realtime on /meeting — website useLiveMeeting owns the session, backend meeting_auth namespace, meeting.live.sync / meeting.live.update / meeting.live.error, reconnect after server disconnect
 globs:
   - website/src/app/ui/components/meeting/**/*
   - website/src/app/ui/pages/Meeting.tsx
@@ -14,45 +14,57 @@ alwaysApply: false
 # Meeting realtime socket (`/meeting`)
 
 Applies to both sides of the Meeting session: the website hook and the backend `/meeting` namespace.
+Document/state rules (Yjs, `live_state`, registry) live in `.cursor/rules/meeting-live-state.mdc`.
 
 Authority: `docs/platforms/backend/contracts/meeting-realtime-socket.md`, `docs/platforms/website/organization-host-routing.md` §5.1.
 
 ## Placement
 
-- Product hook: `website/src/app/ui/components/meeting/hooks/useMeetingSocket.ts` — **not** under `ui/base/hooks`.
+- Product hook: `website/src/app/ui/components/meeting/hooks/useLiveMeeting.ts` — **not** under `ui/base/hooks`.
 - Meeting socket config: `website/src/resources/configs/meeting-socket.ts` (root configs sibling of `socket.ts`, not under `configs/socket/`).
-- Backend meeting controllers: `backend/src/app/socket/controllers/meeting/`.
+- Backend meeting controllers: `backend/src/app/socket/controllers/meeting/`, all extending `MeetingIOControllerBase`.
 - Meeting auth: `MeetingAuthenticationIOMiddleware` (`meeting_auth`) — not actor `auth`.
 - Register only in `backend/src/resources/configs/socket/io.ts` under namespace `/meeting`.
 
-## Event naming
+## Events
 
-Use dotted inbound names under `/meeting`: `meeting.join`, then `meeting.leave`, …  
-`MeetingConnectionIOController` returns the aliases that must stay bound (e.g. `["meeting.join"]`).
+Dotted names under `/meeting`. Shipped set:
+
+| Event | Direction | Payload |
+|---|---|---|
+| `meeting.live.sync` | both | in `{ stateVector? }`, out `{ update, stateVector }` |
+| `meeting.live.update` | both | `{ update }` |
+| `meeting.live.error` | out | `{ code: "NOT_VALID" \| "MEETING_NOT_LIVE" }` |
+
+A new meeting event is added in three places at once: `io.ts` (`controllers` + `/meeting` `routes`), the `MEETING_BOUND_EVENTS` tuple in `MeetingIOControllerBase`, and the hook's listener set.
+
+## Backend contract
+
+1. The bound-event set lives in `MeetingIOControllerBase`; every handler returns `this.meetingBoundEvents()` because the handler-array return is absolute.
+2. Rejections go through `rejectLive(code)` — emit `meeting.live.error` and return the **unchanged** set. A refused write must never leave the socket inert.
+3. Room join happens in the connection controller only.
+4. Writes are gated on `Meeting().LIVE_STATUSES`; reads (`sync`) are not gated beyond the handshake.
+5. Controllers read context via `currentOrganization` / `currentMeeting` / `currentMember` / `currentParticipant`.
+6. `meeting.live.*` is a namespace session protocol — never mirrored into frontend event registries.
 
 ## Hook contract
 
-`useMeetingSocket({ memberId, memberToken, meetingId })` must:
+`useLiveMeeting({ memberId, memberToken, meetingId })` must:
 
 1. Gate on `useClientPreparing` / CSR readiness and require all three ids.
 2. Create its own session via `createSocketInstance(getMeetingSocketInstanceConfig(...))` — never `myInstance.getSocket`.
-3. Return `{ connected, socket }` (socket may exist before connected).
-4. Emit `meeting.join` with `{ meetingId, memberId, memberToken }` on every `connect`.
-5. On `disconnect` reason `io server disconnect`, call `socket.connect()`.
-6. Use native `socket.on("connect"|"disconnect")`, not `registerListener` for those built-ins.
-7. Cleanup: `off` → `disconnect` → clear state.
-
-## Backend pairing
-
-- Handshake proves member token + meeting + roster + ACTIVE org before connection runs.
-- Controllers read context via `currentOrganization` / `currentMeeting` / `currentMember` / `currentParticipant`.
-- `MeetingJoinIOController` is currently log-only and may return `[]` (unbinds until reconnect).
-- Inbound `meeting.join` is **not** mirrored into frontend event registries.
+3. Emit `meeting.live.sync` with the local state vector on every `connect`.
+4. Answer the server `stateVector` in the sync reply with the diff the server is missing.
+5. Register `meeting.live.sync` / `meeting.live.update` / `meeting.live.error` through `socket.registerListener`, and use native `socket.on` only for `connect` / `disconnect`.
+6. On `disconnect` reason `io server disconnect`, call `socket.connect()`.
+7. On `meeting.live.error`, expose the code and drop `synced` so the UI stops accepting edits until the next sync.
+8. Cleanup: unregister listeners → `off` → `disconnect` → clear state.
 
 ## Forbidden
 
-- Putting this hook in `ui/base/hooks`.
-- Emitting bare `join` instead of `meeting.join`.
+- Putting this hook in `ui/base/hooks`, or splitting the socket out into a second hook beside it.
+- Emitting bare `sync` / `update` instead of the dotted `meeting.live.*` names.
+- Returning a narrowed listener set (or `[]`) from a rejection path.
 - Using shared boot `prepareSocket` / `getSocket` for Meeting.
 - Treating a handshake `organizationId` as meeting authorization, or adding a tenant-wide socket namespace to serve Meeting.
 - Nesting the Meeting config factory under `configs/socket/` as a peer of boot fragments.

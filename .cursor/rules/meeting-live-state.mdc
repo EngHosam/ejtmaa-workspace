@@ -1,0 +1,38 @@
+---
+description: Meeting live CRDT state — Yjs V2 codec on every hop, live_state BLOB never in GraphQL, registry-owned document, columns reflected only in an explicit step
+globs:
+  - backend/src/app/helpers/MeetingLiveDocHelper.ts
+  - backend/src/app/orm/models/Meeting.ts
+  - backend/src/app/socket/controllers/meeting/**/*
+  - backend/src/app/gql/bridges/customer/MeetingBridge.ts
+  - website/src/app/ui/components/meeting/**/*
+alwaysApply: false
+---
+
+# Meeting live state (CRDT)
+
+The collaborative document behind `meeting.live.*`. Transport rules are in `.cursor/rules/meeting-realtime-socket.mdc`.
+
+Authority: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/invariants/backend.md` B25.
+
+## Non-negotiables
+
+1. **V2 everywhere.** `encodeStateAsUpdateV2` / `applyUpdateV2` on the BLOB, the sync reply, and the broadcast. A V1 update from a local doc event is converted with `convertUpdateFormatV1ToV2` before it is emitted. Mixing codecs throws at runtime.
+2. **`yjs` stays pinned and identical** in `backend/package.json` and `website/package.json`; `@syncedstore/*` is pinned too.
+3. **`live_state` never reaches GraphQL.** `MeetingBridge` keeps `registerOrmAttrs = { expect: ["live_state"] }`. Any ORM column that must not be exposed goes in that exclusion list — auto-registration is the default.
+4. **The registry owns the document.** Read or create it through `getOrCreateMeetingLiveDoc(meetingId)`; never build a second `Y.Doc` for a meeting that may already be live, and never write `live_state` outside `MeetingLiveDocHelper`.
+5. **Persistence is a side effect of document updates**, debounced in the helper. Controllers do not call `update()` on the row.
+6. **Columns are reflected in one explicit step.** `subject` / `type` / `status` are applied from the document to the SQL columns only in the (still deferred) completion step, transactionally, and never as a side effect of a socket event.
+7. **`LIVE_MAP` is one shared constant.** The server map name and the website SyncedStore root key must match, or the two sides sync disjoint maps.
+8. **Live field types come from the generated GQL enums** on the website (`_MeetingTypeValue`, `_MeetingStatusValue`) and from the model's `MeetingType` / `MeetingStatus` on the backend. No hand-written value unions.
+
+## Known ceilings (do not "fix" silently)
+
+Debounce with no maximum wait, no flush on shutdown, no eviction, single process, handshake-snapshot status gate. All are documented in `meeting-live-state.md` §7 — change them deliberately and update that section, do not patch around them locally.
+
+## Forbidden
+
+- Exposing, logging, or returning the raw BLOB.
+- Writing meeting columns from a socket controller.
+- Applying a client update without the status gate, or trusting `status` from the document as the lifecycle truth.
+- Adding a second in-memory document store beside the helper registry.

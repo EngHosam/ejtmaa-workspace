@@ -4,7 +4,7 @@
 
 This contract covers **backend → frontend outbound** user-facing notify/socket events (`OnCustomerEvent` / `OnUserEvent`).
 
-**Out of scope:** client → server inbound emits such as `/meeting` `meeting.join`. Those are registered only in `backend/src/resources/configs/socket/io.ts` and consumed by server controllers; do not add them to frontend event registries. See `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
+**Out of scope:** the `/meeting` session events (`meeting.live.sync`, `meeting.live.update`, `meeting.live.error`). Their inbound side is registered only in `backend/src/resources/configs/socket/io.ts`, and their outbound side is answered to a single socket or room by the meeting controllers and consumed by the meeting hook's own listeners. Do not add any of them to frontend event registries. See `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
 
 ## Backend source of truth
 

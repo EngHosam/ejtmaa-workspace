@@ -16,12 +16,13 @@ Current Ejtmaa meeting surface:
 - nested agenda via `_Meeting.agendaItems` (see `agenda-item-domain.md`),
 - nested decisions via `_Meeting.decisions` (see `decision-domain.md`),
 - nested talk queue via `_Meeting.talkRecords` (see `talk-record-domain.md`),
+- live collaborative session state for `subject` / `type` / `status` in the `live_state` BLOB (see `meeting-live-state.md`),
 - website GQL mirrors for that customer surface.
 
 Out of scope (not shipped):
 
 - LiveKit join requesters / website client wiring (helper shipped — see `livekit-media-plane.md`),
-- Yjs collaborative session state,
+- reflecting the live session fields back onto the SQL columns (`meeting-live-state.md` §6),
 - notify send pipeline / `notify_status` transitions from UI,
 - cancel-after-approve,
 - supervisor Meeting GraphQL,
@@ -58,6 +59,7 @@ Persistence names:
 
 - `//relations` — `organization_id`, `chairperson_id`, `whatsapp_template_id`, `email_template_id`
 - `//info` — subject, type, datetime, min_members_count, status, notify_status, notify_start_at
+- `//live session` — `live_state`
 
 ### 3.2 Columns
 
@@ -75,8 +77,9 @@ Persistence names:
 | `status` | STRING(191) | no | enum `meetingStatus`; default `DRAFT` |
 | `notify_status` | STRING(191) | no | enum `meetingNotifyStatus`; default `NOT_STARTED` |
 | `notify_start_at` | DATE | yes | when invite sending may begin |
+| `live_state` | BLOB | yes | Yjs V2 snapshot of the live session document; never exposed through GraphQL (`meeting-live-state.md`) |
 
-Exported TS types: `MeetingType`, `MeetingStatus`, `MeetingNotifyStatus` from `G_Tr` enum keys.
+Exported TS types: `MeetingType`, `MeetingStatus`, `MeetingNotifyStatus` from `G_Tr` enum keys, plus `MeetingLiveFields` for the live document.
 
 ### 3.3 Enums (localized)
 
@@ -113,6 +116,10 @@ Under `backend/src/resources/trans/ar/general.ts` and `en/general.ts`:
 Mixin declare blocks on Meeting are split: organization / chairperson / whatsapp template / email template / participants / agenda items / decisions / talk records.
 
 Do **not** add `belongsToMany(Member)` on Meeting for the roster — join rows are exposed via `participants` only.
+
+### 3.6 Live session members
+
+A `live session` block after `boot()` carries `LIVE_MAP`, `LIVE_STATUSES`, the `Y.Doc` encode/decode statics, and the instance `getLiveDoc()`. Full contract: `meeting-live-state.md` §1.
 
 ## 4) Customer GraphQL surface
 
@@ -165,6 +172,7 @@ File: `backend/src/app/gql/bridges/customer/MeetingBridge.ts`
 
 - Extends `CustomerOrganizationOwnedBridgeBase`
 - `ident = "meeting"`, `typeIdent = "_Meeting"`, `ormModel = MeetingModel`
+- `registerOrmAttrs = { expect: ["live_state"] }` — excludes the CRDT BLOB from the auto-registered attrs (`meeting-live-state.md` §4)
 - `MeetingFilter` / `GetManyParent = OrganizationOwnedMeParent & { filter?: Nullable<MeetingFilter> }`
 - `GetOneParent = MeetingModel | { me: true; id: string }`
 - Overrides `getOrmFindOptions` for root `many` only:
@@ -245,7 +253,9 @@ Verification: `yarn generate-types`, `yarn type-check`.
 
 ### 7.1 Realtime surface
 
-Meeting realtime is not part of the customer GQL surface. It is socket namespace `/meeting`, entered by a `Member` with `access_token` plus a `MeetingParticipant` roster row, and it joins room `Rooms.MEETING(meetingId)`. Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`; website consumer: `docs/platforms/website/organization-host-routing.md` §5.1.
+Meeting realtime is not part of the customer GQL surface. It is socket namespace `/meeting`, entered by a `Member` with `access_token` plus a `MeetingParticipant` roster row, and it joins room `Rooms.MEETING(meetingId)`. Events `meeting.live.sync` / `meeting.live.update` / `meeting.live.error` carry a Yjs document for `subject`, `type`, and `status`, persisted in `live_state`.
+
+While a meeting is live those three fields are authoritative **in the document**, not in the columns; the columns still hold what the requester write path left, and the reflection step is deferred. Contracts: `docs/platforms/backend/contracts/meeting-realtime-socket.md` (transport) and `docs/platforms/backend/contracts/meeting-live-state.md` (state); website consumer: `docs/platforms/website/organization-host-routing.md` §5.1.
 
 ## 8) Failure modes (read path)
 
@@ -355,7 +365,9 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 | `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | Basics, approve, delete, participant, agenda, and decision requester subs | §9.3 |
 | `backend/requesters.website.ts` | Backend customer `meeting` sub map | §9.4 |
 | `website/src/types/requesters/requesters.website.ts` | Exact website customer `meeting` sub-map mirror | §9.4 |
-| `backend/src/app/orm/models/Meeting.ts` | ORM source of truth | §3 |
+| `backend/src/app/orm/models/Meeting.ts` | ORM source of truth; `live_state` column + live document statics | §3, §3.6 |
+| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | Live document registry and BLOB persistence | `meeting-live-state.md` §2 |
+| `backend/src/app/socket/controllers/meeting/*` | `/meeting` connection and `meeting.live.*` controllers | `meeting-realtime-socket.md` §3 |
 | `backend/src/app/orm/models/Member.ts` | `forSelect(lang)` used to hydrate chairperson and roster entity references | §9.2–§9.3 |
 | `backend/src/app/orm/models/MessageTemplate.ts` | `forSelect(lang)` used to hydrate and validate notify template references | §9.2–§9.3 |
 | `backend/src/app/orm/models/MeetingParticipant.ts` | Roster join (detail contract) | `meeting-participant-domain.md` |
@@ -368,7 +380,7 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 | `backend/src/resources/trans/ar/validation.ts` / `eng-hosam/@nodejs/validation/src/trans/ar/validation.ts` | Arabic email validation labels | localization-only |
 | `backend/src/app/gql/definitions/base.graphql` | meeting GQL enum wrappers | §4 |
 | `backend/src/app/gql/definitions/customer.graphql` | `_Meeting` + `_MeetingFilter` + roots + nested relations | §4 |
-| `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | Org-scoped root filters and root-one `canUpdate` / `canDelete` / `canApprove` extras | §4–§5, §9.1 |
+| `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | Org-scoped root filters, root-one `canUpdate` / `canDelete` / `canApprove` extras, `live_state` attr exclusion | §4–§5, §9.1 |
 | `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts` | nested roster bridge | `meeting-participant-domain.md` |
 | `backend/src/app/gql/bridges/customer/AgendaItemBridge.ts` | nested agenda bridge | `agenda-item-domain.md` |
 | `backend/src/app/gql/bridges/customer/DecisionBridge.ts` | nested decision bridge | `decision-domain.md` |
@@ -396,6 +408,8 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 - `docs/platforms/backend/contracts/decision-domain.md`
 - `docs/platforms/backend/contracts/talk-record-domain.md`
 - `docs/platforms/backend/contracts/livekit-media-plane.md`
+- `docs/platforms/backend/contracts/meeting-realtime-socket.md`
+- `docs/platforms/backend/contracts/meeting-live-state.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/website/flow-customer-meetings.md`

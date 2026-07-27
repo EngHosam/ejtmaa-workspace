@@ -52,7 +52,7 @@ The gate runs **before** the auth branches; a wrong-host request never reaches a
 `boot.client` is shared. On an organization host:
 
 - `socket.prepareSocket` returns without creating a socket (see §4),
-- Meeting realtime is owned later by `useMeetingSocket` on the Meeting page (§5.1),
+- Meeting realtime is owned later by `useLiveMeeting` on the Meeting page (§5.1),
 - `global.setClientIsStarted` and pre-message display behave as on apex,
 - no customer permissions or `CUSTOMER_ME` load happens, because the server phase skipped them.
 
@@ -138,30 +138,53 @@ Config layout: root entry `configs/socket.ts` is the shared boot factory; `confi
 | `MPagesRoutes` | `params: { memberId: string; memberToken: string; meetingId: string }` |
 | Flags | `layout: "MEETING"`, `orgHostOnly: true`, `preLoadedPage` |
 | Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — `Box` with `semanticColor.pageBackground`, `minH="100vh"`; mapped in `MyApp.getLayout()` under `case "MEETING"` |
-| Page | `website/src/app/ui/pages/Meeting.tsx` — `useCurrentParams({ ident: "Meeting", mapParams: p => p })` + `useMeetingSocket({ memberId, memberToken, meetingId })`; temporary UI shows `connected` / `disconnected` |
-| Socket hook | `website/src/app/ui/components/meeting/hooks/useMeetingSocket.ts` (product hook under `components/meeting/`, **not** `ui/base/hooks`) |
+| Page | `website/src/app/ui/pages/Meeting.tsx` — `useCurrentParams({ ident: "Meeting", mapParams: p => p })`, renders `LiveMeetingProbeScreen` with the three params |
+| Screen | `website/src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` — temporary probe UI (§5.2) |
+| Live hook | `website/src/app/ui/components/meeting/hooks/useLiveMeeting.ts` (product hook under `components/meeting/`, **not** `ui/base/hooks`) |
 
 `Layout` in `website/src/types/extends/global.ts` includes the `"MEETING"` member; `PageRouteState` includes `orgHostOnly?: boolean`.
 
-### 5.1) Meeting socket session (`useMeetingSocket` + `/meeting`)
+### 5.1) Live meeting session (`useLiveMeeting` + `/meeting`)
 
-Meeting realtime is a **hook-owned** session on namespace `/meeting`, independent of the shared boot socket (§4).
+Meeting realtime is a **hook-owned** session on namespace `/meeting`, independent of the shared boot socket (§4). One hook owns the socket, the Yjs document, and the reactive store; there is no separate socket hook.
 
-`website/src/app/ui/components/meeting/hooks/useMeetingSocket.ts`:
+Dependencies: `yjs@13.6.27`, `@syncedstore/core@0.6.0`, `@syncedstore/react@0.6.0` (all exact-pinned, `yjs` matched to the backend copy).
 
-1. Gate on CSR readiness (`useClientPreparing`) and require `memberId`, `memberToken`, `meetingId`.
-2. `createSocketInstance(getMeetingSocketInstanceConfig(...))` with handshake query from `meeting-socket.ts` (§3).
-3. Expose `{ connected, socket }` immediately after create (socket may still be disconnected; `connected` is the readiness flag).
-4. Native `socket.on("connect")` → set `connected` and emit **`meeting.join`** with `{ meetingId, memberId, memberToken }`.
-5. Native `socket.on("disconnect")` → clear `connected`; if reason is `io server disconnect`, call `socket.connect()` (Socket.IO does not auto-reconnect after a server-forced drop).
-6. Open the session with `socket.connect()`.
-7. Cleanup on unmount / deps change: `off` → `disconnect` → clear state.
+`website/src/app/ui/components/meeting/hooks/useLiveMeeting.ts`:
 
-Backend pairing (`docs/platforms/backend/contracts/meeting-realtime-socket.md`): handshake auth is `MeetingAuthenticationIOMiddleware` (`meeting_auth`); connection joins `Rooms.MEETING(meetingId)` and returns `["meeting.join"]`; `MeetingJoinIOController` is log-only and returns `[]` (listener unbound until the next connection bind). Re-emit on `connect` is the supported re-join after reconnect.
+**Document bundle.** `createLiveMeetingDocBundle()` builds `syncedStore({ meeting: {} })` plus its `getYjsDoc(store)`. The bundle is held in a ref keyed by `meetingId` and rebuilt when that id changes, so a route param change cannot keep editing the previous meeting's document. `useSyncedStore(store, [store])` receives the store in its dependency list — without it the memoized proxy would keep pointing at the old document.
 
-**Not mirrored:** `meeting.join` is inbound client → server. Do not add it to `website/src/types/events.ts` / socket event registries.
+**Session binding** (`bindLiveMeetingSession`), after the CSR gate (`useClientPreparing`) and the `memberId` / `memberToken` / `meetingId` guard:
 
-Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/skills/meeting-realtime-socket/SKILL.md`.
+1. `createSocketInstance(getMeetingSocketInstanceConfig(...))` with the handshake query from `meeting-socket.ts` (§3).
+2. `doc.on("update")` → skip anything whose origin is `"remote"`, otherwise convert with `Y.convertUpdateFormatV1ToV2` and emit `meeting.live.update`. Local edits are always emitted, including before the first sync.
+3. `connect` → `connected = true` and emit `meeting.live.sync` with the local `Y.encodeStateVector`.
+4. `meeting.live.sync` reply → apply `update` when present, then answer the server's `stateVector` with `Y.encodeStateAsUpdateV2(doc, vector)` so anything edited offline is pushed back; clear `error` and set `synced`.
+5. `meeting.live.update` → apply with origin `"remote"` so the change is not echoed back.
+6. `meeting.live.error` → store the code and clear `synced`, which locks the UI until the next `connect` re-runs the handshake.
+7. `disconnect` → clear `connected` and `synced`; on `io server disconnect` call `socket.connect()` (Socket.IO does not auto-reconnect after a server-forced drop).
+8. Cleanup on unmount / deps change: `doc.off`, unregister the three listeners, `off` the native events, `disconnect`, reset state.
+
+Hook output: `{ connected, synced, error, meeting, batch }`. `meeting` is the reactive `Partial<LiveMeetingFields>` proxy; `batch(fn)` is `doc.transact(fn)` and is the only sanctioned way to write. `LiveMeetingFields` types `type` and `status` with the generated `_MeetingTypeValue` / `_MeetingStatusValue`, so the live document cannot drift from the GraphQL enums.
+
+Base64 helpers (`toBase64` / `fromBase64`) are local to the hook because the payloads travel as base64 strings on the socket.
+
+Backend pairing (`docs/platforms/backend/contracts/meeting-realtime-socket.md`): `meeting_auth` proves the handshake, the connection controller joins `Rooms.MEETING(meetingId)` and keeps both live events bound, and a rejected write answers `meeting.live.error` without unbinding anything.
+
+**Not mirrored:** `meeting.live.*` are session events of this namespace. Do not add them to `website/src/types/events.ts` / socket event registries.
+
+Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/rules/meeting-live-state.mdc`, `.cursor/skills/meeting-realtime-socket/SKILL.md`.
+
+### 5.2) Probe screen (temporary)
+
+`website/src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` is a **verification tool**, not the meeting product UI. It exists to prove the sync path end to end and is replaced when the real meeting page lands.
+
+- Status line: `rejected · <code>` when `error` is set (in `semanticColor.stateError`), else `disconnected` / `connected · syncing` / `synced`.
+- One `ProbeText` for `subject`, two `ProbeChoice` selects for `type` and `status`, whose options come from `Object.values(_MeetingTypeValue)` / `_MeetingStatusValue` — no hand-written label lists.
+- Every field is disabled until `synced`, dimmed with the `opc` shorthand, and writes through `batch(() => { meeting.field = value })`.
+- Chrome is a shared `fieldStyle` object on `ElementStyles.inputReset` with `semanticColor` / `semanticDims` tokens only; no literal colors or sizes.
+
+It is deliberately **not** a registered form: no `Forms` entry, no `FormScreen`, no requester submit. The website form contract (`flow-form-foundation.md`) does not apply because nothing is submitted — edits go to the CRDT document.
 
 ## 6) Backend surfaces
 
@@ -209,8 +232,9 @@ What the website side depends on:
 
 - namespace `/meeting`, registered in `backend/src/resources/configs/socket/io.ts` with `globalMiddlewares: ["meeting_auth"]`,
 - `MeetingAuthenticationIOMiddleware` proves member token + meeting + roster row + `ACTIVE` organization before any controller runs, so a refused handshake surfaces as a connect error, not a partial session,
-- `MeetingConnectionIOController` joins `Rooms.MEETING(meetingId)` and binds `["meeting.join"]`,
-- `MeetingJoinIOController` returns `[]`, so the client must re-emit `meeting.join` on every `connect` (§5.1).
+- `MeetingConnectionIOController` joins `Rooms.MEETING(meetingId)` and binds `["meeting.live.sync", "meeting.live.update"]`,
+- the live controllers keep that set bound on every reply, including rejections, so the client only has to re-run the sync handshake on `connect` (§5.1),
+- writes are refused unless the meeting status is `WAITING_TO_START` or `STARTED`, answered as `meeting.live.error` with code `MEETING_NOT_LIVE`.
 
 ## 7) Failure modes
 
@@ -223,16 +247,20 @@ What the website side depends on:
 | Apex request to `/meeting/...` | route gate → `Error` `404` |
 | Organization-host request to any non-`orgHostOnly` route (`/`, `/login`, `/customer/*`) | route gate → `Error` `404` |
 | Socket `/meeting` handshake missing ids, bad token, org mismatch, or no roster row | `NOT_VALID_CREDENTIAL` |
+| Live write on a meeting that is not `WAITING_TO_START` / `STARTED` | `meeting.live.error` `MEETING_NOT_LIVE` → probe shows `rejected · MEETING_NOT_LIVE` and locks the fields |
+| Malformed live payload | `meeting.live.error` `NOT_VALID` → same lock; the next `connect` re-syncs |
+| Route params change to another meeting | the hook drops the old document and store and opens a fresh session (§5.1) |
 
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
-2. **`Meeting` UI is a connection-status probe only** (`connected` / `disconnected` text). No meeting content, media, or participant UX ships yet.
-3. **`MeetingJoinIOController` is log-only** and returns `[]`, so `meeting.join` is one-shot per connection until reconnect re-binds it via `MeetingConnectionIOController`.
+2. **`Meeting` UI is a sync probe only** (§5.2): status text plus three raw fields. No meeting content, media, agenda, or participant UX ships yet.
+3. **Only three fields are collaborative** — `subject`, `type`, `status`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
-6. **`meeting.join` is not mirrored** into frontend event registries — it is inbound only. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
+6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
 7. **Organization-host pages other than `Meeting` have no realtime channel.** A tenant-wide org socket is not part of the shipped surface.
+8. **No participant-type gate on the client or the server.** Any roster member of a live meeting can edit the document (`../backend/contracts/meeting-realtime-socket.md` §4).
 
 ## 9) Environment
 
@@ -264,8 +292,11 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/store/reduces/index.ts` | slice registration + `MDefaultStoreState` | §3 |
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
-| `src/app/ui/pages/Meeting.tsx` | params + `useMeetingSocket`; temporary connected status UI | §5, §5.1 |
-| `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | hook-owned `/meeting` session + `meeting.join` + reconnect | §5.1 |
+| `src/app/ui/pages/Meeting.tsx` | params → `LiveMeetingProbeScreen` | §5, §5.2 |
+| `src/app/ui/components/meeting/hooks/useLiveMeeting.ts` | hook-owned `/meeting` session, Yjs document, SyncedStore, `meeting.live.*` | §5.1 |
+| `src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` | temporary sync probe UI | §5.2 |
+| `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — socket-only hook absorbed into `useLiveMeeting` | §5.1 |
+| `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
 | `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout | §5 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
 | `src/resources/configs/customer/formRoute.ts` | nested `params` href builders without `as To` | `route-registry-contract.md` §3.1 |
@@ -290,8 +321,13 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/http/middlewares/index.ts` | `org_host` registration | §6.2 |
 | `src/app/socket/middlewares/AuthenticationIOMiddleware.ts` | actor handshake `token` + `SocketData` for `/customer`, `/supervisor` | `../backend/contracts/meeting-realtime-socket.md` §2 |
 | `src/app/socket/middlewares/MeetingAuthenticationIOMiddleware.ts` | `/meeting` handshake + `MeetingSocketData` + `current*` helpers | `../backend/contracts/meeting-realtime-socket.md` §2 |
-| `src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | join `Rooms.MEETING`; return `["meeting.join"]` | `../backend/contracts/meeting-realtime-socket.md` §3 |
-| `src/app/socket/controllers/meeting/MeetingJoinIOController.ts` | log-only `meeting.join`; return `[]` | `../backend/contracts/meeting-realtime-socket.md` §3, §6 |
+| `src/app/socket/controllers/meeting/MeetingIOControllerBase.ts` | shared socket typing, bound-event set, `rejectLive` | `../backend/contracts/meeting-realtime-socket.md` §3 |
+| `src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | join `Rooms.MEETING`; bind the live event set | `../backend/contracts/meeting-realtime-socket.md` §3 |
+| `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | sync handshake + server state vector | `../backend/contracts/meeting-realtime-socket.md` §3.1 |
+| `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | validation, status gate, apply, room broadcast | `../backend/contracts/meeting-realtime-socket.md` §3.2 |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | live document registry + BLOB persistence | `../backend/contracts/meeting-live-state.md` §2 |
+| `src/app/orm/models/Meeting.ts` | `live_state` column + live document statics | `../backend/contracts/meeting-live-state.md` §1 |
+| `src/app/gql/bridges/customer/MeetingBridge.ts` | `live_state` excluded from GQL attrs | `../backend/contracts/meeting-live-state.md` §4 |
 | `src/resources/configs/socket/io.ts` | `/meeting` namespace + `meeting_auth` + meeting controllers | `../backend/contracts/meeting-realtime-socket.md` §1 |
 | `src/resources/consts/NotificationsConsts.ts` | `MEETING` namespace / FCM / room | `../backend/contracts/meeting-realtime-socket.md` §4 |
 | `.env.example` | `TEST_ORGANIZATION_ID=1` | §9 |
@@ -302,6 +338,7 @@ Every path that implements this contract, with the section that describes it.
 |---|---|
 | `.cursor/rules/organization-host-routing.mdc` | host mode, route gate, transport identification |
 | `.cursor/rules/meeting-realtime-socket.mdc` | Meeting session placement, hook contract, backend pairing |
+| `.cursor/rules/meeting-live-state.mdc` | CRDT document ownership, V2 codec, BLOB exposure |
 | `.cursor/rules/nodejs-socket-namespace-registration.mdc` | namespace / controller / room registration |
 | `.cursor/rules/nodejs-socket-handler-contract.mdc` | connection return = absolute listener set |
 | `.cursor/rules/socket-event-mirroring.mdc` | outbound mirror scope |
@@ -312,21 +349,25 @@ Every path that implements this contract, with the section that describes it.
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` shows temporary connected/disconnected status on `MEETING` layout; `/customer/...` renders `Error` `404`.
-- Socket: organization host opens **no** boot socket; Meeting page opens `/meeting` via `useMeetingSocket`, joins `meeting-{id}`, and emits `meeting.join` (server log); apex authed customer still connects to `/customer`.
-- Forced server disconnect: client reconnects via `useMeetingSocket` and re-emits `meeting.join`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` renders the probe on the `MEETING` layout; `/customer/...` renders `Error` `404`.
+- Socket: organization host opens **no** boot socket; the Meeting page opens `/meeting` via `useLiveMeeting`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.
+- Two browsers on the same live meeting: an edit in one reaches the other, and the status line reads `synced` on both.
+- Forced server disconnect: the client reconnects and re-runs the sync handshake; edits made while disconnected survive because the client answers the server state vector.
+- Meeting outside `WAITING_TO_START` / `STARTED`: editing shows `rejected · MEETING_NOT_LIVE` and the fields lock.
 
 ## 12) Related
 
 - `docs/platforms/website/ssr-boot-and-startup.md` — boot phases
 - `docs/platforms/website/route-registry-contract.md` §3.1, §5.4 — nested params + organization-host route block
 - `docs/platforms/backend/contracts/client-portal-http-website.md` — `/website` mount contract
-- `docs/platforms/backend/contracts/meeting-realtime-socket.md` — `/meeting` namespace, handshake auth, rooms
-- `docs/platforms/backend/modules/runtime-integrations.md` §5 — socket namespaces, rooms, `meeting.join`
+- `docs/platforms/backend/contracts/meeting-realtime-socket.md` — `/meeting` namespace, handshake auth, rooms, `meeting.live.*`
+- `docs/platforms/backend/contracts/meeting-live-state.md` — CRDT document, `live_state` BLOB, deferred column apply
+- `docs/platforms/backend/modules/runtime-integrations.md` §5 — socket namespaces, rooms, live events
 - `docs/platforms/backend/modules/nodejs-socket-library.md` §10 — `/meeting` child events
 - `docs/invariants/website.md` W58
 - `docs/invariants/backend.md` B24
 - `.cursor/rules/organization-host-routing.mdc`
 - `.cursor/rules/meeting-realtime-socket.mdc`
+- `.cursor/rules/meeting-live-state.mdc`
 - `.cursor/rules/website-mpages-routes-params-contract.mdc`
 - `.cursor/skills/meeting-realtime-socket/SKILL.md`

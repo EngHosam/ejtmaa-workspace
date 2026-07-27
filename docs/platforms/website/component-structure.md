@@ -58,6 +58,7 @@ Shipped groups:
 | Customer members | `customer/members/*`, `customer/hooks/useCustomerMembers` |
 | Customer meetings | `customer/meetings/*` (screens, rows, cards), `customer/hooks/useCustomerMeetings` |
 | Customer form modals | `customer/modals/*` (`MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal` — registered; see `flow-form-foundation.md` §3.8b) |
+| Live meeting (organization host) | `meeting/LiveMeetingProbeScreen` (temporary probe), `meeting/hooks/useLiveMeeting` — `organization-host-routing.md` §5.1, §5.2 |
 
 Planned groups (target contract):
 
@@ -91,7 +92,7 @@ Thin route entry components bound to route identifiers.
 
 Shipped public/auth: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
 
-Organization host: `Meeting` (route + layout shell only — `organization-host-routing.md` §5).
+Organization host: `Meeting` (route + layout shell; renders the temporary live-sync probe — `organization-host-routing.md` §5, §5.2).
 
 Customer workspace: shipped `CustomerHome` command map, members directory + form, meetings directory + create form + details, organization settings, message channels directory, message templates directory. Planned: subscription, notifications, static info, support, bottom bar.
 

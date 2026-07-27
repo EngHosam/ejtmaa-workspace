@@ -212,8 +212,8 @@ event aliases that must be bound to that socket from now on.
 async handle() {
     // ...
     return [
-        "meeting.join",
-        "meeting.leave"
+        "meeting.live.sync",
+        "meeting.live.update"
     ];
 }
 ```
@@ -306,16 +306,15 @@ env `IO_PORT` / `INSTALL_IO_PORT`, `HTTPS` toggle, `transports: ["websocket"]`).
 |---|---|---|---|---|
 | `/customer` | `auth` | `ConnectionIOController` | `Rooms.CUSTOMER(customerId)` | none (`return []`) |
 | `/supervisor` | `auth` | `ConnectionIOController` | `Rooms.ALL_SUPERVISORS` | none (`return []`) |
-| `/meeting` | `meeting_auth` | `MeetingConnectionIOController` | `Rooms.MEETING(meetingId)` | `meeting.join` → `meeting_join` |
+| `/meeting` | `meeting_auth` | `MeetingConnectionIOController` | `Rooms.MEETING(meetingId)` | `meeting.live.sync` → `meeting_live_sync`, `meeting.live.update` → `meeting_live_update` |
 
 `/customer` and `/supervisor` connection controllers still return `[]`.
 
-`/meeting` connection returns `["meeting.join"]`, which binds the child route declared in the same namespace. Controller alias `meeting_join` resolves to
-`backend/src/app/socket/controllers/meeting/MeetingJoinIOController.ts`.
+`/meeting` connection returns both live aliases, which binds the child routes declared in the same namespace.
 
-`MeetingJoinIOController.handle()` currently **logs only** (`console.log` of `socketId`, `organizationId` via `currentOrganization`, `args`) and returns `[]`. Because the handler-array return is absolute (§7), that **unbinds** `meeting.join` after the first successful handle on that socket. A later `meeting.join` on the **same** connection will not fire until the socket reconnects and `MeetingConnectionIOController` binds the alias again. Re-join from the website is owned by `useMeetingSocket` on `connect` (see `docs/platforms/backend/contracts/meeting-realtime-socket.md` §3 and `docs/platforms/website/organization-host-routing.md` §5.1).
+Every `/meeting` controller extends `backend/src/app/socket/controllers/meeting/MeetingIOControllerBase.ts`, which holds the bound-event tuple in one place and exposes `meetingBoundEvents({ only?, except? })`. Because the handler-array return is absolute (§7), each handler returns that same set — including the rejection path `rejectLive(code)`, which emits `meeting.live.error` and still returns the full set so a refused write never leaves the socket inert. Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md` §3.
 
-Meeting domain controllers live under `backend/src/app/socket/controllers/meeting/`. Register every new meeting event in `io.ts` (`controllers` + `/meeting` `routes`) with a dotted event name (`meeting.*`) for clean extension (`meeting.leave`, …).
+Meeting domain controllers live under `backend/src/app/socket/controllers/meeting/`. Register every new meeting event in `io.ts` (`controllers` + `/meeting` `routes`) with a dotted event name (`meeting.*`) and add it to the base tuple so it stays bound.
 
 `AuthenticationIOMiddleware` (`backend/src/app/socket/middlewares/AuthenticationIOMiddleware.ts`)
 is token-only for actor namespaces: a `token` header/query resolves the customer or supervisor actor and sets
@@ -403,8 +402,10 @@ Do not hand-edit `lib/` — it is Babel output.
 | `backend/src/resources/configs/socket/index.ts` | §2, §11 |
 | `backend/src/resources/configs/socket/io.ts` | §3, §9, §10 |
 | `backend/src/app/socket/controllers/ConnectionIOController.ts` | §8, §10 |
+| `backend/src/app/socket/controllers/meeting/MeetingIOControllerBase.ts` | §10 |
 | `backend/src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | §10 |
-| `backend/src/app/socket/controllers/meeting/MeetingJoinIOController.ts` | §10 |
+| `backend/src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | §10 |
+| `backend/src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | §10 |
 | `backend/src/app/socket/middlewares/AuthenticationIOMiddleware.ts` | §10 |
 | `backend/src/app/socket/middlewares/MeetingAuthenticationIOMiddleware.ts` | §10 |
 | `backend/src/resources/consts/NotificationsConsts.ts` | §10 |

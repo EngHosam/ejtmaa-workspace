@@ -90,8 +90,8 @@ Provider config: `backend/src/resources/configs/gql/index.ts`
 Config: `backend/src/resources/configs/socket/io.ts`
 - Namespaces: `/customer`, `/supervisor` (actor `auth`), `/meeting` (`meeting_auth` — member token + meeting roster)
 - Outbound events: `OnUserEvent` (supervisor broadcast), `OnCustomerEvent` (per-customer)
-- Inbound event: `meeting.join` on `/meeting` (`MeetingJoinIOController`)
-- Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`; `docs/platforms/backend/modules/runtime-integrations.md` §5
+- Inbound events: `meeting.live.sync`, `meeting.live.update` on `/meeting` (collaborative Yjs document; rejection replies on `meeting.live.error`)
+- Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`; state plane: `docs/platforms/backend/contracts/meeting-live-state.md`; `docs/platforms/backend/modules/runtime-integrations.md` §5
 
 ## 5) Related docs
 
