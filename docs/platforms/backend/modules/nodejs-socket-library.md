@@ -213,7 +213,8 @@ async handle() {
     // ...
     return [
         "meeting.live.sync",
-        "meeting.live.update"
+        "meeting.live.update",
+        "disconnect"
     ];
 }
 ```
@@ -306,11 +307,11 @@ env `IO_PORT` / `INSTALL_IO_PORT`, `HTTPS` toggle, `transports: ["websocket"]`).
 |---|---|---|---|---|
 | `/customer` | `auth` | `ConnectionIOController` | `Rooms.CUSTOMER(customerId)` | none (`return []`) |
 | `/supervisor` | `auth` | `ConnectionIOController` | `Rooms.ALL_SUPERVISORS` | none (`return []`) |
-| `/meeting` | `meeting_auth` | `MeetingConnectionIOController` | `Rooms.MEETING(meetingId)` | `meeting.live.sync` → `meeting_live_sync`, `meeting.live.update` → `meeting_live_update` |
+| `/meeting` | `meeting_auth` | `MeetingConnectionIOController` | `Rooms.MEETING(meetingId)` | `meeting.live.sync` → `meeting_live_sync`, `meeting.live.update` → `meeting_live_update`, `disconnect` → `meeting_disconnect` (`once`) |
 
 `/customer` and `/supervisor` connection controllers still return `[]`.
 
-`/meeting` connection returns both live aliases, which binds the child routes declared in the same namespace.
+`/meeting` connection returns the live aliases plus `disconnect`, which binds the child routes declared in the same namespace.
 
 Every `/meeting` controller extends `backend/src/app/socket/controllers/meeting/MeetingIOControllerBase.ts`, which holds the bound-event tuple in one place and exposes `meetingBoundEvents({ only?, except? })`. Because the handler-array return is absolute (§7), each handler returns that same set — including the rejection path `rejectLive(code)`, which emits `meeting.live.error` and still returns the full set so a refused write never leaves the socket inert. Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md` §3.
 

@@ -17,7 +17,8 @@ Meeting domain model: `docs/platforms/backend/contracts/meeting-domain.md`.
 - controller `"meeting_connection"` → `controllers/meeting/MeetingConnectionIOController`,
 - controller `"meeting_live_sync"` → `controllers/meeting/MeetingLiveSyncIOController`,
 - controller `"meeting_live_update"` → `controllers/meeting/MeetingLiveUpdateIOController`,
-- namespace `/meeting` with `globalMiddlewares: ["meeting_auth"]`, `connection: "meeting_connection"`, child routes `"meeting.live.sync": "meeting_live_sync"` and `"meeting.live.update": "meeting_live_update"`.
+- controller `"meeting_disconnect"` → `controllers/meeting/MeetingDisconnectIOController`,
+- namespace `/meeting` with `globalMiddlewares: ["meeting_auth"]`, `connection: "meeting_connection"`, child routes `"meeting.live.sync": "meeting_live_sync"`, `"meeting.live.update": "meeting_live_update"`, and `disconnect: ["meeting_disconnect", {}, "once"]`.
 
 Driver options are namespace-agnostic: `transports: ["websocket"]`, no `maxHttpBufferSize` override (§6.3).
 
@@ -45,7 +46,7 @@ Public organization identification (the HTTP `organizationId` header, the option
 All three meeting controllers extend `backend/src/app/socket/controllers/meeting/MeetingIOControllerBase.ts`, which owns:
 
 - the `MeetingSocketData` socket typing (declared once instead of per controller),
-- `MEETING_BOUND_EVENTS = ["meeting.live.sync", "meeting.live.update"]` — the absolute listener set,
+- `MEETING_BOUND_EVENTS = ["meeting.live.sync", "meeting.live.update", "disconnect"]` — the absolute listener set,
 - `meetingBoundEvents({ only? , except? })` — the set, optionally narrowed,
 - `rejectLive(code)` — emits `meeting.live.error` to the caller and returns the **unchanged** set, so a rejection never unbinds the session.
 
@@ -54,8 +55,9 @@ All three meeting controllers extend `backend/src/app/socket/controllers/meeting
 | `MeetingConnectionIOController` | connection | joins `Rooms.MEETING(meetingId)` via `currentMeeting(socket, true)` | `meetingBoundEvents()` |
 | `MeetingLiveSyncIOController` | `meeting.live.sync` | loads the registry document and answers the caller with the diff it is missing plus the server state vector | `meetingBoundEvents()` |
 | `MeetingLiveUpdateIOController` | `meeting.live.update` | validates, gates on status, applies to the document, broadcasts to the rest of the room | `meetingBoundEvents()` |
+| `MeetingDisconnectIOController` | `disconnect` (`once`) | Socket.IO native disconnect; temporary probe log of meeting/member/reason | `[]` (no listeners remain on a closed socket; post-handler sync is skipped when already disconnected) |
 
-Because the handler-array return is absolute, every meeting handler returns the full set; nothing in this surface intentionally drops a listener.
+Because the handler-array return is absolute, every live meeting handler returns the full set; nothing in this surface intentionally drops a listener while the socket is open. `MeetingDisconnectIOController` returns `[]` because the socket is closing.
 
 Room joins happen in the connection controller only.
 
@@ -163,10 +165,9 @@ Payloads are base64, which inflates the binary by roughly one third. The effecti
 | `src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | room join + bound listener set |
 | `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | sync handshake, server state vector, full-state fallback |
 | `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | payload validation, status gate, apply, room broadcast |
+| `src/app/socket/controllers/meeting/MeetingDisconnectIOController.ts` | Socket.IO `disconnect` (`once`); temporary probe log |
 | `src/app/helpers/MeetingLiveDocHelper.ts` | document registry behind both live controllers (`meeting-live-state.md` §2) |
 | `src/resources/consts/NotificationsConsts.ts` | `MEETING` namespace / FCM topic / room |
-
-Removed in this change set: `src/app/socket/controllers/meeting/MeetingJoinIOController.ts` (log-only `meeting.join` probe) together with its `meeting_join` alias and route key.
 
 ## 9) Related
 
