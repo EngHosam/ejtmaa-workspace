@@ -98,7 +98,7 @@ Client contract (`useMeetingLiveInstance` via `MeetingLiveProvider`):
 | `meeting.live.error` | store the code, clear `synced` (listeners stay bound on the server) |
 | Handshake refuse (`meeting_auth` → `NOT_VALID_CREDENTIAL`) | Socket.IO `connect_error` (no `meeting.live.error`). Website maps non-`TransportError` to session `error = "NOT_VALID"`, disables reconnection, and disconnects so UI linking becomes `FAILED`. Transport-only `connect_error` stays PENDING and keeps retrying. |
 
-Product UI reads linking via `useMeetingLiveSession().stages.linking` (`organization-host-routing.md` §5.3).
+Product UI reads linking via `useMeetingLiveSession().linking` under `MeetingLiveSessionProvider` (`organization-host-routing.md` §5.3).
 
 ### 3.4 Mirroring
 

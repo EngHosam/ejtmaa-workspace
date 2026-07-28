@@ -6,9 +6,9 @@ description: >-
   MeetingAuthenticationIOMiddleware and the Yjs live document. Use when adding
   or fixing socket session, sync/reconnect, connect_error vs meeting.live.error,
   MeetingIOControllerBase, live sync/update controllers, MeetingLiveDocHelper,
-  live_state persistence, or meeting-socket config. For stages/can/actions or
-  linking gate UI, use skill website-meeting-live-session. For READY shell
-  drawer/header IA, use skill website-meeting-shell.
+  live_state persistence, or meeting-socket config. For linking/can/actions/
+  meeting/me or linking gate UI, use skill website-meeting-live-session. For
+  READY shell drawer/header IA, use skill website-meeting-shell.
 ---
 
 # Meeting realtime socket (`meeting.live.*` on `/meeting`)
@@ -19,7 +19,7 @@ description: >-
 - Adding a new `/meeting` event or a new field to the live document.
 - Debugging edits that do not propagate, handshake FAILED vs transport retry, a rejected write, duplicate sockets, or state lost after a reconnect.
 - Touching `live_state` persistence or the live document registry.
-- **Not** for product stages/can/actions or `MeetingLinkingScreen` — use `.cursor/skills/website-meeting-live-session/SKILL.md`.
+- **Not** for product linking/can/actions/meeting/me or `MeetingLinkingScreen` — use `.cursor/skills/website-meeting-live-session/SKILL.md`.
 - **Not** for READY shell drawer tiles / header request-to-speak — use `.cursor/skills/website-meeting-shell/SKILL.md`.
 
 ## Read first
@@ -78,4 +78,4 @@ description: >-
 - No participant trust assumed from optional handshake `organizationId` alone.
 - No writing meeting SQL columns from a socket controller (`meeting-live-state.md` §6).
 - Meeting realtime lives only on `/meeting`.
-- No product `stages` / `can` / `actions` math inside the transport module.
+- No product linking / can / actions math inside the transport module.

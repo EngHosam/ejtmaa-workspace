@@ -16,11 +16,11 @@ Participant type permissions: `docs/platforms/backend/contracts/meeting-particip
 
 ## When the shell mounts
 
-`MeetingShell` renders header / drawer / footer / children only when `stages.linking === "READY"`. Do not assume drawer/header run during PENDING or FAILED.
+`MeetingShell` renders header / drawer / footer / children only when `linking === "READY"`. Do not assume drawer/header run during PENDING or FAILED.
 
 ## Drawer tiles (role IA)
 
-Role from `useMeetingLiveMe().type` (`CHAIRPERSON` vs other).
+Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 
 | Role | Tiles (order) |
 |---|---|

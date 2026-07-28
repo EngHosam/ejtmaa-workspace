@@ -1,8 +1,8 @@
 ---
-description: MeetingLiveSession product surface — stages/can/actions, linking gate, MeetingLinkingScreen patterns
+description: MeetingLiveSession product surface — provider under MeetingLiveProvider, linking/can/actions/meeting/me, linking gate
 globs:
   - website/src/app/ui/components/meeting/meetingLiveSession.ts
-  - website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.ts
+  - website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx
   - website/src/app/ui/components/meeting/MeetingLinkingScreen.tsx
   - website/src/app/ui/layouts/MeetingLayout.tsx
 alwaysApply: false
@@ -15,25 +15,34 @@ Transport / `connect_error`: `.cursor/rules/meeting-realtime-socket.mdc`.
 
 ## Public surface
 
-- Product UI under `MeetingLiveProvider` consumes **`useMeetingLiveSession()`** → `{ stages, can, actions }`.
-- Pure `resolveMeetingLiveSession` returns **`MeetingLiveSessionState`** (`stages` + `can` only). Actions stay in the hook (`batch` + proxies).
-- Do **not** reintroduce split public hooks/modules for capabilities or stages alone.
-- Keep `useMeetingLive()` for CRDT/`batch`/raw transport flags; do not re-derive linking or action gates in screens.
+- Layout mounts **`MeetingLiveProvider` → `MeetingLiveSessionProvider` → shell**.
+- Product UI consumes **`useMeetingLiveSession()`** (context reader) → `{ linking, can, actions, meeting, me }`.
+- Pure `resolveMeetingLiveSession` returns **`MeetingLiveSessionState`** (`linking` + `can` only). Instance inside the session provider adds `actions`, `meeting`, `me` **once** for the tree.
+- `MeetingLiveLinking` = `"PENDING" | "READY" | "FAILED"` — the **only** derived session enum. Do not reintroduce remapped meeting/me stage enums.
+- Do **not** reintroduce a nested `stages` object, re-resolve session in every screen, or fold session into `MeetingLiveProvider`.
+- Keep `useMeetingLive()` for raw transport flags and for `batch` when **implementing** a new action. Do not re-derive linking or action gates in screens.
+
+## Write contract
+
+- `meeting` / `me` on session are **read** proxies for product UI — do not assign fields from screens.
+- Product writes go **only** through `actions.*` (each checks `can.*`, then uses `batch` internally).
+- Do **not** put `batch` on the session return value. New collaborative writes = new `actions` + `can` entry.
 
 ## Linking
 
-| Stage | Meaning |
+| Value | Meaning |
 |---|---|
 | `PENDING` | Not ready, no session `error` (includes transport-only reconnect) |
 | `READY` | `connected && synced`, no error |
 | `FAILED` | `error != null` |
 
-When `linking !== "READY"`: `meeting`/`me` stages are `null` and every `can.*` is false.
+When `linking !== "READY"`: every `can.*` is false. Session value still includes `meeting` / `me`; shell does not mount product chrome.
 
 `MeetingShell` must show **only** `MeetingLinkingScreen` until READY — no header/drawer/footer/page children. READY shell drawer/header IA: `.cursor/rules/website-meeting-shell.mdc`.
 
 ## Gate UI patterns
 
+- MeetingLinkingScreen reads `linking` from `useMeetingLiveSession()` — no `linking` prop from the layout.
 - PENDING loading: project **`Loadable`** — never invent a custom spinner.
 - FAILED: `FiAlertCircle` + `semanticColor.stateError`.
 - Org identity: show **logo and name when both exist** (not XOR).

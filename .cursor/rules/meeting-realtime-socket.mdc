@@ -14,7 +14,7 @@ alwaysApply: false
 # Meeting realtime socket (`/meeting`)
 
 Applies to **transport + document binding** on both sides of the Meeting session.
-Product stages / can / actions / linking gate UI: `.cursor/rules/website-meeting-live-session.mdc`.
+Product linking / can / actions / meeting / me / linking gate UI: `.cursor/rules/website-meeting-live-session.mdc`.
 Document/state rules (Yjs, `live_state`, registry): `.cursor/rules/meeting-live-state.mdc`.
 
 Authority: `docs/platforms/backend/contracts/meeting-realtime-socket.md`, `docs/platforms/website/organization-host-routing.md` §5.1–§5.2.
@@ -35,8 +35,8 @@ Authority: `docs/platforms/backend/contracts/meeting-realtime-socket.md`, `docs/
 | `useMeetingLiveInstance(data)` | Private transport owner (socket + Yjs + SyncedStore). Call **only** inside `MeetingLiveProvider`. |
 | `MeetingLiveProvider` | Reads `Meeting` route params; calls the instance once; publishes `MeetingLiveHookOp`. |
 | `useMeetingLive()` | Public context reader (default export). No args. Empty default outside the provider. Low-level `connected` / `synced` / `error` / `meeting` / `batch`. |
-| `useMeetingLiveMe()` | Current route member's `meeting.participants[memberId]` SyncedStore proxy (or `undefined`). Must not clone — mutate via `batch`. |
-| `useMeetingLiveSession()` | Product surface — owned by `.cursor/rules/website-meeting-live-session.mdc`. |
+| `useMeetingLiveMe()` | Current route member's `meeting.participants[memberId]` SyncedStore proxy (or `undefined`). Index helper for session `me`; product UI prefers `useMeetingLiveSession().me`. Must not clone. |
+| `useMeetingLiveSession()` | Product context reader — `{ linking, can, actions, meeting, me }` under `MeetingLiveSessionProvider` (nested under `MeetingLiveProvider`). Owned by `.cursor/rules/website-meeting-live-session.mdc`. |
 
 ## Events
 
@@ -78,7 +78,7 @@ A new meeting event is added in three places at once: `io.ts` (`controllers` + `
 
 Credentials for the instance come from `MeetingLiveProvider` via `useCurrentParams({ ident: "Meeting", mapParams: p => p })`.
 
-Handshake auth failures are **`connect_error`**, never `meeting.live.error`. Linking stage UI is derived in `useMeetingLiveSession` from `error` / connected / synced.
+Handshake auth failures are **`connect_error`**, never `meeting.live.error`. Linking UI is derived in `useMeetingLiveSession` from `error` / connected / synced.
 
 ## Forbidden
 
@@ -93,4 +93,4 @@ Handshake auth failures are **`connect_error`**, never `meeting.live.error`. Lin
 - Keeping the live module as `.ts` while it exports JSX provider markup (must be `.tsx`).
 - Stopping Socket.IO reconnection on transport-only `connect_error` (`TransportError`).
 - Leaving auth handshake `connect_error` without setting session `error` (UI would stick on PENDING).
-- Encoding product stages / can / actions inside `useMeetingLive` — that belongs in `meetingLiveSession` / `useMeetingLiveSession`.
+- Encoding product linking / can / actions math inside `useMeetingLive` — that belongs in `meetingLiveSession` / `useMeetingLiveSession`.

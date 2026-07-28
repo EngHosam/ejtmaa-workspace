@@ -4,7 +4,7 @@ description: >-
   Ships or extends the organization-host Meeting shell IA: role-based drawer
   tiles (chair vs member/viewer), full-row live tile, disabled placeholders,
   and header request-to-speak for non-chair. Use when editing MeetingDrawerPanel,
-  MeetingHeader, or MeetingLayout READY chrome. For linking stages/can/actions
+  MeetingHeader, or MeetingLayout READY chrome. For linking/can/actions/meeting/me
   use website-meeting-live-session; for socket/Yjs use meeting-realtime-socket.
 ---
 
@@ -28,11 +28,11 @@ description: >-
 ## Instructions
 
 1. Mount header/drawer only under READY shell (`MeetingLayout` / `MeetingShell`). Do not render them on the linking gate.
-2. Derive tile set from `useMeetingLiveMe().type`: chairperson gets live + talkQueue + attendance + agenda + decisionsAndVote; member and viewer get live + agenda + decisionsAndVote.
+2. Derive tile set from `useMeetingLiveSession().me?.type`: chairperson gets live + talkQueue + attendance + agenda + decisionsAndVote; member and viewer get live + agenda + decisionsAndVote.
 3. Never add a participants / role-admin tile.
 4. Keep `live` full-row (`wide` → `gridColumn: 1 / -1`).
 5. New tiles stay `available={false}` until that product surface ships.
-6. Request-to-speak lives in `MeetingHeader` for MEMBER and VIEWER only (mic + `requestTalk`; accessible name `requestTalkAria`). No switch track. Chairperson uses drawer `talkQueue`.
+6. Request-to-speak lives in `MeetingHeader` for MEMBER and VIEWER only (mic + `requestTalk`; accessible name `requestTalkAria`). No switch track. Chairperson uses drawer `talkQueue`. Read `me` from `useMeetingLiveSession()`.
 7. Colors from `OrganizationColors` / `defaultOrganizationColors()`. Style props: `buttonReset` in `baseCssStyle`; behavioral CSS in `cssStyle`.
 8. Copy under `ui.layouts.meetingLayout.drawer` and `.header` (ar + en, identical keys).
 9. Verify with `yarn type-check` in `website/`.

@@ -292,8 +292,8 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | Host classification (`resolveRequestHost`) + `extendMyInstance` | `organization-host-routing.md` §2 |
 | Boot split (`organizationHost.start` before apex start) | `organization-host-routing.md` §1.1; `ssr-boot-and-startup.md` §2, §5 |
 | `organizationHost` store slice + `organizationId` HTTP header; Meeting handshake query | `organization-host-routing.md` §3 |
-| `orgHostOnly` route gate + `Meeting` route/layout + `MeetingLiveProvider` / `useMeetingLive` / `useMeetingLiveSession` | `organization-host-routing.md` §1.2, §5, §5.1, §5.3; `route-registry-contract.md` §3.1, §5.4; invariant W58 |
-| Live meeting document (Yjs + SyncedStore) + `useMeetingLiveMe` + linking gate | `organization-host-routing.md` §5.1, §5.2, §5.3; `../backend/contracts/meeting-live-state.md` |
+| `orgHostOnly` route gate + `Meeting` route/layout + `MeetingLiveProvider` / `MeetingLiveSessionProvider` / `useMeetingLive` / `useMeetingLiveSession` | `organization-host-routing.md` §1.2, §5, §5.1, §5.3; `route-registry-contract.md` §3.1, §5.4; invariant W58 |
+| Live meeting document (Yjs + SyncedStore) + `useMeetingLiveMe` + linking gate (`MeetingLiveLinking`) | `organization-host-routing.md` §5.1, §5.2, §5.3; `../backend/contracts/meeting-live-state.md` |
 | Meeting socket config (`src/resources/configs/meeting-socket.ts`) | `organization-host-routing.md` §3, §5.1 |
 | Shared boot socket (`prepareSocket`: org host none / customer `/customer`) | `organization-host-routing.md` §4 |
 | Nested `MPagesRoutes.params` contract | `route-registry-contract.md` §3.1 |
