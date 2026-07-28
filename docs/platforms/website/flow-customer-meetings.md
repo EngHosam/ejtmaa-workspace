@@ -197,7 +197,7 @@ Governance: `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc`, `.curso
 |---|---|---|
 | `subject` | `FormTextField` | Required by backend (trim min 2) |
 | `type` | `FormChoiceField` | Options `PERIODIC` / `EMERGENCY` from i18n |
-| `datetime` | `FormDateTimeField` | ISO string; future-only client gate |
+| `datetime` | `FormDateTimeField` | ISO string; `minDate={meetingDatetimeMinDate()}` + `minDateError` (12-hour lead mirror, §6.5) |
 | `min_members_count` | `FormTextField` `type="number"` | Backend integer ≥ 1 |
 | `chairperson` | `FormEntityPickerField` `ident="members"` | `{ value, label, avatarUrl? }` |
 
@@ -210,9 +210,9 @@ Governance: `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc`, `.curso
 
 ### 5.3 Backend create contract (summary)
 
-Validate → `can MEETING create` → `organization.createMeeting` (`status=DRAFT`, `notify_status=NOT_STARTED`) → `createParticipant({ type: "CHAIRPERSON" })` → `other.meetingId` + `SUCCESS_CREATE`. Full table: `meeting-domain.md` §9.
+Validate (`isMeetingDatetime` — 12-hour lead) → `can MEETING create` → `organization.createMeeting` (`status=DRAFT`, `notify_status=NOT_STARTED`, `notify_start_at = datetime - 2h`) → `createParticipant({ type: "CHAIRPERSON" })` → `other.meetingId` + `SUCCESS_CREATE`. Full table: `meeting-domain.md` §9.
 
-Client past-date check is **stricter** than backend `joi.date()` (any date accepted server-side).
+Client and server enforce the **same** lead rule: the field blocks the pick with `datetimeMinLeadError`, the server rejects with the Joi `datetime.tooSoon` field error. The client gate is a mirror, never the only check (§6.5).
 
 ## 6) Details roadmap — `CustomerMeetingDetails`
 
@@ -226,7 +226,7 @@ Hook `useCustomerMeetingDetails` — mount-private adapter `"customer-meeting-de
 
 ### 6.2 Chrome
 
-`SectionHeading` back + subject title, wrapped in a `Col` with a `MeetingMetaChips` row beneath it (type · status · notify pills — replaces the former status·type subtitle text; §4.2); Approve / Delete via `FormActionButton` when Ability allows. Approve uses `canApprove.value` only to enable/disable — do **not** render `canApprove.description` under the button (denial copy stays server-side; readiness strip covers UX guidance). Lock / edit-window notes reuse the organization setup alert chrome (`canvasAccentSoftBackground` + `FiAlertTriangle`). Basics body reuses `CustomerMeetingCard` language (accent rail, calendar/clock, chair + quorum). Section Add/Edit are `smallAction` text actions (member-card pattern), not `FormActionButton`. Roster rows follow `CustomerMemberCard` with **CHAIRPERSON first**; agenda/decision rows are quiet cards with order caption + optional status meta. Roadmap sections after basics use `MeetingDetailsSection` `divided` (`divider` hairline — primary, not `subtleDivider`) so agenda / decision phases / templates read as separate blocks in light mode.
+`SectionHeading` back + subject title, wrapped in a `Col` with a `MeetingMetaChips` row beneath it (type · status · notify pills — replaces the former status·type subtitle text; §4.2); Approve / Delete via `FormActionButton` when Ability allows. Approve uses `canApprove.value` only to enable/disable — do **not** render `canApprove.description` under the button (denial copy stays server-side; readiness strip covers UX guidance). Lock and schedule notes both render through **`MeetingNote`** — the single alert-chrome component for this folder (`canvasAccentSoftBackground` + `FiAlertTriangle` + `semanticDims.card.compactPadding`, `role="status"`); `title` is optional and bullets appear only for 2+ items, so a one-line lock banner and a multi-line schedule list share one component (§6.5). `CustomerMeetingTemplateSlots` renders its contact-mode callout through the same component — do not hand-roll a fourth copy of that chrome. Basics body reuses `CustomerMeetingCard` language (accent rail, calendar/clock, chair + quorum) and adds a `FiSend` + `notify_start_at` line in the same single-line icon+text shape as the date and time rows (no stacked label/value card). Section Add/Edit are `smallAction` text actions (member-card pattern), not `FormActionButton`. Roster rows follow `CustomerMemberCard` and are grouped by participant type through **`MeetingParticipantGroup`** (heading + hairline divider) in the order chairperson → viewers → members; the group heading carries the type, so `CustomerMeetingParticipantRow.typeLabel` is optional and the per-row type caption is omitted inside a group; agenda/decision rows are quiet cards with order caption + optional status meta. Roadmap sections after basics use `MeetingDetailsSection` `divided` (`divider` hairline — primary, not `subtleDivider`) so agenda / decision phases / templates read as separate blocks in light mode.
 
 ### 6.3 Sections
 
@@ -257,6 +257,38 @@ Also on this screen:
 
 Deleted anti-pattern files (do not resurrect): `meetings/MeetingBasicsModalForm.tsx`, `MeetingParticipantAddModalForm.tsx`, `MeetingSubjectModalForm.tsx`.
 
+### 6.5 Schedule policy mirror + schedule notes
+
+Backend owns the schedule rules (`meeting-domain.md` §9.1a). The website mirrors the two constants in **one** module and uses them for copy and for the picker floor — never as the only enforcement.
+
+**Module:** `…/customer/meetings/meetingScheduleLead.ts`
+
+| Export | Value / behavior | Mirrors |
+|---|---|---|
+| `MEETING_MIN_LEAD_MS` | `12 * 60 * 60 * 1000` | `MeetingModel.MIN_LEAD_MS` |
+| `MEETING_TWO_HOURS_MS` | `2 * 60 * 60 * 1000` | `MeetingModel.TWO_HOURS_MS` |
+| `meetingDatetimeMinDate()` | `new Date(Date.now() + MEETING_MIN_LEAD_MS)` | `minDate` for both datetime fields (create screen + `MeetingBasicsModal`) |
+| `isVotingParticipantType(value)` | `CHAIRPERSON` \| `MEMBER` | Ability quorum filter |
+| `countVotingParticipants(rows)` | count of voting rows | `countParticipants({ where: { type: IN (…) } })` |
+
+`countVotingParticipants` is the only quorum counter on the website: details roster readiness and `useCustomerHome` (`FocusReadiness.votingCount`) both call it, so `VIEWER` rows never inflate a quorum ring or a readiness row.
+
+**Schedule notes (`MeetingNote` on the details screen).** Derived state: `hasValidDatetime`, `datetimeTooSoon` (`datetime < now + 12h`), `notifyStartMs` (`notify_start_at`, else `datetime - 2h`), `editFrozenBySchedule` (`!isLocked && notifyStartMs < now + 2h`).
+
+| Condition | Items | Title |
+|---|---|---|
+| `isLocked` (notify left `NOT_STARTED`) | lock banner only, in its own `MeetingNote` | — |
+| status is not `DRAFT` / `WAITING_TO_START` | none | — |
+| `DRAFT` | lead line — missing / too-soon / rule — then the invite and edit lines below | `scheduleNotesTitleDraft` |
+| `editFrozenBySchedule` | frozen line (with `notify_start_at` when known); **stops there** | `scheduleNotesTitleFrozen` |
+| otherwise | invite-start line (`notify_start_at` when known, else the 2-hour rule) | `scheduleNotesTitleWaiting` for `WAITING_TO_START` |
+| `canEdit` and not frozen | edit-until line (`notify_start_at - 2h`), plus the re-approval warning **only** for `WAITING_TO_START` | — |
+
+Two alignments with the server that must not drift:
+
+- The lead lines are **draft-only**. An approved meeting legitimately drops under 12 hours as it approaches; showing "edit the time before approving" there would name a rule that no longer applies.
+- The freeze line is **status-independent**, because the Ability freeze applies to drafts as well (`meeting-domain.md` §9.1a). A frozen draft must be told why editing is disabled.
+
 ## 7) Shared field + modal contracts (this slice)
 
 Deep contracts live in `flow-form-foundation.md` §3.5–§3.7. Meeting-specific usage:
@@ -264,7 +296,7 @@ Deep contracts live in `flow-form-foundation.md` §3.5–§3.7. Meeting-specific
 | Surface | Meeting usage |
 |---|---|
 | `FormChoiceField` | Meeting `type` tiles (not status filter chips) |
-| `FormDateTimeField` / `DATETIME_PICKER` | Meeting `datetime`; 15-min slots; full-width `.ejt-datepicker` via `datepickerTheme` |
+| `FormDateTimeField` / `DATETIME_PICKER` | Meeting `datetime`; 15-min slots; full-width `.ejt-datepicker` via `datepickerTheme`; `minDate` = `meetingDatetimeMinDate()` and `minDateError` = `datetimeMinLeadError` on both write surfaces (create screen, `MeetingBasicsModal`) |
 | `FormEntityPickerField` / `ENTITY_PICKER` | Chairperson; config `members.tsx`; `CustomerMemberCard` + `selected`; `customScroll` + `LoadMoreButton` |
 | `FormTextField` | `type="number"` allowed for quorum |
 | `FilterOptionChip(s)` | List status filter only |
@@ -521,6 +553,62 @@ Home command-hero follow-up: `CustomerHomeStatusCard` had remained on the old jo
 | `.cursor/rules/website-meeting-meta-chips.mdc` | modified | Home status card listed as consumer | §4.2 |
 | `.cursor/rules/website-semantic-color-token-discipline.mdc` | modified | SVG content fill pairing | W43 |
 
+### 12.5 Schedule policy, notes, and roster grouping (this go-doc slice)
+
+Exhaustive inventory for the 12-hour lead, the 2-hour edit freeze, `notify_start_at` derivation, demote-on-edit, voting-only quorum, the single alert-chrome component, and the datetime-picker honesty fix. Behavior: `meeting-domain.md` §3.2b / §9.1a, `meeting-live-state.md` §3.1, §6.5 above, `flow-form-foundation.md` §3.7.
+
+#### Backend (`backend/` repo)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `src/app/orm/models/Meeting.ts` | modified | `TWO_HOURS_MS` + `MIN_LEAD_MS` statics — single source for both windows | `meeting-domain.md` §3.2b |
+| `src/app/orm/models/Customer.ts` | modified | `Ability.MEETING`: edit freeze on `update`, 12-hour lead on `approve`, quorum counts `CHAIRPERSON \| MEMBER` only | `meeting-domain.md` §9.1a–§9.1b |
+| `src/app/validation/joi_rules.ts` | modified | `isMeetingDatetime(joi)` — lead rule on `create` / `update`, key `datetime.tooSoon` | `meeting-domain.md` §9.2 |
+| `src/app/orchestrator/requesters/MeetingRequester.ts` | modified | `notify_start_at` derivation on create/update/approve; approve clears `live_state`; private `demoteApprovedMeetingToDraft` called by every `update`-family sub; `afterCommit` → `destroyMeetingLiveDoc(..., { flush: false })` | `meeting-domain.md` §9.1a, §9.3; `meeting-live-state.md` §3.1 |
+| `src/resources/trans/ar/messages.ts` / `en/messages.ts` | modified | `MEETING_NOTIFY_TOO_SOON`, `MEETING_DATETIME_TOO_SOON`, voting-quorum wording on `MEETING_QUORUM_INCOMPLETE` | `meeting-domain.md` §9.5 |
+| `src/resources/trans/ar/general.ts` / `en/general.ts` | modified | `joi.datetime.tooSoon` field message | `meeting-domain.md` §9.2 |
+| `src/app/orchestrator/requesters/SubscriptionRequester.ts` | modified | Placement-only: `planItemName` moved from module scope into the namespace `private` section; no behavior change | `.cursor/rules/backend-requesters-governance.mdc` (Required Shape) |
+
+Unchanged on purpose: SDL and generated GQL types — `_Meeting.notify_start_at` was already exposed, so this slice added no contract field and needed no `generate-types` run.
+
+#### Website (`website/` repo)
+
+| Path | Status | Role | Doc |
+|---|---|---|---|
+| `src/app/ui/components/customer/meetings/meetingScheduleLead.ts` | added | Mirror module: both windows, `meetingDatetimeMinDate`, `isVotingParticipantType`, `countVotingParticipants` | §6.5 |
+| `src/app/ui/components/customer/meetings/MeetingNote.tsx` | added | The folder's single alert chrome (`title?` + `items`, bullets for 2+) | §6.2, §6.5 |
+| `src/app/ui/components/customer/meetings/MeetingParticipantGroup.tsx` | added | Roster group heading + hairline divider | §6.2 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingDetailsScreen.tsx` | modified | Schedule-note derivation + dynamic title, `notify_start_at` line in basics, grouped roster, lock banner through `MeetingNote` | §6.2, §6.5 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingParticipantRow.tsx` | modified | `typeLabel` optional — the group heading carries the type | §6.2 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingTemplateSlots.tsx` | modified | Contact-mode callout reuses `MeetingNote` (dropped the hand-rolled row and its hardcoded padding) | §6.2 |
+| `src/app/ui/components/customer/meetings/CustomerMeetingFormScreen.tsx` | modified | `minDate` + `minDateError` on `datetime` | §5.1 |
+| `src/app/ui/components/customer/modals/MeetingBasicsModal.tsx` | modified | Same `minDate` + `minDateError` on the edit path | §5.1, §6.4 |
+| `src/app/ui/components/customer/hooks/useCustomerMeetingDetails.ts` | modified | Selects `notify_start_at` | §6.1 |
+| `src/app/ui/components/customer/hooks/useCustomerHome.ts` | modified | `FocusReadiness.participantCount` → `votingCount` via `countVotingParticipants` | shell §7 |
+| `src/app/ui/components/customer/home/CustomerHomeScreen.tsx` | modified | Reads `votingCount` | shell §7 |
+| `src/app/ui/components/form/FormDateTimeField.tsx` | modified | `minDateError` prop; min-lead rejection separated from past-date; stopped passing copy into the modal | form-foundation §3.7 |
+| `src/app/ui/components/modals/DateTimePickerModal.tsx` | modified | Dropped `pastDateError` from props/op, no silent clamp or slot auto-advance, confirm disabled while the draft is invalid | form-foundation §3.7; W59 |
+| `src/resources/translations/ar.ts` / `en.ts` | modified | `datetimeMinLeadError`, `scheduleNotesTitle*`, `scheduleNote*`, `participantsGroup*`; `templatesClear` → `templatesRemove`; removed `inviteStartLabel`; softened `datetimePastError` | §8 |
+| `lib/tsconfig.tsbuildinfo` | generated | Touched by `yarn type-check`; reverted, never committed | generated |
+
+#### Root (`docs/` + `.cursor/`)
+
+| Path | Status | Role |
+|---|---|---|
+| `docs/platforms/backend/contracts/meeting-domain.md` | modified | §1, §2, §3.2/§3.2b, §9.1–§9.5, traceability |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | modified | §3.1 requester-driven reset; corrected the "no eviction / no callers" limit |
+| `docs/platforms/website/flow-customer-meetings.md` | modified | §5.1, §5.3, §6.2, new §6.5, §7, this inventory |
+| `docs/platforms/website/flow-form-foundation.md` | modified | §3.7 field/modal contract |
+| `docs/platforms/website/flow-customer-shell.md` | modified | Voting-quorum wording on the hero ring |
+| `docs/platforms/website/component-structure.md` | modified | Customer meetings folder members |
+| `docs/invariants/backend.md` | modified | B26 time-window policy |
+| `docs/invariants/website.md` | modified | W59 client mirrors a server gate |
+| `.cursor/rules/meeting-lifecycle-approve-lock.mdc` | modified | Schedule gates, voting quorum, demotion + live-doc reset, `joi_rules.ts` glob |
+| `.cursor/rules/meeting-live-state.mdc` | modified | Non-negotiable 5b (lifecycle reset clears BLOB + registry) and corrected ceiling wording |
+| `.cursor/rules/backend-requesters-governance.mdc` | modified | Requester-local helpers live inside the namespace `private` section |
+| `.cursor/rules/website-backend-policy-mirror.mdc` | added | Mirror-module placement + honesty rules |
+| `.cursor/skills/website-customer-meeting-form/SKILL.md` | modified | Steps 4/4b/4c + canonical references |
+
 ## 13) Related
 
 - `docs/platforms/website/flow-customer-shell.md`
@@ -534,6 +622,8 @@ Home command-hero follow-up: `CustomerHomeStatusCard` had remained on the old jo
 - `.cursor/rules/website-customer-list-history-search.mdc`
 - `.cursor/rules/website-result-lane-skeleton-shape.mdc`
 - `.cursor/rules/website-customer-form-modal-placement.mdc`
+- `.cursor/rules/website-backend-policy-mirror.mdc`
+- `.cursor/rules/meeting-lifecycle-approve-lock.mdc`
 - `.cursor/skills/website-customer-result-lane-list/SKILL.md`
 - `.cursor/skills/website-customer-breadcrumb-subpage/SKILL.md`
 - `.cursor/skills/website-customer-form-modal/SKILL.md`

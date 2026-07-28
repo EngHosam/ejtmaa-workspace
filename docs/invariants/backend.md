@@ -151,3 +151,16 @@ Consequences:
 - the document codec is fixed (Yjs V2 on the BLOB, on the wire, and on both ends); mixing V1 and V2 throws at runtime, so the `yjs` version stays pinned and equal in `backend/` and `website/`.
 
 Contracts: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/platforms/backend/contracts/meeting-realtime-socket.md` §3.
+
+## B26. Time-Window Policy Is Model-Declared And Gate-Enforced
+
+A business time window (minimum lead before an event, a freeze before a side effect starts) is a domain rule, not field decoration.
+
+Consequences:
+
+- the window is a **static on the owning model** (`MeetingModel.MIN_LEAD_MS`, `MeetingModel.TWO_HOURS_MS`); Joi rules, `can(...)`, and requesters read that static instead of re-declaring the arithmetic,
+- every write path that can violate the window checks it — including transitions that accept **no** input for the guarded field (approve re-checks the lead because it never receives a `datetime`),
+- a derived timestamp column (`notify_start_at`) is written by the server on every path that changes its input, and readers must tolerate `null` on rows written before the derivation existed,
+- when a transition invalidates cached or collaborative state, the reset is part of the same transaction and the memory eviction runs in `transaction.afterCommit` — never before the commit, and never with a flush that would rewrite what the transaction cleared.
+
+Contracts: `docs/platforms/backend/contracts/meeting-domain.md` §3.2b, §9.1a; `docs/platforms/backend/contracts/meeting-live-state.md` §3.1.

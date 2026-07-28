@@ -56,7 +56,7 @@ Shipped groups:
 | Home (visitor) | `home/Hero`, `home/Platform`, … (landing sections) |
 | Customer home | `customer/home/*`, `customer/hooks/useCustomerHome` |
 | Customer members | `customer/members/*`, `customer/hooks/useCustomerMembers` |
-| Customer meetings | `customer/meetings/*` (screens, rows, cards), `customer/hooks/useCustomerMeetings` |
+| Customer meetings | `customer/meetings/*` (screens, rows, cards, `MeetingMetaChips`, `MeetingNote` alert chrome, `MeetingParticipantGroup`, and the UI-only mirrors `meetingNotifyTemplateMode` / `meetingScheduleLead`), `customer/hooks/useCustomerMeetings` |
 | Customer form modals | `customer/modals/*` (`MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal` — registered; see `flow-form-foundation.md` §3.8b) |
 | Live meeting (organization host) | `meeting/LiveMeetingProbeScreen` (temporary probe), `meeting/hooks/useLiveMeeting` — `organization-host-routing.md` §5.1, §5.2 |
 

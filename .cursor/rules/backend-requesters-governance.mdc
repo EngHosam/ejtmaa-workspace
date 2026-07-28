@@ -15,6 +15,7 @@ This rule is a self-contained Ejtmaa requester contract. Do not mention, cite, c
 - Every callable public requester method must have `@sub(platforms, actors)`.
 - Requester controllers route with `requesterHandle(platform, actor)` and must not manually register requester classes.
 - Method signatures must accept `FormBody<Props>` and `SimpleJsonBuilder<FormResult<...>>`, return `Promise<SJsonResult>`, and never return raw data.
+- Requester-local helpers live **inside** the namespace, under the file's `private` banner comment after `export class Requester`, never as module-level functions after the namespace closes. Shared behavior repeated by several subs (example: `demoteApprovedMeetingToDraft` in `MeetingRequester`) is one such helper, called from each sub — not copied per sub.
 
 ## Required Method Order
 

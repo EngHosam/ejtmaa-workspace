@@ -1,0 +1,22 @@
+---
+description: Website mirrors of backend policy constants and rules — one module, labeled as mirror, never the only enforcement
+globs: website/src/app/ui/components/**/*.ts,website/src/app/ui/components/**/*.tsx,website/src/app/ui/base/hooks/**/*.ts
+alwaysApply: false
+---
+
+# Website mirrors of backend policy
+
+The website may re-state a backend rule to build copy, disable a control, or pre-validate a field. It may never own that rule.
+
+## Required
+
+- One module per rule family, next to its consumers, exporting the constants and the predicates together. Shipped: `customer/meetings/meetingScheduleLead.ts` (lead + freeze windows, voting participant types), `customer/meetings/meetingNotifyTemplateMode.ts` (contact-mode resolver).
+- Every mirrored constant names its backend source in a one-line comment (`Mirror of backend MeetingModel.MIN_LEAD_MS — keep in sync.`).
+- Derived predicates live in the mirror module too, so a rule change is one edit: `countVotingParticipants` is used by the details roster **and** `useCustomerHome`, not re-filtered per screen.
+- The server keeps the enforcing gate (Joi rule, Ability, requester). The mirror only shapes UI.
+
+## Forbidden
+
+- A magic number or inline enum filter copied into a screen, hook, or modal when a mirror module exists.
+- Copy that promises a rule the server does not enforce, or that stays silent about one it does — every note the UI renders must map to a real gate, and the condition that shows it must match the condition the server checks (same statuses, same window).
+- Treating a mirror as authority: never skip the request, invent a client-side approval, or suppress a server denial because the mirror agreed.

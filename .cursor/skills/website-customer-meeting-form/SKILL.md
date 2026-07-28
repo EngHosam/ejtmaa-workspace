@@ -19,7 +19,9 @@ description: >-
 1. Confirm backend `MeetingRequester.create` + `Customer.Ability.MEETING` + `requesters.website` `customer.meeting: "create"` — `docs/platforms/backend/contracts/meeting-domain.md` §9. Do not invent update/delete or plan quota in this slice.
 2. Routes: `CustomerMeetings` → `CustomerMeetingForm` (`/meetings/form`) **before** `CustomerMeetingDetails` (`/meetings/:id`) — W41. Href: `buildCustomerMeetingFormHref` only.
 3. Register `Forms.CUSTOMER_MEETING` → `API.FORMS.CUSTOMER.R("meeting")`. Mirror requester map on website.
-4. Form screen: create-only stable identify + `removeOnExit: false`; `submittingRef`; fields subject / type (`FormChoiceField`) / datetime (`FormDateTimeField`) / min_members / chairperson (`FormEntityPickerField` `ident="members"`); `afterSentSuccess` → details with `replace: true`; no manual success toast.
+4. Form screen: create-only stable identify + `removeOnExit: false`; `submittingRef`; fields subject / type (`FormChoiceField`) / datetime (`FormDateTimeField` with `minDate={meetingDatetimeMinDate()}` + `minDateError`) / min_members / chairperson (`FormEntityPickerField` `ident="members"`); `afterSentSuccess` → details with `replace: true`; no manual success toast.
+4b. Schedule rules (12h lead, 2h freeze, voting-only quorum) are backend-owned. Read them from `meetings/meetingScheduleLead.ts`; never inline the numbers or re-filter participant types per screen. Any note you render must match the server condition — `.cursor/rules/website-backend-policy-mirror.mdc`, `.cursor/rules/meeting-lifecycle-approve-lock.mdc`.
+4c. Alert chrome on details (lock banner, schedule notes, template callout) is `MeetingNote` — optional `title`, bullets only for 2+ items. Do not hand-roll another `canvasAccentSoftBackground` + `FiAlertTriangle` row.
 5. List: `useCustomerMeetings` history key `meetings`; Enter search + status chips with `{ reset: true }` when clearing; `ResultLane` + `MeetingCardSkeleton`; **no Edit** on cards; W42 labels from screen into `CustomerMeetingCard`.
 6. Shared controls: entity picker skill `.cursor/skills/website-entity-picker/SKILL.md`; datetime theme `.cursor/rules/website-third-party-widget-emotion-theme.mdc`.
 7. i18n `ui.pages.customer.meetings*` / `meetingForm` / `meetingDetails`. Update `flow-customer-meetings.md` + `flow-form-foundation.md` + `route-registry-contract.md` in the same task.
@@ -30,6 +32,8 @@ description: >-
 
 - Form: `website/src/app/ui/components/customer/meetings/CustomerMeetingFormScreen.tsx`
 - List: `website/src/app/ui/components/customer/meetings/CustomerMeetingsScreen.tsx`
+- Policy mirror: `website/src/app/ui/components/customer/meetings/meetingScheduleLead.ts`
+- Alert chrome: `website/src/app/ui/components/customer/meetings/MeetingNote.tsx`
 - Details modals: `website/src/app/ui/components/customer/modals/Meeting*.tsx`
 - Flow: `docs/platforms/website/flow-customer-meetings.md`
 - Backend: `docs/platforms/backend/contracts/meeting-domain.md` §9

@@ -170,9 +170,9 @@ Reuse craft in `customer/home/*`: eyebrow zones (`HomeZoneShell`), lifecycle rai
 `useCustomerHome` performs only customer-scoped reads. It owns no requester write, transaction, approval, or live-session action:
 
 - Each mount-private adapter loads with `reload: true`. The meeting slices must finish before a focus is selected; then `customer-home-focus-meeting` loads the full focused meeting.
-- The hero may initially render the focused status slice while the full meeting loads. Draft readiness, the agenda strip, quorum values, and attention for an incomplete focus draft appear only after the full focused meeting is available.
+- The hero may initially render the focused status slice while the full meeting loads. Draft readiness, the agenda strip, voting-quorum values, and attention for an incomplete focus draft appear only after the full focused meeting is available.
 - Totals use backend `total_count`; status slices are capped to five records for display. Focus priority is `STARTED`, then `DRAFT`, then `WAITING_TO_START`.
-- `HomeFocusVisual` derives its quorum ring from the real `min_members_count` and participant count. It has no fabricated fallback count. The center percent label resolves `getColor(semanticColor.textPrimary)` so it stays readable on the scheme-flipped hub fill (`cardBackground`); navy/`primaryActionBackground` is wrong for that glyph (dark-on-dark in dark mode).
+- `HomeFocusVisual` derives its quorum ring from the real `min_members_count` and `FocusReadiness.votingCount` — the count of `CHAIRPERSON` + `MEMBER` roster rows produced by `countVotingParticipants` (`flow-customer-meetings.md` §6.5), matching the Ability quorum gate; `VIEWER` rows are excluded, and there is no fabricated fallback count. The center percent label resolves `getColor(semanticColor.textPrimary)` so it stays readable on the scheme-flipped hub fill (`cardBackground`); navy/`primaryActionBackground` is wrong for that glyph (dark-on-dark in dark mode).
 - If all meaningful probes fail before data is available, the page renders its retry state. If only some probes fail, the available zones remain visible and an inline retry reloads every home probe, including the current focus meeting.
 - The home hook has no page-local socket subscription. It reflects its mount reads and explicit retry; meeting preparation, approval, notifications, and live-session interactions remain owned by their existing screens.
 
@@ -338,6 +338,10 @@ Exhaustive inventory for aligning the home focus status card with `MeetingMetaCh
 | `docs/platforms/website/flow-customer-meetings.md` | modified | §12.4 cross-slice inventory | meetings §12.4 |
 | `.cursor/rules/website-meeting-meta-chips.mdc` | modified | Explicit home status-card consumer | meetings §4.2 |
 | `.cursor/rules/website-semantic-color-token-discipline.mdc` | modified | SVG text on scheme-flipped surfaces | §7 / W43 |
+
+### 12.2 Voting quorum on the focus ring (this go-doc slice)
+
+`FocusReadiness.participantCount` became `votingCount`, computed by the shared `countVotingParticipants` mirror so the hero ring and the readiness row match the Ability quorum gate (`CHAIRPERSON` + `MEMBER` only). Touched here: `customer/hooks/useCustomerHome.ts` and `customer/home/CustomerHomeScreen.tsx`. Full cross-repo inventory for that slice, including the backend gates it mirrors: `flow-customer-meetings.md` §12.5.
 
 ## 13) Related
 

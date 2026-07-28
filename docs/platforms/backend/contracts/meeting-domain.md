@@ -8,6 +8,7 @@ Current Ejtmaa meeting surface:
 - optional FKs `whatsapp_template_id` / `email_template_id` → `MessageTemplate` rows (legacy column names; template kinds are `messageTemplateType` — see `message-template-domain.md`; no inline template text on the meeting),
 - chairperson FK to `Member`,
 - independent lifecycle (`status`) and invite-notify axes (`notify_status` + `notify_start_at`),
+- schedule policy on the write path: 12-hour minimum lead on `datetime`, 2-hour edit freeze before `notify_start_at`, and demotion of an approved meeting back to `DRAFT` on any content write (§9.1a),
 - customer GraphQL read of meetings for the authenticated customer's organization,
 - optional server-side list filter `_MeetingFilter` on root `meetings` (`search` → `subject` iLike; `status` → `_MeetingStatusValue` equality),
 - website Meeting write path via `MeetingRequester` (`create` | `read` | `update` | `delete` | `approve` + child roster/agenda/decision subs) + `Customer.Ability.MEETING` — see §9,
@@ -38,7 +39,7 @@ Out of scope (not shipped):
 
 - Media is **LiveKit** at runtime — room/token helper shipped (`livekit-media-plane.md`); not modeled as Zoom/Teams `platform` / external `url` columns.
 - Invite copy comes from optional template FKs, not duplicated body/subject fields on the meeting.
-- Invite **start time** is `notify_start_at` (independent of `status`).
+- Invite **start time** is `notify_start_at` (independent of `status`). The write path derives it as `datetime - MeetingModel.TWO_HOURS_MS` on create, on basics update, and on approve; no UI sets it directly.
 - Invite **progress** is `notify_status` (`NOT_STARTED` | `WAITING_TO_NOTIFY` | `NOTIFIED`).
 - Lifecycle is `status` (`DRAFT` | `WAITING_TO_START` | `STARTED` | `COMPLETED` | `CANCELED`).
 
@@ -76,10 +77,21 @@ Persistence names:
 | `min_members_count` | INTEGER | no | quorum hint |
 | `status` | STRING(191) | no | enum `meetingStatus`; default `DRAFT` |
 | `notify_status` | STRING(191) | no | enum `meetingNotifyStatus`; default `NOT_STARTED` |
-| `notify_start_at` | DATE | yes | when invite sending may begin |
+| `notify_start_at` | DATE | yes | when invite sending may begin; derived by the requester as `datetime - TWO_HOURS_MS` (nullable for rows written before the derivation shipped) |
 | `live_state` | BLOB | yes | Yjs V2 snapshot of the live session document; never exposed through GraphQL (`meeting-live-state.md`) |
 
 Exported TS types: `MeetingType`, `MeetingStatus`, `MeetingNotifyStatus` from `G_Tr` enum keys, plus `MeetingLiveFields` for the live document.
+
+### 3.2b Schedule constants
+
+Two statics on `MeetingModel` are the single source for every schedule gate. Ability, Joi, and the requester read them; nothing re-declares the numbers.
+
+| Static | Value | Used by |
+|---|---|---|
+| `TWO_HOURS_MS` | `2 * 60 * 60 * 1000` | `notify_start_at` derivation (create / update / approve) and the edit-freeze window (§9.1a) |
+| `MIN_LEAD_MS` | `12 * 60 * 60 * 1000` | `isMeetingDatetime` Joi rule and the approve lead gate (§9.1a) |
+
+Website mirrors both in `meetings/meetingScheduleLead.ts` for copy and client validation only (`flow-customer-meetings.md` §6.5).
 
 ### 3.3 Enums (localized)
 
@@ -282,9 +294,9 @@ MEETING: {
 |---|---|
 | `create` | org required |
 | `read` | org-owned meeting |
-| `update` | org-owned + `notify_status === NOT_STARTED` (covers basics, templates, roster, agenda, decisions) |
+| `update` | org-owned + `notify_status === NOT_STARTED` + outside the edit freeze (§9.1a) — covers basics, templates, roster, agenda, decisions |
 | `delete` | org-owned + `DRAFT` + `NOT_STARTED` |
-| `approve` | org-owned + `DRAFT` + `NOT_STARTED` + completeness (§9.1b) |
+| `approve` | org-owned + `DRAFT` + `NOT_STARTED` + 12-hour lead (§9.1a) + completeness (§9.1b) |
 
 GQL UI exposure (`visualMode`):
 
@@ -293,12 +305,37 @@ GQL UI exposure (`visualMode`):
 
 Helper: `backend/src/app/helpers/meetingNotifyTemplateMode.ts` (`resolveMeetingNotifyTemplateMode`, satisfy + denial keys). Website mirrors the mode resolver under `meetings/meetingNotifyTemplateMode.ts` for callout copy only — enforcement stays in Ability.
 
+### 9.1a Schedule policy (lead, freeze, demotion)
+
+Three schedule rules run on the write path. All of them are Ability- or Joi-owned; the website only mirrors them for copy.
+
+| Rule | Where | Condition | Denial |
+|---|---|---|---|
+| Minimum lead on write | `isMeetingDatetime(joi)` on `create` / `update` | `datetime >= now + MIN_LEAD_MS` | Joi `datetime.tooSoon` |
+| Minimum lead on approve | `Ability.MEETING` `approve` | `datetime >= now + MIN_LEAD_MS` | `MEETING_DATETIME_TOO_SOON` |
+| Edit freeze | `Ability.MEETING` `update` | `notify_start_at >= now + TWO_HOURS_MS` | `MEETING_NOTIFY_TOO_SOON` |
+
+Freeze details:
+
+- The gate reads `notify_start_at`, falling back to `datetime - TWO_HOURS_MS` when the column is `null` (rows written before the derivation shipped).
+- It is **status-independent**: a `DRAFT` inside the window is frozen exactly like an approved meeting, because every content write — basics, templates, roster, agenda, decisions — routes through `sub: "update"`.
+- A frozen draft can still be deleted (`delete` has no freeze gate) and, once the lead gate passes, approved.
+
+Demotion (`demoteApprovedMeetingToDraft`, private in `IMeetingRequester`):
+
+- Runs first inside every `update`-family sub, before the sub's own writes.
+- No-op unless `status === WAITING_TO_START`; otherwise sets `status = DRAFT` and `live_state = null` in the same transaction, and registers a `transaction.afterCommit` → `destroyMeetingLiveDoc(meetingId, { flush: false })`.
+- `flush: false` is required: a flush would re-encode the in-memory document back into the BLOB the transaction just cleared.
+
+Consequence: any post-approval content edit re-enters preparation and needs a second `approve`.
+
 ### 9.1b Approve completeness
 
-1. Roster count ≥ `min_members_count` (all participant types).
-2. ≥1 agenda item.
-3. ≥1 decision with `phase === PRE_START`.
-4. Notify templates per contact mode on roster members’ `email` / `mobile`:
+1. `datetime ≥ now + MIN_LEAD_MS` (§9.1a).
+2. **Voting** roster count ≥ `min_members_count` — `countParticipants` filters `type IN (CHAIRPERSON, MEMBER)`; `VIEWER` rows never count toward quorum.
+3. ≥1 agenda item.
+4. ≥1 decision with `phase === PRE_START`.
+5. Notify templates per contact mode on roster members’ `email` / `mobile`:
 
 | Mode | Rule |
 |---|---|
@@ -310,12 +347,13 @@ Helper: `backend/src/app/helpers/meetingNotifyTemplateMode.ts` (`resolveMeetingN
 
 WhatsApp FK types: `ADWHATS` \| `ADWHATS_PRO`. Email FK types: `EJTMAA_EMAIL` \| `CUSTOM_EMAIL`.
 
-Approve sets `status = WAITING_TO_START` only; does **not** change `notify_status`.
+Approve writes `status = WAITING_TO_START`, re-derives `notify_start_at = datetime - TWO_HOURS_MS`, and clears `live_state`; it registers the same `afterCommit` → `destroyMeetingLiveDoc(meetingId, { flush: false })` as demotion so no stale document from an earlier approve/demote cycle survives. It does **not** change `notify_status` — the notify pipeline is still out of scope (§1).
 
 ### 9.2 Joi
 
 - `isCustomerOwnedMember`, `isCustomerOwnedMeeting`, `isCustomerOwnedAgendaItem`, `isCustomerOwnedDecision`, `isCustomerOwnedMessageTemplate` in `joi_rules.ts`.
-- Create/update basics: subject, type, datetime, min_members_count, chairperson; update may set template FKs. Type is mutable while prepare Ability allows (`notify_status === NOT_STARTED`).
+- `isMeetingDatetime(joi)` — `joi.date()` plus an `external` that rejects a non-date, an invalid date, or `datetime < now + MeetingModel.MIN_LEAD_MS` with the `datetime.tooSoon` Joi key (localized in `trans/{ar,en}/general.ts` under `joi`). Used by `create` and `update`; presence stays the field's own `required` semantics.
+- Create/update basics: subject, type, datetime, min_members_count, chairperson; update may set template FKs. Type is mutable while prepare Ability allows (`notify_status === NOT_STARTED` and outside the freeze).
 
 ### 9.3 Requester
 
@@ -323,14 +361,16 @@ File: `backend/src/app/orchestrator/requesters/MeetingRequester.ts` (`@requester
 
 | Sub | Behavior |
 |---|---|
-| `create` | org create + CHAIRPERSON roster → `other.meetingId` |
+| `create` | org create + CHAIRPERSON roster → `other.meetingId`; sets `notify_start_at = datetime - TWO_HOURS_MS` |
 | `read` | hydrate SelectOption fields; **no** `meeting` id echo |
-| `update` | basics + template FKs; chair swap demotes previous chair to `MEMBER`, promotes/creates CHAIRPERSON |
+| `update` | demote-if-approved (§9.1a) → basics + template FKs + re-derived `notify_start_at`; chair swap demotes previous chair to `MEMBER`, promotes/creates CHAIRPERSON |
 | `delete` | destroy children then meeting (`force`) |
-| `approve` | `DRAFT` → `WAITING_TO_START` |
+| `approve` | `DRAFT` → `WAITING_TO_START` + `notify_start_at` + `live_state = null` + live-doc destroy (§9.1b) |
 | `addParticipant` / `removeParticipant` | MEMBER\|VIEWER; cannot remove chairperson |
 | `createAgendaItem` / `updateAgendaItem` / `deleteAgendaItem` | subject; `sort_order = max+1` on create |
 | `createDecision` / `updateDecision` / `deleteDecision` | create: client `phase` PRE_START\|DURING, status NEW, `voting_type null`; update/delete phase-agnostic under prepare Ability (`notify_status === NOT_STARTED`) |
+
+Every `update`-family sub in the table (basics, both participant subs, all agenda subs, all decision subs) calls `demoteApprovedMeetingToDraft(meeting, transaction)` immediately after its `can(...)` check and before its own writes — one shared private function, not a per-sub copy.
 
 Website UI: `docs/platforms/website/flow-customer-meetings.md` §5–§6.
 
@@ -347,8 +387,11 @@ Website UI: `docs/platforms/website/flow-customer-meetings.md` §5–§6.
 |---|---|
 | No org | `ACTION_NOT_ALLOWED` |
 | Notify started on mutate | `MEETING_NOTIFY_STARTED` |
+| Mutate inside the 2-hour freeze | `MEETING_NOTIFY_TOO_SOON` |
+| `datetime` under 12-hour lead on create/update | Joi `datetime.tooSoon` (field error) |
+| `datetime` under 12-hour lead on approve | `MEETING_DATETIME_TOO_SOON` |
 | Approve/delete not draft | `MEETING_NOT_DRAFT` |
-| Quorum / agenda / decision / template gaps | dedicated `MEETING_*` message keys |
+| Quorum (voting types only) / agenda / decision / template gaps | dedicated `MEETING_*` message keys |
 | Duplicate participant | `DUPLICATED` |
 | Other-org / missing | `NOT_PERMIT` / `404` |
 
@@ -359,14 +402,14 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 | Path | Role | Section |
 |---|---|---|
 | `backend/src/app/gql/bridges/customer/MeBridge.ts` | `canCreateMeeting` visualMode extra | §9.1 |
-| `backend/src/app/orm/models/Customer.ts` | `Ability.MEETING`; org scope, notify lock, approve completeness | §9.1–§9.1b |
+| `backend/src/app/orm/models/Customer.ts` | `Ability.MEETING`; org scope, notify lock, edit freeze, approve lead + completeness (voting-only quorum count) | §9.1–§9.1b |
 | `backend/src/app/helpers/meetingNotifyTemplateMode.ts` | Contact-mode resolver, template satisfiability, denial keys, executable matrix self-check | §9.1b |
-| `backend/src/app/validation/joi_rules.ts` | Customer-owned Meeting, agenda, decision, member, and template hydration | §9.2 |
-| `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | Basics, approve, delete, participant, agenda, and decision requester subs | §9.3 |
+| `backend/src/app/validation/joi_rules.ts` | Customer-owned Meeting, agenda, decision, member, and template hydration; `isMeetingDatetime` lead rule | §9.2 |
+| `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | Basics, approve, delete, participant, agenda, and decision requester subs; `notify_start_at` derivation; private `demoteApprovedMeetingToDraft` + live-doc destroy | §9.1a, §9.3 |
 | `backend/requesters.website.ts` | Backend customer `meeting` sub map | §9.4 |
 | `website/src/types/requesters/requesters.website.ts` | Exact website customer `meeting` sub-map mirror | §9.4 |
-| `backend/src/app/orm/models/Meeting.ts` | ORM source of truth; `live_state` column + live document statics | §3, §3.6 |
-| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | Live document registry and BLOB persistence | `meeting-live-state.md` §2 |
+| `backend/src/app/orm/models/Meeting.ts` | ORM source of truth; `TWO_HOURS_MS` / `MIN_LEAD_MS` statics; `live_state` column + live document statics | §3, §3.2b, §3.6 |
+| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | Live document registry and BLOB persistence; `destroyMeetingLiveDoc` consumed by approve/demotion | `meeting-live-state.md` §2–§3 |
 | `backend/src/app/socket/controllers/meeting/*` | `/meeting` connection and `meeting.live.*` controllers | `meeting-realtime-socket.md` §3 |
 | `backend/src/app/orm/models/Member.ts` | `forSelect(lang)` used to hydrate chairperson and roster entity references | §9.2–§9.3 |
 | `backend/src/app/orm/models/MessageTemplate.ts` | `forSelect(lang)` used to hydrate and validate notify template references | §9.2–§9.3 |
@@ -375,8 +418,8 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 | `backend/src/app/orm/models/Decision.ts` | Decisions (detail contract) | `decision-domain.md` |
 | `backend/src/app/orm/models/TalkRecord.ts` | Talk queue (detail contract) | `talk-record-domain.md` |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany Meeting` + mixins | §3.5 |
-| `backend/src/resources/trans/ar/general.ts` / `en/general.ts` | Meeting, decision, notify, and message-template enum labels | §3.3, §9.1b |
-| `backend/src/resources/trans/ar/messages.ts` / `en/messages.ts` | Ability denial messages for meeting completeness and notify lock | §9.1b |
+| `backend/src/resources/trans/ar/general.ts` / `en/general.ts` | Meeting, decision, notify, and message-template enum labels; `joi.datetime.tooSoon` | §3.3, §9.1a, §9.1b |
+| `backend/src/resources/trans/ar/messages.ts` / `en/messages.ts` | Ability denial messages for meeting completeness, notify lock, edit freeze (`MEETING_NOTIFY_TOO_SOON`), approve lead (`MEETING_DATETIME_TOO_SOON`), voting-quorum copy | §9.1a, §9.1b |
 | `backend/src/resources/trans/ar/validation.ts` / `eng-hosam/@nodejs/validation/src/trans/ar/validation.ts` | Arabic email validation labels | localization-only |
 | `backend/src/app/gql/definitions/base.graphql` | meeting GQL enum wrappers | §4 |
 | `backend/src/app/gql/definitions/customer.graphql` | `_Meeting` + `_MeetingFilter` + roots + nested relations | §4 |

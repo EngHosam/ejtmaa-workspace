@@ -295,6 +295,17 @@ Identification sent to the backend (`organizationId` HTTP header on axios; optio
 
 See `docs/platforms/website/organization-host-routing.md` §1.2, §2, §3, §4, §5.1 and `.cursor/rules/organization-host-routing.mdc`.
 
+## W59. Client Rules Mirror A Server Gate — And Say So Honestly
+
+A rule the user can see (a picker floor, a readiness row, a schedule note) exists on the server first. The website copy of it is a **mirror**:
+
+- mirrored constants and their predicates live in one module beside their consumers, each naming its backend source (`meetingScheduleLead.ts`, `meetingNotifyTemplateMode.ts`); no magic number or duplicated enum filter in a screen or hook,
+- the condition that shows a note must equal the condition the server checks — a rule that applies only to drafts is not narrated on approved records, and a gate that applies to drafts too is not hidden from them,
+- UI copy must not promise an outcome the server does not enforce; if the copy says "fix X before Y", `Y` must actually fail while `X` holds,
+- an input control never silently rewrites the user's stored value to satisfy a floor: show the value as stored, mark it invalid, and disable confirm.
+
+Contracts: `docs/platforms/website/flow-customer-meetings.md` §6.5, `docs/platforms/website/flow-form-foundation.md` §3.7, `.cursor/rules/website-backend-policy-mirror.mdc`.
+
 ## Related
 
 - `docs/platforms/website/overview.md`

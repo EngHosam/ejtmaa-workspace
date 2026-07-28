@@ -75,6 +75,22 @@ The Sequelize row captured at load is the same instance the flush writes through
 5. Reconnect or a second participant replays the whole state through the sync handshake; nothing is read from the SQL columns again while the entry stays in memory.
 6. Applying the live fields back onto the SQL columns is **not shipped** (§6).
 
+### 3.1 Requester-driven reset
+
+`MeetingRequester` resets the document at the two lifecycle points where the preparation state changes underneath it (`meeting-domain.md` §9.1a):
+
+| Trigger | SQL in the transaction | After commit |
+|---|---|---|
+| `approve` (`DRAFT` → `WAITING_TO_START`) | `live_state = null` | `destroyMeetingLiveDoc(meetingId, { flush: false })` |
+| `demoteApprovedMeetingToDraft` (any content write on a `WAITING_TO_START` meeting) | `status = DRAFT`, `live_state = null` | same call |
+
+Two properties are load-bearing:
+
+- **`flush: false`** — the default (`true`) would encode the in-memory document back into the BLOB the transaction just cleared, resurrecting the state the reset removed.
+- **`transaction.afterCommit`** — the registry is process memory and cannot be rolled back, so eviction must not run for a transaction that later fails.
+
+A `DRAFT` meeting is outside `LIVE_STATUSES`, so no session can be open at approve time; the call exists to evict an entry left behind by an earlier approve → demote → approve cycle.
+
 ## 4) GraphQL exposure
 
 `live_state` is deliberately **not** part of any GraphQL contract.
@@ -118,7 +134,7 @@ Until then the SQL columns keep the values the requester write path left, and co
 1. **Debounce has no maximum wait.** Every document update restarts the 1500 ms timer, so a continuously edited meeting keeps deferring its BLOB write until the editing pauses.
 2. **No flush on shutdown.** Nothing hooks process exit; unflushed changes are lost on restart.
 3. **Stale status gate.** The update gate reads the meeting row captured at handshake time (`socket.data.meeting`), so a status change made outside the live session is not seen until the socket reconnects. Acceptable because completion runs through the live session itself (§6).
-4. **No eviction.** `destroyMeetingLiveDoc` and `peekMeetingLiveDoc` have no callers, so entries live until the process restarts and memory grows with the number of meetings touched.
+4. **Eviction only on approve / demotion.** `destroyMeetingLiveDoc` is called from those two requester paths (§3.1); `peekMeetingLiveDoc` still has no caller. Nothing evicts an entry when a session simply ends, so memory still grows with the number of meetings touched until the process restarts.
 5. **Single instance.** The registry is process memory. Two backend processes would each hold an independent document for the same meeting and overwrite each other's BLOB; horizontal scaling needs a shared document plane first.
 6. **Seed write on first load.** A meeting whose BLOB is `null` gets one write on first sync even when nobody edits. Harmless because a session only opens for a live meeting, whose columns are no longer edited through the form.
 
@@ -128,6 +144,7 @@ Until then the SQL columns keep the values the requester write path left, and co
 |---|---|---|
 | `backend/src/app/orm/models/Meeting.ts` | `live_state` column, `LIVE_MAP`, `LIVE_STATUSES`, doc statics, `getLiveDoc()` | §1 |
 | `backend/src/app/helpers/MeetingLiveDocHelper.ts` | registry, debounce persist, flush, destroy | §2 |
+| `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | `live_state = null` + `afterCommit` destroy on approve and on demotion to draft | §3.1 |
 | `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | `registerOrmAttrs.expect: ["live_state"]` | §4 |
 | `backend/eng-hosam/@nodejs/gql/src/BridgeBase.ts` | `bootRegisteredAttrs()` exclusion semantics (library, not edited) | §4 |
 | `backend/package.json` | `yjs` dependency pin | Scope |

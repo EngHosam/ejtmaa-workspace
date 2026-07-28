@@ -182,8 +182,11 @@ Canonical consumers: meeting chairperson (`ident="members"`); template channel (
 |---|---|
 | Value | ISO string in form reducer |
 | Chrome | Date chip + time chip (or `emptyLabel`) + pick action |
-| Open | `openDateTimePicker({ title, initValue, minDate?, pastDateError })` |
-| After pick | Reject if `<= Date.now()` via `input.set(iso, [pastDateError])`; else `set(iso, [])` |
+| Open | `openDateTimePicker({ title, initValue, minDate?, confirmLabel? })` — the modal receives the floor, **not** the copy |
+| Props | `pastDateError` (required) + `minDateError` (optional, used when `minDate` is set) |
+| After pick | `<= Date.now()` → `input.set(iso, [pastDateError])`; else `minDate` violated → `input.set(iso, [minDateError \|\| pastDateError])`; else `set(iso, [])` |
+
+Two distinct errors because a floor is not always "the past": the meeting `datetime` floor is `now + 12h`, so a tomorrow-morning pick is a valid future date that still violates the rule and needs its own copy (`flow-customer-meetings.md` §6.5). Field-level ownership of the message keeps the modal copy-free and reusable.
 
 #### Modal
 
@@ -193,14 +196,16 @@ Canonical consumers: meeting chairperson (`ident="members"`); template channel (
 | Layout | Calendar **full width** of modal (flex weeks/days); not compact centered inline-block |
 | Time | 15-minute chip grid; scroll Col `minH={0}` + `maxH` + `customScroll` |
 | Theme | `getColor(semanticColor…)` → `datepickerTheme({…})` on calendar wrapper `cssStyle` |
+| Initial draft | `initValue` is shown **as stored**, even when it is below `minDate` or in the past; only the empty case falls back to the next valid 15-minute slot at or after `max(now, minDate)` |
+| Invalid draft | Confirm is `disabled` while the draft is `<= now` or `< minDate`; disabled slots stay visibly disabled |
 | Confirm | Returns ISO via `onSelect`; cancel / Escape closes |
 | Light selected day | `primaryActionBackground` / `primaryActionText` |
 | Dark selected day | `accentActionBackground` / `accentActionText` |
 | i18n | `ui.modals.dateTimePicker.*` |
 
-Rule: `.cursor/rules/website-third-party-widget-emotion-theme.mdc`. **Forbidden:** brand-hex SCSS overlay (deleted `react-datepicker-theme.scss`).
+Rule: `.cursor/rules/website-third-party-widget-emotion-theme.mdc`. **Forbidden:** brand-hex SCSS overlay (deleted `react-datepicker-theme.scss`); silently clamping or auto-advancing the user's value to satisfy `minDate` (W59) — the picker shows what the record holds and blocks confirm instead.
 
-Canonical consumer: meeting `datetime`.
+Canonical consumer: meeting `datetime` (create screen + `MeetingBasicsModal`).
 
 ### 3.8 `ConfirmModal`
 
