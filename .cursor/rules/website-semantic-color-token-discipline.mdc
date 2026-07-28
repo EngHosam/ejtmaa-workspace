@@ -23,8 +23,21 @@ Applies when authoring or reviewing website UI that resolves colors through `sem
 3. **`theme.ts` is brand authority — do not edit it to satisfy a consumer.** If a token seems missing, first check whether an existing `semanticColor` key already covers the case; only add a new key when a real consumer needs it (YAGNI — no dead tokens).
 4. **Path validity is type-guarded.** `semanticColor` entries are typed `as ColorType`, and `ColorType` includes `ThemeMapPath` (a string-literal union derived from `ThemeMapType` via `FullNestedPaths`). `yarn type-check` (`tsc --noEmit`) rejects any path string that is not a real `ThemeMap` leaf. A passing `type-check` is proof that all `semanticColor` paths resolve.
 
+## Runtime per-tenant color maps
+
+Authority: `docs/invariants/website.md` W43.
+
+A surface that themes from data (today: the `MEETING` shell, `website/src/app/ui/components/meeting/hooks/useOrganization.ts`) may build a runtime `ColorType` map, because `semanticColor` holds fixed `ThemeMap` paths and cannot carry a per-tenant value. Such a map MUST split its keys:
+
+1. **Shell / neutral keys are assigned the `semanticColor.<same key>` token itself**, never a copied `ThemeMap` literal. `ColorType` includes `ThemeMapPath` and `getColor` resolves a path per scheme, so the same map entry stays theme-correct with no duplication.
+2. **Only brand keys are computed** from the tenant seeds (fills, on-fill text, brand-tinted sections/text), with `BrandColors` fallbacks when the seed is null or unparseable.
+3. **On-fill text is derived from seed luminance**, not assumed white — a tenant may pick a light primary.
+
+Copying a `ThemeMap` leaf into such a map is a defect even when the copied value is currently correct. `yarn type-check` validates a token **path**, but no check compares a copied hex against its leaf, so the copy drifts silently on the next `theme.ts` edit and the drift is invisible until someone eyeballs the surface. Values most easily mis-copied are the ones whose leaf is a brand scale rather than a neutral (e.g. the dark `drawer` fill is `BrandScales.navy[950]`, not `NeutralColors[950]`) and the border/divider leaves, which use `BaseColors` aliases (`cloud`, `smoke`, `steel`) whose neutral index is not obvious.
+
 ## Forbidden
 
+- Copying a `ThemeMap` leaf value into a runtime color map instead of referencing the `semanticColor` token (see above).
 - `@white` / `@<BaseColor>` literals where a `semanticColor` action-text/icon token already expresses the intent.
 - Pairing `textInverted` (white) with a light surface such as `secondaryActionBackground` (navy[50]) — invisible text.
 - Using `primaryActionBackground` / other fixed-dark action fills as SVG text `fill` on `cardBackground` (or any scheme-flipped surface).
@@ -52,7 +65,8 @@ To re-verify alignment after any `theme.ts` or `semanticColor` change, run the a
 
 ## Related
 
-- `docs/platforms/website/ui-foundation.md` (semantic color audit & type guard)
+- `docs/platforms/website/ui-foundation.md` (semantic color audit & type guard; runtime per-tenant color maps)
+- `docs/platforms/website/organization-host-routing.md` §5.3 (the shipped per-tenant map)
 - `docs/platforms/website/brand-identity-alignment.md` (shipped outcome)
-- `docs/invariants/website.md` W10, W43, W56 (footer bg theme-flipped), W57 (third-party brand color exemption)
+- `docs/invariants/website.md` W10, W43 (incl. runtime per-tenant color maps), W56 (footer bg theme-flipped), W57 (third-party brand color exemption)
 - `.cursor/rules/website-action-control-loader-contrast.mdc` (spinner contrast on filled controls — sibling concern)

@@ -13,7 +13,7 @@ Interpretation rule:
 
 ## Shipped baseline (current state)
 
-The checked-in scaffold ships the `CUSTOMER` + visitor actor model on mount `/website`; `AuthedAs = "CUSTOMER"`; public routes `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, and `Error`; `getMyHomeIdentify = "CustomerHome"`; layouts `BASIC`, `LANDING`, `MAIN`, and `CUSTOMER_MAIN`; `customerRouter`; the customer workspace shell and its `CustomerHome` command map; members, meetings, organization, message-channels, and message-templates routes; GQL mirrors `base` + `customer`; and `CUSTOM.START` boot wiring. Route inventory and statuses are authoritative in `docs/platforms/website/route-registry-contract.md`.
+The checked-in scaffold ships the `CUSTOMER` + visitor actor model on mount `/website`; `AuthedAs = "CUSTOMER"`; public routes `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, and `Error`; `getMyHomeIdentify = "CustomerHome"`; layouts `BASIC`, `LANDING`, `MAIN`, `CUSTOMER_MAIN`, and `MEETING` (organization host — W58); `customerRouter`; the customer workspace shell and its `CustomerHome` command map; members, meetings, organization, message-channels, and message-templates routes; GQL mirrors `base` + `customer`; and `CUSTOM.START` boot wiring. Route inventory and statuses are authoritative in `docs/platforms/website/route-registry-contract.md`.
 
 Not yet shipped: Google social auth, `CustomerBottomBar`, and customer subscription, settings, notifications, support, and static-information screens. These remain obligated by the invariants below and the flow docs.
 
@@ -188,7 +188,9 @@ See `.cursor/rules/website-presentational-label-props.mdc`.
 
 Prefer `semanticColor.<key>` (`website/src/resources/configs/utils.ts`) over `@white` / `@<BaseColor>` hardcodes whenever a semantic token exists. Pair text/icon color against the **resolved surface fill** (e.g. white text belongs on a primary/dark fill, not on `secondaryActionBackground` = navy[50]). `semanticColor` path strings are type-guarded by `ThemeMapPath` (derived from `ThemeMapType`), so `yarn type-check` rejects any path that is not a real `ThemeMap` leaf. Do not add `semanticColor` tokens without a consumer (YAGNI). `theme.ts` is brand authority and is not edited to satisfy consumers.
 
-See `.cursor/rules/website-semantic-color-token-discipline.mdc` and `docs/platforms/website/brand-identity-alignment.md`.
+A surface that themes from **data** may build a `ColorType` map at runtime, because `semanticColor` holds fixed paths and cannot carry a per-tenant value (shipped case: the organization-branded `MEETING` shell, `components/meeting/hooks/useOrganization.ts`). Such a map keeps the `semanticColor` key names and splits its entries: shell/neutral keys are **assigned the `semanticColor.<same key>` token**, and only brand keys are computed from the tenant seeds (with `BrandColors` fallbacks, and on-fill text derived from seed luminance rather than assumed white). Copying a `ThemeMap` leaf value into such a map is forbidden even when the copy is currently correct — the type guard above validates a **path**, and nothing compares a copied hex against its leaf, so the copy drifts silently on the next `theme.ts` edit.
+
+See `.cursor/rules/website-semantic-color-token-discipline.mdc`, `docs/platforms/website/ui-foundation.md` § Runtime per-tenant color maps, `docs/platforms/website/organization-host-routing.md` §5.3, and `docs/platforms/website/brand-identity-alignment.md`.
 
 ## W44. URL Config Brand Alignment
 

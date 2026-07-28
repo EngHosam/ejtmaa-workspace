@@ -137,7 +137,7 @@ Config layout: root entry `configs/socket.ts` is the shared boot factory; `confi
 | Identify / path | `Meeting` → `/meeting/:memberId/:memberToken/:meetingId` |
 | `MPagesRoutes` | `params: { memberId: string; memberToken: string; meetingId: string }` |
 | Flags | `layout: "MEETING"`, `orgHostOnly: true`, `preLoadedPage` |
-| Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — `Box` with `semanticColor.pageBackground`, `minH="100vh"`; mapped in `MyApp.getLayout()` under `case "MEETING"` |
+| Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — organization-branded shell (header, drawer, footer — §5.3); mapped in `MyApp.getLayout()` under `case "MEETING"` |
 | Page | `website/src/app/ui/pages/Meeting.tsx` — `useCurrentParams({ ident: "Meeting", mapParams: p => p })`, renders `LiveMeetingProbeScreen` with the three params |
 | Screen | `website/src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` — temporary probe UI (§5.2) |
 | Live hook | `website/src/app/ui/components/meeting/hooks/useLiveMeeting.ts` (product hook under `components/meeting/`, **not** `ui/base/hooks`) |
@@ -185,6 +185,65 @@ Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/rules/meeting-l
 - Chrome is a shared `fieldStyle` object on `ElementStyles.inputReset` with `semanticColor` / `semanticDims` tokens only; no literal colors or sizes.
 
 It is deliberately **not** a registered form: no `Forms` entry, no `FormScreen`, no requester submit. The website form contract (`flow-form-foundation.md`) does not apply because nothing is submitted — edits go to the CRDT document.
+
+### 5.3) Meeting shell (organization branding)
+
+`MEETING` is the only layout that renders tenant branding. The branding source is the `organizationHost` slice (§3) — the same public payload `org/start` returns — so the shell needs no extra request.
+
+#### `useOrganization`
+
+`website/src/app/ui/components/meeting/hooks/useOrganization.ts` is a product hook under `components/meeting/hooks/`, not `ui/base/hooks` (same placement rule as `useLiveMeeting`).
+
+- Reads `state.organizationHost` through `useSector` and returns `null` when `id` is absent, so a consumer cannot render tenant chrome on a non-organization host.
+- Returns `{ id, name, description, logo_url, colors }`. Raw `primary_color` / `secondary_color` are **not** re-exported — a consumer must go through `colors`.
+- `colors` is an `OrganizationColors` map whose keys mirror `semanticColor` naming, so a component reads `colors.cardBackground` exactly like it would read `semanticColor.cardBackground`.
+- Seeds resolve with the installed `color` package: `primary_color` → brand, `secondary_color` → accent. A `null`, empty, or unparseable value falls back to `BrandColors.navy` / `BrandColors.orange`. The whole map is `useMemo`-ed on the six store fields.
+- `defaultOrganizationColors()` builds the same map from the two `BrandColors` fallbacks; every consumer uses `organization?.colors ?? defaultOrganizationColors()` so the shell renders before the slice hydrates.
+
+**Token split (non-negotiable).** Shell/neutral keys are assigned the `semanticColor.*` token itself, never a copied literal — `ColorType` accepts a `ThemeMapPath` and `getColor` resolves it per scheme, so these follow `theme.ts` automatically. Only the eight brand keys are computed from the seeds:
+
+| Group | Keys | Source |
+|---|---|---|
+| Shell (16) | `pageBackground`, `headerBackground`, `footerBackground`, `drawerBackground`, `cardBackground`, `inputBackground`, `inputBorder`, `navigationBorder`, `footerBorder`, `subtleDivider`, `backdrop`, `textPrimary`, `textSecondary`, `textTertiary`, `iconPrimary`, `iconSecondary` | `semanticColor.<same key>` |
+| Brand (8) | `primaryActionBackground`, `accentActionBackground`, `primaryActionText`, `accentActionText`, `sectionBrandBackground`, `sectionAccentBackground`, `textBrand`, `textAccent` | computed from the org seeds |
+
+Copying a `ThemeMap` leaf into the shell group is a defect: `yarn type-check` validates a token path but cannot detect a stale hex, so a copy drifts silently on the next `theme.ts` edit. `primaryActionText` / `accentActionText` pick white or ink by seed luminance, so an organization may choose a light primary without losing contrast. Authority: `docs/invariants/website.md` W43.
+
+Five of the brand keys — `accentActionText`, `sectionBrandBackground`, `sectionAccentBackground`, `textBrand`, `textAccent` — have no consumer in the shipped shell. They are a declared reserve for descendant meeting screens, not dead code; the YAGNI clause in W43 applies to `semanticColor` additions, not to this map's brand half, which is generated from the same two seeds regardless.
+
+#### Shell components
+
+| Component | Shipped behavior |
+|---|---|
+| `meeting/MeetingHeader.tsx` | Menu button (shared `HeaderIconButton`) + org logo, or the org name clamped to one line when there is no logo. A 2px rail in `colors.accentActionBackground` sits on the bottom edge. `fixed` prop switches between the in-flow desktop bar and the mobile `Fixed` bar at `zIndex.header`. |
+| `meeting/MeetingFooter.tsx` | Rights line only: `© <year> <platform name> — <rights>`. The name is the **platform** (`ui.layouts.mainLayout.footerTitle`), not the organization. |
+| `meeting/MeetingDrawerPanel.tsx` | Shared panel body for both breakpoints: title row (with a close button only when `showClose`), org identity card (logo and/or name), a 2-column tile grid, and a pinned appearance/language row (`ThemeModeSwitch` + `LanguageSwitch`, both `compact`). |
+| `meeting/MeetingDrawerOverlay.tsx` | Mobile portal overlay following the `CustomerDrawer` pattern: `createPortal` to `body`, `zIndex.modals`, blurred backdrop, RTL-aware slide-in, `no-scroll-drawer` body lock, 220ms unmount delay. Exported **without** `withMemo` — it reads `router.isRTL`. |
+
+The button chrome is `website/src/app/ui/components/HeaderIconButton.tsx` — a top-level shared component (`component-structure.md` §3), consumed by both `CustomerHeader` and `MeetingHeader`. It owns its own tokens (`inputBackground`, `inputBorder`, `iconPrimary`, `semanticDims.control.iconButtonSize`, `semanticDims.card.radius`) and exposes no color props, so the two headers cannot drift.
+
+The glyph is the shared `DrawerMenuIcon`. Its leading bar is themeable through the optional `accentClr` prop, defaulting to `semanticColor.accentActionBackground`; the two horizontal bars are always `semanticColor.iconPrimary`. `MeetingHeader` passes `semanticColor.iconPrimary` so all three bars read as one content-colored mark (dark in light scheme, near-white in dark). `CustomerHeader` passes nothing and keeps the accent bar.
+
+**Drawer tiles.** Six tiles render from a local `DrawerGridItemDef[]`: `live` (`FiVideo`), `agenda` (`FiList`), `vote` (`FiCheckSquare`), `talkQueue` (`FiMic`), `decisions` (`FiFileText`), `participants` (`FiUsers`). Every tile is passed `available={false}`, so all six render dimmed (`opc 0.55`), carry `disabled` + `aria-disabled`, and have no click handler or route target. The tile chrome mirrors `CustomerDrawer`'s `DrawerGridItem`: `minH 7.2`, a `3.1`-square icon well in `colors.primaryActionBackground` with the glyph in `colors.primaryActionText`, and a `smallAction` bold label clamped to two lines.
+
+#### Layout composition
+
+`MeetingLayout` picks one of two trees from a `matchMedia(min-width: SW.min_lg)` effect, the same shape `MainLayout` uses. `children` is rendered once per tree, so the page (and its `/meeting` socket session) mounts only once.
+
+- **Desktop:** a `Row` of [drawer column | `Col`(header, content, footer)]. The drawer column is **in flow** (not an overlay) and `position: sticky; top: 0` at `h/maxH: 100vh`, so it stays viewport-tall while the page scrolls and never covers the footer. Its width animates between `semanticDims.shell.drawerWidth` and `0`, with `pointerEvents: none` while collapsed.
+- **Mobile:** the `CustomerMainLayout` shape — `MeetingHeader fixed`, content `minH: 100vh` with a `paddingTop` matching `Dims.headerHeight` / `Dims.mobileHeaderHeight`, and the portal overlay.
+
+The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls (`Col` + `flx_1` + `minH={0}` + `customScroll`), which keeps the appearance/language row visible at the bottom instead of pushing it below the fold as the tile list grows.
+
+**i18n.** `ui.layouts.meetingLayout` in both `ar.ts` and `en.ts`, with identical key sets:
+
+| Group | Keys |
+|---|---|
+| `header` | `menu`, `logoAria` |
+| `footer` | `rights` |
+| `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemLive`, `itemAgenda`, `itemVote`, `itemTalkQueue`, `itemDecisions`, `itemParticipants`, `utilityPrefs` |
+
+`MeetingFooter` additionally reads `ui.layouts.mainLayout.footerTitle` for the platform name; it has no key of its own for it.
 
 ## 6) Backend surfaces
 
@@ -261,6 +320,8 @@ What the website side depends on:
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
 7. **Organization-host pages other than `Meeting` have no realtime channel.** A tenant-wide org socket is not part of the shipped surface.
 8. **No participant-type gate on the client or the server.** Any roster member of a live meeting can edit the document (`../backend/contracts/meeting-realtime-socket.md` §4).
+9. **Every meeting drawer tile is disabled** (§5.3). The six tiles (live, agenda, vote, talk queue, decisions, participants) are placeholders with no route and no handler; the hover treatment on the icon well is therefore unreachable until the tiles get targets.
+10. **The meeting shell picks its tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
 
 ## 9) Environment
 
@@ -297,8 +358,17 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` | temporary sync probe UI | §5.2 |
 | `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — socket-only hook absorbed into `useLiveMeeting` | §5.1 |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
-| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout | §5 |
+| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — branded shell, responsive tree, sticky desktop drawer | §5, §5.3 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
+| `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` shell/brand token split | §5.3 |
+| `src/app/ui/components/meeting/MeetingHeader.tsx` | menu button + org logo/name, accent rail, `fixed` mobile bar | §5.3 |
+| `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line | §5.3 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | shared drawer body, scrolling tile grid, pinned prefs row | §5.3 |
+| `src/app/ui/components/meeting/MeetingDrawerOverlay.tsx` | mobile portal overlay | §5.3 |
+| `src/app/ui/components/HeaderIconButton.tsx` | top-level shared icon button; consumed by `CustomerHeader` + `MeetingHeader` | §5.3; `component-structure.md` §3 |
+| `src/app/ui/components/customer/CustomerHeader.tsx` | consumes `HeaderIconButton` from the shared top level | §5.3 |
+| `src/app/ui/components/DrawerMenuIcon.tsx` | optional `accentClr` prop; default is the accent bar | §5.3 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header`, `footer`, `drawer`) | §5.3 |
 | `src/resources/configs/customer/formRoute.ts` | nested `params` href builders without `as To` | `route-registry-contract.md` §3.1 |
 | `src/app/ui/components/customer/members/CustomerMemberFormScreen.tsx` | `useCurrentParams` `mapParams: p => p` | `route-registry-contract.md` §3.1 |
 | `src/app/ui/components/customer/message-channels/CustomerMessageChannelFormScreen.tsx` | same | §3.1 |
@@ -342,6 +412,7 @@ Every path that implements this contract, with the section that describes it.
 | `.cursor/rules/nodejs-socket-namespace-registration.mdc` | namespace / controller / room registration |
 | `.cursor/rules/nodejs-socket-handler-contract.mdc` | connection return = absolute listener set |
 | `.cursor/rules/socket-event-mirroring.mdc` | outbound mirror scope |
+| `.cursor/rules/website-semantic-color-token-discipline.mdc` | runtime per-tenant color maps — shell keys reference `semanticColor`, only brand keys are computed (§5.3) |
 | `.cursor/skills/meeting-realtime-socket/SKILL.md` | Meeting realtime workflow |
 | `.cursor/skills/nodejs-socket-server-event/SKILL.md` | backend socket surface workflow |
 

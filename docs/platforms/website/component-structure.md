@@ -24,11 +24,11 @@ Actors: **visitor** and **customer**.
 
 ### 1.1) Shipped vs planned
 
-**Shipped layouts:** `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`).
+**Shipped layouts:** `BasicLayout` (`BASIC`), `LandingLayout` (`LANDING`), `MainLayout` (`MAIN`), `CustomerMainLayout` (`CUSTOMER_MAIN`), `MeetingLayout` (`MEETING`).
 
 **Shipped pages:** `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`, `CustomerHome` (command map — `flow-customer-shell.md` §7), `CustomerMembers` (directory — `flow-customer-members.md`), `CustomerMemberForm`, `CustomerMeetings` / `CustomerMeetingForm` / `CustomerMeetingDetails` (`flow-customer-meetings.md`), `CustomerOrganization` (`flow-customer-organization.md`), `CustomerMessageChannels` / `CustomerMessageChannelForm` (`flow-customer-message-channels.md`).
 
-**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `HomeMark`, `Breadcrumb`, `useBreadcrumbs`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `FilterOptionChip`, `FilterOptionChips`, `Wrong` (`Empty` / `LaneFailed`), auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, …), modals (`FormModal` chrome, `EntityPickerModal`, `DateTimePickerModal`, `ConfirmModal`, `SelectableEntityCard`, `entity-picker/configs/*`), landing home sections (`home/*`), customer shell (`CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerSubHeader`, `HeaderIconButton`, `IdentityAvatar`, `hooks/useMe`, `hooks/useCustomerMembers`, `hooks/useCustomerMeetings`, `hooks/useCustomerMessageChannels`, `members/*`, `meetings/*`, `modals/*` registered form modals, `message-channels/*`, `message-templates/*`).
+**Shipped shared components:** `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `HeaderIconButton`, `HomeMark`, `Breadcrumb`, `useBreadcrumbs`, `LandingHeader`, `LandingFooter`, `LandingMobileDrawer`, `ThemeModeSwitch`, `LanguageSwitch`, `Loadable`, `Toast`, `DataTable`, `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `FilterOptionChip`, `FilterOptionChips`, `Wrong` (`Empty` / `LaneFailed`), auth (`AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton`), form (`FormTextField`, `FormActionButton`, `FormInputWrapper`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, …), modals (`FormModal` chrome, `EntityPickerModal`, `DateTimePickerModal`, `ConfirmModal`, `SelectableEntityCard`, `entity-picker/configs/*`), landing home sections (`home/*`), customer shell (`CustomerHeader`, `CustomerFooter`, `CustomerDrawer`, `CustomerSubHeader`, `IdentityAvatar`, `hooks/useMe`, `hooks/useCustomerMembers`, `hooks/useCustomerMeetings`, `hooks/useCustomerMessageChannels`, `members/*`, `meetings/*`, `modals/*` registered form modals, `message-channels/*`, `message-templates/*`).
 
 **Planned (target contract, not yet in scaffold):** `CustomerBottomBar` / `BottomIcons`, remaining `pages/customer/*` workspace screens (subscription, settings, notifications, static info, support), Google social auth UI (`SelectableCard`, `Checkbox` on Register).
 
@@ -48,7 +48,7 @@ Shipped groups:
 |---|---|
 | Feedback | `Loadable`, `Toast`, `Wrong` (`Empty`, `LaneFailed`) |
 | List lane | `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `FilterOptionChip` (landing text + orange underline), `FilterOptionChips` |
-| Shell (generic) | `Header`, `Drawer`, `Footer`, `Logo` |
+| Shell (generic) | `Header`, `Drawer`, `Footer`, `Logo`, `DrawerMenuIcon`, `HeaderIconButton` (shared by `CustomerHeader` + `MeetingHeader`) |
 | Shell (visitor landing) | `LandingHeader`, `LandingFooter`, `LandingMobileDrawer` |
 | Auth | `AuthPageShell`, `AuthTextField`, `AuthNavLink`, `AuthSecondaryNavButton` |
 | Form | `FormTextField`, `FormActionButton`, `FormInputWrapper`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField` |
@@ -59,6 +59,7 @@ Shipped groups:
 | Customer meetings | `customer/meetings/*` (screens, rows, cards, `MeetingMetaChips`, `MeetingNote` alert chrome, `MeetingParticipantGroup`, and the UI-only mirrors `meetingNotifyTemplateMode` / `meetingScheduleLead`), `customer/hooks/useCustomerMeetings` |
 | Customer form modals | `customer/modals/*` (`MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal` — registered; see `flow-form-foundation.md` §3.8b) |
 | Live meeting (organization host) | `meeting/LiveMeetingProbeScreen` (temporary probe), `meeting/hooks/useLiveMeeting` — `organization-host-routing.md` §5.1, §5.2 |
+| Meeting shell (organization host) | `meeting/MeetingHeader`, `meeting/MeetingFooter`, `meeting/MeetingDrawerPanel`, `meeting/MeetingDrawerOverlay`, `meeting/hooks/useOrganization` — `organization-host-routing.md` §5.3 |
 
 Planned groups (target contract):
 

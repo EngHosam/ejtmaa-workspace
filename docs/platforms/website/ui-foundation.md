@@ -38,7 +38,15 @@ Access via utils theme path helpers — do not hardcode hex in components when a
 1. **Path validity is type-checked.** `ColorType` includes `ThemeMapPath` (a string-literal union derived from `ThemeMapType` via `FullNestedPaths`). A path string that is not a real `ThemeMap` leaf is rejected by `tsc` at the `as ColorType` cast. `yarn type-check` is the path-validity guard.
 2. **Token over hardcoded shortcut.** Prefer `semanticColor.<key>` over `@white` / `@<BaseColor>` hardcodes, and pair text/icon color against the resolved surface fill (W43). Do not add `semanticColor` tokens without a consumer (YAGNI); do not edit `theme.ts` to satisfy consumers.
 
-Full audit procedure and the 48-key → `theme.ts` line map: `.cursor/skills/website-semantic-color-audit/SKILL.md`. Shipped alignment outcome: `brand-identity-alignment.md`.
+Full audit procedure and the 56-key → `theme.ts` line map: `.cursor/skills/website-semantic-color-audit/SKILL.md`. Shipped alignment outcome: `brand-identity-alignment.md`.
+
+### Runtime per-tenant color maps
+
+`semanticColor` holds fixed `ThemeMap` paths, so it cannot carry a value that varies per tenant. A data-themed surface builds a runtime `ColorType` map instead. The only shipped case is the organization-branded `MEETING` shell (`organization-host-routing.md` §5.3).
+
+Such a map keeps the same `semanticColor` key names and splits its entries: shell/neutral keys are **assigned the `semanticColor.<same key>` token**, and only brand keys are computed from the tenant seeds. This works because `ColorType` includes `ThemeMapPath` and `getColor` resolves a path against the active scheme, so a token entry and a computed `"#light #dark"` entry are interchangeable at the consumer.
+
+Copying a `ThemeMap` leaf value into such a map is forbidden: guarantee 1 above validates a token *path*, but nothing detects a stale copied hex, so the copy drifts on the next `theme.ts` edit. Authority: `docs/invariants/website.md` W43. Enforcement: `.cursor/rules/website-semantic-color-token-discipline.mdc` § Runtime per-tenant color maps.
 
 ## Typography
 
