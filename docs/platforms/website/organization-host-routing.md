@@ -138,9 +138,9 @@ Config layout: root entry `configs/socket.ts` is the shared boot factory; `confi
 | `MPagesRoutes` | `params: { memberId: string; memberToken: string; meetingId: string }` |
 | Flags | `layout: "MEETING"`, `orgHostOnly: true`, `preLoadedPage` |
 | Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — organization-branded shell (header, drawer, footer — §5.3) plus a single `MeetingLiveProvider` wrap (§5.1); mapped in `MyApp.getLayout()` under `case "MEETING"` |
-| Page | `website/src/app/ui/pages/Meeting.tsx` — renders `<MeetingLiveProbeScreen/>` with no credential props |
-| Screen | `website/src/app/ui/components/meeting/MeetingLiveProbeScreen.tsx` — temporary probe UI (§5.2); reads live state via `useMeetingLive()` |
-| Live module | `website/src/app/ui/components/meeting/hooks/useMeetingLive.tsx` (product module under `components/meeting/`, **not** `ui/base/hooks`) — session instance + provider + public context reader |
+| Page | `website/src/app/ui/pages/Meeting.tsx` — `Main()` returns `null` (no product UI yet); session still runs under `MeetingLiveProvider` in the layout |
+| Live module | `website/src/app/ui/components/meeting/hooks/useMeetingLive.tsx` — session instance + provider + public context reader (product module under `components/meeting/`, **not** `ui/base/hooks`) |
+| Current participant | `website/src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` — SyncedStore proxy for the route member's roster entry (§5.2) |
 
 `Layout` in `website/src/types/extends/global.ts` includes the `"MEETING"` member; `PageRouteState` includes `orgHostOnly?: boolean`.
 
@@ -189,18 +189,24 @@ Backend pairing (`docs/platforms/backend/contracts/meeting-realtime-socket.md`):
 
 Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/rules/meeting-live-state.mdc`, `.cursor/skills/meeting-realtime-socket/SKILL.md`.
 
-### 5.2) Probe screen (temporary)
+### 5.2) Current participant (`useMeetingLiveMe`)
 
-`website/src/app/ui/components/meeting/MeetingLiveProbeScreen.tsx` is a **verification tool**, not the meeting product UI. It exists to prove the sync path end to end and is replaced when the real meeting page lands.
+File: `website/src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts`.
 
-- Reads live state with arg-less `useMeetingLive()` (context under `MeetingLiveProvider`). No credential props.
-- Footer `meetingId` display uses `useCurrentParams({ ident: "Meeting", mapParams: p => p })` for the id only.
-- Status line: `rejected · <code>` when `error` is set (in `semanticColor.stateError`), else `disconnected` / `connected · syncing` / `synced`.
-- One `ProbeText` for `subject`, two `ProbeChoice` selects for `type` and `status`, whose options come from `MeetingLiveTypes` / `MeetingLiveStatuses` (the mirrored live-map consts) — no GQL enums and no hand-written label lists.
-- Every field is disabled until `synced`, dimmed with the `opc` shorthand, and writes through `batch(() => { meeting.field = value })`.
-- Chrome is a shared `fieldStyle` object on `ElementStyles.inputReset` with `semanticColor` / `semanticDims` tokens only; no literal colors or sizes.
+Returns the **SyncedStore proxy** for the current member's entry in `meeting.participants`, keyed by the Meeting route `memberId` (`useCurrentParams` for identify `Meeting`).
 
-It is deliberately **not** a registered form: no `Forms` entry, no `FormScreen`, no requester submit. The website form contract (`flow-form-foundation.md`) does not apply because nothing is submitted — edits go to the CRDT document. The probe does **not** edit `participants` (roster/presence remains a later surface).
+| Concern | Behavior |
+|---|---|
+| Source | `useMeetingLive().meeting.participants[memberId]` |
+| Return type | `MeetingLiveParticipant \| undefined` |
+| Missing data | `undefined` when `memberId` is absent, `participants` is not synced yet, or that id is not in the map |
+| Writes | Mutate fields on the returned object inside `useMeetingLive().batch(...)` — same collaborative path as other live fields |
+
+**Must not clone.** Spreading, `Object.assign`, or any new object would break SyncedStore observation; `batch` edits would not reach the CRDT. Index and return the proxy as-is.
+
+Naming: under the `MeetingLive*` family, `Me` means the session member (parallel to customer `useMe`), not a separate Member GQL load.
+
+The Meeting page does not consume this hook yet; it is the sanctioned read path for upcoming participant UI.
 
 ### 5.3) Meeting shell (organization branding)
 
@@ -322,14 +328,14 @@ What the website side depends on:
 | Apex request to `/meeting/...` | route gate → `Error` `404` |
 | Organization-host request to any non-`orgHostOnly` route (`/`, `/login`, `/customer/*`) | route gate → `Error` `404` |
 | Socket `/meeting` handshake missing ids, bad token, org mismatch, or no roster row | `NOT_VALID_CREDENTIAL` |
-| Live write on a meeting that is not `WAITING_TO_START` / `STARTED` | `meeting.live.error` `MEETING_NOT_LIVE` → probe shows `rejected · MEETING_NOT_LIVE` and locks the fields |
+| Live write on a meeting that is not `WAITING_TO_START` / `STARTED` | `meeting.live.error` `MEETING_NOT_LIVE` → client `error` is set and `synced` clears until the next `connect` re-sync (§5.1) |
 | Malformed live payload | `meeting.live.error` `NOT_VALID` → same lock; the next `connect` re-syncs |
 | Route params change to another meeting | `MeetingLiveProvider` re-runs `useMeetingLiveInstance` with the new ids; the instance drops the old document and store and opens a fresh session (§5.1) |
 
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
-2. **`Meeting` UI is a sync probe only** (§5.2): status text plus three raw fields. No meeting content, media, agenda, or participant UX ships yet.
+2. **`Meeting` page body is empty.** `Meeting.tsx` `Main()` returns `null`. Layout shell + live session still mount; no meeting product UI (media, agenda, roster chrome) ships yet.
 3. **Collaborative live map fields** — `subject`, `type`, `status`, `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
@@ -369,10 +375,11 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/store/reduces/index.ts` | slice registration + `MDefaultStoreState` | §3 |
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
-| `src/app/ui/pages/Meeting.tsx` | renders `<MeetingLiveProbeScreen/>` (no credential props) | §5, §5.2 |
+| `src/app/ui/pages/Meeting.tsx` | empty page body (`Main` → `null`); live session owned by layout | §5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session | §5.1 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); edits via `batch` | §5.2 |
 | `src/types/meeting.ts` | mirrored live map (`MeetingLiveMap`, `participants`, `MEETING_LIVE_*`; pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
-| `src/app/ui/components/meeting/MeetingLiveProbeScreen.tsx` | temporary sync probe UI; consumes `useMeetingLive()` | §5.2 |
+| `src/app/ui/components/meeting/MeetingLiveProbeScreen.tsx` | **deleted** — temporary sync probe removed; page body empty | §5, §5.2 |
 | `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — socket-only hook absorbed into the live module; a separate session hook is now forbidden | §5.1 |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
 | `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — branded shell, responsive tree, sticky desktop drawer, single `MeetingLiveProvider` wrap | §5, §5.1, §5.3 |
@@ -436,15 +443,37 @@ Every path that implements this contract, with the section that describes it.
 | `.cursor/skills/meeting-realtime-socket/SKILL.md` | Meeting realtime workflow |
 | `.cursor/skills/nodejs-socket-server-event/SKILL.md` | backend socket surface workflow |
 
+## 10a) Change set inventory (empty page + `useMeetingLiveMe`)
+
+Working-tree delivery that removed the temporary sync probe and added the current-participant hook. Earlier organization-host / live-session paths remain in §10.
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/pages/Meeting.tsx` | modified — `Main()` returns `null` | §5 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | **added** — SyncedStore proxy for route member in `participants` | §5.2 |
+| `src/app/ui/components/meeting/MeetingLiveProbeScreen.tsx` | **deleted** | §5, §5.2 |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — probe removed; §5.2 is `useMeetingLiveMe` | — |
+| `docs/platforms/website/component-structure.md` | live meeting group + empty Meeting page | §3, §5 |
+| `docs/platforms/website/README.md` | org-host index rows | change-set table |
+| `.cursor/rules/meeting-realtime-socket.mdc` | `useMeetingLiveMe` naming + no-clone forbidden | governance |
+| `.cursor/skills/meeting-realtime-socket/SKILL.md` | `useMeetingLiveMe` workflow | governance |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` renders the probe on the `MEETING` layout; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout + live session with an empty page body; `/customer/...` renders `Error` `404`.
 - Socket: organization host opens **no** boot socket; `MeetingLayout` opens `/meeting` once via `MeetingLiveProvider` / `useMeetingLiveInstance`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.
-- Two browsers on the same live meeting: an edit in one reaches the other, and the status line reads `synced` on both.
+- Two browsers on the same live meeting: a collaborative edit (via a consumer of `useMeetingLive` / `useMeetingLiveMe` + `batch`) in one reaches the other; both settle with `synced`.
 - Forced server disconnect: the client reconnects and re-runs the sync handshake; edits made while disconnected survive because the client answers the server state vector.
-- Meeting outside `WAITING_TO_START` / `STARTED`: editing shows `rejected · MEETING_NOT_LIVE` and the fields lock.
+- Meeting outside `WAITING_TO_START` / `STARTED`: a live write yields `meeting.live.error` `MEETING_NOT_LIVE` and clears `synced` until the next connect.
 
 ## 12) Related
 

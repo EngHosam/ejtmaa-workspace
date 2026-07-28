@@ -7,14 +7,14 @@ description: >-
   sync or reconnect, meeting.live.sync / meeting.live.update / meeting.live.error,
   MeetingIOControllerBase, MeetingLiveSyncIOController, MeetingLiveUpdateIOController,
   MeetingLiveDocHelper, live_state persistence, meeting-socket config, MeetingLayout
-  provider mount, or Meeting page wiring.
+  provider mount, useMeetingLiveMe, or Meeting page wiring.
 ---
 
 # Meeting realtime socket (`meeting.live.*` on `/meeting`)
 
 ## When to Use
 
-- Adding or changing `useMeetingLive` / `useMeetingLiveInstance` / `MeetingLiveProvider`, `meeting-socket.ts`, the probe screen, `MeetingLayout`, or the Meeting page wiring.
+- Adding or changing `useMeetingLive` / `useMeetingLiveInstance` / `MeetingLiveProvider` / `useMeetingLiveMe`, `meeting-socket.ts`, `MeetingLayout`, or the Meeting page wiring.
 - Adding a new `/meeting` event or a new field to the live document.
 - Debugging edits that do not propagate, a session stuck on `syncing`, a rejected write, duplicate sockets, or state lost after a reconnect.
 - Touching `live_state` persistence or the live document registry.
@@ -54,6 +54,7 @@ description: >-
     - Return `{ connected, synced, error, meeting, batch }`; all writes go through `batch`.
     - `MeetingLiveProvider` calls the instance once (params from `useCurrentParams` for `Meeting`) and publishes that value.
     - Public `useMeetingLive()` reads context only — UI consumers use this, never the instance hook.
+    - Current participant: `useMeetingLiveMe()` indexes `meeting.participants[memberId]` (Meeting route params); returns that SyncedStore proxy or `undefined`; never clone; field writes use `batch` from `useMeetingLive()`.
 11. **Mount once** in `MeetingLayout` with a single outer `<MeetingLiveProvider>` around both desktop and mobile shell trees.
 12. **Live map mirror:** if `MeetingLiveMap` / participant fields / `MEETING_LIVE_*` change, update **both** `backend/src/app/types/meeting.ts` and `website/src/types/meeting.ts` identically in the same change; confirm with a file diff. Seed nested `participants` as per-id `Y.Map`s in `MeetingLiveDocHelper` (not plain objects).
 13. **Boot:** `prepareSocket` stays socket-free on an organization host; Meeting owns its own session.
@@ -64,6 +65,7 @@ description: >-
 
 - No second live-map type beside the mirrored `MeetingLiveMap` pair.
 - No live codec/statics on `Meeting` ORM — helper only.
+- No cloning `useMeetingLiveMe()` before collaborative writes.
 - No meeting socket product module under `ui/base/hooks`.
 - No second `useMeetingLiveInstance` / Meeting socket under the same layout tree.
 - No bare `sync` / `update` event names — use `meeting.live.*`.
