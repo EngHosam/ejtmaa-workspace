@@ -1,7 +1,7 @@
 ---
 name: meeting-realtime-socket
 description: >-
-  Wires Meeting realtime on website LiveMeetingProvider / useLiveMeetingInstance
+  Wires Meeting realtime on website MeetingLiveProvider / useMeetingLiveInstance
   and backend /meeting meeting.live.* controllers with MeetingAuthenticationIOMiddleware
   and the Yjs live document. Use when adding or fixing the Meeting socket session,
   sync or reconnect, meeting.live.sync / meeting.live.update / meeting.live.error,
@@ -14,7 +14,7 @@ description: >-
 
 ## When to Use
 
-- Adding or changing `useLiveMeeting` / `useLiveMeetingInstance` / `LiveMeetingProvider`, `meeting-socket.ts`, the probe screen, `MeetingLayout`, or the Meeting page wiring.
+- Adding or changing `useMeetingLive` / `useMeetingLiveInstance` / `MeetingLiveProvider`, `meeting-socket.ts`, the probe screen, `MeetingLayout`, or the Meeting page wiring.
 - Adding a new `/meeting` event or a new field to the live document.
 - Debugging edits that do not propagate, a session stuck on `syncing`, a rejected write, duplicate sockets, or state lost after a reconnect.
 - Touching `live_state` persistence or the live document registry.
@@ -40,8 +40,8 @@ description: >-
 7. **Codec:** V2 on the BLOB, the sync reply, and the broadcast; convert local V1 doc events with `convertUpdateFormatV1ToV2` before emitting. Payloads travel base64.
 8. **Gate writes** on `Meeting().LIVE_STATUSES`. Reads are open to any authenticated participant.
 9. **Website config** at `website/src/resources/configs/meeting-socket.ts` (root sibling of `socket.ts`): `SOCKET_URL("meeting")` + handshake query. Do not nest this factory under `configs/socket/`.
-10. **Website live module** at `components/meeting/hooks/useLiveMeeting.tsx`:
-    - `useLiveMeetingInstance` owns the session (private): required `memberId` / `memberToken` / `meetingId`; `createSocketInstance` / `connect` / `disconnect` — never `getSocket`, and no second socket hook beside it.
+10. **Website live module** at `components/meeting/hooks/useMeetingLive.tsx`:
+    - `useMeetingLiveInstance` owns the session (private): required `memberId` / `memberToken` / `meetingId`; `createSocketInstance` / `connect` / `disconnect` — never `getSocket`, and no second socket hook beside it.
     - Live document fields use `MeetingLiveMap` from `website/src/types/meeting.ts` (mirrored with `backend/src/app/types/meeting.ts` — see `.cursor/rules/meeting-live-map-mirror.mdc`). Never type the SyncedStore map from GQL enums.
     - Rebuild the store + doc bundle when `meetingId` changes, and pass `[store]` to `useSyncedStore`.
     - Emit `meeting.live.sync` on every `connect`; answer the server `stateVector` in the reply.
@@ -49,9 +49,9 @@ description: >-
     - Surface `error` and clear `synced` on `meeting.live.error`.
     - Manual `socket.connect()` on `io server disconnect`.
     - Return `{ connected, synced, error, meeting, batch }`; all writes go through `batch`.
-    - `LiveMeetingProvider` calls the instance once (params from `useCurrentParams` for `Meeting`) and publishes that value.
-    - Public `useLiveMeeting()` reads context only — UI consumers use this, never the instance hook.
-11. **Mount once** in `MeetingLayout` with a single outer `<LiveMeetingProvider>` around both desktop and mobile shell trees.
+    - `MeetingLiveProvider` calls the instance once (params from `useCurrentParams` for `Meeting`) and publishes that value.
+    - Public `useMeetingLive()` reads context only — UI consumers use this, never the instance hook.
+11. **Mount once** in `MeetingLayout` with a single outer `<MeetingLiveProvider>` around both desktop and mobile shell trees.
 12. **Live map mirror:** if `MeetingLiveMap` / type / status unions change, update **both** `backend/src/app/types/meeting.ts` and `website/src/types/meeting.ts` identically in the same change; confirm with a file diff.
 13. **Boot:** `prepareSocket` stays socket-free on an organization host; Meeting owns its own session.
 14. **Do not mirror** `meeting.live.*` into `types/events.ts` / socket event registries.
@@ -61,7 +61,7 @@ description: >-
 
 - No second live-map type beside the mirrored `MeetingLiveMap` pair.
 - No meeting socket product module under `ui/base/hooks`.
-- No second `useLiveMeetingInstance` / Meeting socket under the same layout tree.
+- No second `useMeetingLiveInstance` / Meeting socket under the same layout tree.
 - No bare `sync` / `update` event names — use `meeting.live.*`.
 - No narrowed listener set on a rejection path.
 - No participant trust assumed from optional handshake `organizationId` alone.

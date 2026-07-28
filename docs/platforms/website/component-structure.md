@@ -58,7 +58,7 @@ Shipped groups:
 | Customer members | `customer/members/*`, `customer/hooks/useCustomerMembers` |
 | Customer meetings | `customer/meetings/*` (screens, rows, cards, `MeetingMetaChips`, `MeetingNote` alert chrome, `MeetingParticipantGroup`, and the UI-only mirrors `meetingNotifyTemplateMode` / `meetingScheduleLead`), `customer/hooks/useCustomerMeetings` |
 | Customer form modals | `customer/modals/*` (`MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal` — registered; see `flow-form-foundation.md` §3.8b) |
-| Live meeting (organization host) | `meeting/hooks/useLiveMeeting` (`LiveMeetingProvider` + `useLiveMeeting`), `meeting/LiveMeetingProbeScreen` (temporary probe) — `organization-host-routing.md` §5.1, §5.2 |
+| Live meeting (organization host) | `meeting/hooks/useMeetingLive` (`MeetingLiveProvider` + `useMeetingLive`), `meeting/MeetingLiveProbeScreen` (temporary probe) — `organization-host-routing.md` §5.1, §5.2 |
 | Meeting shell (organization host) | `meeting/MeetingHeader`, `meeting/MeetingFooter`, `meeting/MeetingDrawerPanel`, `meeting/MeetingDrawerOverlay`, `meeting/hooks/useOrganization` — `organization-host-routing.md` §5.3 |
 
 Planned groups (target contract):

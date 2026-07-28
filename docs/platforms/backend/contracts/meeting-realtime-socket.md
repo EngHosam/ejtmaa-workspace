@@ -5,7 +5,7 @@
 The backend realtime surface a meeting attendee connects to: socket namespace `/meeting`, its handshake authentication, its connection room, and the `meeting.live.*` events that carry the collaborative document.
 
 State plane the events transport (Yjs document, `live_state` BLOB, registry): `docs/platforms/backend/contracts/meeting-live-state.md`.
-Website consumer (layout-owned `LiveMeetingProvider` session, handshake query, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1.
+Website consumer (layout-owned `MeetingLiveProvider` session, handshake query, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1.
 Framework mechanics (namespace registration, handler-array listener set): `docs/platforms/backend/modules/nodejs-socket-library.md` §7, §10.
 Meeting domain model: `docs/platforms/backend/contracts/meeting-domain.md`.
 
@@ -87,7 +87,7 @@ On success the payload is re-emitted verbatim to `socket.to(Rooms.MEETING(meetin
 
 `{ code: MeetingLiveErrorCode }` with `"NOT_VALID" | "MEETING_NOT_LIVE"`, emitted to the offending socket only.
 
-Client contract (`useLiveMeetingInstance` via `LiveMeetingProvider`; UI reads `useLiveMeeting`): record the code, drop out of `synced` so the UI stops accepting edits, and wait for the next `connect` to re-run the sync handshake.
+Client contract (`useMeetingLiveInstance` via `MeetingLiveProvider`; UI reads `useMeetingLive`): record the code, drop out of `synced` so the UI stops accepting edits, and wait for the next `connect` to re-run the sync handshake.
 
 ### 3.4 Mirroring
 

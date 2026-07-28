@@ -1,4 +1,4 @@
-ï»¿# Ejtmaa Website Invariants
+# Ejtmaa Website Invariants
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Interpretation rule:
 
 ## Shipped baseline (current state)
 
-The checked-in scaffold ships the `CUSTOMER` + visitor actor model on mount `/website`; `AuthedAs = "CUSTOMER"`; public routes `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, and `Error`; `getMyHomeIdentify = "CustomerHome"`; layouts `BASIC`, `LANDING`, `MAIN`, `CUSTOMER_MAIN`, and `MEETING` (organization host â€” W58); `customerRouter`; the customer workspace shell and its `CustomerHome` command map; members, meetings, organization, message-channels, and message-templates routes; GQL mirrors `base` + `customer`; and `CUSTOM.START` boot wiring. Route inventory and statuses are authoritative in `docs/platforms/website/route-registry-contract.md`.
+The checked-in scaffold ships the `CUSTOMER` + visitor actor model on mount `/website`; `AuthedAs = "CUSTOMER"`; public routes `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, and `Error`; `getMyHomeIdentify = "CustomerHome"`; layouts `BASIC`, `LANDING`, `MAIN`, `CUSTOMER_MAIN`, and `MEETING` (organization host — W58); `customerRouter`; the customer workspace shell and its `CustomerHome` command map; members, meetings, organization, message-channels, and message-templates routes; GQL mirrors `base` + `customer`; and `CUSTOM.START` boot wiring. Route inventory and statuses are authoritative in `docs/platforms/website/route-registry-contract.md`.
 
 Not yet shipped: Google social auth, `CustomerBottomBar`, and customer subscription, settings, notifications, support, and static-information screens. These remain obligated by the invariants below and the flow docs.
 
@@ -46,7 +46,7 @@ Runtime entry centered on:
 
 Mandatory foundation:
 1. `ui/base/components/Utils.tsx`
-2. `resources/configs/theme.ts` â€” navy `#0B2057`, orange `#EC6901`
+2. `resources/configs/theme.ts` — navy `#0B2057`, orange `#EC6901`
 3. `resources/configs/utils.ts`
 4. Shared components under `ui/components/`
 
@@ -73,7 +73,7 @@ Customer router only. Fixed URL segments before parametric routes on the same pr
 ## W9. Auth Flow
 
 Customer auth on `/website`: Login, Register, ResetPassword.
-Role home redirect: authed customer â†’ customer home; visitor â†’ public home.
+Role home redirect: authed customer ? customer home; visitor ? public home.
 Auth primary surfaces use `SemanticColors.primary` / `SemanticColors.accent`.
 
 ## W10. Locale and Theme
@@ -106,7 +106,7 @@ Website forms resolve through `requesters.website.ts` and `FORMS.*` maps.
 
 ## W19. Shared UI Foundation
 
-Shared shell primitives use W4â€“W5 foundation (`Utils`, `theme.ts`, `ui/components/`).
+Shared shell primitives use W4–W5 foundation (`Utils`, `theme.ts`, `ui/components/`).
 
 ## W20. Shell Folder Ownership
 
@@ -114,7 +114,7 @@ Visitor and customer shell components follow W3 folder ownership; do not place p
 
 ## W22. Role Redirect Alignment
 
-Post-auth redirects follow `route-registry-contract.md` Â§6 role-home rules.
+Post-auth redirects follow `route-registry-contract.md` §6 role-home rules.
 
 ## W24. Route-Reactive Memoization
 
@@ -138,13 +138,13 @@ Customer list cards use `semanticDims.card` spacing tokens and the two-group con
 
 ## W29. Utils Style Prop Precedence (baseCssStyle vs cssStyle)
 
-Inside `Utils` `Box.css()`, layers merge in order â€” later wins: reset â†’ `baseCssStyle` â†’ shorthand props (`bg`,`clr`,`p`,`w`,`h`,`crn`,`br`,`shd`,`fs`,`fw`,`clp`,`ta`,`opc`,`asp`,â€¦) â†’ `cssStyle` â†’ `disabledStyle`/`hidden`/`hideAt`/`showAt`.
+Inside `Utils` `Box.css()`, layers merge in order — later wins: reset ? `baseCssStyle` ? shorthand props (`bg`,`clr`,`p`,`w`,`h`,`crn`,`br`,`shd`,`fs`,`fw`,`clp`,`ta`,`opc`,`asp`,…) ? `cssStyle` ? `disabledStyle`/`hidden`/`hideAt`/`showAt`.
 
-- `baseCssStyle` is **overridden** by shorthand props. Use it ONLY for `...ElementStyles.buttonReset`, or a genuine default a shorthand must override (the conditional-fill `background:"transparent"` under `bg={active?X:undefined}`). Nothing else belongs here â€” not `:hover`, `@media`, `transition`, `transform`, `cursor`, `lineHeight`, `letterSpacing`, `overflowX/Y`, `boxShadow`, `display`, `flex`, `gridTemplateColumns`, `backgroundImage`, logical `textAlign`, asymmetric `borderRadius`, `backdropFilter`, `pointerEvents` (none have a conflicting shorthand, so they belong in `cssStyle`).
-- `cssStyle` **overrides** shorthand props. Put every regular no-shorthand value here. To override a `clr`/`bg` forced by a wrapper, use `cssStyle={{color}}`/`{{background}}` â€” it wins over the shorthand.
+- `baseCssStyle` is **overridden** by shorthand props. Use it ONLY for `...ElementStyles.buttonReset`, or a genuine default a shorthand must override (the conditional-fill `background:"transparent"` under `bg={active?X:undefined}`). Nothing else belongs here — not `:hover`, `@media`, `transition`, `transform`, `cursor`, `lineHeight`, `letterSpacing`, `overflowX/Y`, `boxShadow`, `display`, `flex`, `gridTemplateColumns`, `backgroundImage`, logical `textAlign`, asymmetric `borderRadius`, `backdropFilter`, `pointerEvents` (none have a conflicting shorthand, so they belong in `cssStyle`).
+- `cssStyle` **overrides** shorthand props. Put every regular no-shorthand value here. To override a `clr`/`bg` forced by a wrapper, use `cssStyle={{color}}`/`{{background}}` — it wins over the shorthand.
 - Prefer a shorthand prop over either layer when one exists (`fs` not `fontSize`, `opc` not `opacity`, `maxW` not `maxWidth`, `minW` not `minWidth`, `mt` not `marginTop`, `crn` not `borderRadius`, `br` not `border`, `bg` not `background`, `clr` not `color`, `asp` not `aspectRatio`).
-- `cursor:"pointer"` is auto-added by Utils when the `onClick` prop is set â€” do not duplicate it. Set `cursor` explicitly only for `extra.onClick` wiring or non-pointer cursors.
-- A reusable component MUST expose `cssStyle` (the override) to consumers, never `baseCssStyle`. A consumer-injected `baseCssStyle` would be silently overridden by the component's shorthand props â€” an unreliable escape hatch.
+- `cursor:"pointer"` is auto-added by Utils when the `onClick` prop is set — do not duplicate it. Set `cursor` explicitly only for `extra.onClick` wiring or non-pointer cursors.
+- A reusable component MUST expose `cssStyle` (the override) to consumers, never `baseCssStyle`. A consumer-injected `baseCssStyle` would be silently overridden by the component's shorthand props — an unreliable escape hatch.
 
 See `.cursor/rules/website-utils-style-prop-precedence.mdc` and `.cursor/skills/website-utils-style-prop-audit/SKILL.md`.
 
@@ -168,7 +168,7 @@ Customer routes register through `customerRouter` in `routes.ts` per `route-regi
 
 ## W38. Drawer Subpage Breadcrumb
 
-Authed drawer subpages without bottom bar must declare route `breadcrumb` before ship. `CustomerMainLayout` renders fixed `CustomerSubHeader` from `routes[identify]?.breadcrumb` and offsets content by `CUSTOMER_SUBHEADER_BAR`. Breadcrumb product code (`Breadcrumb`, `useBreadcrumbs`, `HomeMark`, `CustomerSubHeader`) lives under `ui/components/`, not `ui/base/`. See `flow-customer-shell.md` Â§7.1.
+Authed drawer subpages without bottom bar must declare route `breadcrumb` before ship. `CustomerMainLayout` renders fixed `CustomerSubHeader` from `routes[identify]?.breadcrumb` and offsets content by `CUSTOMER_SUBHEADER_BAR`. Breadcrumb product code (`Breadcrumb`, `useBreadcrumbs`, `HomeMark`, `CustomerSubHeader`) lives under `ui/components/`, not `ui/base/`. See `flow-customer-shell.md` §7.1.
 
 ## W40. Deck Stacking Isolation
 
@@ -176,7 +176,7 @@ Deck hosts with high intra-deck `zIndex` use `isolation: isolate` so portaled ov
 
 ## W41. Static-Before-Parametric Routes
 
-Fixed URL segments register before `:id` routes on the same prefix. See `route-registry-contract.md` Â§4.
+Fixed URL segments register before `:id` routes on the same prefix. See `route-registry-contract.md` §4.
 
 ## W42. Presentational Label Props
 
@@ -188,9 +188,9 @@ See `.cursor/rules/website-presentational-label-props.mdc`.
 
 Prefer `semanticColor.<key>` (`website/src/resources/configs/utils.ts`) over `@white` / `@<BaseColor>` hardcodes whenever a semantic token exists. Pair text/icon color against the **resolved surface fill** (e.g. white text belongs on a primary/dark fill, not on `secondaryActionBackground` = navy[50]). `semanticColor` path strings are type-guarded by `ThemeMapPath` (derived from `ThemeMapType`), so `yarn type-check` rejects any path that is not a real `ThemeMap` leaf. Do not add `semanticColor` tokens without a consumer (YAGNI). `theme.ts` is brand authority and is not edited to satisfy consumers.
 
-A surface that themes from **data** may build a `ColorType` map at runtime, because `semanticColor` holds fixed paths and cannot carry a per-tenant value (shipped case: the organization-branded `MEETING` shell, `components/meeting/hooks/useOrganization.ts`). Such a map keeps the `semanticColor` key names and splits its entries: shell/neutral keys are **assigned the `semanticColor.<same key>` token**, and only brand keys are computed from the tenant seeds (with `BrandColors` fallbacks, and on-fill text derived from seed luminance rather than assumed white). Copying a `ThemeMap` leaf value into such a map is forbidden even when the copy is currently correct â€” the type guard above validates a **path**, and nothing compares a copied hex against its leaf, so the copy drifts silently on the next `theme.ts` edit.
+A surface that themes from **data** may build a `ColorType` map at runtime, because `semanticColor` holds fixed paths and cannot carry a per-tenant value (shipped case: the organization-branded `MEETING` shell, `components/meeting/hooks/useOrganization.ts`). Such a map keeps the `semanticColor` key names and splits its entries: shell/neutral keys are **assigned the `semanticColor.<same key>` token**, and only brand keys are computed from the tenant seeds (with `BrandColors` fallbacks, and on-fill text derived from seed luminance rather than assumed white). Copying a `ThemeMap` leaf value into such a map is forbidden even when the copy is currently correct — the type guard above validates a **path**, and nothing compares a copied hex against its leaf, so the copy drifts silently on the next `theme.ts` edit.
 
-See `.cursor/rules/website-semantic-color-token-discipline.mdc`, `docs/platforms/website/ui-foundation.md` Â§ Runtime per-tenant color maps, `docs/platforms/website/organization-host-routing.md` Â§5.3, and `docs/platforms/website/brand-identity-alignment.md`.
+See `.cursor/rules/website-semantic-color-token-discipline.mdc`, `docs/platforms/website/ui-foundation.md` § Runtime per-tenant color maps, `docs/platforms/website/organization-host-routing.md` §5.3, and `docs/platforms/website/brand-identity-alignment.md`.
 
 ## W44. URL Config Brand Alignment
 
@@ -200,47 +200,47 @@ See `docs/platforms/website/brand-identity-alignment.md`.
 
 ## W45. Logo No-Frame + Preset Sizing
 
-The brand `Logo` (`website/src/app/ui/components/Logo.tsx`) renders a bare `Image`. Consumers MUST NOT wrap it in a border/background/padding pill â€” render it with alignment only (`as_fs` / `as_c` / direct flex placement). Size is selected exclusively by the `preset` prop (`header` / `drawer` / `footer` / `hero`), backed by `LOGO_SIZES`; no call-site `w`/`h` overrides. `LOGO_SIZES` sets **height only** â€” width is never hardcoded and is derived from the image's intrinsic ~3.4:1 aspect ratio (`width: auto`); do not re-introduce a fixed `w`. Add a new preset when a new size context appears.
+The brand `Logo` (`website/src/app/ui/components/Logo.tsx`) renders a bare `Image`. Consumers MUST NOT wrap it in a border/background/padding pill — render it with alignment only (`as_fs` / `as_c` / direct flex placement). Size is selected exclusively by the `preset` prop (`header` / `drawer` / `footer` / `hero`), backed by `LOGO_SIZES`; no call-site `w`/`h` overrides. `LOGO_SIZES` sets **height only** — width is never hardcoded and is derived from the image's intrinsic ~3.4:1 aspect ratio (`width: auto`); do not re-introduce a fixed `w`. Add a new preset when a new size context appears.
 
-See `.cursor/rules/website-logo-no-frame.mdc` and `docs/platforms/website/brand-identity-alignment.md` Â§ Logo.
+See `.cursor/rules/website-logo-no-frame.mdc` and `docs/platforms/website/brand-identity-alignment.md` § Logo.
 
 ## W46. Corner Radius Token Discipline
 
-Corner radius is centralized in `Dims` (`website/src/resources/configs/theme.ts`): `corner` `8px`, `smallCorner` `6px`, `largeCorner` `12px`, `pillCorner` `999px`. Consumers read the default card corner via `semanticDims.card.radius` (points to `Dims.corner`), not by re-typing the literal. Hardcoded `crn` rem/px literals for card/button corners are forbidden. Pills/circles use `crn={999}`. Per-corner radius uses `crn_tr` / `crn_tl` / `crn_br` / `crn_bl` (not `br_tr` / `br_bl`, which do not exist). A project-wide radius change is a single `Dims` edit, not a consumer sweep. The hero/top-right toggles (`ThemeModeSwitch`, `LanguageSwitch`) and header icon buttons (`HeaderIconButton`) use `semanticDims.card.radius` â€” rounded-square, not pills; `crn={999}` is reserved for chips, accent bars, avatars, and blobs.
+Corner radius is centralized in `Dims` (`website/src/resources/configs/theme.ts`): `corner` `8px`, `smallCorner` `6px`, `largeCorner` `12px`, `pillCorner` `999px`. Consumers read the default card corner via `semanticDims.card.radius` (points to `Dims.corner`), not by re-typing the literal. Hardcoded `crn` rem/px literals for card/button corners are forbidden. Pills/circles use `crn={999}`. Per-corner radius uses `crn_tr` / `crn_tl` / `crn_br` / `crn_bl` (not `br_tr` / `br_bl`, which do not exist). A project-wide radius change is a single `Dims` edit, not a consumer sweep. The hero/top-right toggles (`ThemeModeSwitch`, `LanguageSwitch`) and header icon buttons (`HeaderIconButton`) use `semanticDims.card.radius` — rounded-square, not pills; `crn={999}` is reserved for chips, accent bars, avatars, and blobs.
 
-See `.cursor/rules/website-corner-radius-tokens.mdc` and `docs/platforms/website/ui-foundation.md` Â§ Corner radius tokens.
+See `.cursor/rules/website-corner-radius-tokens.mdc` and `docs/platforms/website/ui-foundation.md` § Corner radius tokens.
 
-## W47. No Gradients â€” Solid Semantic Colors Only
+## W47. No Gradients — Solid Semantic Colors Only
 
-The website UI uses **only solid semantic colors**. `theme.ts` exports no gradient API (no `GradientDef` / `Gradients` / `SemanticGradients` / `getSemanticGradient` / `getGradientBackground`). `linear-gradient` / `radial-gradient` / `conic-gradient` are forbidden in every style path â€” including decorative overlays, clipped text, and scrollbar thumbs. Primary/accent fills use the solid tokens `semanticColor.primaryActionBackground` (navy `#0B2057`) and `semanticColor.accentActionBackground` (orange `#EC6901`), resolved via `getColor` / Utils props. `yarn type-check` guards `semanticColor` path validity; a grep for `gradient|Gradient|linear-gradient|radial-gradient|conic-gradient` under `website/src` must return no matches.
+The website UI uses **only solid semantic colors**. `theme.ts` exports no gradient API (no `GradientDef` / `Gradients` / `SemanticGradients` / `getSemanticGradient` / `getGradientBackground`). `linear-gradient` / `radial-gradient` / `conic-gradient` are forbidden in every style path — including decorative overlays, clipped text, and scrollbar thumbs. Primary/accent fills use the solid tokens `semanticColor.primaryActionBackground` (navy `#0B2057`) and `semanticColor.accentActionBackground` (orange `#EC6901`), resolved via `getColor` / Utils props. `yarn type-check` guards `semanticColor` path validity; a grep for `gradient|Gradient|linear-gradient|radial-gradient|conic-gradient` under `website/src` must return no matches.
 
-See `.cursor/rules/website-no-gradients.mdc` and `docs/design-color-system.md` Â§ Solid colors only.
+See `.cursor/rules/website-no-gradients.mdc` and `docs/design-color-system.md` § Solid colors only.
 
 ## W48. Bilingual Locale Surface (ar/en)
 
-The website ships two locales configured in `website/src/resources/configs/web-core.ts` `localization`: `ar` (default, RTL) and `en` (LTR), with `locales: ["ar", "en"]`, `defaultLocale: "ar"`, `rtlLocales: ["ar"]`. Translation modules `resources/translations/ar.ts` (source of the `Tr` type that backs `useTranslator`) and `resources/translations/en.ts` (full mirror) MUST stay key-mirrored â€” every key present in `ar.ts` is present in `en.ts` with the same shape (W14 relies on this). Locale switching is cookie (`locale`) + full reload via `changeLocale(myInstance)(newLocale)` exported from `@my-ssr/web-core` only; no client-side locale state, no partial reload. The current locale is read via `useMyInstance().getRouter().locale`. The sole UI surface for switching is `LanguageSwitch` (`website/src/app/ui/components/LanguageSwitch.tsx`): a single toggle button showing the **target** language letters (`EN` when current is `ar`, `Ø¹` when current is `en`), placed beside `ThemeModeSwitch` in the header trailing cluster, the drawer hero identity zone, and `BasicLayout`'s top-right row.
+The website ships two locales configured in `website/src/resources/configs/web-core.ts` `localization`: `ar` (default, RTL) and `en` (LTR), with `locales: ["ar", "en"]`, `defaultLocale: "ar"`, `rtlLocales: ["ar"]`. Translation modules `resources/translations/ar.ts` (source of the `Tr` type that backs `useTranslator`) and `resources/translations/en.ts` (full mirror) MUST stay key-mirrored — every key present in `ar.ts` is present in `en.ts` with the same shape (W14 relies on this). Locale switching is cookie (`locale`) + full reload via `changeLocale(myInstance)(newLocale)` exported from `@my-ssr/web-core` only; no client-side locale state, no partial reload. The current locale is read via `useMyInstance().getRouter().locale`. The sole UI surface for switching is `LanguageSwitch` (`website/src/app/ui/components/LanguageSwitch.tsx`): a single toggle button showing the **target** language letters (`EN` when current is `ar`, `?` when current is `en`), placed beside `ThemeModeSwitch` in the header trailing cluster, the drawer hero identity zone, and `BasicLayout`'s top-right row.
 
-See `.cursor/rules/website-locale-switch.mdc` and `docs/platforms/website/ui-foundation.md` Â§ Localization & RTL.
+See `.cursor/rules/website-locale-switch.mdc` and `docs/platforms/website/ui-foundation.md` § Localization & RTL.
 
 ## W49. Native `<button>` Background Neutralization
 
 `ElementStyles.buttonReset` resets `appearance`/`border`/`outline` but NOT `background`. A `Row`/`Col`/`Box` rendered `As={"button"}` keeps the browser default (light/white) button background, which shows through in dark mode when no `bg` shorthand is set. Every `As={"button"}` MUST neutralize it by one of three patterns:
 
 - **Always-filled** (both states filled): `bg={...}` shorthand overrides the native bg.
-- **Conditionally-filled** (`bg={active ? X : undefined}`): `background:"transparent"` in `baseCssStyle` (alongside `...buttonReset`) so the `bg` shorthand wins for active; inactive falls back to transparent. Never put this transparent in `cssStyle` â€” it would override the `bg` shorthand and lose the active fill.
-- **Always-transparent** (outline/ghost, never filled, no conditional `bg`): `bg="@transparent"` shorthand. Do NOT use `background:"transparent"` in `baseCssStyle`/`cssStyle` here â€” `bg` is the shorthand for `background`, so the shorthand is the intent-revealing choice. (`baseCssStyle` background-transparent is reserved for the conditional-fill case where a `bg` shorthand must be able to win.)
+- **Conditionally-filled** (`bg={active ? X : undefined}`): `background:"transparent"` in `baseCssStyle` (alongside `...buttonReset`) so the `bg` shorthand wins for active; inactive falls back to transparent. Never put this transparent in `cssStyle` — it would override the `bg` shorthand and lose the active fill.
+- **Always-transparent** (outline/ghost, never filled, no conditional `bg`): `bg="@transparent"` shorthand. Do NOT use `background:"transparent"` in `baseCssStyle`/`cssStyle` here — `bg` is the shorthand for `background`, so the shorthand is the intent-revealing choice. (`baseCssStyle` background-transparent is reserved for the conditional-fill case where a `bg` shorthand must be able to win.)
 
-See `.cursor/rules/website-utils-style-prop-precedence.mdc` Â§ Native `<button>` background.
+See `.cursor/rules/website-utils-style-prop-precedence.mdc` § Native `<button>` background.
 
 ## W50. `rem()` Numeric Shorthand Convention
 
-`rem()` in `Utils` converts a **number** to a `rem` string and passes strings through unchanged. Pass a **number** to any rem-based shorthand when a rem value is intended (`fs={0.8}`, not `fs={"0.8rem"}`; `minW={1.5}`, `maxW={36}`, `mt={-0.15}`). Pass a **string** only for non-rem values (`"100%"`, `"1 / 1"`, `"0.85rem 1.25rem"`, `"0 0 1rem 1rem"`). Unitless `lineHeight` multipliers (`1.3`, `1.5`) MUST live in `cssStyle` â€” the `lh` prop forces `rem()` and would turn `1.3` into `1.3rem`. Raw SVG attributes (`<circle height="...">`) are NOT Utils shorthands and keep their unit strings â€” do not run rem-number conversion through them.
+`rem()` in `Utils` converts a **number** to a `rem` string and passes strings through unchanged. Pass a **number** to any rem-based shorthand when a rem value is intended (`fs={0.8}`, not `fs={"0.8rem"}`; `minW={1.5}`, `maxW={36}`, `mt={-0.15}`). Pass a **string** only for non-rem values (`"100%"`, `"1 / 1"`, `"0.85rem 1.25rem"`, `"0 0 1rem 1rem"`). Unitless `lineHeight` multipliers (`1.3`, `1.5`) MUST live in `cssStyle` — the `lh` prop forces `rem()` and would turn `1.3` into `1.3rem`. Raw SVG attributes (`<circle height="...">`) are NOT Utils shorthands and keep their unit strings — do not run rem-number conversion through them.
 
-See `.cursor/rules/website-utils-style-prop-precedence.mdc` Â§ `rem()` and numeric shorthand values.
+See `.cursor/rules/website-utils-style-prop-precedence.mdc` § `rem()` and numeric shorthand values.
 
 ## W51. Accent Action Text Is White
 
-`semanticColor.accentActionText` resolves to `base.text.action.default.fill.accent` = `BaseColors.white` in **both** light and dark schemas (`theme.ts`). Text/icons on a solid accent (orange `#EC6901`) fill MUST be `accentActionText` (white) â€” never `textPrimary`/`textSecondary` (dark ink), which is invisible on orange. This is a brand-authority decision in `theme.ts`; `accentActionText` is white on purpose, not a token to "fix" back to a dark value. Pair `accentActionBackground` (orange) with `accentActionText` (white); pair `primaryActionBackground` (navy) with `primaryActionText` (white).
+`semanticColor.accentActionText` resolves to `base.text.action.default.fill.accent` = `BaseColors.white` in **both** light and dark schemas (`theme.ts`). Text/icons on a solid accent (orange `#EC6901`) fill MUST be `accentActionText` (white) — never `textPrimary`/`textSecondary` (dark ink), which is invisible on orange. This is a brand-authority decision in `theme.ts`; `accentActionText` is white on purpose, not a token to "fix" back to a dark value. Pair `accentActionBackground` (orange) with `accentActionText` (white); pair `primaryActionBackground` (navy) with `primaryActionText` (white).
 
 See `.cursor/rules/website-text-clr-on-colored-bg.mdc` and `docs/platforms/website/brand-identity-alignment.md`.
 
@@ -248,36 +248,36 @@ See `.cursor/rules/website-text-clr-on-colored-bg.mdc` and `docs/platforms/websi
 
 Server-rendered and client-rendered floating-point values for SVG attributes (`cx`/`cy`/`strokeDasharray`/`r`) MUST serialize identically or React emits a hydration mismatch. `Math.cos`/`Math.sin`/`Math.PI` can produce values that differ at the 14th decimal between Node and the browser, so any computed coordinate that lands on a raw SVG attribute MUST be rounded to a fixed precision (e.g. `round2 = n => Math.round(n*100)/100`) before being passed to the attribute. This applies to `HeroDashboard.tsx` seat coordinates and vote-ring dash arrays. Do not round Utils shorthand values (those are deterministic); only raw SVG attribute values from trig/PI computations.
 
-See `docs/platforms/website/landing-page.md` Â§ Hydration.
+See `docs/platforms/website/landing-page.md` § Hydration.
 
 ## W53. Landing Page Composition
 
-The public landing page (`website/src/app/ui/pages/Home.tsx` â†’ `home/HomeScreen.tsx`) is the visitor home on mount `/website`. It composes 10 sections in order (`Hero`, `Problem`, `Platform`, `Lifecycle`, `Capabilities`, `Roles`, `LiveCommand`, `Trust`, `Impact`, `Faq`) inside a `landing-layout` shell (`shell.ts`, `drawer.ts`, `footer.ts`, `useActiveLandingSection.ts`) with `LandingHeader` + `LandingMobileDrawer` + `LandingFooter`. Sections share `home/SectionShell.tsx` (tone: `plain`/`brand`/`accent`/`inverted`) and `home/Reveal.tsx` (scroll reveal). Internal nav links use the `Link` component from `@my-ssr/web-core` with a typed `Href<keyof MPagesRoutes>` (not raw string paths) for client-side `nav.push` routing; unimplemented pages pass `undefined` temporarily. The landing surface is the canonical reference for W29/W49/W50/W51/W52/W54/W55 â€” see `docs/platforms/website/landing-page.md` for the full section map and contracts.
+The public landing page (`website/src/app/ui/pages/Home.tsx` ? `home/HomeScreen.tsx`) is the visitor home on mount `/website`. It composes 10 sections in order (`Hero`, `Problem`, `Platform`, `Lifecycle`, `Capabilities`, `Roles`, `LiveCommand`, `Trust`, `Impact`, `Faq`) inside a `landing-layout` shell (`shell.ts`, `drawer.ts`, `footer.ts`, `useActiveLandingSection.ts`) with `LandingHeader` + `LandingMobileDrawer` + `LandingFooter`. Sections share `home/SectionShell.tsx` (tone: `plain`/`brand`/`accent`/`inverted`) and `home/Reveal.tsx` (scroll reveal). Internal nav links use the `Link` component from `@my-ssr/web-core` with a typed `Href<keyof MPagesRoutes>` (not raw string paths) for client-side `nav.push` routing; unimplemented pages pass `undefined` temporarily. The landing surface is the canonical reference for W29/W49/W50/W51/W52/W54/W55 — see `docs/platforms/website/landing-page.md` for the full section map and contracts.
 
 See `docs/platforms/website/landing-page.md`.
 
-## W54. Cross-Page Navigation â€” `Link` + Typed `Href`
+## W54. Cross-Page Navigation — `Link` + Typed `Href`
 
-Internal cross-page navigation MUST use the `Link` component from `@my-ssr/web-core` (not a raw `<a>`/`As={"a"}`). `Link` renders a real `<a href>` (SEO / middle-click / new-tab work) and intercepts the click â†’ `getNav().push(to)` for client-side transition with no full reload. `Link` accepts `to`/`href: string | "CURRENT" | To<Ident>` where `To<Ident> = Href<Ident> & {state?}` and `Href<Ident> = {identify: Ident, replace?, sub?} & ParamsQuery<Ident>` (web-core `src/types/router.ts`). Callers MUST pass a **typed object** `{identify: "Login"}` (`Href<keyof MPagesRoutes>`), not a raw string path â€” the object form is type-checked against `MPagesRoutes` (`routes.ts`; current members `Login`, `Home`, `UiMockup`). Adding a navigable page = TWO edits in `routes.ts`: the `routes` map (path/layout/loader) AND the `MPagesRoutes` interface; until both exist, callers pass `href: undefined` (never a fake `identify` or guessed string). Programmatic nav from a button `onClick` uses `useNav()` (`website/src/app/ui/base/hooks/useNav`, CSR-only) â†’ `push({identify: "X"})`; do not call it during render/SSR. `external` is for external URLs only (renders `<a target="_blank">` with no interception, full reload). Combining `Link` with Utils styling uses `<Text As={Link} extra={{href, ...}}>`; `Link` props flow through `extra`, `textDecoration` in `cssStyle`, `buttonReset` valid in `baseCssStyle`.
+Internal cross-page navigation MUST use the `Link` component from `@my-ssr/web-core` (not a raw `<a>`/`As={"a"}`). `Link` renders a real `<a href>` (SEO / middle-click / new-tab work) and intercepts the click ? `getNav().push(to)` for client-side transition with no full reload. `Link` accepts `to`/`href: string | "CURRENT" | To<Ident>` where `To<Ident> = Href<Ident> & {state?}` and `Href<Ident> = {identify: Ident, replace?, sub?} & ParamsQuery<Ident>` (web-core `src/types/router.ts`). Callers MUST pass a **typed object** `{identify: "Login"}` (`Href<keyof MPagesRoutes>`), not a raw string path — the object form is type-checked against `MPagesRoutes` (`routes.ts`; current members `Login`, `Home`, `UiMockup`). Adding a navigable page = TWO edits in `routes.ts`: the `routes` map (path/layout/loader) AND the `MPagesRoutes` interface; until both exist, callers pass `href: undefined` (never a fake `identify` or guessed string). Programmatic nav from a button `onClick` uses `useNav()` (`website/src/app/ui/base/hooks/useNav`, CSR-only) ? `push({identify: "X"})`; do not call it during render/SSR. `external` is for external URLs only (renders `<a target="_blank">` with no interception, full reload). Combining `Link` with Utils styling uses `<Text As={Link} extra={{href, ...}}>`; `Link` props flow through `extra`, `textDecoration` in `cssStyle`, `buttonReset` valid in `baseCssStyle`.
 
 See `.cursor/rules/website-link-href-navigation.mdc` and `.cursor/skills/website-link-href-audit/SKILL.md`.
 
 ## W55. In-Page Section Navigation + SSR-Inert Active State
 
-Navigation between sections of the SAME page (landing sections) is **scroll-based** (`scrollIntoView` via `scrollToLandingSection` / `scrollToLandingTop` in `landing-layout/drawer.ts`), NOT route-based â€” do not use `Link`/`push` for same-page section jumps and do not invent a route per section. The active section is derived client-side from `useActiveLandingSection` (`landing-layout/useActiveLandingSection.ts`): it returns `null` on SSR and on the first client paint (gated by a `mounted` flag set in `useEffect`), and only resolves to a `LandingLayoutNavKey` after `IntersectionObserver` fires (`rootMargin: -45% 0px -50% 0px`). This is non-negotiable: an active section MUST NOT be guessed during SSR (it would either mark all items active or cause a hydration mismatch). Header nav items consume this hook and set `aria-current` + an accent underline only for the resolved key; on first paint no item is active.
+Navigation between sections of the SAME page (landing sections) is **scroll-based** (`scrollIntoView` via `scrollToLandingSection` / `scrollToLandingTop` in `landing-layout/drawer.ts`), NOT route-based — do not use `Link`/`push` for same-page section jumps and do not invent a route per section. The active section is derived client-side from `useActiveLandingSection` (`landing-layout/useActiveLandingSection.ts`): it returns `null` on SSR and on the first client paint (gated by a `mounted` flag set in `useEffect`), and only resolves to a `LandingLayoutNavKey` after `IntersectionObserver` fires (`rootMargin: -45% 0px -50% 0px`). This is non-negotiable: an active section MUST NOT be guessed during SSR (it would either mark all items active or cause a hydration mismatch). Header nav items consume this hook and set `aria-current` + an accent underline only for the resolved key; on first paint no item is active.
 
-See `docs/platforms/website/landing-page.md` Â§ Navigation contract.
+See `docs/platforms/website/landing-page.md` § Navigation contract.
 
 ## W56. Footer Background Is Theme-Flipped (Light-in-Light / Dark-in-Dark)
 
 `semanticColor.footerBackground` resolves to `surface.fill.container.default.footer` in `theme.ts` and is **theme-flipped**, NOT fixed:
 
-- Light schema: `NeutralColors[100]` (`#F7F9FC`, light) â€” matches the light page surface.
-- Dark schema: `#040811` (dark near-black) â€” distinct from the dark page surface `#060B15`.
+- Light schema: `NeutralColors[100]` (`#F7F9FC`, light) — matches the light page surface.
+- Dark schema: `#040811` (dark near-black) — distinct from the dark page surface `#060B15`.
 
-Because the footer background follows the theme (light bg in light mode, dark bg in dark mode), footer text/icons MUST use the theme-flipped text tokens â€” `semanticColor.textPrimary` for link text and `semanticColor.textAccent` for section titles â€” so they resolve dark-in-light / light-in-dark and stay readable on the matching footer surface. Do NOT use a fixed-light token (e.g. `primaryActionText`/`accentActionText` white) for footer text: in light mode the footer bg is light, so white text would be invisible. This is the inverse of W51 (which fixes text white because its fill is fixed-dark/accent in both modes). The previous light value `BrandScales.navy[950]` (dark-in-both) was a bug â€” it forced dark `textPrimary` onto a dark fill in light mode (dark-on-dark, invisible); the fix is the theme-flipped bg, not a text change. Both `LandingFooter.tsx` and the shared `Footer.tsx` consume `footerBackground`, so the token change applies to both consistently.
+Because the footer background follows the theme (light bg in light mode, dark bg in dark mode), footer text/icons MUST use the theme-flipped text tokens — `semanticColor.textPrimary` for link text and `semanticColor.textAccent` for section titles — so they resolve dark-in-light / light-in-dark and stay readable on the matching footer surface. Do NOT use a fixed-light token (e.g. `primaryActionText`/`accentActionText` white) for footer text: in light mode the footer bg is light, so white text would be invisible. This is the inverse of W51 (which fixes text white because its fill is fixed-dark/accent in both modes). The previous light value `BrandScales.navy[950]` (dark-in-both) was a bug — it forced dark `textPrimary` onto a dark fill in light mode (dark-on-dark, invisible); the fix is the theme-flipped bg, not a text change. Both `LandingFooter.tsx` and the shared `Footer.tsx` consume `footerBackground`, so the token change applies to both consistently.
 
-See `docs/platforms/website/landing-page.md` Â§ Footer.
+See `docs/platforms/website/landing-page.md` § Footer.
 
 ## W57. Third-Party Brand Color Exemption (MicrobandCredit)
 
@@ -285,28 +285,28 @@ See `docs/platforms/website/landing-page.md` Â§ Footer.
 
 The linked wordmark text comes from `ui.components.microbandCredit.brand` and MUST remain spelled **`MicroBand`** (capital `B`) in both locale files.
 
-See `docs/platforms/website/shared-ui-and-shell.md` Â§5 and `docs/platforms/website/landing-page.md` Â§ Footer.
+See `docs/platforms/website/shared-ui-and-shell.md` §5 and `docs/platforms/website/landing-page.md` § Footer.
 
 ## W58. Host Mode Comes From The Store, Gate Runs Before Auth
 
-Host mode for routing is `organizationHost.isOrganizationHost(myInstance)` â€” derived from `state.organizationHost.id`, which the organization boot hydrates. It works on SSR **and** CSR. Do not re-derive host mode inside routing, socket, or UI code from the request `Host`: `myInstance.resolveRequestHost()` is SSR-only and belongs to `organization-host.start` alone.
+Host mode for routing is `organizationHost.isOrganizationHost(myInstance)` — derived from `state.organizationHost.id`, which the organization boot hydrates. It works on SSR **and** CSR. Do not re-derive host mode inside routing, socket, or UI code from the request `Host`: `myInstance.resolveRequestHost()` is SSR-only and belongs to `organization-host.start` alone.
 
 Every route is bound to exactly one host mode: a route with `orgHostOnly: true` is reachable only on an organization host, every other route only on the apex host. The check lives in `applyRouterMiddleware` **before** the authenticated/unauthenticated branches, so a wrong-host request resolves to `Error` `404` (`redirect` + `RESOLVED` throw) and never becomes a login redirect. Do not gate a host-bound surface by route identify (`identify === "Meeting"`); the flag is the contract.
 
-Identification sent to the backend (`organizationId` HTTP header on axios; optional `organizationId` on the Meeting handshake in `meeting-socket.ts`) is added only when a value exists â€” never as an `undefined` placeholder. Shared boot `configs/socket.ts` does **not** send `organizationId`. Organization hosts open no boot socket; Meeting owns `/meeting` via `LiveMeetingProvider` in `MeetingLayout` (`useLiveMeeting` is the public context reader).
+Identification sent to the backend (`organizationId` HTTP header on axios; optional `organizationId` on the Meeting handshake in `meeting-socket.ts`) is added only when a value exists — never as an `undefined` placeholder. Shared boot `configs/socket.ts` does **not** send `organizationId`. Organization hosts open no boot socket; Meeting owns `/meeting` via `MeetingLiveProvider` in `MeetingLayout` (`useMeetingLive` is the public context reader).
 
-See `docs/platforms/website/organization-host-routing.md` Â§1.2, Â§2, Â§3, Â§4, Â§5.1 and `.cursor/rules/organization-host-routing.mdc`.
+See `docs/platforms/website/organization-host-routing.md` §1.2, §2, §3, §4, §5.1 and `.cursor/rules/organization-host-routing.mdc`.
 
-## W59. Client Rules Mirror A Server Gate â€” And Say So Honestly
+## W59. Client Rules Mirror A Server Gate — And Say So Honestly
 
 A rule the user can see (a picker floor, a readiness row, a schedule note) exists on the server first. The website copy of it is a **mirror**:
 
 - mirrored constants and their predicates live in one module beside their consumers, each naming its backend source (`meetingScheduleLead.ts`, `meetingNotifyTemplateMode.ts`); no magic number or duplicated enum filter in a screen or hook,
-- the condition that shows a note must equal the condition the server checks â€” a rule that applies only to drafts is not narrated on approved records, and a gate that applies to drafts too is not hidden from them,
+- the condition that shows a note must equal the condition the server checks — a rule that applies only to drafts is not narrated on approved records, and a gate that applies to drafts too is not hidden from them,
 - UI copy must not promise an outcome the server does not enforce; if the copy says "fix X before Y", `Y` must actually fail while `X` holds,
 - an input control never silently rewrites the user's stored value to satisfy a floor: show the value as stored, mark it invalid, and disable confirm.
 
-Contracts: `docs/platforms/website/flow-customer-meetings.md` Â§6.5, `docs/platforms/website/flow-form-foundation.md` Â§3.7, `.cursor/rules/website-backend-policy-mirror.mdc`.
+Contracts: `docs/platforms/website/flow-customer-meetings.md` §6.5, `docs/platforms/website/flow-form-foundation.md` §3.7, `.cursor/rules/website-backend-policy-mirror.mdc`.
 
 ## Related
 

@@ -1,4 +1,4 @@
-๏ปฟ# Website Documentation Index
+# Website Documentation Index
 
 ## Foundation
 
@@ -28,7 +28,7 @@
 | Notifications | [`flow-notifications.md`](flow-notifications.md) | Notification list |
 | Static info | [`flow-static-info-pages.md`](flow-static-info-pages.md) | About Ejtmaa, legal pages |
 | Customer shell | [`flow-customer-shell.md`](flow-customer-shell.md) | Authed customer layout |
-| Customer home | [`flow-customer-shell.md`](flow-customer-shell.md) ยง7 | Customer command map |
+| Customer home | [`flow-customer-shell.md`](flow-customer-shell.md) ง7 | Customer command map |
 | Customer members | [`flow-customer-members.md`](flow-customer-members.md) | Org member directory (search + ResultLane) |
 | Customer meetings | [`flow-customer-meetings.md`](flow-customer-meetings.md) | Org meeting directory + create form + preparation/details workspace |
 | Customer organization | [`flow-customer-organization.md`](flow-customer-organization.md) | Org settings form (read + upsert) |
@@ -39,73 +39,73 @@
 
 - [`../../invariants/website.md`](../../invariants/website.md)
 
-## Change set traceability โ€” visitor auth pages
+## Change set traceability — visitor auth pages
 
 Current-state reflection of the shipped visitor auth surface (`Login`, `Register`, `ResetPassword`). No change history.
 
 | Path (under `website/`) | Documented where |
 |---|---|
-| `src/app/ui/pages/Login.tsx` | `flow-auth.md` ยง6.1 |
-| `src/app/ui/pages/Register.tsx` | `flow-auth.md` ยง6.2 |
-| `src/app/ui/pages/ResetPassword.tsx` | `flow-auth.md` ยง6.3 |
-| `src/app/ui/components/auth/AuthPageShell.tsx` | `flow-auth.md` ยง4; `brand-identity-alignment.md` ยง Logo + auth shell |
-| `src/app/ui/components/auth/AuthTextField.tsx` | `flow-auth.md` ยง5 |
-| `src/app/ui/components/auth/AuthNavLink.tsx` | `flow-auth.md` ยง5, ยง7 |
-| `src/app/ui/components/auth/AuthSecondaryNavButton.tsx` | `flow-auth.md` ยง5, ยง7 |
-| `src/app/ui/components/form/FormTextField.tsx` | `flow-auth.md` ยง5.1; `flow-form-foundation.md` ยง2 |
-| `src/app/ui/components/form/FormActionButton.tsx` | `flow-auth.md` ยง5.2; `brand-identity-alignment.md` ยง Canonical consumer pairings |
-| `src/app/ui/components/form/FormInputWrapper.tsx` | `flow-auth.md` ยง5 (`actionArea` on password field) |
-| `src/app/ui/components/Logo.tsx` (`auth` preset) | `brand-identity-alignment.md` ยง Logo |
-| `src/app/ui/components/LandingHeader.tsx` (register CTA) | `flow-auth.md` ยง8 |
-| `src/app/ui/layouts/LandingLayout.tsx` (drawer register nav) | `flow-auth.md` ยง8 |
-| `src/app/services/router.ts` (`publicRoutes`, middleware) | `flow-auth.md` ยง2; `route-registry-contract.md` ยง1.1 |
-| `src/resources/configs/routes.ts` | `route-registry-contract.md` ยง1.1; `flow-auth.md` ยง2 |
-| `src/resources/translations/ar.ts` (`ui.pages.login/register/resetPassword`) | `flow-auth.md` ยง9 |
-| `src/resources/translations/en.ts` (mirror) | `flow-auth.md` ยง9 |
-| `src/types/requesters/requesters.website.ts` | `flow-auth.md` ยง1; `flow-form-foundation.md` ยง2 |
+| `src/app/ui/pages/Login.tsx` | `flow-auth.md` ง6.1 |
+| `src/app/ui/pages/Register.tsx` | `flow-auth.md` ง6.2 |
+| `src/app/ui/pages/ResetPassword.tsx` | `flow-auth.md` ง6.3 |
+| `src/app/ui/components/auth/AuthPageShell.tsx` | `flow-auth.md` ง4; `brand-identity-alignment.md` ง Logo + auth shell |
+| `src/app/ui/components/auth/AuthTextField.tsx` | `flow-auth.md` ง5 |
+| `src/app/ui/components/auth/AuthNavLink.tsx` | `flow-auth.md` ง5, ง7 |
+| `src/app/ui/components/auth/AuthSecondaryNavButton.tsx` | `flow-auth.md` ง5, ง7 |
+| `src/app/ui/components/form/FormTextField.tsx` | `flow-auth.md` ง5.1; `flow-form-foundation.md` ง2 |
+| `src/app/ui/components/form/FormActionButton.tsx` | `flow-auth.md` ง5.2; `brand-identity-alignment.md` ง Canonical consumer pairings |
+| `src/app/ui/components/form/FormInputWrapper.tsx` | `flow-auth.md` ง5 (`actionArea` on password field) |
+| `src/app/ui/components/Logo.tsx` (`auth` preset) | `brand-identity-alignment.md` ง Logo |
+| `src/app/ui/components/LandingHeader.tsx` (register CTA) | `flow-auth.md` ง8 |
+| `src/app/ui/layouts/LandingLayout.tsx` (drawer register nav) | `flow-auth.md` ง8 |
+| `src/app/services/router.ts` (`publicRoutes`, middleware) | `flow-auth.md` ง2; `route-registry-contract.md` ง1.1 |
+| `src/resources/configs/routes.ts` | `route-registry-contract.md` ง1.1; `flow-auth.md` ง2 |
+| `src/resources/translations/ar.ts` (`ui.pages.login/register/resetPassword`) | `flow-auth.md` ง9 |
+| `src/resources/translations/en.ts` (mirror) | `flow-auth.md` ง9 |
+| `src/types/requesters/requesters.website.ts` | `flow-auth.md` ง1; `flow-form-foundation.md` ง2 |
 | `lib/tsconfig.tsbuildinfo` | Generated build artifact from `yarn type-check`; not narrated. |
 
 Governance: `.cursor/rules/website-auth-flow.mdc`
 
-## Change set traceability โ€” customer organization form
+## Change set traceability — customer organization form
 
 | Path | Documented where |
 |---|---|
-| `website/src/resources/configs/routes.ts` (`CustomerOrganization`) | `flow-customer-organization.md` ยง2; `route-registry-contract.md` ยง5.2 |
-| `website/src/resources/configs/store/forms.ts` (`CUSTOMER_ORGANIZATION`) | `flow-customer-organization.md` ยง3; `flow-form-foundation.md` ยง2 |
-| `website/src/types/requesters/requesters.website.ts` (`customer.organization`) | `flow-form-foundation.md` ยง2; `organization-domain.md` ยง9.3 |
-| `website/src/app/ui/pages/customer/CustomerOrganization.tsx` | `flow-customer-organization.md` ยง2 |
-| `website/src/app/ui/components/customer/organization/CustomerOrganizationScreen.tsx` | `flow-customer-organization.md` ยง3โ€“ยง4 |
-| `website/src/app/ui/components/form/FormAvatarField.tsx` | `flow-form-foundation.md` ยง3.3; `website-form-avatar-field.mdc` |
-| `website/src/app/ui/components/form/FormColorField.tsx` | `flow-form-foundation.md` ยง3.4; `website-form-color-field.mdc` |
-| `website/src/app/ui/components/customer/IdentityAvatar.tsx` | `flow-customer-organization.md` ยง5 |
-| `website/src/app/ui/components/customer/members/CustomerMemberFormScreen.tsx` | Trivial `didEntered` alias cleanup โ€” `flow-customer-members.md` ยง5 |
-| `website/src/resources/translations/ar.ts` / `en.ts` (`organization.*`) | `flow-customer-organization.md` ยง6 |
+| `website/src/resources/configs/routes.ts` (`CustomerOrganization`) | `flow-customer-organization.md` ง2; `route-registry-contract.md` ง5.2 |
+| `website/src/resources/configs/store/forms.ts` (`CUSTOMER_ORGANIZATION`) | `flow-customer-organization.md` ง3; `flow-form-foundation.md` ง2 |
+| `website/src/types/requesters/requesters.website.ts` (`customer.organization`) | `flow-form-foundation.md` ง2; `organization-domain.md` ง9.3 |
+| `website/src/app/ui/pages/customer/CustomerOrganization.tsx` | `flow-customer-organization.md` ง2 |
+| `website/src/app/ui/components/customer/organization/CustomerOrganizationScreen.tsx` | `flow-customer-organization.md` ง3–ง4 |
+| `website/src/app/ui/components/form/FormAvatarField.tsx` | `flow-form-foundation.md` ง3.3; `website-form-avatar-field.mdc` |
+| `website/src/app/ui/components/form/FormColorField.tsx` | `flow-form-foundation.md` ง3.4; `website-form-color-field.mdc` |
+| `website/src/app/ui/components/customer/IdentityAvatar.tsx` | `flow-customer-organization.md` ง5 |
+| `website/src/app/ui/components/customer/members/CustomerMemberFormScreen.tsx` | Trivial `didEntered` alias cleanup — `flow-customer-members.md` ง5 |
+| `website/src/resources/translations/ar.ts` / `en.ts` (`organization.*`) | `flow-customer-organization.md` ง6 |
 | `website/lib/tsconfig.tsbuildinfo` | Generated; not narrated |
-| `backend/src/app/orchestrator/requesters/OrganizationRequester.ts` | `organization-domain.md` ยง9 |
-| `backend/src/app/helpers/BadWords.ts` | `organization-domain.md` ยง9.2 |
-| `backend/src/app/orm/models/Customer.ts` (`Ability.ORGANIZATION`) | `organization-domain.md` ยง9.1 |
-| `backend/requesters.website.ts` | `organization-domain.md` ยง9.3 |
+| `backend/src/app/orchestrator/requesters/OrganizationRequester.ts` | `organization-domain.md` ง9 |
+| `backend/src/app/helpers/BadWords.ts` | `organization-domain.md` ง9.2 |
+| `backend/src/app/orm/models/Customer.ts` (`Ability.ORGANIZATION`) | `organization-domain.md` ง9.1 |
+| `backend/requesters.website.ts` | `organization-domain.md` ง9.3 |
 | `docs/platforms/website/flow-customer-organization.md` | This flow |
 | `.cursor/skills/website-customer-organization-form/SKILL.md` | Repeatable workflow |
 | `.cursor/rules/website-form-color-field.mdc` / `website-form-avatar-field.mdc` | Field contracts |
 
-## Change set traceability โ€” Me organization + setup gate
+## Change set traceability — Me organization + setup gate
 
 | Path | Documented where |
 |---|---|
-| `backend/src/app/gql/definitions/customer.graphql` (`_Me.organization`; drop root `Query.organization`) | `organization-domain.md` ยง5; `graphql-and-types.md` |
-| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` (`GetOneParent` model nests only) | `organization-domain.md` ยง5 |
-| `backend/src/app/gql/schemas/CustomerSchema.ts` (no root org resolver) | `organization-domain.md` ยง5; `graphql-and-types.md` |
-| `backend/src/app/gql/gql-types/customer.ts` | Generated โ€” `organization-domain.md` ยง8 / codegen |
-| `website/src/types/gql/definitions/customer.graphql` | Mirror โ€” `graphql-mirror-and-tooling.md` ยง2 |
-| `website/src/types/gql/gql-types/customer.ts` | Mirror โ€” `graphql-mirror-and-tooling.md` ยง2 |
-| `website/src/app/ui/components/customer/hooks/useMe.tsx` (`coreQuery`) | `data-flow-and-gql.md`; `flow-customer-shell.md` ยง6 |
-| `website/src/app/services/router.ts` (org setup gate) | `flow-auth.md` ยง2.1; `flow-customer-organization.md` ยง3.1 |
-| `website/src/app/ui/components/customer/organization/CustomerOrganizationScreen.tsx` (alert + suffix + `redirect`) | `flow-customer-organization.md` ยง3โ€“ยง4 |
-| `website/src/resources/configs/urls.ts` (`ORG_PUBLIC_DOMAIN`) | `flow-customer-organization.md` ยง6; `flow-form-foundation.md` ยง3.1 |
-| `website/src/app/ui/components/form/FormTextField.tsx` (`suffix`) | `flow-form-foundation.md` ยง3.1 |
-| `website/src/app/ui/components/customer/CustomerDrawer.tsx` (workspace chip) | `flow-customer-shell.md` ยง5.2 |
+| `backend/src/app/gql/definitions/customer.graphql` (`_Me.organization`; drop root `Query.organization`) | `organization-domain.md` ง5; `graphql-and-types.md` |
+| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` (`GetOneParent` model nests only) | `organization-domain.md` ง5 |
+| `backend/src/app/gql/schemas/CustomerSchema.ts` (no root org resolver) | `organization-domain.md` ง5; `graphql-and-types.md` |
+| `backend/src/app/gql/gql-types/customer.ts` | Generated — `organization-domain.md` ง8 / codegen |
+| `website/src/types/gql/definitions/customer.graphql` | Mirror — `graphql-mirror-and-tooling.md` ง2 |
+| `website/src/types/gql/gql-types/customer.ts` | Mirror — `graphql-mirror-and-tooling.md` ง2 |
+| `website/src/app/ui/components/customer/hooks/useMe.tsx` (`coreQuery`) | `data-flow-and-gql.md`; `flow-customer-shell.md` ง6 |
+| `website/src/app/services/router.ts` (org setup gate) | `flow-auth.md` ง2.1; `flow-customer-organization.md` ง3.1 |
+| `website/src/app/ui/components/customer/organization/CustomerOrganizationScreen.tsx` (alert + suffix + `redirect`) | `flow-customer-organization.md` ง3–ง4 |
+| `website/src/resources/configs/urls.ts` (`ORG_PUBLIC_DOMAIN`) | `flow-customer-organization.md` ง6; `flow-form-foundation.md` ง3.1 |
+| `website/src/app/ui/components/form/FormTextField.tsx` (`suffix`) | `flow-form-foundation.md` ง3.1 |
+| `website/src/app/ui/components/customer/CustomerDrawer.tsx` (workspace chip) | `flow-customer-shell.md` ง5.2 |
 | `website/src/app/ui/components/Wrong.tsx` / `DataTable.tsx` (empty `FiLayers`) | `shared-ui-and-shell.md` |
 | `website/src/resources/translations/ar.ts` / `en.ts` | `setupRequiredAlert`, `workspaceFallback`; org/drawer keys |
 | `website/lib/tsconfig.tsbuildinfo` | Generated; not narrated |
@@ -115,24 +115,24 @@ Governance: `.cursor/rules/website-auth-flow.mdc`
 | `.cursor/skills/website-customer-organization-form/SKILL.md` | Form + gate + suffix + alert |
 | `.cursor/skills/website-customer-drawer-nav/SKILL.md` | Workspace chip contract |
 
-## Change set traceability โ€” brand polish
+## Change set traceability — brand polish
 
 | Path (under `website/`) | Documented where |
 |---|---|
-| `src/resources/configs/theme.ts` (`Dims` corner radius) | `ui-foundation.md` ยง Corner radius tokens; `brand-identity-alignment.md`; invariant W46; `website-corner-radius-tokens.mdc` |
-| `src/resources/configs/utils.ts` (`semanticDims.card.radius`) | `ui-foundation.md` ยง Corner radius tokens; `page-error.md` ยง Radius + tokens; `website-corner-radius-tokens.mdc` |
-| `src/app/ui/components/Logo.tsx` (presets + sizes) | `brand-identity-alignment.md` ยง Logo; `shared-ui-and-shell.md` ยง 3/4; invariant W45; `website-logo-no-frame.mdc` |
-| `src/app/ui/components/Header.tsx` (logo no-frame) | `shared-ui-and-shell.md` ยง 3; `brand-identity-alignment.md` ยง Logo; `website-logo-no-frame.mdc` |
-| `src/app/ui/components/Footer.tsx` (logo no-frame) | `brand-identity-alignment.md` ยง Logo; `website-logo-no-frame.mdc` |
-| `src/app/ui/components/Drawer.tsx` (logo no-frame) | `shared-ui-and-shell.md` ยง 4; `brand-identity-alignment.md` ยง Logo; `website-logo-no-frame.mdc` |
-| `src/app/ui/pages/Error.tsx` (full page) | `page-error.md` (full composition + brand treatment); `brand-identity-alignment.md` ยง Canonical consumer pairings |
-| `src/resources/translations/ar.ts` (`error.title` key) | `page-error.md` ยง Translation contract; `page-error.md` ยง Page title |
-| `public/images/{dark,light}_logo.png` (binary brand assets) | `brand-identity-alignment.md` ยง Logo (asset paths + scheme swap). Binary; not narrated line-by-line. |
+| `src/resources/configs/theme.ts` (`Dims` corner radius) | `ui-foundation.md` ง Corner radius tokens; `brand-identity-alignment.md`; invariant W46; `website-corner-radius-tokens.mdc` |
+| `src/resources/configs/utils.ts` (`semanticDims.card.radius`) | `ui-foundation.md` ง Corner radius tokens; `page-error.md` ง Radius + tokens; `website-corner-radius-tokens.mdc` |
+| `src/app/ui/components/Logo.tsx` (presets + sizes) | `brand-identity-alignment.md` ง Logo; `shared-ui-and-shell.md` ง 3/4; invariant W45; `website-logo-no-frame.mdc` |
+| `src/app/ui/components/Header.tsx` (logo no-frame) | `shared-ui-and-shell.md` ง 3; `brand-identity-alignment.md` ง Logo; `website-logo-no-frame.mdc` |
+| `src/app/ui/components/Footer.tsx` (logo no-frame) | `brand-identity-alignment.md` ง Logo; `website-logo-no-frame.mdc` |
+| `src/app/ui/components/Drawer.tsx` (logo no-frame) | `shared-ui-and-shell.md` ง 4; `brand-identity-alignment.md` ง Logo; `website-logo-no-frame.mdc` |
+| `src/app/ui/pages/Error.tsx` (full page) | `page-error.md` (full composition + brand treatment); `brand-identity-alignment.md` ง Canonical consumer pairings |
+| `src/resources/translations/ar.ts` (`error.title` key) | `page-error.md` ง Translation contract; `page-error.md` ง Page title |
+| `public/images/{dark,light}_logo.png` (binary brand assets) | `brand-identity-alignment.md` ง Logo (asset paths + scheme swap). Binary; not narrated line-by-line. |
 | `lib/tsconfig.tsbuildinfo` | Generated build artifact from `yarn type-check`; not narrated. |
 
-`ar.ts` also carries a brand-rename pass (`ู…ุตุฏุฑูุฉ` โ’ `ุงุฌุชู…ุงุน` in `app.title`, `footerTitle`, and `brand` strings), made outside this agent session; reflected as the current app title value, not narrated key-by-key.
+`ar.ts` also carries a brand-rename pass (`??????` ? `??????` in `app.title`, `footerTitle`, and `brand` strings), made outside this agent session; reflected as the current app title value, not narrated key-by-key.
 
-## Change set traceability โ€” customer baseline
+## Change set traceability — customer baseline
 
 Current-state reflection of the customer-baseline change set: the `website/` scaffold now targets the `CUSTOMER` + `visitor` actor model on mount `/website`, with the supervisor/cpanel surfaces removed and customer-native replacements added. No change history.
 
@@ -140,58 +140,58 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 
 | Path (under `website/`) | Was | Documented where |
 |---|---|---|
-| `src/app/ui/pages/Customers.tsx` | Supervisor customer-list page | `route-registry-contract.md` ยง1.1 (shipped routes exclude it) |
-| `src/app/ui/pages/Customer.tsx` | Supervisor customer-detail page | `route-registry-contract.md` ยง1.1 |
+| `src/app/ui/pages/Customers.tsx` | Supervisor customer-list page | `route-registry-contract.md` ง1.1 (shipped routes exclude it) |
+| `src/app/ui/pages/Customer.tsx` | Supervisor customer-detail page | `route-registry-contract.md` ง1.1 |
 | `src/app/ui/components/customer/CustomersTable.tsx` | Supervisor customer table | `repository-inventory.md` (not part of shipped customer UI) |
 | `src/app/ui/components/customer/CustomerStatsSection.tsx` | Supervisor stats section | `repository-inventory.md` |
 | `src/app/ui/components/customer/CustomerIdentityCell.tsx` | Supervisor identity cell | `repository-inventory.md` |
-| `src/app/ui/components/customer/customer.graphql` | Supervisor customer operation | `graphql-mirror-and-tooling.md` ยง5 (supervisor not mirrored) |
-| `src/app/ui/components/customer/customers.graphql` | Supervisor customers operation | `graphql-mirror-and-tooling.md` ยง5 |
-| `src/types/customer.ts` | `CustomerFormType` helper | `route-registry-contract.md` ยง1.1 (no `Customer` route) |
-| `src/types/gql/definitions/base.graphql` (old) | Supervisor-contaminated base SDL | `graphql-mirror-and-tooling.md` ยง2 |
-| `src/types/gql/definitions/supervisor.graphql` | Supervisor SDL | `graphql-mirror-and-tooling.md` ยง5 |
-| `src/types/gql/gql-types/base.ts` (old) | Old generated types | `graphql-mirror-and-tooling.md` ยง2 |
-| `src/types/gql/gql-types/supervisor.ts` | Supervisor generated types | `graphql-mirror-and-tooling.md` ยง5 |
-| `src/types/requesters/requesters.cpanel.ts` | Cpanel requester map | `repository-inventory.md` ยง Requesters; `data-flow-and-gql.md` ยง Actor maps |
+| `src/app/ui/components/customer/customer.graphql` | Supervisor customer operation | `graphql-mirror-and-tooling.md` ง5 (supervisor not mirrored) |
+| `src/app/ui/components/customer/customers.graphql` | Supervisor customers operation | `graphql-mirror-and-tooling.md` ง5 |
+| `src/types/customer.ts` | `CustomerFormType` helper | `route-registry-contract.md` ง1.1 (no `Customer` route) |
+| `src/types/gql/definitions/base.graphql` (old) | Supervisor-contaminated base SDL | `graphql-mirror-and-tooling.md` ง2 |
+| `src/types/gql/definitions/supervisor.graphql` | Supervisor SDL | `graphql-mirror-and-tooling.md` ง5 |
+| `src/types/gql/gql-types/base.ts` (old) | Old generated types | `graphql-mirror-and-tooling.md` ง2 |
+| `src/types/gql/gql-types/supervisor.ts` | Supervisor generated types | `graphql-mirror-and-tooling.md` ง5 |
+| `src/types/requesters/requesters.cpanel.ts` | Cpanel requester map | `repository-inventory.md` ง Requesters; `data-flow-and-gql.md` ง Actor maps |
 
 ### Added (8 new paths)
 
 | Path (under `website/`) | Role | Documented where |
 |---|---|---|
-| `src/types/requesters/requesters.website.ts` | `RequestersMap` (visitor.auth, customer.customer, customer.notification) | `repository-inventory.md` ยง Requesters; `data-flow-and-gql.md` ยง Actor maps; `overview.md` ยง Backend coupling |
-| `src/types/gql/definitions/base.graphql` | Shared SDL (scalars, `_Ability`, `_Notification*`, interfaces) | `graphql-mirror-and-tooling.md` ยง2; `repository-inventory.md` ยง GQL mirrors |
-| `src/types/gql/definitions/customer.graphql` | Customer SDL (`_Me` + nested `organization` / `currentSubscription`, `_Organization`, `_Member`, `_MemberFilter`, `_MessageChannel`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant`, `_AgendaItem`, `_Decision`, `_Vote`, `_TalkRecord`, `_Plan`, `_Subscription`, `Query { me, notifications, members(filter), member, messageChannels, messageChannel, messageTemplates, messageTemplate, meetings, meeting, plans, plan, subscriptions, subscription }` โ€” no root `organization`; nested `_Subscription.plan`, `_Meeting.participants`, `_Meeting.agendaItems`, `_Meeting.decisions`, `_Decision.votes`, `_Meeting.talkRecords`) | `graphql-mirror-and-tooling.md` ยง2; `repository-inventory.md` ยง GQL mirrors; `flow-customer-members.md`; `flow-customer-organization.md` |
-| `src/types/gql/definitions/shared.graphql` | Shared `Query { notifications }` extension stub | `graphql-mirror-and-tooling.md` ยง2; `repository-inventory.md` ยง GQL mirrors |
-| `src/types/gql/gql-types/base.ts` | Generated shared types | `graphql-mirror-and-tooling.md` ยง2 |
-| `src/types/gql/gql-types/customer.ts` | Generated customer types | `graphql-mirror-and-tooling.md` ยง2; `data-flow-and-gql.md` ยง Read path |
-| `src/app/ui/components/customer/graphql.config.yml` | Subtree tooling placeholder (no screens yet) | `graphql-mirror-and-tooling.md` ยง3 |
-| `src/app/ui/pages/customer/graphql.config.yml` | Subtree tooling placeholder (no screens yet) | `graphql-mirror-and-tooling.md` ยง3 |
+| `src/types/requesters/requesters.website.ts` | `RequestersMap` (visitor.auth, customer.customer, customer.notification) | `repository-inventory.md` ง Requesters; `data-flow-and-gql.md` ง Actor maps; `overview.md` ง Backend coupling |
+| `src/types/gql/definitions/base.graphql` | Shared SDL (scalars, `_Ability`, `_Notification*`, interfaces) | `graphql-mirror-and-tooling.md` ง2; `repository-inventory.md` ง GQL mirrors |
+| `src/types/gql/definitions/customer.graphql` | Customer SDL (`_Me` + nested `organization` / `currentSubscription`, `_Organization`, `_Member`, `_MemberFilter`, `_MessageChannel`, `_MessageTemplate`, `_Meeting`, `_MeetingParticipant`, `_AgendaItem`, `_Decision`, `_Vote`, `_TalkRecord`, `_Plan`, `_Subscription`, `Query { me, notifications, members(filter), member, messageChannels, messageChannel, messageTemplates, messageTemplate, meetings, meeting, plans, plan, subscriptions, subscription }` — no root `organization`; nested `_Subscription.plan`, `_Meeting.participants`, `_Meeting.agendaItems`, `_Meeting.decisions`, `_Decision.votes`, `_Meeting.talkRecords`) | `graphql-mirror-and-tooling.md` ง2; `repository-inventory.md` ง GQL mirrors; `flow-customer-members.md`; `flow-customer-organization.md` |
+| `src/types/gql/definitions/shared.graphql` | Shared `Query { notifications }` extension stub | `graphql-mirror-and-tooling.md` ง2; `repository-inventory.md` ง GQL mirrors |
+| `src/types/gql/gql-types/base.ts` | Generated shared types | `graphql-mirror-and-tooling.md` ง2 |
+| `src/types/gql/gql-types/customer.ts` | Generated customer types | `graphql-mirror-and-tooling.md` ง2; `data-flow-and-gql.md` ง Read path |
+| `src/app/ui/components/customer/graphql.config.yml` | Subtree tooling placeholder (no screens yet) | `graphql-mirror-and-tooling.md` ง3 |
+| `src/app/ui/pages/customer/graphql.config.yml` | Subtree tooling placeholder (no screens yet) | `graphql-mirror-and-tooling.md` ง3 |
 
-### Modified โ€” behavioral
+### Modified — behavioral
 
 | Path (under `website/`) | Change | Documented where |
 |---|---|---|
-| `src/resources/configs/urls.ts` | `BASE_URL` test mode `/cpanel` โ’ `/website` | `overview.md` ยง Backend coupling; invariant W44 |
-| `src/app/services/auth.ts` | `AuthedAs = "CUSTOMER"`; `canDoAction` reads `customer.permissions` | `ssr-boot-and-startup.md` ยง4; `shared-ui-and-shell.md` ยง1.1 |
-| `src/app/services/socket.ts` | Boot socket: namespace `customer` for an authed customer; none on an organization host | `data-flow-and-gql.md` ยง Socket; `organization-host-routing.md` ยง4 |
-| `src/app/services/router.ts` | `publicRoutes` includes `Register`, `ResetPassword`; `getMyHomeIdentify = "Home"` | `route-registry-contract.md` ยง1.1; `flow-auth.md` ยง2 |
-| `src/app/services/global.ts` | Trailing semicolon fix only | โ€” (trivial) |
-| `src/resources/configs/axios/api.ts` | `FORMS.SUPERVISOR.R` โ’ `FORMS.CUSTOMER.R` (`/forms/customer/requester/...`); imports `requesters.website` | `data-flow-and-gql.md` ยง Write path table |
-| `src/resources/configs/routes.ts` | Removed `Customers`/`Customer` routes + `MPagesRoutes` entries | `route-registry-contract.md` ยง1.1 |
-| `src/resources/configs/store/reduces/auth.ts` | `supervisor` โ’ `customer` slice | `shared-ui-and-shell.md` ยง1.1; `ssr-boot-and-startup.md` ยง4 |
-| `src/resources/configs/store/data-adapters.ts` | `//supervisor` โ’ `//customer` comment on `ADAPTER1` | `data-flow-and-gql.md` ยง Adapter enterMode |
-| `src/resources/configs/socket/events.ts` | Supervisor events โ’ single `onCustomerEventDate` | `data-flow-and-gql.md` ยง Socket |
-| `src/types/events.ts` | Supervisor payloads โ’ `OnCustomerEventDate { type: "UPDATED" }` | `data-flow-and-gql.md` ยง Socket |
-| `src/app/ui/pages/Login.tsx` | Email+password login; `sub: "login"`; split `AuthPageShell` | `flow-auth.md` ยง6.1 |
+| `src/resources/configs/urls.ts` | `BASE_URL` test mode `/cpanel` ? `/website` | `overview.md` ง Backend coupling; invariant W44 |
+| `src/app/services/auth.ts` | `AuthedAs = "CUSTOMER"`; `canDoAction` reads `customer.permissions` | `ssr-boot-and-startup.md` ง4; `shared-ui-and-shell.md` ง1.1 |
+| `src/app/services/socket.ts` | Boot socket: namespace `customer` for an authed customer; none on an organization host | `data-flow-and-gql.md` ง Socket; `organization-host-routing.md` ง4 |
+| `src/app/services/router.ts` | `publicRoutes` includes `Register`, `ResetPassword`; `getMyHomeIdentify = "Home"` | `route-registry-contract.md` ง1.1; `flow-auth.md` ง2 |
+| `src/app/services/global.ts` | Trailing semicolon fix only | — (trivial) |
+| `src/resources/configs/axios/api.ts` | `FORMS.SUPERVISOR.R` ? `FORMS.CUSTOMER.R` (`/forms/customer/requester/...`); imports `requesters.website` | `data-flow-and-gql.md` ง Write path table |
+| `src/resources/configs/routes.ts` | Removed `Customers`/`Customer` routes + `MPagesRoutes` entries | `route-registry-contract.md` ง1.1 |
+| `src/resources/configs/store/reduces/auth.ts` | `supervisor` ? `customer` slice | `shared-ui-and-shell.md` ง1.1; `ssr-boot-and-startup.md` ง4 |
+| `src/resources/configs/store/data-adapters.ts` | `//supervisor` ? `//customer` comment on `ADAPTER1` | `data-flow-and-gql.md` ง Adapter enterMode |
+| `src/resources/configs/socket/events.ts` | Supervisor events ? single `onCustomerEventDate` | `data-flow-and-gql.md` ง Socket |
+| `src/types/events.ts` | Supervisor payloads ? `OnCustomerEventDate { type: "UPDATED" }` | `data-flow-and-gql.md` ง Socket |
+| `src/app/ui/pages/Login.tsx` | Email+password login; `sub: "login"`; split `AuthPageShell` | `flow-auth.md` ง6.1 |
 | `src/app/ui/pages/Error.tsx` | Consolidated `useRouter` + `useCurrentParams` import | `page-error.md` |
-| `src/app/ui/layouts/main-layout/drawer.ts` | Drawer โ’ `business` section with `dashboard` + `logout` only | `shared-ui-and-shell.md` ยง1.1 |
-| `src/resources/translations/ar.ts` | Removed cpanel nav labels; `owner` โ’ `Customer` | `repository-inventory.md`; invariant W48 |
-| `src/resources/translations/en.ts` | Mirror of `ar.ts` removals; `owner` โ’ `Customer` | `repository-inventory.md`; invariant W48 |
-| `graphql.config.yml` (root) | Schema ref `supervisor.graphql` โ’ `customer.graphql` | `graphql-mirror-and-tooling.md` ยง3 |
-| `src/app/ui/components/graphql.config.yml` | Schema ref โ’ `base.graphql` only | `graphql-mirror-and-tooling.md` ยง3 |
-| `src/app/ui/pages/graphql.config.yml` | Schema ref โ’ `base.graphql` only | `graphql-mirror-and-tooling.md` ยง3 |
+| `src/app/ui/layouts/main-layout/drawer.ts` | Drawer ? `business` section with `dashboard` + `logout` only | `shared-ui-and-shell.md` ง1.1 |
+| `src/resources/translations/ar.ts` | Removed cpanel nav labels; `owner` ? `Customer` | `repository-inventory.md`; invariant W48 |
+| `src/resources/translations/en.ts` | Mirror of `ar.ts` removals; `owner` ? `Customer` | `repository-inventory.md`; invariant W48 |
+| `graphql.config.yml` (root) | Schema ref `supervisor.graphql` ? `customer.graphql` | `graphql-mirror-and-tooling.md` ง3 |
+| `src/app/ui/components/graphql.config.yml` | Schema ref ? `base.graphql` only | `graphql-mirror-and-tooling.md` ง3 |
+| `src/app/ui/pages/graphql.config.yml` | Schema ref ? `base.graphql` only | `graphql-mirror-and-tooling.md` ง3 |
 
-### Modified โ€” formatting only (no runtime behavior change)
+### Modified — formatting only (no runtime behavior change)
 
 | Path (under `website/`) | Change |
 |---|---|
@@ -207,114 +207,114 @@ Current-state reflection of the customer-baseline change set: the `website/` sca
 | `src/app/ui/components/form/FormTextField.tsx` | `readOnly` during injection; optional `actionArea`; `placeholder` default `""` |
 | `src/app/ui/components/form/FormActionButton.tsx` | `tone: "secondary"` for cross-auth CTAs |
 | `src/app/ui/pages/UiMockup.tsx` | Destructuring param line alignment + import consolidation |
-| `src/resources/configs/theme.ts` | `FontFamilies` single-quote โ’ escaped-double-quote strings (no value change) |
+| `src/resources/configs/theme.ts` | `FontFamilies` single-quote ? escaped-double-quote strings (no value change) |
 | `lib/tsconfig.tsbuildinfo` | Generated build artifact from `yarn type-check`; not narrated. |
 
-## Change set traceability โ€” customer shell + shared drawer mark
+## Change set traceability — customer shell + shared drawer mark
 
-Full path map: [`flow-customer-shell.md`](flow-customer-shell.md) ยง12. Related landing consumer: [`landing-page.md`](landing-page.md) ยง Header (`DrawerMenuIcon`).
+Full path map: [`flow-customer-shell.md`](flow-customer-shell.md) ง12. Related landing consumer: [`landing-page.md`](landing-page.md) ง Header (`DrawerMenuIcon`).
 
 | Concern | Documented where |
 |---|---|
 | `CUSTOMER_MAIN` layout / header / footer / grid drawer | `flow-customer-shell.md` |
-| Drawer tile IA โ” `CustomerSchema` | `flow-customer-shell.md` ยง5.3; `.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc` |
-| Shared `DrawerMenuIcon` (not under `customer/`) | `flow-customer-shell.md` ยง3.1; `landing-page.md`; `.cursor/rules/website-customer-utils-composed-marks.mdc` |
-| Tile copy: ุงูู…ุคุณุณุฉ / ุงูุงุดุชุฑุงู | `flow-customer-shell.md` ยง10 |
-| `CUSTOMER_ME` + SSR hydrate | `flow-customer-shell.md` ยง6; `data-flow-and-gql.md`; `ssr-boot-and-startup.md` |
-| Routes / home identify | `route-registry-contract.md`; `overview.md` ยง6 |
+| Drawer tile IA ? `CustomerSchema` | `flow-customer-shell.md` ง5.3; `.cursor/rules/website-customer-drawer-nav-backend-alignment.mdc` |
+| Shared `DrawerMenuIcon` (not under `customer/`) | `flow-customer-shell.md` ง3.1; `landing-page.md`; `.cursor/rules/website-customer-utils-composed-marks.mdc` |
+| Tile copy: ??????? / ???????? | `flow-customer-shell.md` ง10 |
+| `CUSTOMER_ME` + SSR hydrate | `flow-customer-shell.md` ง6; `data-flow-and-gql.md`; `ssr-boot-and-startup.md` |
+| Routes / home identify | `route-registry-contract.md`; `overview.md` ง6 |
 
-## Change set traceability โ€” customer members directory
+## Change set traceability — customer members directory
 
-Full path map: [`flow-customer-members.md`](flow-customer-members.md) ยง11. Backend filter: [`../backend/contracts/member-domain.md`](../backend/contracts/member-domain.md) ยง4โ€“ยง5.
+Full path map: [`flow-customer-members.md`](flow-customer-members.md) ง11. Backend filter: [`../backend/contracts/member-domain.md`](../backend/contracts/member-domain.md) ง4–ง5.
 
 | Concern | Documented where |
 |---|---|
 | `_MemberFilter` + bridge search | `member-domain.md`; `graphql-and-types.md` |
-| History key `members` + Enter commit | `flow-customer-members.md` ยง4; `.cursor/rules/website-customer-list-history-search.mdc` |
-| `CUSTOMER_GQL` + `customer-members` adapter | `flow-customer-members.md` ยง3; `data-flow-and-gql.md` |
-| ResultLane + member-shaped `CardSkeleton` | `flow-customer-members.md` ยง6; `.cursor/rules/website-result-lane-skeleton-shape.mdc` |
-| Chrome-only Add/Edit (no write forms) | `flow-customer-members.md` ยง8 |
+| History key `members` + Enter commit | `flow-customer-members.md` ง4; `.cursor/rules/website-customer-list-history-search.mdc` |
+| `CUSTOMER_GQL` + `customer-members` adapter | `flow-customer-members.md` ง3; `data-flow-and-gql.md` |
+| ResultLane + member-shaped `CardSkeleton` | `flow-customer-members.md` ง6; `.cursor/rules/website-result-lane-skeleton-shape.mdc` |
+| Chrome-only Add/Edit (no write forms) | `flow-customer-members.md` ง8 |
 
-## Change set traceability โ€” customer meetings
+## Change set traceability — customer meetings
 
-Full path map: [`flow-customer-meetings.md`](flow-customer-meetings.md) ยง12. Backend create/filter: [`../backend/contracts/meeting-domain.md`](../backend/contracts/meeting-domain.md) ยง4โ€“ยง5, ยง9. Chairperson roster: [`../backend/contracts/meeting-participant-domain.md`](../backend/contracts/meeting-participant-domain.md). Shared fields/modals: [`flow-form-foundation.md`](flow-form-foundation.md) ยง3.5โ€“ยง3.7.
+Full path map: [`flow-customer-meetings.md`](flow-customer-meetings.md) ง12. Backend create/filter: [`../backend/contracts/meeting-domain.md`](../backend/contracts/meeting-domain.md) ง4–ง5, ง9. Chairperson roster: [`../backend/contracts/meeting-participant-domain.md`](../backend/contracts/meeting-participant-domain.md). Shared fields/modals: [`flow-form-foundation.md`](flow-form-foundation.md) ง3.5–ง3.7.
 
 | Concern | Documented where |
 |---|---|
-| `_MeetingFilter` + bridge + GQL selection | `meeting-domain.md` ยง4โ€“ยง5; `flow-customer-meetings.md` ยง3 |
-| History key `meetings` + status chips + `{ reset: true }` | `flow-customer-meetings.md` ยง3โ€“ยง3.1; `.cursor/rules/website-customer-list-history-search.mdc` |
-| Card W42 labels + skeleton | `flow-customer-meetings.md` ยง4; `.cursor/rules/website-presentational-label-props.mdc` |
-| Create form fields + success `replace` | `flow-customer-meetings.md` ยง5; `meeting-domain.md` ยง9 |
-| `FormChoiceField` / entity / datetime modals | `flow-form-foundation.md` ยง3.5โ€“ยง3.7; skills `website-entity-picker`, `website-customer-meeting-form` |
+| `_MeetingFilter` + bridge + GQL selection | `meeting-domain.md` ง4–ง5; `flow-customer-meetings.md` ง3 |
+| History key `meetings` + status chips + `{ reset: true }` | `flow-customer-meetings.md` ง3–ง3.1; `.cursor/rules/website-customer-list-history-search.mdc` |
+| Card W42 labels + skeleton | `flow-customer-meetings.md` ง4; `.cursor/rules/website-presentational-label-props.mdc` |
+| Create form fields + success `replace` | `flow-customer-meetings.md` ง5; `meeting-domain.md` ง9 |
+| `FormChoiceField` / entity / datetime modals | `flow-form-foundation.md` ง3.5–ง3.7; skills `website-entity-picker`, `website-customer-meeting-form` |
 | Custom scroll + datepicker emotion theme | `.cursor/rules/website-custom-scroll-contract.mdc`; `.cursor/rules/website-third-party-widget-emotion-theme.mdc` |
-| Form before `:id` | `route-registry-contract.md` ยง4.1 / ยง5.2; W41 |
-| i18n + failure modes | `flow-customer-meetings.md` ยง8โ€“ยง9 |
-| Dependencies (`react-datepicker`) | `flow-customer-meetings.md` ยง10 |
+| Form before `:id` | `route-registry-contract.md` ง4.1 / ง5.2; W41 |
+| i18n + failure modes | `flow-customer-meetings.md` ง8–ง9 |
+| Dependencies (`react-datepicker`) | `flow-customer-meetings.md` ง10 |
 
-## Change set traceability โ€” customer home command map
+## Change set traceability — customer home command map
 
-Current-state reflection of the customer-home change set. The source behavior is specified in `flow-customer-shell.md` ยง7; this table accounts for every changed file in the nested `website/` repository and the root documentation repository.
+Current-state reflection of the customer-home change set. The source behavior is specified in `flow-customer-shell.md` ง7; this table accounts for every changed file in the nested `website/` repository and the root documentation repository.
 
 | Path | Documented where |
 |---|---|
-| `website/src/app/ui/pages/customer/CustomerHome.tsx` | `flow-customer-shell.md` ยง7 Entry and Component ownership |
-| `website/src/app/ui/components/customer/hooks/useCustomerHome.ts` | `flow-customer-shell.md` ยง7 Data, Runtime and failure behavior, and Component ownership |
-| `website/src/app/ui/components/customer/home/CustomerHomeScreen.tsx` | `flow-customer-shell.md` ยง7 Entry, Runtime and failure behavior, and Component ownership |
-| `website/src/app/ui/components/customer/home/CustomerHomeCommandHero.tsx` | `flow-customer-shell.md` ยง7 Zones and Component ownership |
-| `website/src/app/ui/components/customer/home/CustomerHomeFeaturedCta.tsx` | `flow-customer-shell.md` ยง7 Zones and Component ownership |
-| `website/src/app/ui/components/customer/home/CustomerHomeStatusCard.tsx` | `flow-customer-shell.md` ยง7 Zones and Component ownership |
-| `website/src/app/ui/components/customer/home/HomeZoneShell.tsx` | `flow-customer-shell.md` ยง7 Landing motif reuse and Component ownership |
-| `website/src/app/ui/components/customer/home/WorkspaceLifecycleRail.tsx` | `flow-customer-shell.md` ยง7 Zones and Component ownership |
-| `website/src/app/ui/components/customer/home/HomeAttentionList.tsx` | `flow-customer-shell.md` ยง7 Zones and Component ownership |
-| `website/src/app/ui/components/customer/home/HomeReadinessStratum.tsx` | `flow-customer-shell.md` ยง7 Zones and Component ownership |
-| `website/src/app/ui/components/customer/home/HomeAgendaStrip.tsx` | `flow-customer-shell.md` ยง7 Zones and Component ownership |
-| `website/src/app/ui/components/customer/home/HomeActionStatusCards.tsx` | `flow-customer-shell.md` ยง7 Zones and Component ownership |
-| `website/src/app/ui/components/customer/home/HomeFocusVisual.tsx` | `flow-customer-shell.md` ยง7 Runtime and failure behavior and Component ownership |
-| `website/src/app/ui/components/customer/meetings/CustomerMeetingCard.tsx` | `flow-customer-shell.md` ยง7 Component ownership; `flow-customer-meetings.md` ยง6 home cross-link |
-| `website/src/resources/translations/ar.ts` | `flow-customer-shell.md` ยง7 i18n |
-| `website/src/resources/translations/en.ts` | `flow-customer-shell.md` ยง7 i18n |
+| `website/src/app/ui/pages/customer/CustomerHome.tsx` | `flow-customer-shell.md` ง7 Entry and Component ownership |
+| `website/src/app/ui/components/customer/hooks/useCustomerHome.ts` | `flow-customer-shell.md` ง7 Data, Runtime and failure behavior, and Component ownership |
+| `website/src/app/ui/components/customer/home/CustomerHomeScreen.tsx` | `flow-customer-shell.md` ง7 Entry, Runtime and failure behavior, and Component ownership |
+| `website/src/app/ui/components/customer/home/CustomerHomeCommandHero.tsx` | `flow-customer-shell.md` ง7 Zones and Component ownership |
+| `website/src/app/ui/components/customer/home/CustomerHomeFeaturedCta.tsx` | `flow-customer-shell.md` ง7 Zones and Component ownership |
+| `website/src/app/ui/components/customer/home/CustomerHomeStatusCard.tsx` | `flow-customer-shell.md` ง7 Zones and Component ownership |
+| `website/src/app/ui/components/customer/home/HomeZoneShell.tsx` | `flow-customer-shell.md` ง7 Landing motif reuse and Component ownership |
+| `website/src/app/ui/components/customer/home/WorkspaceLifecycleRail.tsx` | `flow-customer-shell.md` ง7 Zones and Component ownership |
+| `website/src/app/ui/components/customer/home/HomeAttentionList.tsx` | `flow-customer-shell.md` ง7 Zones and Component ownership |
+| `website/src/app/ui/components/customer/home/HomeReadinessStratum.tsx` | `flow-customer-shell.md` ง7 Zones and Component ownership |
+| `website/src/app/ui/components/customer/home/HomeAgendaStrip.tsx` | `flow-customer-shell.md` ง7 Zones and Component ownership |
+| `website/src/app/ui/components/customer/home/HomeActionStatusCards.tsx` | `flow-customer-shell.md` ง7 Zones and Component ownership |
+| `website/src/app/ui/components/customer/home/HomeFocusVisual.tsx` | `flow-customer-shell.md` ง7 Runtime and failure behavior and Component ownership |
+| `website/src/app/ui/components/customer/meetings/CustomerMeetingCard.tsx` | `flow-customer-shell.md` ง7 Component ownership; `flow-customer-meetings.md` ง6 home cross-link |
+| `website/src/resources/translations/ar.ts` | `flow-customer-shell.md` ง7 i18n |
+| `website/src/resources/translations/en.ts` | `flow-customer-shell.md` ง7 i18n |
 | `website/lib/tsconfig.tsbuildinfo` | Generated by `yarn type-check`; no product behavior and must not be treated as feature source. |
 | `docs/invariants/website.md` | Current shipped-baseline correction; `route-registry-contract.md` remains the route authority. |
 | `docs/platforms/website/component-structure.md` | Customer-home ownership group and current shipped inventory. |
-| `docs/platforms/website/flow-customer-meetings.md` | ยง6 home cross-link and details ownership boundary. |
-| `docs/platforms/website/flow-customer-shell.md` | ยง7 is the behavior, runtime, and component contract. |
+| `docs/platforms/website/flow-customer-meetings.md` | ง6 home cross-link and details ownership boundary. |
+| `docs/platforms/website/flow-customer-shell.md` | ง7 is the behavior, runtime, and component contract. |
 | `docs/platforms/website/overview.md` | Current customer route and flow index. |
-| `docs/platforms/website/route-registry-contract.md` | ยง5.2 customer-home route status and current route inventory. |
+| `docs/platforms/website/route-registry-contract.md` | ง5.2 customer-home route status and current route inventory. |
 | `docs/platforms/website/README.md` | This traceability section and flow index. |
 | `website` (root nested-repository status) | Nested repository contains the source paths above; no root-repository behavior is implemented by the gitlink itself. |
 
-## Change set traceability โ€” organization host routing
+## Change set traceability — organization host routing
 
-Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) ยง10.
+Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) ง10.
 
 | Concern | Documented where |
 |---|---|
-| Host classification (`resolveRequestHost`) + `extendMyInstance` | `organization-host-routing.md` ยง2 |
-| Boot split (`organizationHost.start` before apex start) | `organization-host-routing.md` ยง1.1; `ssr-boot-and-startup.md` ยง2, ยง5 |
-| `organizationHost` store slice + `organizationId` HTTP header; Meeting handshake query | `organization-host-routing.md` ยง3 |
-| `orgHostOnly` route gate + `Meeting` route/layout + `LiveMeetingProvider` / `useLiveMeeting` | `organization-host-routing.md` ยง1.2, ยง5, ยง5.1; `route-registry-contract.md` ยง3.1, ยง5.4; invariant W58 |
-| Live meeting document (Yjs + SyncedStore) + probe screen | `organization-host-routing.md` ยง5.1, ยง5.2; `../backend/contracts/meeting-live-state.md` |
-| Meeting socket config (`src/resources/configs/meeting-socket.ts`) | `organization-host-routing.md` ยง3, ยง5.1 |
-| Shared boot socket (`prepareSocket`: org host none / customer `/customer`) | `organization-host-routing.md` ยง4 |
-| Nested `MPagesRoutes.params` contract | `route-registry-contract.md` ยง3.1 |
+| Host classification (`resolveRequestHost`) + `extendMyInstance` | `organization-host-routing.md` ง2 |
+| Boot split (`organizationHost.start` before apex start) | `organization-host-routing.md` ง1.1; `ssr-boot-and-startup.md` ง2, ง5 |
+| `organizationHost` store slice + `organizationId` HTTP header; Meeting handshake query | `organization-host-routing.md` ง3 |
+| `orgHostOnly` route gate + `Meeting` route/layout + `MeetingLiveProvider` / `useMeetingLive` | `organization-host-routing.md` ง1.2, ง5, ง5.1; `route-registry-contract.md` ง3.1, ง5.4; invariant W58 |
+| Live meeting document (Yjs + SyncedStore) + probe screen | `organization-host-routing.md` ง5.1, ง5.2; `../backend/contracts/meeting-live-state.md` |
+| Meeting socket config (`src/resources/configs/meeting-socket.ts`) | `organization-host-routing.md` ง3, ง5.1 |
+| Shared boot socket (`prepareSocket`: org host none / customer `/customer`) | `organization-host-routing.md` ง4 |
+| Nested `MPagesRoutes.params` contract | `route-registry-contract.md` ง3.1 |
 | `POST /website/custom/org/start` + `org_host` middleware | `../backend/contracts/client-portal-http-website.md` |
-| Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` ยง5 |
-| Known limits (unwired `org_host`, probe-only meeting UI, no participant-type gate) | `organization-host-routing.md` ยง8 |
+| Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` ง5 |
+| Known limits (unwired `org_host`, probe-only meeting UI, no participant-type gate) | `organization-host-routing.md` ง8 |
 | `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` | Host-mode gating + Meeting `/meeting` session contract |
 
-## Change set traceability โ€” MicroBand footer credit spelling
+## Change set traceability — MicroBand footer credit spelling
 
 Current-state reflection of the footer-credit brand spelling correction in the nested `website/` repository.
 
 | Path | Documented where |
 |---|---|
-| `website/src/resources/translations/en.ts` | `shared-ui-and-shell.md` ยง5; `landing-page.md` ยง Translation contract; `invariants/website.md` W57 |
+| `website/src/resources/translations/en.ts` | `shared-ui-and-shell.md` ง5; `landing-page.md` ง Translation contract; `invariants/website.md` W57 |
 | `website/src/resources/translations/ar.ts` | Same as `en.ts`; Arabic locale keeps the Latin brand wordmark `MicroBand` |
-| `website/src/app/ui/components/MicrobandCredit.tsx` | Consumer only; reads `ui.components.microbandCredit.brand` โ€” no code change in this fix |
+| `website/src/app/ui/components/MicrobandCredit.tsx` | Consumer only; reads `ui.components.microbandCredit.brand` — no code change in this fix |
 | `website/src/app/ui/components/Footer.tsx` | Renders `MicrobandCredit` in shared footer surfaces |
 | `docs/invariants/website.md` | W57 spelling contract |
-| `docs/platforms/website/shared-ui-and-shell.md` | ยง5 MicrobandCredit copy + link contract |
-| `docs/platforms/website/landing-page.md` | ยง Header / Drawer / Footer and ยง Translation contract |
+| `docs/platforms/website/shared-ui-and-shell.md` | ง5 MicrobandCredit copy + link contract |
+| `docs/platforms/website/landing-page.md` | ง Header / Drawer / Footer and ง Translation contract |
 | `.cursor/rules/website-semantic-color-token-discipline.mdc` | W57 exemption + wordmark spelling note |
 
 ## Governance
