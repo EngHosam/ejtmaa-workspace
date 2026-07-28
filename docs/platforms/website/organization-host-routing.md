@@ -160,7 +160,13 @@ Module: `website/src/app/ui/components/meeting/hooks/useMeetingLive.tsx` (`.tsx`
 
 `MeetingLayout` wraps both desktop and mobile shell trees in **one** outer `<MeetingLiveProvider>` so the session is not duplicated per breakpoint branch.
 
-**Document bundle** (inside `useMeetingLiveInstance`). `createMeetingLiveDocBundle()` builds `syncedStore({ meeting: {} })` plus its `getYjsDoc(store)`. The bundle is held in a ref keyed by `meetingId` and rebuilt when that id changes, so a route param change cannot keep editing the previous meeting's document. `useSyncedStore(store, [store])` receives the store in its dependency list — without it the memoized proxy would keep pointing at the old document.
+**Document bundle** (inside `useMeetingLiveInstance`). Shape is `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }`. `createMeetingLiveDocBundle()` builds `syncedStore({ [MEETING_LIVE_MAP]: {} })` plus its `getYjsDoc(store)`:
+
+- Root key is the mirrored `MEETING_LIVE_MAP` from `types/meeting.ts`, not a handwritten string.
+- Root value **must** be an empty `{}`. Nesting e.g. `participants: {}` in the SyncedStore initializer throws at runtime; the CRDT fills nested maps after sync.
+- The public hook reads `liveStore[MEETING_LIVE_MAP]` (typed `Partial<MeetingLiveMap>`), including `participants` once the server document has them.
+
+The bundle is held in a ref keyed by `meetingId` and rebuilt when that id changes, so a route param change cannot keep editing the previous meeting's document. `useSyncedStore(store, [store])` receives the store in its dependency list — without it the memoized proxy would keep pointing at the old document.
 
 **Session binding** (`bindMeetingLiveSession`), after the CSR gate (`useClientPreparing`) and the `memberId` / `memberToken` / `meetingId` guard:
 
@@ -173,7 +179,7 @@ Module: `website/src/app/ui/components/meeting/hooks/useMeetingLive.tsx` (`.tsx`
 7. `disconnect` → clear `connected` and `synced`; on `io server disconnect` call `socket.connect()` (Socket.IO does not auto-reconnect after a server-forced drop).
 8. Cleanup on unmount / deps change: `doc.off`, unregister the three listeners, `off` the native events, `disconnect`, reset state.
 
-Provider / public hook value: `{ connected, synced, error, meeting, batch }` (`MeetingLiveHookOp`). `meeting` is the reactive `Partial<MeetingLiveMap>` proxy; `batch(fn)` is `doc.transact(fn)` and is the only sanctioned way to write. `MeetingLiveMap` (and `MeetingLiveType` / `MeetingLiveStatus`) live in the mirrored pair `website/src/types/meeting.ts` ↔ `backend/src/app/types/meeting.ts` with **no** GQL imports — see `.cursor/rules/meeting-live-map-mirror.mdc`.
+Provider / public hook value: `{ connected, synced, error, meeting, batch }` (`MeetingLiveHookOp`). `meeting` is the reactive `Partial<MeetingLiveMap>` proxy; `batch(fn)` is `doc.transact(fn)` and is the only sanctioned way to write. `MeetingLiveMap` (including `participants: Record<string, MeetingLiveParticipant>`) lives in the mirrored pair `website/src/types/meeting.ts` ↔ `backend/src/app/types/meeting.ts` with **no** GQL imports — see `.cursor/rules/meeting-live-map-mirror.mdc`.
 
 Base64 helpers (`toBase64` / `fromBase64`) are local to the module because the payloads travel as base64 strings on the socket.
 
@@ -194,7 +200,7 @@ Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/rules/meeting-l
 - Every field is disabled until `synced`, dimmed with the `opc` shorthand, and writes through `batch(() => { meeting.field = value })`.
 - Chrome is a shared `fieldStyle` object on `ElementStyles.inputReset` with `semanticColor` / `semanticDims` tokens only; no literal colors or sizes.
 
-It is deliberately **not** a registered form: no `Forms` entry, no `FormScreen`, no requester submit. The website form contract (`flow-form-foundation.md`) does not apply because nothing is submitted — edits go to the CRDT document.
+It is deliberately **not** a registered form: no `Forms` entry, no `FormScreen`, no requester submit. The website form contract (`flow-form-foundation.md`) does not apply because nothing is submitted — edits go to the CRDT document. The probe does **not** edit `participants` (roster/presence remains a later surface).
 
 ### 5.3) Meeting shell (organization branding)
 
@@ -324,7 +330,7 @@ What the website side depends on:
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
 2. **`Meeting` UI is a sync probe only** (§5.2): status text plus three raw fields. No meeting content, media, agenda, or participant UX ships yet.
-3. **Only three fields are collaborative** — `subject`, `type`, `status`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
+3. **Collaborative live map fields** — `subject`, `type`, `status`, `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
@@ -364,8 +370,8 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
 | `src/app/ui/pages/Meeting.tsx` | renders `<MeetingLiveProbeScreen/>` (no credential props) | §5, §5.2 |
-| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; `/meeting` session, Yjs, SyncedStore, `meeting.live.*` | §5.1 |
-| `src/types/meeting.ts` | mirrored `MeetingLiveMap` (pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
+| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session | §5.1 |
+| `src/types/meeting.ts` | mirrored live map (`MeetingLiveMap`, `participants`, `MEETING_LIVE_*`; pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `src/app/ui/components/meeting/MeetingLiveProbeScreen.tsx` | temporary sync probe UI; consumes `useMeetingLive()` | §5.2 |
 | `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — socket-only hook absorbed into the live module; a separate session hook is now forbidden | §5.1 |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
@@ -406,9 +412,9 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | join `Rooms.MEETING`; bind the live event set | `../backend/contracts/meeting-realtime-socket.md` §3 |
 | `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | sync handshake + server state vector | `../backend/contracts/meeting-realtime-socket.md` §3.1 |
 | `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | validation, status gate, apply, room broadcast | `../backend/contracts/meeting-realtime-socket.md` §3.2 |
-| `src/app/helpers/MeetingLiveDocHelper.ts` | live document registry + BLOB persistence | `../backend/contracts/meeting-live-state.md` §2 |
-| `src/app/types/meeting.ts` | mirrored `MeetingLiveMap` / live type+status unions (pair with `website/src/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
-| `src/app/orm/models/Meeting.ts` | `live_state` column + live document statics (`MeetingLiveMap`) | `../backend/contracts/meeting-live-state.md` §1 |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | private codec+seed (incl. nested `participants`) + registry + BLOB persistence | `../backend/contracts/meeting-live-state.md` §1.3, §2 |
+| `src/app/types/meeting.ts` | mirrored `MeetingLiveMap` / `MEETING_LIVE_*` / participant unions (pair with `website/src/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
+| `src/app/orm/models/Meeting.ts` | `live_state` column only | `../backend/contracts/meeting-live-state.md` §1.1 |
 | `src/app/gql/bridges/customer/MeetingBridge.ts` | `live_state` excluded from GQL attrs | `../backend/contracts/meeting-live-state.md` §4 |
 | `src/resources/configs/socket/io.ts` | `/meeting` namespace + `meeting_auth` + meeting controllers | `../backend/contracts/meeting-realtime-socket.md` §1 |
 | `src/resources/consts/NotificationsConsts.ts` | `MEETING` namespace / FCM / room | `../backend/contracts/meeting-realtime-socket.md` §4 |
@@ -422,6 +428,7 @@ Every path that implements this contract, with the section that describes it.
 | `.cursor/rules/meeting-realtime-socket.mdc` | Meeting session placement, hook contract, backend pairing |
 | `.cursor/rules/meeting-live-state.mdc` | CRDT document ownership, V2 codec, BLOB exposure |
 | `.cursor/rules/meeting-live-map-mirror.mdc` | identical `MeetingLiveMap` files on backend ↔ website |
+| `.cursor/rules/sequelize-include-by-association-name.mdc` | Sequelize `include` by association name (backend companion) |
 | `.cursor/rules/nodejs-socket-namespace-registration.mdc` | namespace / controller / room registration |
 | `.cursor/rules/nodejs-socket-handler-contract.mdc` | connection return = absolute listener set |
 | `.cursor/rules/socket-event-mirroring.mdc` | outbound mirror scope |

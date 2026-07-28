@@ -2,7 +2,7 @@
 
 ## Scope
 
-The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, and `status` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
+The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, `status`, and `participants` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
 
 Transport (namespace, handshake, events, authorization): `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
 Website consumer (`MeetingLiveProvider` / `useMeetingLive`, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1.
@@ -12,7 +12,7 @@ Dependency: `yjs@13.6.27` (`backend/package.json`), same major/minor as the webs
 
 ## 1) Model surface
 
-File: `backend/src/app/orm/models/Meeting.ts`, section `live session` (after `boot()`, before the relation mixins).
+File: `backend/src/app/orm/models/Meeting.ts`.
 
 ### 1.1 Column
 
@@ -20,25 +20,68 @@ File: `backend/src/app/orm/models/Meeting.ts`, section `live session` (after `bo
 |---|---|---|---|---|
 | `live_state` | `BLOB` | yes | `null` | Yjs V2 state snapshot of the whole document; `null` until the first persist |
 
-Declared in the `Attrs` type under a `//live session` comment group, separate from `//info`.
+Declared in the `Attrs` type under a `//live session` comment group, separate from `//info`. The ORM model owns **only** this column — codec, seed, registry live in `MeetingLiveDocHelper` (§1.3, §2); map name and writable statuses live in the mirrored `types/meeting.ts` (§1.2).
 
-### 1.2 Statics and instance helper
+### 1.2 Live map contract (mirrored)
 
-| Member | Signature | Behavior |
+File pair: `backend/src/app/types/meeting.ts` ↔ `website/src/types/meeting.ts` — **byte-for-byte identical**, no external imports.
+
+| Export | Value / shape | Role |
 |---|---|---|
-| `LIVE_MAP` | `"meeting"` | Name of the `Y.Map` holding the live fields. The website SyncedStore root key must be the same string, otherwise the two sides sync disjoint maps |
-| `LIVE_STATUSES` | `Array<MeetingStatus>` = `["WAITING_TO_START", "STARTED"]` | The only statuses that accept live writes (`meeting-realtime-socket.md` §4) |
-| `createLiveDoc(fields)` | `(MeetingLiveMap) => Y.Doc` | New doc seeded in a single `transact` with `subject`, `type`, `status` |
-| `encodeLiveDoc(doc)` | `(Y.Doc) => Buffer` | `Y.encodeStateAsUpdateV2` → `Buffer` for the BLOB |
-| `decodeLiveDoc(liveState)` | `(Buffer \| Uint8Array \| null \| undefined) => Y.Doc` | Empty doc when the input has no length; otherwise `Y.applyUpdateV2` on `new Uint8Array(liveState)` — the wrap is what makes a Sequelize `Buffer` assignable to the `Uint8Array` parameter |
-| `readLiveFields(doc)` | `(Y.Doc) => Partial<MeetingLiveMap>` | Reads the three keys out of `LIVE_MAP` |
-| `getLiveDoc()` | instance → `Y.Doc` | `live_state` present and non-empty → `decodeLiveDoc`; otherwise `createLiveDoc` seeded from the SQL columns |
+| `MEETING_LIVE_MAP` | `"meeting"` | Root `Y.Map` name and SyncedStore root key. Backend `doc.getMap(MEETING_LIVE_MAP)`; website `syncedStore({ [MEETING_LIVE_MAP]: {} })` |
+| `MEETING_LIVE_STATUSES` | `readonly ["WAITING_TO_START", "STARTED"]` | Write gate for `meeting.live.update` (`meeting-realtime-socket.md` §4) |
+| `MeetingLiveWritableStatus` | union of the statuses above | Type companion |
+| `MeetingLiveTypes` / `MeetingLiveType` | `PERIODIC` \| `EMERGENCY` | Live `type` field |
+| `MeetingLiveStatuses` / `MeetingLiveStatus` | full meeting status union | Live `status` field |
+| `MeetingLiveParticipantTypes` / `MeetingLiveParticipantType` | `CHAIRPERSON` \| `MEMBER` \| `VIEWER` | Per-roster `type` |
+| `MeetingLiveConnectionStatuses` / `MeetingLiveConnectionStatus` | `ONLINE` \| `OFFLINE` | Per-roster connection |
+| `MeetingLiveParticipant` | see below | One roster entry |
+| `MeetingLiveMap` | see below | Full live document shape |
 
-Exported live-map type: `MeetingLiveMap` from `backend/src/app/types/meeting.ts` (mirrored at `website/src/types/meeting.ts` — identical, no GQL/ORM imports). SQL column enums remain `MeetingType` / `MeetingStatus` from `G_Tr` keys; the CRDT document uses `MeetingLiveMap` only.
+```ts
+type MeetingLiveParticipant = {
+    id: string;
+    type: MeetingLiveParticipantType;
+    name: string;
+    avatarUrl: string | null;
+    attendedAt: string | null;   // ISO-8601 or null
+    leftAt: string | null;
+    connectionStatus: MeetingLiveConnectionStatus;
+    onlineAt: string | null;
+    offlineAt: string | null;
+};
+
+type MeetingLiveMap = {
+    subject: string;
+    type: MeetingLiveType;
+    status: MeetingLiveStatus;
+    participants: Record<string, MeetingLiveParticipant>; // keyed by member id
+};
+```
+
+Attendance is timestamp-only (`attendedAt` / `leftAt`); there is no separate boolean. Connection presence fields are seeded `OFFLINE` / null timestamps on first document create; writers that flip online/offline are **not** shipped yet (`meeting-realtime-socket.md` shipped limits).
+
+### 1.3 Document codec and seed
+
+File: `backend/src/app/helpers/MeetingLiveDocHelper.ts` (same module as the registry). Imports `MEETING_LIVE_MAP` / live types from the mirror (§1.2).
+
+Codec/seed helpers are **module-private**. Public surface of this file is the registry (§2) plus `readLiveFields` (deferred column apply, §6).
+
+| Member | Role |
+|---|---|
+| `createLiveDoc(fields)` | Private. One `transact`: sets `subject` / `type` / `status`; builds nested `participants` as `Y.Map` of per-id `Y.Map(Object.entries(participant))` |
+| `encodeLiveDoc` / `decodeLiveDoc` | Private. V2 BLOB codec |
+| `buildLiveParticipants(meeting)` | Private. `meeting.getParticipants({ include: [{ association: "member", required: true }] })` → `Record` keyed by `member_id`; skips a row only if `member` is somehow missing; ISO-maps `attended_at` / `left_at`; seeds `connectionStatus: "OFFLINE"` |
+| `getLiveDoc(meeting)` | Private. Non-empty `live_state` → `decodeLiveDoc`; else `createLiveDoc` from SQL columns + `buildLiveParticipants` |
+| `readLiveFields(doc)` | **Exported.** `doc.getMap(MEETING_LIVE_MAP).toJSON() as Partial<MeetingLiveMap>` — only sanctioned read-back |
+
+Nested `Y.Map` for each participant is required so collaborative field updates (e.g. `connectionStatus`) merge by identity. A plain object stored under `participants` would not be a collaborative map.
+
+SQL column enums remain `MeetingType` / `MeetingStatus` from `G_Tr` keys; the CRDT document uses `MeetingLiveMap` only.
 
 **Encoding is V2 on every hop** — BLOB, sync response, and update broadcast. A V1 update applied with `applyUpdateV2` (or the reverse) throws; the website converts its V1 doc events with `Y.convertUpdateFormatV1ToV2` before emitting.
 
-`readLiveFields` has **no caller today**. It exists for the deferred column apply (§6) and is the only sanctioned way to read the live fields back out.
+`readLiveFields` has **no caller today**. It exists for the deferred column apply (§6).
 
 ## 2) Registry and persistence
 
@@ -58,7 +101,7 @@ Load path inside `getOrCreateMeetingLiveDoc`:
 
 1. `Meeting().findByPk(meetingId)`; a missing row throws `"404"`.
 2. Records whether the row already had a non-empty `live_state`.
-3. `meeting.getLiveDoc()` (§1.2) and stores `{ doc, meeting }` in `entries`.
+3. `getLiveDoc(meeting)` (§1.3) and stores `{ doc, meeting }` in `entries`.
 4. Subscribes `doc.on("update")` → `schedulePersistMeetingLiveDoc`.
 5. Schedules one persist when the row had **no** BLOB, so the seeded document reaches the column even if nobody edits.
 
@@ -69,8 +112,8 @@ The Sequelize row captured at load is the same instance the flush writes through
 ## 3) Lifecycle
 
 1. A meeting is created and edited through `MeetingRequester`; SQL columns are the only truth and `live_state` stays `null` (`meeting-domain.md` §9).
-2. First `meeting.live.sync` on the meeting: the registry seeds a document from `subject` / `type` / `status` and schedules the first BLOB write.
-3. While the meeting is live, the document is the source of truth for those three fields. Every accepted update mutates the document, is broadcast to the room, and restarts the debounce.
+2. First `meeting.live.sync` on the meeting: the registry seeds a document from `subject` / `type` / `status` and `buildLiveParticipants()`, then schedules the first BLOB write.
+3. While the meeting is live, the document is the source of truth for those map fields. Every accepted update mutates the document, is broadcast to the room, and restarts the debounce.
 4. The BLOB trails the document by up to the debounce window (§7.1).
 5. Reconnect or a second participant replays the whole state through the sync handshake; nothing is read from the SQL columns again while the entry stays in memory.
 6. Applying the live fields back onto the SQL columns is **not shipped** (§6).
@@ -89,7 +132,7 @@ Two properties are load-bearing:
 - **`flush: false`** — the default (`true`) would encode the in-memory document back into the BLOB the transaction just cleared, resurrecting the state the reset removed.
 - **`transaction.afterCommit`** — the registry is process memory and cannot be rolled back, so eviction must not run for a transaction that later fails.
 
-A `DRAFT` meeting is outside `LIVE_STATUSES`, so no session can be open at approve time; the call exists to evict an entry left behind by an earlier approve → demote → approve cycle.
+A `DRAFT` meeting is outside `MEETING_LIVE_STATUSES`, so no session can be open at approve time; the call exists to evict an entry left behind by an earlier approve → demote → approve cycle.
 
 ## 4) GraphQL exposure
 
@@ -118,16 +161,18 @@ static registerOrmAttrs = {
 
 ## 6) Deferred: applying live fields to SQL columns
 
-Product decision: `subject`, `type`, and `status` are **not** written back to the meeting columns while the session runs. The reflection happens once when the meeting is completed, and that step is not implemented in this change set.
+Product decision: meeting-row fields `subject`, `type`, and `status` are **not** written back from the live document while the session runs. The reflection happens once when the meeting is completed, and that step is not implemented yet.
 
 What it will own when it lands:
 
-- read the live values through `Meeting().readLiveFields(doc)`,
-- write the columns and the terminal `status` atomically with whatever else completion touches,
+- read the live values through `readLiveFields(doc)`,
+- write the meeting columns and the terminal `status` atomically with whatever else completion touches,
 - flush and evict the registry entry (`destroyMeetingLiveDoc`) so no writer keeps mutating a completed meeting,
 - close the stale-status window described in §7.3.
 
-Until then the SQL columns keep the values the requester write path left, and consumers that read a meeting through GraphQL see those, not the live edits.
+`participants` in the live map is a collaborative roster mirror (display + connection/attendance timestamps). SQL attendance on `meeting_participants` remains a separate write path; this deferred step is not a blanked “apply entire `MeetingLiveMap` to Meeting columns.”
+
+Until then the SQL meeting columns keep the values the requester write path left, and consumers that read a meeting through GraphQL see those, not the live edits.
 
 ## 7) Shipped limits (intentional)
 
@@ -137,57 +182,60 @@ Until then the SQL columns keep the values the requester write path left, and co
 4. **Eviction only on approve / demotion.** `destroyMeetingLiveDoc` is called from those two requester paths (§3.1); `peekMeetingLiveDoc` still has no caller. Nothing evicts an entry when a session simply ends, so memory still grows with the number of meetings touched until the process restarts.
 5. **Single instance.** The registry is process memory. Two backend processes would each hold an independent document for the same meeting and overwrite each other's BLOB; horizontal scaling needs a shared document plane first.
 6. **Seed write on first load.** A meeting whose BLOB is `null` gets one write on first sync even when nobody edits. Harmless because a session only opens for a live meeting, whose columns are no longer edited through the form.
+7. **No automatic BLOB schema migration.** A non-empty `live_state` is decoded as-is. Documents created before `participants` existed are not back-filled on load; a requester reset (§3.1) clears the BLOB so the next sync re-seeds from SQL.
 
 ## 8) Traceability
 
 | Path | Role | Section |
 |---|---|---|
-| `backend/src/app/orm/models/Meeting.ts` | `live_state` column, `LIVE_MAP`, `LIVE_STATUSES`, doc statics (`MeetingLiveMap`), `getLiveDoc()` | §1 |
-| `backend/src/app/types/meeting.ts` | mirrored `MeetingLiveMap` (pair with `website/src/types/meeting.ts`) | §1; `.cursor/rules/meeting-live-map-mirror.mdc` |
-| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | registry, debounce persist, flush, destroy | §2 |
+| `backend/src/app/orm/models/Meeting.ts` | `live_state` column only | §1.1 |
+| `backend/src/app/types/meeting.ts` | mirrored live map contract (`MeetingLiveMap`, participants, `MEETING_LIVE_*`) | §1.2; `.cursor/rules/meeting-live-map-mirror.mdc` |
+| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | private codec+seed + registry + exported `readLiveFields` | §1.3, §2 |
+| `backend/src/app/orm/models/Customer.ts` | Ability notify-template roster `include: ["member"]` | §1.3; `meeting-domain.md` §9.1 |
 | `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | `live_state = null` + `afterCommit` destroy on approve and on demotion to draft | §3.1 |
 | `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | `registerOrmAttrs.expect: ["live_state"]` | §4 |
 | `backend/eng-hosam/@nodejs/gql/src/BridgeBase.ts` | `bootRegisteredAttrs()` exclusion semantics (library, not edited) | §4 |
 | `backend/package.json` | `yjs` dependency pin | Scope |
 | `backend/src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | reads the registry document | `meeting-realtime-socket.md` §3 |
-| `backend/src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | writes the registry document, enforces `LIVE_STATUSES` | `meeting-realtime-socket.md` §3–§4 |
+| `backend/src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | writes the registry document, enforces `MEETING_LIVE_STATUSES` | `meeting-realtime-socket.md` §3–§4 |
 
-## 9) Change set inventory
+## 9) Change set inventory (this delivery)
 
-Every tracked path of this delivery, in both repositories. Website paths are described in `docs/platforms/website/organization-host-routing.md` §5.1, §5.2, §10.
+Working-tree delivery that relocated live codec out of `Meeting`, extended `MeetingLiveMap` with `participants`, and aligned website SyncedStore to `MEETING_LIVE_MAP`. Earlier meeting-realtime delivery paths remain described in §§1–8 and in `meeting-realtime-socket.md` / `organization-host-routing.md`.
 
 ### `backend/`
 
 | Path | State | Where described |
 |---|---|---|
-| `src/app/orm/models/Meeting.ts` | modified — `MeetingLiveMap` for live doc statics | §1; `meeting-domain.md` §3.2, §3.6 |
-| `src/app/types/meeting.ts` | added — mirrored `MeetingLiveMap` (pair with `website/src/types/meeting.ts`) | §1; `.cursor/rules/meeting-live-map-mirror.mdc` |
-| `src/app/helpers/MeetingLiveDocHelper.ts` | added | §2 |
-| `src/app/gql/bridges/customer/MeetingBridge.ts` | modified | §4 |
-| `src/app/socket/controllers/meeting/MeetingIOControllerBase.ts` | added | `meeting-realtime-socket.md` §3 |
-| `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | added | `meeting-realtime-socket.md` §3.1 |
-| `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | added | `meeting-realtime-socket.md` §3.2 |
-| `src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | modified — now extends the base, returns the live set | `meeting-realtime-socket.md` §3 |
-| `src/app/socket/controllers/meeting/MeetingJoinIOController.ts` | **deleted** — the log-only `meeting.join` probe it served no longer exists | `meeting-realtime-socket.md` §8 |
-| `src/resources/configs/socket/io.ts` | modified — `meeting_join` replaced by the two live aliases and routes | `meeting-realtime-socket.md` §1 |
-| `package.json` | modified — `yjs@13.6.27` | Scope |
-| `yarn.lock` | modified — lock entries for the dependency above; not narrated | — |
+| `src/app/types/meeting.ts` | modified — `MEETING_LIVE_MAP` / `MEETING_LIVE_STATUSES` / `MeetingLiveParticipant*` / `participants` on `MeetingLiveMap` | §1.2 |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — private codec+seed (incl. nested participants), registry unchanged in role | §1.3, §2 |
+| `src/app/orm/models/Meeting.ts` | modified — removed live-session statics/instance helpers; keeps `live_state` column only | §1.1 |
+| `src/app/orm/models/Customer.ts` | modified — Ability notify-template path `include: ["member"]` (association name, not model class) | §1.3; `meeting-domain.md` Ability notify gate |
+| `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | modified — write gate uses `MEETING_LIVE_STATUSES` from mirror | `meeting-realtime-socket.md` §3.2, §4 |
 
 ### `website/`
 
 | Path | State | Where described |
 |---|---|---|
-| `src/types/meeting.ts` | added — mirrored `MeetingLiveMap` (pair with `backend/src/app/types/meeting.ts`) | §1; `.cursor/rules/meeting-live-map-mirror.mdc` |
-| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | session module — `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; uses `MeetingLiveMap` | `organization-host-routing.md` §5.1 |
-| `src/app/ui/components/meeting/MeetingLiveProbeScreen.tsx` | temporary probe; consumes context via `useMeetingLive()` | `organization-host-routing.md` §5.2 |
-| `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — the socket-only hook is absorbed into the live module; a separate session hook is now forbidden | `organization-host-routing.md` §5.1; `.cursor/rules/meeting-realtime-socket.mdc` |
-| `src/app/ui/pages/Meeting.tsx` | renders `<MeetingLiveProbeScreen/>` (no credential props / no session ownership) | `organization-host-routing.md` §5, §5.2 |
-| `src/app/ui/layouts/MeetingLayout.tsx` | wraps shell in `MeetingLiveProvider` once | `organization-host-routing.md` §5.1, §5.3 |
-| `package.json` | modified — `yjs`, `@syncedstore/core`, `@syncedstore/react` exact pins | `organization-host-routing.md` §5.1 |
-| `yarn.lock` | modified — lock entries for the dependencies above; not narrated | — |
-| `lib/tsconfig.tsbuildinfo` | modified — incremental build cache produced by `yarn type-check`; not behavioral | — |
+| `src/types/meeting.ts` | modified — identical mirror to backend | §1.2; `organization-host-routing.md` §5.1 |
+| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | modified — SyncedStore shape `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }`; root init `{}`; read `liveStore[MEETING_LIVE_MAP]` | `organization-host-routing.md` §5.1 |
+| `lib/tsconfig.tsbuildinfo` | modified — incremental cache from `yarn type-check`; not behavioral | — |
 
-Untracked build output under `backend/lib/`, `backend/.exporters/`, `backend/.types/`, `backend/.webpack_root.ts` and `website/server/` is generated by the build scripts and is not part of the source contract.
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/backend/contracts/meeting-live-state.md` | this page | — |
+| `docs/platforms/backend/contracts/meeting-realtime-socket.md` | map fields + status gate naming | §Related |
+| `docs/platforms/backend/contracts/meeting-domain.md` | live column ownership + helper pointer | §Related |
+| `docs/platforms/website/organization-host-routing.md` | SyncedStore / mirror consumer | §5.1 |
+| `.cursor/rules/meeting-live-map-mirror.mdc` | modified — mirror pair includes map consts + participants | governance |
+| `.cursor/rules/meeting-live-state.mdc` | modified — codec ownership, SyncedStore empty Partial root, nested participant Y.Maps | governance |
+| `.cursor/rules/meeting-realtime-socket.mdc` | modified — status gate from types; SyncedStore key contract | governance |
+| `.cursor/rules/sequelize-include-by-association-name.mdc` | **added** — include by association name | governance |
+| `.cursor/skills/meeting-realtime-socket/SKILL.md` | modified — live map / SyncedStore / helper ownership instructions | governance |
+
+Untracked build output under `backend/lib/`, `backend/.exporters/`, `backend/.types/`, `backend/.webpack_root.ts` and `website/server/` is generated by build scripts and is not part of the source contract.
 
 ## 10) Related
 
@@ -196,4 +244,6 @@ Untracked build output under `backend/lib/`, `backend/.exporters/`, `backend/.ty
 - `docs/platforms/website/organization-host-routing.md` §5.1 — website session and SyncedStore binding
 - `docs/invariants/backend.md` B25
 - `.cursor/rules/meeting-live-state.mdc`
+- `.cursor/rules/meeting-live-map-mirror.mdc`
+- `.cursor/rules/sequelize-include-by-association-name.mdc`
 - `.cursor/skills/meeting-realtime-socket/SKILL.md`

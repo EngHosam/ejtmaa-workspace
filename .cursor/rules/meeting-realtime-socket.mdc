@@ -53,7 +53,7 @@ A new meeting event is added in three places at once: `io.ts` (`controllers` + `
 1. The bound-event set lives in `MeetingIOControllerBase`; every handler returns `this.meetingBoundEvents()` because the handler-array return is absolute.
 2. Rejections go through `rejectLive(code)` — emit `meeting.live.error` and return the **unchanged** set. A refused write must never leave the socket inert.
 3. Room join happens in the connection controller only.
-4. Writes are gated on `Meeting().LIVE_STATUSES`; reads (`sync`) are not gated beyond the handshake.
+4. Writes are gated on `MEETING_LIVE_STATUSES` (`types/meeting.ts`); reads (`sync`) are not gated beyond the handshake.
 5. Controllers read context via `currentOrganization` / `currentMeeting` / `currentMember` / `currentParticipant`.
 6. `meeting.live.*` is a namespace session protocol — never mirrored into frontend event registries.
 
@@ -63,12 +63,13 @@ A new meeting event is added in three places at once: `io.ts` (`controllers` + `
 
 1. Gate on `useClientPreparing` / CSR readiness and require all three ids.
 2. Create its own session via `createSocketInstance(getMeetingSocketInstanceConfig(...))` — never `myInstance.getSocket`.
-3. Emit `meeting.live.sync` with the local state vector on every `connect`.
-4. Answer the server `stateVector` in the sync reply with the diff the server is missing.
-5. Register `meeting.live.sync` / `meeting.live.update` / `meeting.live.error` through `socket.registerListener`, and use native `socket.on` only for `connect` / `disconnect`.
-6. On `disconnect` reason `io server disconnect`, call `socket.connect()`.
-7. On `meeting.live.error`, expose the code and drop `synced` so the UI stops accepting edits until the next sync.
-8. Cleanup: unregister listeners → `off` → `disconnect` → clear state.
+3. Build SyncedStore as `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }` with initializer `{ [MEETING_LIVE_MAP]: {} }` only (no nested `participants: {}`); expose `meeting` as `liveStore[MEETING_LIVE_MAP]`.
+4. Emit `meeting.live.sync` with the local state vector on every `connect`.
+5. Answer the server `stateVector` in the sync reply with the diff the server is missing.
+6. Register `meeting.live.sync` / `meeting.live.update` / `meeting.live.error` through `socket.registerListener`, and use native `socket.on` only for `connect` / `disconnect`.
+7. On `disconnect` reason `io server disconnect`, call `socket.connect()`.
+8. On `meeting.live.error`, expose the code and drop `synced` so the UI stops accepting edits until the next sync.
+9. Cleanup: unregister listeners → `off` → `disconnect` → clear state.
 
 Credentials for the instance come from `MeetingLiveProvider` via `useCurrentParams({ ident: "Meeting", mapParams: p => p })`.
 

@@ -1,0 +1,44 @@
+---
+description: Sequelize include must use association names (string or association:), not model classes — prevents wrong/missing joins
+globs:
+  - backend/src/app/orm/**/*
+  - backend/src/app/helpers/**/*
+  - backend/src/app/orchestrator/**/*
+  - backend/src/app/gql/**/*
+  - backend/src/app/socket/**/*
+alwaysApply: false
+---
+
+# Sequelize `include` by association name
+
+Authority (example): `docs/platforms/backend/contracts/meeting-live-state.md` §1.3 (`buildLiveParticipants`), `docs/platforms/backend/contracts/meeting-domain.md` §9.1 (Ability notify-template roster load).
+
+## Rule
+
+When eager-loading a related model, identify the association by its **registered name** (`as` / default plural), not by passing a model factory/class.
+
+Allowed:
+
+```ts
+include: ["member"]
+include: [{ association: "member", required: true }]
+include: [{ association: "participants", include: ["member"] }]
+```
+
+Forbidden:
+
+```ts
+include: [Member()]
+include: [Member]
+include: [{ model: Member() }]
+```
+
+## Why
+
+Association names match how the relation was booted (`belongsTo` / `hasMany` `as`). Model-class includes are easy to mis-wire (wrong association, missing `as`, silent empty nests) and diverge from mixin helpers like `meeting.getParticipants(...)`.
+
+## When touching includes
+
+1. Prefer the association name already used on the parent (`member`, `participants`, `organization`, …).
+2. Use `{ association, required?, include? }` when you need options.
+3. Keep GQL bridge `ident` / ORM `as` aligned when the include name is also a GraphQL nest field.

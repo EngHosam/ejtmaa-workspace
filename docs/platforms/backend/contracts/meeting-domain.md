@@ -17,7 +17,7 @@ Current Ejtmaa meeting surface:
 - nested agenda via `_Meeting.agendaItems` (see `agenda-item-domain.md`),
 - nested decisions via `_Meeting.decisions` (see `decision-domain.md`),
 - nested talk queue via `_Meeting.talkRecords` (see `talk-record-domain.md`),
-- live collaborative session state for `subject` / `type` / `status` in the `live_state` BLOB (see `meeting-live-state.md`),
+- live collaborative session state for `subject` / `type` / `status` / `participants` in the `live_state` BLOB (see `meeting-live-state.md`),
 - website GQL mirrors for that customer surface.
 
 Out of scope (not shipped):
@@ -131,7 +131,7 @@ Do **not** add `belongsToMany(Member)` on Meeting for the roster — join rows a
 
 ### 3.6 Live session members
 
-A `live session` block after `boot()` carries `LIVE_MAP`, `LIVE_STATUSES`, the `Y.Doc` encode/decode statics, and the instance `getLiveDoc()`. Full contract: `meeting-live-state.md` §1.
+The ORM keeps the `live_state` column; codec/seed/registry live in `MeetingLiveDocHelper`; `MEETING_LIVE_MAP` / `MEETING_LIVE_STATUSES` live in the mirrored `types/meeting.ts`. Full contract: `meeting-live-state.md` §1.
 
 ## 4) Customer GraphQL surface
 
@@ -265,9 +265,9 @@ Verification: `yarn generate-types`, `yarn type-check`.
 
 ### 7.1 Realtime surface
 
-Meeting realtime is not part of the customer GQL surface. It is socket namespace `/meeting`, entered by a `Member` with `access_token` plus a `MeetingParticipant` roster row, and it joins room `Rooms.MEETING(meetingId)`. Events `meeting.live.sync` / `meeting.live.update` / `meeting.live.error` carry a Yjs document for `subject`, `type`, and `status`, persisted in `live_state`.
+Meeting realtime is not part of the customer GQL surface. It is socket namespace `/meeting`, entered by a `Member` with `access_token` plus a `MeetingParticipant` roster row, and it joins room `Rooms.MEETING(meetingId)`. Events `meeting.live.sync` / `meeting.live.update` / `meeting.live.error` carry a Yjs document for `subject`, `type`, `status`, and `participants`, persisted in `live_state`.
 
-While a meeting is live those three fields are authoritative **in the document**, not in the columns; the columns still hold what the requester write path left, and the reflection step is deferred. Contracts: `docs/platforms/backend/contracts/meeting-realtime-socket.md` (transport) and `docs/platforms/backend/contracts/meeting-live-state.md` (state); website consumer: `docs/platforms/website/organization-host-routing.md` §5.1.
+While a meeting is live those map fields are authoritative **in the document**, not in the columns; the columns still hold what the requester write path left, and the reflection step is deferred. Contracts: `docs/platforms/backend/contracts/meeting-realtime-socket.md` (transport) and `docs/platforms/backend/contracts/meeting-live-state.md` (state); website consumer: `docs/platforms/website/organization-host-routing.md` §5.1.
 
 ## 8) Failure modes (read path)
 
@@ -304,6 +304,8 @@ GQL UI exposure (`visualMode`):
 - `_Meeting.canUpdate` / `canDelete` / `canApprove` — `MeetingBridge.loadExtra` (bounded root-one only)
 
 Helper: `backend/src/app/helpers/meetingNotifyTemplateMode.ts` (`resolveMeetingNotifyTemplateMode`, satisfy + denial keys). Website mirrors the mode resolver under `meetings/meetingNotifyTemplateMode.ts` for callout copy only — enforcement stays in Ability.
+
+When Ability loads the roster for the notify-template mode gate, it uses `meeting.getParticipants({ include: ["member"] })` — association **name** string, not `Member()` model class (same pattern as live-doc seed in `meeting-live-state.md` §1.3; `.cursor/rules/sequelize-include-by-association-name.mdc`).
 
 ### 9.1a Schedule policy (lead, freeze, demotion)
 
@@ -402,13 +404,13 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 | Path | Role | Section |
 |---|---|---|
 | `backend/src/app/gql/bridges/customer/MeBridge.ts` | `canCreateMeeting` visualMode extra | §9.1 |
-| `backend/src/app/orm/models/Customer.ts` | `Ability.MEETING`; org scope, notify lock, edit freeze, approve lead + completeness (voting-only quorum count) | §9.1–§9.1b |
+| `backend/src/app/orm/models/Customer.ts` | `Ability.MEETING`; org scope, notify lock, edit freeze, approve lead + completeness; roster include `["member"]` for notify-template mode | §9.1–§9.1b |
 | `backend/src/app/helpers/meetingNotifyTemplateMode.ts` | Contact-mode resolver, template satisfiability, denial keys, executable matrix self-check | §9.1b |
 | `backend/src/app/validation/joi_rules.ts` | Customer-owned Meeting, agenda, decision, member, and template hydration; `isMeetingDatetime` lead rule | §9.2 |
 | `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | Basics, approve, delete, participant, agenda, and decision requester subs; `notify_start_at` derivation; private `demoteApprovedMeetingToDraft` + live-doc destroy | §9.1a, §9.3 |
 | `backend/requesters.website.ts` | Backend customer `meeting` sub map | §9.4 |
 | `website/src/types/requesters/requesters.website.ts` | Exact website customer `meeting` sub-map mirror | §9.4 |
-| `backend/src/app/orm/models/Meeting.ts` | ORM source of truth; `TWO_HOURS_MS` / `MIN_LEAD_MS` statics; `live_state` column + live document statics | §3, §3.2b, §3.6 |
+| `backend/src/app/orm/models/Meeting.ts` | ORM source of truth; `TWO_HOURS_MS` / `MIN_LEAD_MS` statics; `live_state` column | §3, §3.2b, §3.6 |
 | `backend/src/app/helpers/MeetingLiveDocHelper.ts` | Live document registry and BLOB persistence; `destroyMeetingLiveDoc` consumed by approve/demotion | `meeting-live-state.md` §2–§3 |
 | `backend/src/app/socket/controllers/meeting/*` | `/meeting` connection and `meeting.live.*` controllers | `meeting-realtime-socket.md` §3 |
 | `backend/src/app/orm/models/Member.ts` | `forSelect(lang)` used to hydrate chairperson and roster entity references | §9.2–§9.3 |

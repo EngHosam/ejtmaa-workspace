@@ -80,7 +80,7 @@ Inbound `{ update: string }` (base64 of a **V2** update).
 | Step | Failure |
 |---|---|
 | `update` must be a non-empty string | `rejectLive("NOT_VALID")` |
-| `meeting.get("status")` must be in `Meeting().LIVE_STATUSES` | `rejectLive("MEETING_NOT_LIVE")` |
+| `meeting.get("status")` must be in `MEETING_LIVE_STATUSES` | `rejectLive("MEETING_NOT_LIVE")` |
 | `Y.applyUpdateV2(doc, bytes)` | `rejectLive("NOT_VALID")` on malformed bytes |
 
 On success the payload is re-emitted verbatim to `socket.to(Rooms.MEETING(meetingId))` — the sender is excluded because its own document already holds the change. The document mutation schedules the BLOB persist (`meeting-live-state.md` §2).
@@ -101,7 +101,7 @@ Client contract (`useMeetingLiveInstance` via `MeetingLiveProvider`; UI reads `u
 |---|---|---|
 | Connection | `meeting_auth` handshake (§2) | no member token / roster row / ACTIVE org → no session at all |
 | Read live state | none beyond the handshake | any participant may `meeting.live.sync` |
-| Write live state | `Meeting().LIVE_STATUSES` in the update controller | only `WAITING_TO_START` and `STARTED` accept writes |
+| Write live state | `MEETING_LIVE_STATUSES` in the update controller | only `WAITING_TO_START` and `STARTED` accept writes |
 
 **Not gated yet:** `MeetingParticipant.type` (chairperson / member / viewer) plays no role — a `VIEWER` on the roster can write while the meeting is live. The participant-type gate lands with the meeting page UI; `currentParticipant` is already available for it.
 
@@ -135,7 +135,7 @@ The status read is the handshake snapshot (§2), not a fresh query — see §6.2
 | Scenario | Behavior |
 |---|---|
 | `meeting.live.update` with missing/empty `update` | `meeting.live.error` `NOT_VALID`; listeners stay bound |
-| `meeting.live.update` on a meeting outside `LIVE_STATUSES` | `meeting.live.error` `MEETING_NOT_LIVE` |
+| `meeting.live.update` on a meeting outside `MEETING_LIVE_STATUSES` | `meeting.live.error` `MEETING_NOT_LIVE` |
 | `meeting.live.update` with bytes that are not a V2 update | `meeting.live.error` `NOT_VALID` |
 | `meeting.live.sync` with a corrupt `stateVector` | server silently answers with the full state (§3.1) |
 | Meeting row deleted mid-session | registry load throws `"404"` through the errors funnel; no `meeting.live.error` is emitted |
@@ -147,7 +147,7 @@ Payloads are base64, which inflates the binary by roughly one third. The effecti
 
 ## 7) Shipped limits (intentional)
 
-1. Only `subject`, `type`, and `status` live in the document today. Presence, roster broadcast, and media stay out of this surface (media is LiveKit — `livekit-media-plane.md`).
+1. Only `subject`, `type`, `status`, and `participants` live in the document today. Presence mutation writers (who flips `connectionStatus`) and media stay out of this surface for now (media is LiveKit — `livekit-media-plane.md`).
 2. No participant-type authorization (§4).
 3. No application-level size cap or rate limit on live updates (§6.3).
 4. `Member.access_token` is the whole meeting credential: rotating it revokes socket access, exposing it grants it (`member-domain.md`).
@@ -164,9 +164,10 @@ Payloads are base64, which inflates the binary by roughly one third. The effecti
 | `src/app/socket/controllers/meeting/MeetingIOControllerBase.ts` | shared socket typing, bound-event set, `rejectLive` |
 | `src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | room join + bound listener set |
 | `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | sync handshake, server state vector, full-state fallback |
-| `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | payload validation, status gate, apply, room broadcast |
+| `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | payload validation; write gate via `MEETING_LIVE_STATUSES`; apply; room broadcast |
 | `src/app/socket/controllers/meeting/MeetingDisconnectIOController.ts` | Socket.IO `disconnect` (`once`); temporary probe log |
-| `src/app/helpers/MeetingLiveDocHelper.ts` | document registry behind both live controllers (`meeting-live-state.md` §2) |
+| `src/app/types/meeting.ts` | `MEETING_LIVE_STATUSES` / `MeetingLiveMap` mirror (`meeting-live-state.md` §1.2) |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | document registry behind both live controllers (`meeting-live-state.md` §1.3, §2) |
 | `src/resources/consts/NotificationsConsts.ts` | `MEETING` namespace / FCM topic / room |
 
 ## 9) Related

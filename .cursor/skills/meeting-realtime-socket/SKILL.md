@@ -27,6 +27,7 @@ description: >-
 - `docs/platforms/backend/modules/nodejs-socket-library.md` §7, §10
 - `.cursor/rules/meeting-realtime-socket.mdc`
 - `.cursor/rules/meeting-live-state.mdc`
+- `.cursor/rules/sequelize-include-by-association-name.mdc`
 - `.cursor/rules/nodejs-socket-handler-contract.mdc`
 
 ## Instructions
@@ -36,13 +37,15 @@ description: >-
 3. **Register in `io.ts` only:** controller aliases + `/meeting` dotted route keys (`"meeting.live.sync": "meeting_live_sync"`). A new event is also added to `MEETING_BOUND_EVENTS`, otherwise the connection controller unbinds it.
 4. **Every handler returns `this.meetingBoundEvents()`**, including rejection paths. Reject with `rejectLive(code)` so the client gets `meeting.live.error` while the listeners stay bound.
 5. **Rooms:** join `Rooms.MEETING(meetingId)` from the connection controller only; broadcast with `socket.to(room)` so the sender is not echoed.
-6. **Document access** goes through `getOrCreateMeetingLiveDoc(meetingId)`. Never construct a second `Y.Doc` for a meeting, never write `live_state` outside `MeetingLiveDocHelper`.
+6. **Document access** goes through `getOrCreateMeetingLiveDoc(meetingId)`. Never construct a second `Y.Doc` for a meeting, never write `live_state` outside `MeetingLiveDocHelper`. Codec/seed stay private in that helper — not on `Meeting` ORM.
+6b. **Roster seed includes** use association names (`include: [{ association: "member", required: true }]`) — see `.cursor/rules/sequelize-include-by-association-name.mdc`.
 7. **Codec:** V2 on the BLOB, the sync reply, and the broadcast; convert local V1 doc events with `convertUpdateFormatV1ToV2` before emitting. Payloads travel base64.
-8. **Gate writes** on `Meeting().LIVE_STATUSES`. Reads are open to any authenticated participant.
+8. **Gate writes** on `MEETING_LIVE_STATUSES` from `types/meeting.ts`. Reads are open to any authenticated participant.
 9. **Website config** at `website/src/resources/configs/meeting-socket.ts` (root sibling of `socket.ts`): `SOCKET_URL("meeting")` + handshake query. Do not nest this factory under `configs/socket/`.
 10. **Website live module** at `components/meeting/hooks/useMeetingLive.tsx`:
     - `useMeetingLiveInstance` owns the session (private): required `memberId` / `memberToken` / `meetingId`; `createSocketInstance` / `connect` / `disconnect` — never `getSocket`, and no second socket hook beside it.
     - Live document fields use `MeetingLiveMap` from `website/src/types/meeting.ts` (mirrored with `backend/src/app/types/meeting.ts` — see `.cursor/rules/meeting-live-map-mirror.mdc`). Never type the SyncedStore map from GQL enums.
+    - SyncedStore shape `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }` with initializer `{ [MEETING_LIVE_MAP]: {} }` only — do not nest `participants: {}` in the initializer (throws). Read `liveStore[MEETING_LIVE_MAP]`.
     - Rebuild the store + doc bundle when `meetingId` changes, and pass `[store]` to `useSyncedStore`.
     - Emit `meeting.live.sync` on every `connect`; answer the server `stateVector` in the reply.
     - Apply remote updates with origin `"remote"` and skip that origin when emitting.
@@ -52,7 +55,7 @@ description: >-
     - `MeetingLiveProvider` calls the instance once (params from `useCurrentParams` for `Meeting`) and publishes that value.
     - Public `useMeetingLive()` reads context only — UI consumers use this, never the instance hook.
 11. **Mount once** in `MeetingLayout` with a single outer `<MeetingLiveProvider>` around both desktop and mobile shell trees.
-12. **Live map mirror:** if `MeetingLiveMap` / type / status unions change, update **both** `backend/src/app/types/meeting.ts` and `website/src/types/meeting.ts` identically in the same change; confirm with a file diff.
+12. **Live map mirror:** if `MeetingLiveMap` / participant fields / `MEETING_LIVE_*` change, update **both** `backend/src/app/types/meeting.ts` and `website/src/types/meeting.ts` identically in the same change; confirm with a file diff. Seed nested `participants` as per-id `Y.Map`s in `MeetingLiveDocHelper` (not plain objects).
 13. **Boot:** `prepareSocket` stays socket-free on an organization host; Meeting owns its own session.
 14. **Do not mirror** `meeting.live.*` into `types/events.ts` / socket event registries.
 15. **Verify** with existing scripts: `yarn type-check` in `backend/` and `website/`. Functional check: two browsers on one live meeting, plus a forced disconnect with an offline edit. Confirm only one `/meeting` socket per tab.
@@ -60,6 +63,7 @@ description: >-
 ## Non-negotiable rules
 
 - No second live-map type beside the mirrored `MeetingLiveMap` pair.
+- No live codec/statics on `Meeting` ORM — helper only.
 - No meeting socket product module under `ui/base/hooks`.
 - No second `useMeetingLiveInstance` / Meeting socket under the same layout tree.
 - No bare `sync` / `update` event names — use `meeting.live.*`.
