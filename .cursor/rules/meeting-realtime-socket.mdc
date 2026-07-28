@@ -1,7 +1,8 @@
 ---
-description: Meeting realtime on /meeting — website useLiveMeeting owns the session, backend meeting_auth namespace, meeting.live.sync / meeting.live.update / meeting.live.error, reconnect after server disconnect
+description: Meeting realtime on /meeting — LiveMeetingProvider owns one session via useLiveMeetingInstance; public useLiveMeeting reads context; backend meeting_auth; meeting.live.sync / update / error
 globs:
   - website/src/app/ui/components/meeting/**/*
+  - website/src/app/ui/layouts/MeetingLayout.tsx
   - website/src/app/ui/pages/Meeting.tsx
   - website/src/resources/configs/meeting-socket.ts
   - website/src/app/services/socket.ts
@@ -13,18 +14,27 @@ alwaysApply: false
 
 # Meeting realtime socket (`/meeting`)
 
-Applies to both sides of the Meeting session: the website hook and the backend `/meeting` namespace.
+Applies to both sides of the Meeting session: the website live module and the backend `/meeting` namespace.
 Document/state rules (Yjs, `live_state`, registry) live in `.cursor/rules/meeting-live-state.mdc`.
 
 Authority: `docs/platforms/backend/contracts/meeting-realtime-socket.md`, `docs/platforms/website/organization-host-routing.md` §5.1.
 
 ## Placement
 
-- Product hook: `website/src/app/ui/components/meeting/hooks/useLiveMeeting.ts` — **not** under `ui/base/hooks`.
+- Product module: `website/src/app/ui/components/meeting/hooks/useLiveMeeting.tsx` — **not** under `ui/base/hooks`. File is `.tsx` because it exports `LiveMeetingProvider` JSX.
+- Mount: `LiveMeetingProvider` wraps the Meeting shell once in `MeetingLayout.tsx` (both desktop and mobile trees share one provider).
 - Meeting socket config: `website/src/resources/configs/meeting-socket.ts` (root configs sibling of `socket.ts`, not under `configs/socket/`).
 - Backend meeting controllers: `backend/src/app/socket/controllers/meeting/`, all extending `MeetingIOControllerBase`.
 - Meeting auth: `MeetingAuthenticationIOMiddleware` (`meeting_auth`) — not actor `auth`.
 - Register only in `backend/src/resources/configs/socket/io.ts` under namespace `/meeting`.
+
+## Naming (ThemeManager-shaped)
+
+| Symbol | Role |
+|---|---|
+| `useLiveMeetingInstance(data)` | Private session owner (socket + Yjs + SyncedStore). Call **only** inside `LiveMeetingProvider`. |
+| `LiveMeetingProvider` | Reads `Meeting` route params; calls the instance once; publishes `LiveMeetingHookOp`. |
+| `useLiveMeeting()` | Public context reader (default export). No args. Empty default outside the provider. |
 
 ## Events
 
@@ -36,7 +46,7 @@ Dotted names under `/meeting`. Shipped set:
 | `meeting.live.update` | both | `{ update }` |
 | `meeting.live.error` | out | `{ code: "NOT_VALID" \| "MEETING_NOT_LIVE" }` |
 
-A new meeting event is added in three places at once: `io.ts` (`controllers` + `/meeting` `routes`), the `MEETING_BOUND_EVENTS` tuple in `MeetingIOControllerBase`, and the hook's listener set.
+A new meeting event is added in three places at once: `io.ts` (`controllers` + `/meeting` `routes`), the `MEETING_BOUND_EVENTS` tuple in `MeetingIOControllerBase`, and the instance hook's listener set.
 
 ## Backend contract
 
@@ -47,9 +57,9 @@ A new meeting event is added in three places at once: `io.ts` (`controllers` + `
 5. Controllers read context via `currentOrganization` / `currentMeeting` / `currentMember` / `currentParticipant`.
 6. `meeting.live.*` is a namespace session protocol — never mirrored into frontend event registries.
 
-## Hook contract
+## Instance hook contract (`useLiveMeetingInstance`)
 
-`useLiveMeeting({ memberId, memberToken, meetingId })` must:
+`useLiveMeetingInstance({ memberId, memberToken, meetingId })` must:
 
 1. Gate on `useClientPreparing` / CSR readiness and require all three ids.
 2. Create its own session via `createSocketInstance(getMeetingSocketInstanceConfig(...))` — never `myInstance.getSocket`.
@@ -60,11 +70,15 @@ A new meeting event is added in three places at once: `io.ts` (`controllers` + `
 7. On `meeting.live.error`, expose the code and drop `synced` so the UI stops accepting edits until the next sync.
 8. Cleanup: unregister listeners → `off` → `disconnect` → clear state.
 
+Credentials for the instance come from `LiveMeetingProvider` via `useCurrentParams({ ident: "Meeting", mapParams: p => p })`.
+
 ## Forbidden
 
-- Putting this hook in `ui/base/hooks`, or splitting the socket out into a second hook beside it.
+- Calling `useLiveMeetingInstance` (or re-opening a Meeting socket session) from screens, header, drawer, or footer — use `useLiveMeeting()` under `LiveMeetingProvider`.
+- Putting this module in `ui/base/hooks`, or splitting the socket out into a second hook beside it.
 - Emitting bare `sync` / `update` instead of the dotted `meeting.live.*` names.
 - Returning a narrowed listener set (or `[]`) from a rejection path.
 - Using shared boot `prepareSocket` / `getSocket` for Meeting.
 - Treating a handshake `organizationId` as meeting authorization, or adding a tenant-wide socket namespace to serve Meeting.
 - Nesting the Meeting config factory under `configs/socket/` as a peer of boot fragments.
+- Keeping the live module as `.ts` while it exports JSX provider markup (must be `.tsx`).

@@ -52,7 +52,7 @@ The gate runs **before** the auth branches; a wrong-host request never reaches a
 `boot.client` is shared. On an organization host:
 
 - `socket.prepareSocket` returns without creating a socket (see §4),
-- Meeting realtime is owned later by `useLiveMeeting` on the Meeting page (§5.1),
+- Meeting realtime is owned later by `LiveMeetingProvider` in `MeetingLayout` (§5.1),
 - `global.setClientIsStarted` and pre-message display behave as on apex,
 - no customer permissions or `CUSTOMER_ME` load happens, because the server phase skipped them.
 
@@ -137,22 +137,30 @@ Config layout: root entry `configs/socket.ts` is the shared boot factory; `confi
 | Identify / path | `Meeting` → `/meeting/:memberId/:memberToken/:meetingId` |
 | `MPagesRoutes` | `params: { memberId: string; memberToken: string; meetingId: string }` |
 | Flags | `layout: "MEETING"`, `orgHostOnly: true`, `preLoadedPage` |
-| Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — organization-branded shell (header, drawer, footer — §5.3); mapped in `MyApp.getLayout()` under `case "MEETING"` |
-| Page | `website/src/app/ui/pages/Meeting.tsx` — `useCurrentParams({ ident: "Meeting", mapParams: p => p })`, renders `LiveMeetingProbeScreen` with the three params |
-| Screen | `website/src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` — temporary probe UI (§5.2) |
-| Live hook | `website/src/app/ui/components/meeting/hooks/useLiveMeeting.ts` (product hook under `components/meeting/`, **not** `ui/base/hooks`) |
+| Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — organization-branded shell (header, drawer, footer — §5.3) plus a single `LiveMeetingProvider` wrap (§5.1); mapped in `MyApp.getLayout()` under `case "MEETING"` |
+| Page | `website/src/app/ui/pages/Meeting.tsx` — renders `<LiveMeetingProbeScreen/>` with no credential props |
+| Screen | `website/src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` — temporary probe UI (§5.2); reads live state via `useLiveMeeting()` |
+| Live module | `website/src/app/ui/components/meeting/hooks/useLiveMeeting.tsx` (product module under `components/meeting/`, **not** `ui/base/hooks`) — session instance + provider + public context reader |
 
 `Layout` in `website/src/types/extends/global.ts` includes the `"MEETING"` member; `PageRouteState` includes `orgHostOnly?: boolean`.
 
-### 5.1) Live meeting session (`useLiveMeeting` + `/meeting`)
+### 5.1) Live meeting session (`LiveMeetingProvider` + `/meeting`)
 
-Meeting realtime is a **hook-owned** session on namespace `/meeting`, independent of the shared boot socket (§4). One hook owns the socket, the Yjs document, and the reactive store; there is no separate socket hook.
+Meeting realtime is a **layout-owned** session on namespace `/meeting`, independent of the shared boot socket (§4). Exactly one socket, one Yjs document, and one reactive store exist for the Meeting shell tree. Consumers under the layout must not open a second session.
 
 Dependencies: `yjs@13.6.27`, `@syncedstore/core@0.6.0`, `@syncedstore/react@0.6.0` (all exact-pinned, `yjs` matched to the backend copy).
 
-`website/src/app/ui/components/meeting/hooks/useLiveMeeting.ts`:
+Module: `website/src/app/ui/components/meeting/hooks/useLiveMeeting.tsx` (`.tsx` because it exports JSX for the provider). ThemeManager-shaped split:
 
-**Document bundle.** `createLiveMeetingDocBundle()` builds `syncedStore({ meeting: {} })` plus its `getYjsDoc(store)`. The bundle is held in a ref keyed by `meetingId` and rebuilt when that id changes, so a route param change cannot keep editing the previous meeting's document. `useSyncedStore(store, [store])` receives the store in its dependency list — without it the memoized proxy would keep pointing at the old document.
+| Symbol | Role |
+|---|---|
+| `useLiveMeetingInstance(data)` | Private session owner (socket + Yjs + SyncedStore). Called **only** inside `LiveMeetingProvider`. |
+| `LiveMeetingProvider` | Reads `Meeting` route params via `useCurrentParams({ ident: "Meeting", mapParams: p => p })`, calls `useLiveMeetingInstance` once, publishes `LiveMeetingHookOp` on `LiveMeetingContext`. |
+| `useLiveMeeting()` | Public default export — `useContext(LiveMeetingContext)` only (no args). Empty default when used outside the provider (same shape as `useThemeManager`). |
+
+`MeetingLayout` wraps both desktop and mobile shell trees in **one** outer `<LiveMeetingProvider>` so the session is not duplicated per breakpoint branch.
+
+**Document bundle** (inside `useLiveMeetingInstance`). `createLiveMeetingDocBundle()` builds `syncedStore({ meeting: {} })` plus its `getYjsDoc(store)`. The bundle is held in a ref keyed by `meetingId` and rebuilt when that id changes, so a route param change cannot keep editing the previous meeting's document. `useSyncedStore(store, [store])` receives the store in its dependency list — without it the memoized proxy would keep pointing at the old document.
 
 **Session binding** (`bindLiveMeetingSession`), after the CSR gate (`useClientPreparing`) and the `memberId` / `memberToken` / `meetingId` guard:
 
@@ -165,9 +173,9 @@ Dependencies: `yjs@13.6.27`, `@syncedstore/core@0.6.0`, `@syncedstore/react@0.6.
 7. `disconnect` → clear `connected` and `synced`; on `io server disconnect` call `socket.connect()` (Socket.IO does not auto-reconnect after a server-forced drop).
 8. Cleanup on unmount / deps change: `doc.off`, unregister the three listeners, `off` the native events, `disconnect`, reset state.
 
-Hook output: `{ connected, synced, error, meeting, batch }`. `meeting` is the reactive `Partial<LiveMeetingFields>` proxy; `batch(fn)` is `doc.transact(fn)` and is the only sanctioned way to write. `LiveMeetingFields` types `type` and `status` with the generated `_MeetingTypeValue` / `_MeetingStatusValue`, so the live document cannot drift from the GraphQL enums.
+Provider / public hook value: `{ connected, synced, error, meeting, batch }` (`LiveMeetingHookOp`). `meeting` is the reactive `Partial<LiveMeetingFields>` proxy; `batch(fn)` is `doc.transact(fn)` and is the only sanctioned way to write. `LiveMeetingFields` types `type` and `status` with the generated `_MeetingTypeValue` / `_MeetingStatusValue`, so the live document cannot drift from the GraphQL enums.
 
-Base64 helpers (`toBase64` / `fromBase64`) are local to the hook because the payloads travel as base64 strings on the socket.
+Base64 helpers (`toBase64` / `fromBase64`) are local to the module because the payloads travel as base64 strings on the socket.
 
 Backend pairing (`docs/platforms/backend/contracts/meeting-realtime-socket.md`): `meeting_auth` proves the handshake, the connection controller joins `Rooms.MEETING(meetingId)` and keeps both live events bound, and a rejected write answers `meeting.live.error` without unbinding anything.
 
@@ -179,6 +187,8 @@ Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/rules/meeting-l
 
 `website/src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` is a **verification tool**, not the meeting product UI. It exists to prove the sync path end to end and is replaced when the real meeting page lands.
 
+- Reads live state with arg-less `useLiveMeeting()` (context under `LiveMeetingProvider`). No credential props.
+- Footer `meetingId` display uses `useCurrentParams({ ident: "Meeting", mapParams: p => p })` for the id only.
 - Status line: `rejected · <code>` when `error` is set (in `semanticColor.stateError`), else `disconnected` / `connected · syncing` / `synced`.
 - One `ProbeText` for `subject`, two `ProbeChoice` selects for `type` and `status`, whose options come from `Object.values(_MeetingTypeValue)` / `_MeetingStatusValue` — no hand-written label lists.
 - Every field is disabled until `synced`, dimmed with the `opc` shorthand, and writes through `batch(() => { meeting.field = value })`.
@@ -228,7 +238,7 @@ The glyph is the shared `DrawerMenuIcon`. Its leading bar is themeable through t
 
 #### Layout composition
 
-`MeetingLayout` picks one of two trees from a `matchMedia(min-width: SW.min_lg)` effect, the same shape `MainLayout` uses. `children` is rendered once per tree, so the page (and its `/meeting` socket session) mounts only once.
+`MeetingLayout` picks one of two trees from a `matchMedia(min-width: SW.min_lg)` effect, the same shape `MainLayout` uses. Both trees are wrapped in a single outer `LiveMeetingProvider`, so the `/meeting` socket session is owned by the layout once — not by the page and not once per breakpoint branch. `children` is rendered once per tree.
 
 - **Desktop:** a `Row` of [drawer column | `Col`(header, content, footer)]. The drawer column is **in flow** (not an overlay) and `position: sticky; top: 0` at `h/maxH: 100vh`, so it stays viewport-tall while the page scrolls and never covers the footer. Its width animates between `semanticDims.shell.drawerWidth` and `0`, with `pointerEvents: none` while collapsed.
 - **Mobile:** the `CustomerMainLayout` shape — `MeetingHeader fixed`, content `minH: 100vh` with a `paddingTop` matching `Dims.headerHeight` / `Dims.mobileHeaderHeight`, and the portal overlay.
@@ -308,7 +318,7 @@ What the website side depends on:
 | Socket `/meeting` handshake missing ids, bad token, org mismatch, or no roster row | `NOT_VALID_CREDENTIAL` |
 | Live write on a meeting that is not `WAITING_TO_START` / `STARTED` | `meeting.live.error` `MEETING_NOT_LIVE` → probe shows `rejected · MEETING_NOT_LIVE` and locks the fields |
 | Malformed live payload | `meeting.live.error` `NOT_VALID` → same lock; the next `connect` re-syncs |
-| Route params change to another meeting | the hook drops the old document and store and opens a fresh session (§5.1) |
+| Route params change to another meeting | `LiveMeetingProvider` re-runs `useLiveMeetingInstance` with the new ids; the instance drops the old document and store and opens a fresh session (§5.1) |
 
 ## 8) Known limits (shipped state, intentional)
 
@@ -353,12 +363,13 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/store/reduces/index.ts` | slice registration + `MDefaultStoreState` | §3 |
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
-| `src/app/ui/pages/Meeting.tsx` | params → `LiveMeetingProbeScreen` | §5, §5.2 |
-| `src/app/ui/components/meeting/hooks/useLiveMeeting.ts` | hook-owned `/meeting` session, Yjs document, SyncedStore, `meeting.live.*` | §5.1 |
-| `src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` | temporary sync probe UI | §5.2 |
-| `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — socket-only hook absorbed into `useLiveMeeting` | §5.1 |
+| `src/app/ui/pages/Meeting.tsx` | renders `<LiveMeetingProbeScreen/>` (no credential props) | §5, §5.2 |
+| `src/app/ui/components/meeting/hooks/useLiveMeeting.tsx` | `useLiveMeetingInstance` + `LiveMeetingProvider` + public `useLiveMeeting`; `/meeting` session, Yjs, SyncedStore, `meeting.live.*` | §5.1 |
+| `src/app/ui/components/meeting/hooks/useLiveMeeting.ts` | **deleted / renamed** to `.tsx` (JSX provider) | §5.1 |
+| `src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` | temporary sync probe UI; consumes `useLiveMeeting()` | §5.2 |
+| `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — socket-only hook absorbed into the live module; a separate session hook is now forbidden | §5.1 |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
-| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — branded shell, responsive tree, sticky desktop drawer | §5, §5.3 |
+| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — branded shell, responsive tree, sticky desktop drawer, single `LiveMeetingProvider` wrap | §5, §5.1, §5.3 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
 | `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` shell/brand token split | §5.3 |
 | `src/app/ui/components/meeting/MeetingHeader.tsx` | menu button + org logo/name, accent rail, `fixed` mobile bar | §5.3 |
@@ -421,7 +432,7 @@ Every path that implements this contract, with the section that describes it.
 - `yarn type-check` in `website/` and in `backend/`.
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
 - Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` renders the probe on the `MEETING` layout; `/customer/...` renders `Error` `404`.
-- Socket: organization host opens **no** boot socket; the Meeting page opens `/meeting` via `useLiveMeeting`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.
+- Socket: organization host opens **no** boot socket; `MeetingLayout` opens `/meeting` once via `LiveMeetingProvider` / `useLiveMeetingInstance`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.
 - Two browsers on the same live meeting: an edit in one reaches the other, and the status line reads `synced` on both.
 - Forced server disconnect: the client reconnects and re-runs the sync handshake; edits made while disconnected survive because the client answers the server state vector.
 - Meeting outside `WAITING_TO_START` / `STARTED`: editing shows `rejected · MEETING_NOT_LIVE` and the fields lock.

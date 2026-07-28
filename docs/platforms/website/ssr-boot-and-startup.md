@@ -19,7 +19,7 @@ Boot sequence for the customer portal:
   - when `authedAs === "CUSTOMER"`, loads `CUSTOMER_ME` via `auth.loadCurrentCustomer(myInstance)` → `LoadCurrentCustomer` (`useMe.tsx`) so `me` is available for SSR shell render.
 - **Client phase** (`boot.client`, shared by both host modes):
   - early-exits on the error page (marks client started and returns),
-  - prepares socket via `socket.prepareSocket(myInstance)` — on an organization host returns without a socket (Meeting opens `/meeting` from `useLiveMeeting`); on apex, namespace `customer` for an authed customer, no socket otherwise,
+  - prepares socket via `socket.prepareSocket(myInstance)` — on an organization host returns without a socket (Meeting opens `/meeting` from `LiveMeetingProvider` in `MeetingLayout`); on apex, namespace `customer` for an authed customer, no socket otherwise,
   - marks the client started via `global.setClientIsStarted(myInstance)`,
   - shows pre-messages (1500ms delay before display).
 

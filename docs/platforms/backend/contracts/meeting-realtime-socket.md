@@ -87,7 +87,7 @@ On success the payload is re-emitted verbatim to `socket.to(Rooms.MEETING(meetin
 
 `{ code: MeetingLiveErrorCode }` with `"NOT_VALID" | "MEETING_NOT_LIVE"`, emitted to the offending socket only.
 
-Client contract (`useLiveMeeting`): record the code, drop out of `synced` so the UI stops accepting edits, and wait for the next `connect` to re-run the sync handshake.
+Client contract (`useLiveMeetingInstance` via `LiveMeetingProvider`; UI reads `useLiveMeeting`): record the code, drop out of `synced` so the UI stops accepting edits, and wait for the next `connect` to re-run the sync handshake.
 
 ### 3.4 Mirroring
 

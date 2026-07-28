@@ -5,7 +5,7 @@
 The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, and `status` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
 
 Transport (namespace, handshake, events, authorization): `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
-Website consumer (`useLiveMeeting`, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1.
+Website consumer (`LiveMeetingProvider` / `useLiveMeeting`, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1.
 Meeting domain (columns, GQL, requester write path): `docs/platforms/backend/contracts/meeting-domain.md`.
 
 Dependency: `yjs@13.6.27` (`backend/package.json`), same major/minor as the website copy.
@@ -175,10 +175,11 @@ Every tracked path of this delivery, in both repositories. Website paths are des
 
 | Path | State | Where described |
 |---|---|---|
-| `src/app/ui/components/meeting/hooks/useLiveMeeting.ts` | added | `organization-host-routing.md` §5.1 |
-| `src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` | added | `organization-host-routing.md` §5.2 |
-| `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — the socket-only hook is absorbed into `useLiveMeeting`; a separate session hook is now forbidden | `organization-host-routing.md` §5.1; `.cursor/rules/meeting-realtime-socket.mdc` |
-| `src/app/ui/pages/Meeting.tsx` | modified — renders `LiveMeetingProbeScreen` instead of owning socket state | `organization-host-routing.md` §5, §5.2 |
+| `src/app/ui/components/meeting/hooks/useLiveMeeting.tsx` | session module — `useLiveMeetingInstance` + `LiveMeetingProvider` + public `useLiveMeeting` (`.ts` renamed to `.tsx`) | `organization-host-routing.md` §5.1 |
+| `src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` | temporary probe; consumes context via `useLiveMeeting()` | `organization-host-routing.md` §5.2 |
+| `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — the socket-only hook is absorbed into the live module; a separate session hook is now forbidden | `organization-host-routing.md` §5.1; `.cursor/rules/meeting-realtime-socket.mdc` |
+| `src/app/ui/pages/Meeting.tsx` | renders `<LiveMeetingProbeScreen/>` (no credential props / no session ownership) | `organization-host-routing.md` §5, §5.2 |
+| `src/app/ui/layouts/MeetingLayout.tsx` | wraps shell in `LiveMeetingProvider` once | `organization-host-routing.md` §5.1, §5.3 |
 | `package.json` | modified — `yjs`, `@syncedstore/core`, `@syncedstore/react` exact pins | `organization-host-routing.md` §5.1 |
 | `yarn.lock` | modified — lock entries for the dependencies above; not narrated | — |
 | `lib/tsconfig.tsbuildinfo` | modified — incremental build cache produced by `yarn type-check`; not behavioral | — |
