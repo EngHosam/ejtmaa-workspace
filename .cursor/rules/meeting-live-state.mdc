@@ -25,7 +25,7 @@ Authority: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/invar
 5b. **A lifecycle reset clears both copies.** When the requester invalidates the session state (approve, or demotion of an approved meeting back to draft), `live_state = null` goes in the transaction and `destroyMeetingLiveDoc(meetingId, { flush: false })` runs in `transaction.afterCommit` — never before the commit, and never with the default flush, which would rewrite the BLOB that was just cleared (`meeting-live-state.md` §3.1).
 6. **Columns are reflected in one explicit step.** `subject` / `type` / `status` are applied from the document to the SQL columns only in the (still deferred) completion step, transactionally, and never as a side effect of a socket event.
 7. **`LIVE_MAP` is one shared constant.** The server map name and the website SyncedStore root key must match, or the two sides sync disjoint maps.
-8. **Live field types come from the generated GQL enums** on the website (`_MeetingTypeValue`, `_MeetingStatusValue`) and from the model's `MeetingType` / `MeetingStatus` on the backend. No hand-written value unions.
+8. **Live map shape is the mirrored `MeetingLiveMap`** in `backend/src/app/types/meeting.ts` ↔ `website/src/types/meeting.ts` (no GQL / ORM / translation imports). SQL and GraphQL keep using `MeetingType` / `MeetingStatus` / `_Meeting*Value`; the CRDT document uses `MeetingLiveMap` only. Changing one mirror without the other is forbidden — see `.cursor/rules/meeting-live-map-mirror.mdc`.
 
 ## Known ceilings (do not "fix" silently)
 

@@ -42,6 +42,7 @@ description: >-
 9. **Website config** at `website/src/resources/configs/meeting-socket.ts` (root sibling of `socket.ts`): `SOCKET_URL("meeting")` + handshake query. Do not nest this factory under `configs/socket/`.
 10. **Website live module** at `components/meeting/hooks/useLiveMeeting.tsx`:
     - `useLiveMeetingInstance` owns the session (private): required `memberId` / `memberToken` / `meetingId`; `createSocketInstance` / `connect` / `disconnect` — never `getSocket`, and no second socket hook beside it.
+    - Live document fields use `MeetingLiveMap` from `website/src/types/meeting.ts` (mirrored with `backend/src/app/types/meeting.ts` — see `.cursor/rules/meeting-live-map-mirror.mdc`). Never type the SyncedStore map from GQL enums.
     - Rebuild the store + doc bundle when `meetingId` changes, and pass `[store]` to `useSyncedStore`.
     - Emit `meeting.live.sync` on every `connect`; answer the server `stateVector` in the reply.
     - Apply remote updates with origin `"remote"` and skip that origin when emitting.
@@ -51,12 +52,14 @@ description: >-
     - `LiveMeetingProvider` calls the instance once (params from `useCurrentParams` for `Meeting`) and publishes that value.
     - Public `useLiveMeeting()` reads context only — UI consumers use this, never the instance hook.
 11. **Mount once** in `MeetingLayout` with a single outer `<LiveMeetingProvider>` around both desktop and mobile shell trees.
-12. **Boot:** `prepareSocket` stays socket-free on an organization host; Meeting owns its own session.
-13. **Do not mirror** `meeting.live.*` into `types/events.ts` / socket event registries.
-14. **Verify** with existing scripts: `yarn type-check` in `backend/` and `website/`. Functional check: two browsers on one live meeting, plus a forced disconnect with an offline edit. Confirm only one `/meeting` socket per tab.
+12. **Live map mirror:** if `MeetingLiveMap` / type / status unions change, update **both** `backend/src/app/types/meeting.ts` and `website/src/types/meeting.ts` identically in the same change; confirm with a file diff.
+13. **Boot:** `prepareSocket` stays socket-free on an organization host; Meeting owns its own session.
+14. **Do not mirror** `meeting.live.*` into `types/events.ts` / socket event registries.
+15. **Verify** with existing scripts: `yarn type-check` in `backend/` and `website/`. Functional check: two browsers on one live meeting, plus a forced disconnect with an offline edit. Confirm only one `/meeting` socket per tab.
 
 ## Non-negotiable rules
 
+- No second live-map type beside the mirrored `MeetingLiveMap` pair.
 - No meeting socket product module under `ui/base/hooks`.
 - No second `useLiveMeetingInstance` / Meeting socket under the same layout tree.
 - No bare `sync` / `update` event names — use `meeting.live.*`.

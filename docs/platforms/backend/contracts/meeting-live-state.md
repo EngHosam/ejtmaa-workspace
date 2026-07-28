@@ -28,13 +28,13 @@ Declared in the `Attrs` type under a `//live session` comment group, separate fr
 |---|---|---|
 | `LIVE_MAP` | `"meeting"` | Name of the `Y.Map` holding the live fields. The website SyncedStore root key must be the same string, otherwise the two sides sync disjoint maps |
 | `LIVE_STATUSES` | `Array<MeetingStatus>` = `["WAITING_TO_START", "STARTED"]` | The only statuses that accept live writes (`meeting-realtime-socket.md` §4) |
-| `createLiveDoc(fields)` | `(MeetingLiveFields) => Y.Doc` | New doc seeded in a single `transact` with `subject`, `type`, `status` |
+| `createLiveDoc(fields)` | `(MeetingLiveMap) => Y.Doc` | New doc seeded in a single `transact` with `subject`, `type`, `status` |
 | `encodeLiveDoc(doc)` | `(Y.Doc) => Buffer` | `Y.encodeStateAsUpdateV2` → `Buffer` for the BLOB |
 | `decodeLiveDoc(liveState)` | `(Buffer \| Uint8Array \| null \| undefined) => Y.Doc` | Empty doc when the input has no length; otherwise `Y.applyUpdateV2` on `new Uint8Array(liveState)` — the wrap is what makes a Sequelize `Buffer` assignable to the `Uint8Array` parameter |
-| `readLiveFields(doc)` | `(Y.Doc) => Partial<MeetingLiveFields>` | Reads the three keys out of `LIVE_MAP` |
+| `readLiveFields(doc)` | `(Y.Doc) => Partial<MeetingLiveMap>` | Reads the three keys out of `LIVE_MAP` |
 | `getLiveDoc()` | instance → `Y.Doc` | `live_state` present and non-empty → `decodeLiveDoc`; otherwise `createLiveDoc` seeded from the SQL columns |
 
-Exported type: `MeetingLiveFields = { subject: string; type: MeetingType; status: MeetingStatus }`.
+Exported live-map type: `MeetingLiveMap` from `backend/src/app/types/meeting.ts` (mirrored at `website/src/types/meeting.ts` — identical, no GQL/ORM imports). SQL column enums remain `MeetingType` / `MeetingStatus` from `G_Tr` keys; the CRDT document uses `MeetingLiveMap` only.
 
 **Encoding is V2 on every hop** — BLOB, sync response, and update broadcast. A V1 update applied with `applyUpdateV2` (or the reverse) throws; the website converts its V1 doc events with `Y.convertUpdateFormatV1ToV2` before emitting.
 
@@ -142,7 +142,8 @@ Until then the SQL columns keep the values the requester write path left, and co
 
 | Path | Role | Section |
 |---|---|---|
-| `backend/src/app/orm/models/Meeting.ts` | `live_state` column, `LIVE_MAP`, `LIVE_STATUSES`, doc statics, `getLiveDoc()` | §1 |
+| `backend/src/app/orm/models/Meeting.ts` | `live_state` column, `LIVE_MAP`, `LIVE_STATUSES`, doc statics (`MeetingLiveMap`), `getLiveDoc()` | §1 |
+| `backend/src/app/types/meeting.ts` | mirrored `MeetingLiveMap` (pair with `website/src/types/meeting.ts`) | §1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `backend/src/app/helpers/MeetingLiveDocHelper.ts` | registry, debounce persist, flush, destroy | §2 |
 | `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | `live_state = null` + `afterCommit` destroy on approve and on demotion to draft | §3.1 |
 | `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | `registerOrmAttrs.expect: ["live_state"]` | §4 |
@@ -159,7 +160,8 @@ Every tracked path of this delivery, in both repositories. Website paths are des
 
 | Path | State | Where described |
 |---|---|---|
-| `src/app/orm/models/Meeting.ts` | modified | §1; `meeting-domain.md` §3.2, §3.6 |
+| `src/app/orm/models/Meeting.ts` | modified — `MeetingLiveMap` for live doc statics | §1; `meeting-domain.md` §3.2, §3.6 |
+| `src/app/types/meeting.ts` | added — mirrored `MeetingLiveMap` (pair with `website/src/types/meeting.ts`) | §1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `src/app/helpers/MeetingLiveDocHelper.ts` | added | §2 |
 | `src/app/gql/bridges/customer/MeetingBridge.ts` | modified | §4 |
 | `src/app/socket/controllers/meeting/MeetingIOControllerBase.ts` | added | `meeting-realtime-socket.md` §3 |
@@ -175,7 +177,8 @@ Every tracked path of this delivery, in both repositories. Website paths are des
 
 | Path | State | Where described |
 |---|---|---|
-| `src/app/ui/components/meeting/hooks/useLiveMeeting.tsx` | session module — `useLiveMeetingInstance` + `LiveMeetingProvider` + public `useLiveMeeting` (`.ts` renamed to `.tsx`) | `organization-host-routing.md` §5.1 |
+| `src/types/meeting.ts` | added — mirrored `MeetingLiveMap` (pair with `backend/src/app/types/meeting.ts`) | §1; `.cursor/rules/meeting-live-map-mirror.mdc` |
+| `src/app/ui/components/meeting/hooks/useLiveMeeting.tsx` | session module — `useLiveMeetingInstance` + `LiveMeetingProvider` + public `useLiveMeeting`; uses `MeetingLiveMap` | `organization-host-routing.md` §5.1 |
 | `src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` | temporary probe; consumes context via `useLiveMeeting()` | `organization-host-routing.md` §5.2 |
 | `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — the socket-only hook is absorbed into the live module; a separate session hook is now forbidden | `organization-host-routing.md` §5.1; `.cursor/rules/meeting-realtime-socket.mdc` |
 | `src/app/ui/pages/Meeting.tsx` | renders `<LiveMeetingProbeScreen/>` (no credential props / no session ownership) | `organization-host-routing.md` §5, §5.2 |

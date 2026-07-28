@@ -1,0 +1,37 @@
+---
+description: Keep backend and website meeting.ts MeetingLiveMap mirrors identical — no external imports, update both sides on every change
+globs:
+  - backend/src/app/types/meeting.ts
+  - website/src/types/meeting.ts
+  - backend/src/app/orm/models/Meeting.ts
+  - backend/src/app/helpers/MeetingLiveDocHelper.ts
+  - website/src/app/ui/components/meeting/**/*
+alwaysApply: false
+---
+
+# Meeting live map mirror (`MeetingLiveMap`)
+
+Authority: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/platforms/website/organization-host-routing.md` §5.1.
+
+## Pair (must stay identical)
+
+| Platform | Path |
+|---|---|
+| Backend | `backend/src/app/types/meeting.ts` |
+| Website | `website/src/types/meeting.ts` |
+
+These two files are a **byte-for-byte contract mirror** of the live CRDT map shape (`MeetingLiveMap`, `MeetingLiveType`, `MeetingLiveStatus`, `MeetingLiveTypes`, `MeetingLiveStatuses`) plus the shared header comment.
+
+## Non-negotiables
+
+1. **Edit both files in the same change.** Any add/rename/remove of a field, union member, or exported const must land on **both** paths before the task is done.
+2. **No external imports** in either file — no GQL types, no ORM models, no translation/`G_Tr` keys, no shared utils. Only TypeScript language constructs.
+3. **Consumers import the local mirror** — backend from `app/types/meeting`, website from `types/meeting`. Do not reintroduce `LiveMeetingFields` / GQL enums as the live-document field type.
+4. **After editing, verify the two files match** (diff the pair). Drift is a defect even if each side type-checks alone.
+5. When live map values must stay aligned with SQL/GQL enums, update domain enums **and** the mirrored unions in the same task — the mirror is the live-wire contract; GQL/ORM remain the persistence/API contracts.
+
+## Forbidden
+
+- Changing only `backend/.../meeting.ts` or only `website/.../meeting.ts`.
+- Importing `_MeetingTypeValue` / `_MeetingStatusValue` / `MeetingType` / `MeetingStatus` into either mirror file.
+- Defining a second live-map shape beside `MeetingLiveMap` for the same CRDT document.

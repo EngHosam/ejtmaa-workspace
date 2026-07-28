@@ -173,7 +173,7 @@ Module: `website/src/app/ui/components/meeting/hooks/useLiveMeeting.tsx` (`.tsx`
 7. `disconnect` → clear `connected` and `synced`; on `io server disconnect` call `socket.connect()` (Socket.IO does not auto-reconnect after a server-forced drop).
 8. Cleanup on unmount / deps change: `doc.off`, unregister the three listeners, `off` the native events, `disconnect`, reset state.
 
-Provider / public hook value: `{ connected, synced, error, meeting, batch }` (`LiveMeetingHookOp`). `meeting` is the reactive `Partial<LiveMeetingFields>` proxy; `batch(fn)` is `doc.transact(fn)` and is the only sanctioned way to write. `LiveMeetingFields` types `type` and `status` with the generated `_MeetingTypeValue` / `_MeetingStatusValue`, so the live document cannot drift from the GraphQL enums.
+Provider / public hook value: `{ connected, synced, error, meeting, batch }` (`LiveMeetingHookOp`). `meeting` is the reactive `Partial<MeetingLiveMap>` proxy; `batch(fn)` is `doc.transact(fn)` and is the only sanctioned way to write. `MeetingLiveMap` (and `MeetingLiveType` / `MeetingLiveStatus`) live in the mirrored pair `website/src/types/meeting.ts` ↔ `backend/src/app/types/meeting.ts` with **no** GQL imports — see `.cursor/rules/meeting-live-map-mirror.mdc`.
 
 Base64 helpers (`toBase64` / `fromBase64`) are local to the module because the payloads travel as base64 strings on the socket.
 
@@ -190,7 +190,7 @@ Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/rules/meeting-l
 - Reads live state with arg-less `useLiveMeeting()` (context under `LiveMeetingProvider`). No credential props.
 - Footer `meetingId` display uses `useCurrentParams({ ident: "Meeting", mapParams: p => p })` for the id only.
 - Status line: `rejected · <code>` when `error` is set (in `semanticColor.stateError`), else `disconnected` / `connected · syncing` / `synced`.
-- One `ProbeText` for `subject`, two `ProbeChoice` selects for `type` and `status`, whose options come from `Object.values(_MeetingTypeValue)` / `_MeetingStatusValue` — no hand-written label lists.
+- One `ProbeText` for `subject`, two `ProbeChoice` selects for `type` and `status`, whose options come from `MeetingLiveTypes` / `MeetingLiveStatuses` (the mirrored live-map consts) — no GQL enums and no hand-written label lists.
 - Every field is disabled until `synced`, dimmed with the `opc` shorthand, and writes through `batch(() => { meeting.field = value })`.
 - Chrome is a shared `fieldStyle` object on `ElementStyles.inputReset` with `semanticColor` / `semanticDims` tokens only; no literal colors or sizes.
 
@@ -365,7 +365,7 @@ Every path that implements this contract, with the section that describes it.
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
 | `src/app/ui/pages/Meeting.tsx` | renders `<LiveMeetingProbeScreen/>` (no credential props) | §5, §5.2 |
 | `src/app/ui/components/meeting/hooks/useLiveMeeting.tsx` | `useLiveMeetingInstance` + `LiveMeetingProvider` + public `useLiveMeeting`; `/meeting` session, Yjs, SyncedStore, `meeting.live.*` | §5.1 |
-| `src/app/ui/components/meeting/hooks/useLiveMeeting.ts` | **deleted / renamed** to `.tsx` (JSX provider) | §5.1 |
+| `src/types/meeting.ts` | mirrored `MeetingLiveMap` (pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `src/app/ui/components/meeting/LiveMeetingProbeScreen.tsx` | temporary sync probe UI; consumes `useLiveMeeting()` | §5.2 |
 | `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — socket-only hook absorbed into the live module; a separate session hook is now forbidden | §5.1 |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
@@ -407,7 +407,8 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | sync handshake + server state vector | `../backend/contracts/meeting-realtime-socket.md` §3.1 |
 | `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | validation, status gate, apply, room broadcast | `../backend/contracts/meeting-realtime-socket.md` §3.2 |
 | `src/app/helpers/MeetingLiveDocHelper.ts` | live document registry + BLOB persistence | `../backend/contracts/meeting-live-state.md` §2 |
-| `src/app/orm/models/Meeting.ts` | `live_state` column + live document statics | `../backend/contracts/meeting-live-state.md` §1 |
+| `src/app/types/meeting.ts` | mirrored `MeetingLiveMap` / live type+status unions (pair with `website/src/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
+| `src/app/orm/models/Meeting.ts` | `live_state` column + live document statics (`MeetingLiveMap`) | `../backend/contracts/meeting-live-state.md` §1 |
 | `src/app/gql/bridges/customer/MeetingBridge.ts` | `live_state` excluded from GQL attrs | `../backend/contracts/meeting-live-state.md` §4 |
 | `src/resources/configs/socket/io.ts` | `/meeting` namespace + `meeting_auth` + meeting controllers | `../backend/contracts/meeting-realtime-socket.md` §1 |
 | `src/resources/consts/NotificationsConsts.ts` | `MEETING` namespace / FCM / room | `../backend/contracts/meeting-realtime-socket.md` §4 |
@@ -420,6 +421,7 @@ Every path that implements this contract, with the section that describes it.
 | `.cursor/rules/organization-host-routing.mdc` | host mode, route gate, transport identification |
 | `.cursor/rules/meeting-realtime-socket.mdc` | Meeting session placement, hook contract, backend pairing |
 | `.cursor/rules/meeting-live-state.mdc` | CRDT document ownership, V2 codec, BLOB exposure |
+| `.cursor/rules/meeting-live-map-mirror.mdc` | identical `MeetingLiveMap` files on backend ↔ website |
 | `.cursor/rules/nodejs-socket-namespace-registration.mdc` | namespace / controller / room registration |
 | `.cursor/rules/nodejs-socket-handler-contract.mdc` | connection return = absolute listener set |
 | `.cursor/rules/socket-event-mirroring.mdc` | outbound mirror scope |

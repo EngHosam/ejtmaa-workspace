@@ -80,7 +80,7 @@ Persistence names:
 | `notify_start_at` | DATE | yes | when invite sending may begin; derived by the requester as `datetime - TWO_HOURS_MS` (nullable for rows written before the derivation shipped) |
 | `live_state` | BLOB | yes | Yjs V2 snapshot of the live session document; never exposed through GraphQL (`meeting-live-state.md`) |
 
-Exported TS types: `MeetingType`, `MeetingStatus`, `MeetingNotifyStatus` from `G_Tr` enum keys, plus `MeetingLiveFields` for the live document.
+Exported TS types: `MeetingType`, `MeetingStatus`, `MeetingNotifyStatus` from `G_Tr` enum keys. Live CRDT map shape: `MeetingLiveMap` in `backend/src/app/types/meeting.ts` (mirrored on website).
 
 ### 3.2b Schedule constants
 

@@ -5,7 +5,7 @@
 The backend realtime surface a meeting attendee connects to: socket namespace `/meeting`, its handshake authentication, its connection room, and the `meeting.live.*` events that carry the collaborative document.
 
 State plane the events transport (Yjs document, `live_state` BLOB, registry): `docs/platforms/backend/contracts/meeting-live-state.md`.
-Website consumer (hook-owned session, handshake query, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1.
+Website consumer (layout-owned `LiveMeetingProvider` session, handshake query, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1.
 Framework mechanics (namespace registration, handler-array listener set): `docs/platforms/backend/modules/nodejs-socket-library.md` §7, §10.
 Meeting domain model: `docs/platforms/backend/contracts/meeting-domain.md`.
 
