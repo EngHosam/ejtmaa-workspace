@@ -137,10 +137,12 @@ Config layout: root entry `configs/socket.ts` is the shared boot factory; `confi
 | Identify / path | `Meeting` → `/meeting/:memberId/:memberToken/:meetingId` |
 | `MPagesRoutes` | `params: { memberId: string; memberToken: string; meetingId: string }` |
 | Flags | `layout: "MEETING"`, `orgHostOnly: true`, `preLoadedPage` |
-| Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — organization-branded shell (header, drawer, footer — §5.3) plus a single `MeetingLiveProvider` wrap (§5.1); mapped in `MyApp.getLayout()` under `case "MEETING"` |
+| Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — `MeetingLiveProvider` + linking gate (§5.3) then organization-branded shell (header, drawer, footer — §5.4); mapped in `MyApp.getLayout()` under `case "MEETING"` |
 | Page | `website/src/app/ui/pages/Meeting.tsx` — `Main()` returns `null` (no product UI yet); session still runs under `MeetingLiveProvider` in the layout |
-| Live module | `website/src/app/ui/components/meeting/hooks/useMeetingLive.tsx` — session instance + provider + public context reader (product module under `components/meeting/`, **not** `ui/base/hooks`) |
+| Live transport | `website/src/app/ui/components/meeting/hooks/useMeetingLive.tsx` — socket + Yjs + SyncedStore instance + provider + public context reader (product module under `components/meeting/`, **not** `ui/base/hooks`) |
+| Live session surface | `meetingLiveSession.ts` + `useMeetingLiveSession` — unified `{ stages, can, actions }` for UI (§5.3) |
 | Current participant | `website/src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` — SyncedStore proxy for the route member's roster entry (§5.2) |
+| Linking gate UI | `website/src/app/ui/components/meeting/MeetingLinkingScreen.tsx` — full-viewport PENDING / FAILED chrome (§5.3) |
 
 `Layout` in `website/src/types/extends/global.ts` includes the `"MEETING"` member; `PageRouteState` includes `orgHostOnly?: boolean`.
 
@@ -173,21 +175,26 @@ The bundle is held in a ref keyed by `meetingId` and rebuilt when that id change
 1. `createSocketInstance(getMeetingSocketInstanceConfig(...))` with the handshake query from `meeting-socket.ts` (§3).
 2. `doc.on("update")` → skip anything whose origin is `"remote"`, otherwise convert with `Y.convertUpdateFormatV1ToV2` and emit `meeting.live.update`. Local edits are always emitted, including before the first sync.
 3. `connect` → `connected = true` and emit `meeting.live.sync` with the local `Y.encodeStateVector`.
-4. `meeting.live.sync` reply → apply `update` when present, then answer the server's `stateVector` with `Y.encodeStateAsUpdateV2(doc, vector)` so anything edited offline is pushed back; clear `error` and set `synced`.
-5. `meeting.live.update` → apply with origin `"remote"` so the change is not echoed back.
-6. `meeting.live.error` → store the code and clear `synced`, which locks the UI until the next `connect` re-runs the handshake.
-7. `disconnect` → clear `connected` and `synced`; on `io server disconnect` call `socket.connect()` (Socket.IO does not auto-reconnect after a server-forced drop).
-8. Cleanup on unmount / deps change: `doc.off`, unregister the three listeners, `off` the native events, `disconnect`, reset state.
+4. `connect_error` → clear `connected` / `synced`. Branch on Engine.IO error shape:
+   - `err.type === "TransportError"` (network / websocket transport only) → leave `error` untouched so linking stays **PENDING**, and **do not** disable Socket.IO reconnection.
+   - any other `connect_error` (including handshake `NOT_VALID_CREDENTIAL` from `meeting_auth`) → `error = "NOT_VALID"`, set `socket.io.opts.reconnection = false`, then `socket.disconnect()` so the UI settles on **FAILED** instead of bouncing in PENDING.
+5. `meeting.live.sync` reply → apply `update` when present, then answer the server's `stateVector` with `Y.encodeStateAsUpdateV2(doc, vector)` so anything edited offline is pushed back; clear `error` and set `synced`.
+6. `meeting.live.update` → apply with origin `"remote"` so the change is not echoed back.
+7. `meeting.live.error` → store the code and clear `synced` (post-connect write/sync reject path; does **not** disable reconnection by itself).
+8. `disconnect` → clear `connected` and `synced`; on `io server disconnect` call `socket.connect()` (Socket.IO does not auto-reconnect after a server-forced drop).
+9. Cleanup on unmount / deps change: `doc.off`, unregister the three listeners, `off` native `connect` / `connect_error` / `disconnect`, `disconnect`, reset state.
 
 Provider / public hook value: `{ connected, synced, error, meeting, batch }` (`MeetingLiveHookOp`). `meeting` is the reactive `Partial<MeetingLiveMap>` proxy; `batch(fn)` is `doc.transact(fn)` and is the only sanctioned way to write. `MeetingLiveMap` (including `participants: Record<string, MeetingLiveParticipant>`) lives in the mirrored pair `website/src/types/meeting.ts` ↔ `backend/src/app/types/meeting.ts` with **no** GQL imports — see `.cursor/rules/meeting-live-map-mirror.mdc`.
 
+Product UI should prefer `useMeetingLiveSession()` (§5.3) for stages / capabilities / actions. Keep `useMeetingLive()` for CRDT proxy access (`meeting`, `batch`) and raw transport flags when a surface truly needs them.
+
 Base64 helpers (`toBase64` / `fromBase64`) are local to the module because the payloads travel as base64 strings on the socket.
 
-Backend pairing (`docs/platforms/backend/contracts/meeting-realtime-socket.md`): `meeting_auth` proves the handshake, the connection controller joins `Rooms.MEETING(meetingId)` and keeps both live events bound, and a rejected write answers `meeting.live.error` without unbinding anything.
+Backend pairing (`docs/platforms/backend/contracts/meeting-realtime-socket.md`): `meeting_auth` proves the handshake (refusal → Socket.IO `connect_error`, **not** `meeting.live.error`), the connection controller joins `Rooms.MEETING(meetingId)` and keeps both live events bound, and a rejected write answers `meeting.live.error` without unbinding anything.
 
 **Not mirrored:** `meeting.live.*` are session events of this namespace. Do not add them to `website/src/types/events.ts` / socket event registries.
 
-Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/rules/meeting-live-state.mdc`, `.cursor/skills/meeting-realtime-socket/SKILL.md`.
+Authority: `.cursor/rules/meeting-realtime-socket.mdc`, `.cursor/rules/meeting-live-state.mdc`, `.cursor/rules/website-meeting-live-session.mdc`, `.cursor/skills/meeting-realtime-socket/SKILL.md`, `.cursor/skills/website-meeting-live-session/SKILL.md`.
 
 ### 5.2) Current participant (`useMeetingLiveMe`)
 
@@ -206,9 +213,84 @@ Returns the **SyncedStore proxy** for the current member's entry in `meeting.par
 
 Naming: under the `MeetingLive*` family, `Me` means the session member (parallel to customer `useMe`), not a separate Member GQL load.
 
-The Meeting page does not consume this hook yet; it is the sanctioned read path for upcoming participant UI.
+The Meeting page does not consume this hook yet; it is the sanctioned read path for upcoming participant UI. `useMeetingLiveSession` (§5.3) already reads it for `stages.me` / `can` / `actions`.
 
-### 5.3) Meeting shell (organization branding)
+### 5.3) Meeting live session surface (`stages` / `can` / `actions`)
+
+Public product API for Meeting UI under `MeetingLiveProvider`. Transport stays in §5.1; this layer derives **where we are**, **what is allowed**, and **how to write** without each screen re-deriving CRDT rules.
+
+| Piece | File | Role |
+|---|---|---|
+| Pure state | `website/src/app/ui/components/meeting/meetingLiveSession.ts` | `resolveMeetingLiveSession(input)` → `MeetingLiveSessionState` (`stages` + `can` only) |
+| Hook | `website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.ts` | Builds `MeetingLiveSession` = state + sync `actions` |
+| Gate UI | `website/src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | Full-viewport PENDING / FAILED when linking is not READY |
+
+#### Linking stage
+
+| `stages.linking` | Condition |
+|---|---|
+| `FAILED` | `error != null` (from `meeting.live.error` **or** non-transport `connect_error`) |
+| `READY` | `connected && synced` and no error |
+| `PENDING` | otherwise (including transport-only `connect_error` while Socket.IO retries) |
+
+When `linking !== "READY"`, the resolver returns `meeting: null`, `me: null`, and every `can.*` = `false`. No product stage or capability is meaningful until the document is linked.
+
+#### Meeting / me stages (only when linking is READY)
+
+| `stages.meeting` | From live `status` |
+|---|---|
+| `BEFORE_START` | `WAITING_TO_START` |
+| `STARTED` | `STARTED` |
+| `ENDED` | `COMPLETED` or `CANCELED` |
+| `null` | missing / other live statuses (e.g. unset before sync fields arrive) |
+
+| `stages.me` | From `useMeetingLiveMe()` |
+|---|---|
+| `null` | no roster proxy yet (`!hasMe`) |
+| `LEFT` | `leftAt` set |
+| `ATTENDED` | `attendedAt` set, no `leftAt` |
+| `NOT_ATTENDED` | proxy present, neither timestamp |
+
+#### Capabilities (`can`)
+
+Computed only when linking is READY:
+
+| Key | True when |
+|---|---|
+| `startMeeting` | `meType === "CHAIRPERSON"` and `status === "WAITING_TO_START"` |
+| `endMeeting` | chairperson and `status === "STARTED"` |
+| `attend` | any `meType`, status `WAITING_TO_START` or `STARTED`, no `attendedAt`, no `leftAt` |
+| `left` | any `meType`, status `WAITING_TO_START` or `STARTED`, has `attendedAt`, no `leftAt` |
+
+These are **client session gates** for the hook's actions. They do **not** replace the backend write gate (`MEETING_LIVE_STATUSES` on `meeting.live.update`) and do **not** yet enforce participant type on the server (§8).
+
+#### Actions (sync)
+
+Built only in `useMeetingLiveSession` (need `batch` + proxies). Each action no-ops when the matching `can.*` is false (and `attend` / `left` also require `me`):
+
+| Action | Write inside `batch` |
+|---|---|
+| `startMeeting` | `meeting.status = "STARTED"` |
+| `endMeeting` | `meeting.status = "COMPLETED"` |
+| `attend` | `me.attendedAt = new Date().toISOString()` |
+| `left` | `me.leftAt = new Date().toISOString()` |
+
+Actions are synchronous (`() => void`). Socket fan-out is side effect of the CRDT update path; a later `meeting.live.error` sets `error` and clears `synced` (§5.1).
+
+#### Linking gate in `MeetingLayout`
+
+`MeetingShell` (inside `MeetingLiveProvider`) calls `useMeetingLiveSession()` and, when `stages.linking !== "READY"`, returns **only** `<MeetingLinkingScreen linking={stages.linking} />` — no header, drawer, footer, or page children.
+
+`MeetingLinkingScreen` (org colors via `useOrganization`):
+
+| Linking | Chrome |
+|---|---|
+| `PENDING` | Org logo and/or name (both when present), project `Loadable` (`loading`), `pendingStatus` copy |
+| `FAILED` | Same identity, `FiAlertCircle` + `semanticColor.stateError`, fixed `failedMessage` copy |
+
+i18n under `ui.layouts.meetingLayout.linking`: `logoAria`, `pendingStatus`, `failedMessage` (ar + en).
+
+### 5.4) Meeting shell (organization branding)
 
 `MEETING` is the only layout that renders tenant branding. The branding source is the `organizationHost` slice (§3) — the same public payload `org/start` returns — so the shell needs no extra request.
 
@@ -250,7 +332,7 @@ The glyph is the shared `DrawerMenuIcon`. Its leading bar is themeable through t
 
 #### Layout composition
 
-`MeetingLayout` picks one of two trees from a `matchMedia(min-width: SW.min_lg)` effect, the same shape `MainLayout` uses. Both trees are wrapped in a single outer `MeetingLiveProvider`, so the `/meeting` socket session is owned by the layout once — not by the page and not once per breakpoint branch. `children` is rendered once per tree.
+`MeetingLayout` wraps both breakpoint trees in a single outer `MeetingLiveProvider`. Inside the provider, `MeetingShell` runs the linking gate (§5.3) **before** picking desktop vs mobile chrome: when `stages.linking !== "READY"`, only `MeetingLinkingScreen` mounts. When READY, the shell picks one of two trees from a `matchMedia(min-width: SW.min_lg)` effect (same shape as `MainLayout`). `children` is rendered once per READY tree.
 
 - **Desktop:** a `Row` of [drawer column | `Col`(header, content, footer)]. The drawer column is **in flow** (not an overlay) and `position: sticky; top: 0` at `h/maxH: 100vh`, so it stays viewport-tall while the page scrolls and never covers the footer. Its width animates between `semanticDims.shell.drawerWidth` and `0`, with `pointerEvents: none` while collapsed.
 - **Mobile:** the `CustomerMainLayout` shape — `MeetingHeader fixed`, content `minH: 100vh` with a `paddingTop` matching `Dims.headerHeight` / `Dims.mobileHeaderHeight`, and the portal overlay.
@@ -263,6 +345,7 @@ The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls 
 |---|---|
 | `header` | `menu`, `logoAria` |
 | `footer` | `rights` |
+| `linking` | `logoAria`, `pendingStatus`, `failedMessage` |
 | `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemLive`, `itemAgenda`, `itemVote`, `itemTalkQueue`, `itemDecisions`, `itemParticipants`, `utilityPrefs` |
 
 `MeetingFooter` additionally reads `ui.layouts.mainLayout.footerTitle` for the platform name; it has no key of its own for it.
@@ -327,23 +410,25 @@ What the website side depends on:
 | Non-production without `TEST_ORGANIZATION_ID` | `org/start` `404` |
 | Apex request to `/meeting/...` | route gate → `Error` `404` |
 | Organization-host request to any non-`orgHostOnly` route (`/`, `/login`, `/customer/*`) | route gate → `Error` `404` |
-| Socket `/meeting` handshake missing ids, bad token, org mismatch, or no roster row | `NOT_VALID_CREDENTIAL` |
-| Live write on a meeting that is not `WAITING_TO_START` / `STARTED` | `meeting.live.error` `MEETING_NOT_LIVE` → client `error` is set and `synced` clears until the next `connect` re-sync (§5.1) |
-| Malformed live payload | `meeting.live.error` `NOT_VALID` → same lock; the next `connect` re-syncs |
+| Socket `/meeting` handshake missing ids, bad token, org mismatch, or no roster row | Server throws `NOT_VALID_CREDENTIAL` → Socket.IO `connect_error` (not `meeting.live.error`) → client sets `error = "NOT_VALID"`, stops reconnection → `stages.linking === "FAILED"` (§5.1, §5.3) |
+| Network / websocket transport failure before connect | `connect_error` with `type === "TransportError"` → stay PENDING; Socket.IO keeps retrying (§5.1) |
+| Live write on a meeting that is not `WAITING_TO_START` / `STARTED` | `meeting.live.error` `MEETING_NOT_LIVE` → client `error` is set and `synced` clears → linking FAILED until a later successful sync clears `error` (§5.1) |
+| Malformed live payload | `meeting.live.error` `NOT_VALID` → same linking FAILED path |
 | Route params change to another meeting | `MeetingLiveProvider` re-runs `useMeetingLiveInstance` with the new ids; the instance drops the old document and store and opens a fresh session (§5.1) |
 
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
-2. **`Meeting` page body is empty.** `Meeting.tsx` `Main()` returns `null`. Layout shell + live session still mount; no meeting product UI (media, agenda, roster chrome) ships yet.
+2. **`Meeting` page body is empty.** `Meeting.tsx` `Main()` returns `null`. Layout mounts the live session + linking gate; after READY, the branded shell mounts with empty page children — no meeting product sections yet.
 3. **Collaborative live map fields** — `subject`, `type`, `status`, `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
 7. **Organization-host pages other than `Meeting` have no realtime channel.** A tenant-wide org socket is not part of the shipped surface.
-8. **No participant-type gate on the client or the server.** Any roster member of a live meeting can edit the document (`../backend/contracts/meeting-realtime-socket.md` §4).
-9. **Every meeting drawer tile is disabled** (§5.3). The six tiles (live, agenda, vote, talk queue, decisions, participants) are placeholders with no route and no handler; the hover treatment on the icon well is therefore unreachable until the tiles get targets.
-10. **The meeting shell picks its tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
+8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` are chairperson-only **client** gates on `useMeetingLiveSession` actions; they are not enforced by the socket controllers yet.
+9. **Every meeting drawer tile is disabled** (§5.4). The six tiles (live, agenda, vote, talk queue, decisions, participants) are placeholders with no route and no handler; the hover treatment on the icon well is therefore unreachable until the tiles get targets.
+10. **The meeting shell picks its READY tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. While linking is not READY, only the gate screen renders (no drawer SSR flicker for that path). `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
+11. **Non-transport `connect_error` maps to session code `"NOT_VALID"`** for UI purposes; the linking FAILED copy stays the generic `failedMessage` (no distinct credential string on screen yet).
 
 ## 9) Environment
 
@@ -376,23 +461,26 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
 | `src/app/ui/pages/Meeting.tsx` | empty page body (`Main` → `null`); live session owned by layout | §5 |
-| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session | §5.1 |
+| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); edits via `batch` | §5.2 |
+| `src/app/ui/components/meeting/meetingLiveSession.ts` | pure `resolveMeetingLiveSession` → `MeetingLiveSessionState` (`stages` + `can`) | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.ts` | `{ stages, can, actions }` product surface | §5.3 |
+| `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | PENDING / FAILED gate UI (`Loadable` / `FiAlertCircle`) | §5.3 |
 | `src/types/meeting.ts` | mirrored live map (`MeetingLiveMap`, `participants`, `MEETING_LIVE_*`; pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `src/app/ui/components/meeting/MeetingLiveProbeScreen.tsx` | **deleted** — temporary sync probe removed; page body empty | §5, §5.2 |
 | `src/app/ui/components/meeting/hooks/useMeetingSocket.ts` | **deleted** — socket-only hook absorbed into the live module; a separate session hook is now forbidden | §5.1 |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
-| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — branded shell, responsive tree, sticky desktop drawer, single `MeetingLiveProvider` wrap | §5, §5.1, §5.3 |
+| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — `MeetingLiveProvider`, linking gate, branded shell, responsive READY tree | §5, §5.1, §5.3, §5.4 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
-| `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` shell/brand token split | §5.3 |
-| `src/app/ui/components/meeting/MeetingHeader.tsx` | menu button + org logo/name, accent rail, `fixed` mobile bar | §5.3 |
-| `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line | §5.3 |
-| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | shared drawer body, scrolling tile grid, pinned prefs row | §5.3 |
-| `src/app/ui/components/meeting/MeetingDrawerOverlay.tsx` | mobile portal overlay | §5.3 |
-| `src/app/ui/components/HeaderIconButton.tsx` | top-level shared icon button; consumed by `CustomerHeader` + `MeetingHeader` | §5.3; `component-structure.md` §3 |
-| `src/app/ui/components/customer/CustomerHeader.tsx` | consumes `HeaderIconButton` from the shared top level | §5.3 |
-| `src/app/ui/components/DrawerMenuIcon.tsx` | optional `accentClr` prop; default is the accent bar | §5.3 |
-| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header`, `footer`, `drawer`) | §5.3 |
+| `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` shell/brand token split | §5.4 |
+| `src/app/ui/components/meeting/MeetingHeader.tsx` | menu button + org logo/name, accent rail, `fixed` mobile bar | §5.4 |
+| `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line | §5.4 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | shared drawer body, scrolling tile grid, pinned prefs row | §5.4 |
+| `src/app/ui/components/meeting/MeetingDrawerOverlay.tsx` | mobile portal overlay | §5.4 |
+| `src/app/ui/components/HeaderIconButton.tsx` | top-level shared icon button; consumed by `CustomerHeader` + `MeetingHeader` | §5.4; `component-structure.md` §3 |
+| `src/app/ui/components/customer/CustomerHeader.tsx` | consumes `HeaderIconButton` from the shared top level | §5.4 |
+| `src/app/ui/components/DrawerMenuIcon.tsx` | optional `accentClr` prop; default is the accent bar | §5.4 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header`, `footer`, `linking`, `drawer`) | §5.3, §5.4 |
 | `src/resources/configs/customer/formRoute.ts` | nested `params` href builders without `as To` | `route-registry-contract.md` §3.1 |
 | `src/app/ui/components/customer/members/CustomerMemberFormScreen.tsx` | `useCurrentParams` `mapParams: p => p` | `route-registry-contract.md` §3.1 |
 | `src/app/ui/components/customer/message-channels/CustomerMessageChannelFormScreen.tsx` | same | §3.1 |
@@ -432,48 +520,65 @@ Every path that implements this contract, with the section that describes it.
 | Path | Role |
 |---|---|
 | `.cursor/rules/organization-host-routing.mdc` | host mode, route gate, transport identification |
-| `.cursor/rules/meeting-realtime-socket.mdc` | Meeting session placement, hook contract, backend pairing |
+| `.cursor/rules/meeting-realtime-socket.mdc` | Meeting session placement, hook contract, `connect_error`, backend pairing |
+| `.cursor/rules/website-meeting-live-session.mdc` | `useMeetingLiveSession` stages/can/actions + linking gate UI |
 | `.cursor/rules/meeting-live-state.mdc` | CRDT document ownership, V2 codec, BLOB exposure |
 | `.cursor/rules/meeting-live-map-mirror.mdc` | identical `MeetingLiveMap` files on backend ↔ website |
 | `.cursor/rules/sequelize-include-by-association-name.mdc` | Sequelize `include` by association name (backend companion) |
 | `.cursor/rules/nodejs-socket-namespace-registration.mdc` | namespace / controller / room registration |
 | `.cursor/rules/nodejs-socket-handler-contract.mdc` | connection return = absolute listener set |
 | `.cursor/rules/socket-event-mirroring.mdc` | outbound mirror scope |
-| `.cursor/rules/website-semantic-color-token-discipline.mdc` | runtime per-tenant color maps — shell keys reference `semanticColor`, only brand keys are computed (§5.3) |
-| `.cursor/skills/meeting-realtime-socket/SKILL.md` | Meeting realtime workflow |
+| `.cursor/rules/website-semantic-color-token-discipline.mdc` | runtime per-tenant color maps — shell keys reference `semanticColor`, only brand keys are computed (§5.4) |
+| `.cursor/skills/meeting-realtime-socket/SKILL.md` | Meeting realtime transport workflow |
+| `.cursor/skills/website-meeting-live-session/SKILL.md` | Meeting session surface + linking gate workflow |
 | `.cursor/skills/nodejs-socket-server-event/SKILL.md` | backend socket surface workflow |
 
-## 10a) Change set inventory (empty page + `useMeetingLiveMe`)
+## 10a) Change set inventory (MeetingLiveSession + linking gate)
 
-Working-tree delivery that removed the temporary sync probe and added the current-participant hook. Earlier organization-host / live-session paths remain in §10.
+Website working tree for the unified session surface, linking gate, and handshake `connect_error` → FAILED path. Backend application code unchanged in this delivery. Earlier path map remains in §10 (including historical deletion of `MeetingLiveProbeScreen` / `useMeetingSocket`).
 
 ### `website/`
 
 | Path | State | Where described |
 |---|---|---|
-| `src/app/ui/pages/Meeting.tsx` | modified — `Main()` returns `null` | §5 |
-| `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | **added** — SyncedStore proxy for route member in `participants` | §5.2 |
-| `src/app/ui/components/meeting/MeetingLiveProbeScreen.tsx` | **deleted** | §5, §5.2 |
+| `src/app/ui/components/meeting/meetingLiveSession.ts` | **added** — pure resolver | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.ts` | **added** — `{ stages, can, actions }` | §5.3 |
+| `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | **added** — PENDING / FAILED gate | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | modified — `connect_error` listener; transport vs auth branch | §5.1 |
+| `src/app/ui/layouts/MeetingLayout.tsx` | modified — gate before shell chrome | §5.3, §5.4 |
+| `src/resources/translations/ar.ts` | modified — `meetingLayout.linking` | §5.3 |
+| `src/resources/translations/en.ts` | modified — `meetingLayout.linking` | §5.3 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check`; not narrated | — |
 
 ### Workspace root (`docs/` / `.cursor/`)
 
 | Path | State | Where described |
 |---|---|---|
-| `docs/platforms/website/organization-host-routing.md` | this page — probe removed; §5.2 is `useMeetingLiveMe` | — |
-| `docs/platforms/website/component-structure.md` | live meeting group + empty Meeting page | §3, §5 |
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.1 `connect_error`, §5.3 session + gate | — |
+| `docs/platforms/backend/contracts/meeting-realtime-socket.md` | handshake client mapping | §3.3 / §6.1 there |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | website consumer pointer | Related |
+| `docs/platforms/backend/modules/runtime-integrations.md` | website consumer pointer | §5 there |
+| `docs/platforms/website/component-structure.md` | live session + linking screen groups | component index |
 | `docs/platforms/website/README.md` | org-host index rows | change-set table |
-| `.cursor/rules/meeting-realtime-socket.mdc` | `useMeetingLiveMe` naming + no-clone forbidden | governance |
-| `.cursor/skills/meeting-realtime-socket/SKILL.md` | `useMeetingLiveMe` workflow | governance |
+| `.cursor/rules/meeting-realtime-socket.mdc` | transport / `connect_error` | governance |
+| `.cursor/rules/website-meeting-live-session.mdc` | **added** — session surface + gate | governance |
+| `.cursor/rules/organization-host-routing.mdc` | Meeting public hooks pointer | governance |
+| `.cursor/rules/website-semantic-color-token-discipline.mdc` | shell map § pointer | governance |
+| `.cursor/skills/meeting-realtime-socket/SKILL.md` | transport workflow; defers session UI | governance |
+| `.cursor/skills/website-meeting-live-session/SKILL.md` | **added** — session workflow | governance |
+| `.cursor/skills/website-semantic-color-audit/SKILL.md` | shell map § pointer | governance |
 
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout + live session with an empty page body; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout + live session; linking PENDING then READY shell with empty page body; `/customer/...` renders `Error` `404`.
 - Socket: organization host opens **no** boot socket; `MeetingLayout` opens `/meeting` once via `MeetingLiveProvider` / `useMeetingLiveInstance`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.
-- Two browsers on the same live meeting: a collaborative edit (via a consumer of `useMeetingLive` / `useMeetingLiveMe` + `batch`) in one reaches the other; both settle with `synced`.
+- Bad `memberToken` / missing roster: handshake refuse → `connect_error` → linking **FAILED** gate (not endless PENDING).
+- Transport drop: `TransportError` → linking stays **PENDING** and reconnect continues.
+- Two browsers on the same live meeting: a collaborative edit (via session `actions` or `useMeetingLive` / `useMeetingLiveMe` + `batch`) in one reaches the other; both settle with `synced` / linking READY.
 - Forced server disconnect: the client reconnects and re-runs the sync handshake; edits made while disconnected survive because the client answers the server state vector.
-- Meeting outside `WAITING_TO_START` / `STARTED`: a live write yields `meeting.live.error` `MEETING_NOT_LIVE` and clears `synced` until the next connect.
+- Meeting outside `WAITING_TO_START` / `STARTED`: a live write yields `meeting.live.error` `MEETING_NOT_LIVE` and clears `synced` (linking FAILED until a later successful sync).
 
 ## 12) Related
 
@@ -488,6 +593,8 @@ Working-tree delivery that removed the temporary sync probe and added the curren
 - `docs/invariants/backend.md` B24
 - `.cursor/rules/organization-host-routing.mdc`
 - `.cursor/rules/meeting-realtime-socket.mdc`
+- `.cursor/rules/website-meeting-live-session.mdc`
 - `.cursor/rules/meeting-live-state.mdc`
 - `.cursor/rules/website-mpages-routes-params-contract.mdc`
 - `.cursor/skills/meeting-realtime-socket/SKILL.md`
+- `.cursor/skills/website-meeting-live-session/SKILL.md`

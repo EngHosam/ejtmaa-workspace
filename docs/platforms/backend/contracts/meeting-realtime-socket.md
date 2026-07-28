@@ -5,7 +5,7 @@
 The backend realtime surface a meeting attendee connects to: socket namespace `/meeting`, its handshake authentication, its connection room, and the `meeting.live.*` events that carry the collaborative document.
 
 State plane the events transport (Yjs document, `live_state` BLOB, registry): `docs/platforms/backend/contracts/meeting-live-state.md`.
-Website consumer (layout-owned `MeetingLiveProvider` session, handshake query, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1.
+Website consumer (layout-owned `MeetingLiveProvider` session, handshake query, SyncedStore, `useMeetingLiveSession` linking gate): `docs/platforms/website/organization-host-routing.md` §5.1, §5.3.
 Framework mechanics (namespace registration, handler-array listener set): `docs/platforms/backend/modules/nodejs-socket-library.md` §7, §10.
 Meeting domain model: `docs/platforms/backend/contracts/meeting-domain.md`.
 
@@ -89,7 +89,16 @@ On success the payload is re-emitted verbatim to `socket.to(Rooms.MEETING(meetin
 
 `{ code: MeetingLiveErrorCode }` with `"NOT_VALID" | "MEETING_NOT_LIVE"`, emitted to the offending socket only.
 
-Client contract (`useMeetingLiveInstance` via `MeetingLiveProvider`; UI reads `useMeetingLive`): record the code, drop out of `synced` so the UI stops accepting edits, and wait for the next `connect` to re-run the sync handshake.
+This path is for **post-connect** rejects (bad update payload, status gate, apply failure). It is **not** how handshake auth failures surface.
+
+Client contract (`useMeetingLiveInstance` via `MeetingLiveProvider`):
+
+| Failure source | Client effect |
+|---|---|
+| `meeting.live.error` | store the code, clear `synced` (listeners stay bound on the server) |
+| Handshake refuse (`meeting_auth` → `NOT_VALID_CREDENTIAL`) | Socket.IO `connect_error` (no `meeting.live.error`). Website maps non-`TransportError` to session `error = "NOT_VALID"`, disables reconnection, and disconnects so UI linking becomes `FAILED`. Transport-only `connect_error` stays PENDING and keeps retrying. |
+
+Product UI reads linking via `useMeetingLiveSession().stages.linking` (`organization-host-routing.md` §5.3).
 
 ### 3.4 Mirroring
 
@@ -129,6 +138,8 @@ The status read is the handshake snapshot (§2), not a fresh query — see §6.2
 | Handshake `organizationId` disagrees with `meeting.organization_id` | `NOT_VALID_CREDENTIAL` |
 | No `MeetingParticipant` roster row for the pair | `NOT_VALID_CREDENTIAL` |
 | Organization not `ACTIVE` | `NOT_VALID_CREDENTIAL` |
+
+Website: those refuses arrive as Socket.IO `connect_error` → linking `FAILED` (`organization-host-routing.md` §5.1, §5.3 / §7). They never become `meeting.live.error`.
 
 ### 6.2 Live events
 
@@ -173,12 +184,14 @@ Payloads are base64, which inflates the binary by roughly one third. The effecti
 ## 9) Related
 
 - `docs/platforms/backend/contracts/meeting-live-state.md` — document, BLOB, registry, deferred column apply
-- `docs/platforms/website/organization-host-routing.md` §5.1 — website session, handshake query, reconnect
+- `docs/platforms/website/organization-host-routing.md` §5.1, §5.3 — website transport + session surface
 - `docs/platforms/backend/modules/runtime-integrations.md` §5 — socket provider summary
 - `docs/platforms/backend/modules/nodejs-socket-library.md` §7, §10 — handler contract and child events
 - `docs/platforms/backend/contracts/meeting-domain.md` §7.1 — realtime surface of the domain
 - `docs/platforms/backend/contracts/member-domain.md` — `access_token` as the meeting credential
 - `docs/invariants/backend.md` B24, B25
 - `.cursor/rules/meeting-realtime-socket.mdc`
+- `.cursor/rules/website-meeting-live-session.mdc`
 - `.cursor/rules/meeting-live-state.mdc`
 - `.cursor/skills/meeting-realtime-socket/SKILL.md`
+- `.cursor/skills/website-meeting-live-session/SKILL.md`

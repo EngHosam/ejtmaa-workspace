@@ -88,7 +88,7 @@ Framework reference for the underlying package (`@nodejs/socket` drivers, route 
 | `meeting.live.sync` | `meeting_live_sync` | `controllers/meeting/MeetingLiveSyncIOController` | answers the caller with the missing document diff + the server state vector |
 | `meeting.live.update` | `meeting_live_update` | `controllers/meeting/MeetingLiveUpdateIOController` | validates + status-gates the update, applies it, broadcasts to the room |
 
-Both are **client → server** inbound events; the server replies on the same names plus `meeting.live.error` for a rejection. None of them are notify events, and none are mirrored into `website`/`cpanel` event registries (`socket-event-mirroring.md` does not apply). Namespace contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`. State plane (Yjs document + `live_state` BLOB): `docs/platforms/backend/contracts/meeting-live-state.md`. Website consumer: `docs/platforms/website/organization-host-routing.md` §5.1.
+Both are **client → server** inbound events; the server replies on the same names plus `meeting.live.error` for a rejection. None of them are notify events, and none are mirrored into `website`/`cpanel` event registries (`socket-event-mirroring.md` does not apply). Namespace contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`. State plane (Yjs document + `live_state` BLOB): `docs/platforms/backend/contracts/meeting-live-state.md`. Website consumer (transport + linking gate): `docs/platforms/website/organization-host-routing.md` §5.1, §5.3.
 
 Room conventions are centralized in:
 - `backend/src/resources/consts/NotificationsConsts.ts` — `Namespaces.MEETING` (`/meeting`), `FCM_Namespaces.MEETING` (`-meeting`), `Rooms.MEETING(meetingId)`

@@ -1,23 +1,24 @@
 ---
 name: meeting-realtime-socket
 description: >-
-  Wires Meeting realtime on website MeetingLiveProvider / useMeetingLiveInstance
-  and backend /meeting meeting.live.* controllers with MeetingAuthenticationIOMiddleware
-  and the Yjs live document. Use when adding or fixing the Meeting socket session,
-  sync or reconnect, meeting.live.sync / meeting.live.update / meeting.live.error,
-  MeetingIOControllerBase, MeetingLiveSyncIOController, MeetingLiveUpdateIOController,
-  MeetingLiveDocHelper, live_state persistence, meeting-socket config, MeetingLayout
-  provider mount, useMeetingLiveMe, or Meeting page wiring.
+  Wires Meeting realtime transport on website MeetingLiveProvider /
+  useMeetingLiveInstance and backend /meeting meeting.live.* controllers with
+  MeetingAuthenticationIOMiddleware and the Yjs live document. Use when adding
+  or fixing socket session, sync/reconnect, connect_error vs meeting.live.error,
+  MeetingIOControllerBase, live sync/update controllers, MeetingLiveDocHelper,
+  live_state persistence, or meeting-socket config. For stages/can/actions or
+  linking gate UI, use skill website-meeting-live-session instead.
 ---
 
 # Meeting realtime socket (`meeting.live.*` on `/meeting`)
 
 ## When to Use
 
-- Adding or changing `useMeetingLive` / `useMeetingLiveInstance` / `MeetingLiveProvider` / `useMeetingLiveMe`, `meeting-socket.ts`, `MeetingLayout`, or the Meeting page wiring.
+- Adding or changing `useMeetingLive` / `useMeetingLiveInstance` / `MeetingLiveProvider` / `useMeetingLiveMe`, `meeting-socket.ts`, or backend `/meeting` controllers.
 - Adding a new `/meeting` event or a new field to the live document.
-- Debugging edits that do not propagate, a session stuck on `syncing`, a rejected write, duplicate sockets, or state lost after a reconnect.
+- Debugging edits that do not propagate, handshake FAILED vs transport retry, a rejected write, duplicate sockets, or state lost after a reconnect.
 - Touching `live_state` persistence or the live document registry.
+- **Not** for product stages/can/actions or `MeetingLinkingScreen` — use `.cursor/skills/website-meeting-live-session/SKILL.md`.
 
 ## Read first
 
@@ -43,23 +44,24 @@ description: >-
 8. **Gate writes** on `MEETING_LIVE_STATUSES` from `types/meeting.ts`. Reads are open to any authenticated participant.
 9. **Website config** at `website/src/resources/configs/meeting-socket.ts` (root sibling of `socket.ts`): `SOCKET_URL("meeting")` + handshake query. Do not nest this factory under `configs/socket/`.
 10. **Website live module** at `components/meeting/hooks/useMeetingLive.tsx`:
-    - `useMeetingLiveInstance` owns the session (private): required `memberId` / `memberToken` / `meetingId`; `createSocketInstance` / `connect` / `disconnect` — never `getSocket`, and no second socket hook beside it.
+    - `useMeetingLiveInstance` owns the transport (private): required `memberId` / `memberToken` / `meetingId`; `createSocketInstance` / `connect` / `disconnect` — never `getSocket`, and no second socket hook beside it.
     - Live document fields use `MeetingLiveMap` from `website/src/types/meeting.ts` (mirrored with `backend/src/app/types/meeting.ts` — see `.cursor/rules/meeting-live-map-mirror.mdc`). Never type the SyncedStore map from GQL enums.
     - SyncedStore shape `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }` with initializer `{ [MEETING_LIVE_MAP]: {} }` only — do not nest `participants: {}` in the initializer (throws). Read `liveStore[MEETING_LIVE_MAP]`.
     - Rebuild the store + doc bundle when `meetingId` changes, and pass `[store]` to `useSyncedStore`.
     - Emit `meeting.live.sync` on every `connect`; answer the server `stateVector` in the reply.
     - Apply remote updates with origin `"remote"` and skip that origin when emitting.
     - Surface `error` and clear `synced` on `meeting.live.error`.
+    - Native `connect_error`: `TransportError` → keep retry (no `error`); otherwise `error = "NOT_VALID"`, disable reconnection, disconnect.
     - Manual `socket.connect()` on `io server disconnect`.
     - Return `{ connected, synced, error, meeting, batch }`; all writes go through `batch`.
     - `MeetingLiveProvider` calls the instance once (params from `useCurrentParams` for `Meeting`) and publishes that value.
-    - Public `useMeetingLive()` reads context only — UI consumers use this, never the instance hook.
-    - Current participant: `useMeetingLiveMe()` indexes `meeting.participants[memberId]` (Meeting route params); returns that SyncedStore proxy or `undefined`; never clone; field writes use `batch` from `useMeetingLive()`.
-11. **Mount once** in `MeetingLayout` with a single outer `<MeetingLiveProvider>` around both desktop and mobile shell trees.
+    - Public `useMeetingLive()` reads context only — low-level transport/CRDT.
+    - Current participant: `useMeetingLiveMe()` indexes `meeting.participants[memberId]`; never clone; field writes use `batch`.
+11. **Mount once** in `MeetingLayout` with a single outer `<MeetingLiveProvider>`. Linking gate chrome is owned by the website-meeting-live-session skill.
 12. **Live map mirror:** if `MeetingLiveMap` / participant fields / `MEETING_LIVE_*` change, update **both** `backend/src/app/types/meeting.ts` and `website/src/types/meeting.ts` identically in the same change; confirm with a file diff. Seed nested `participants` as per-id `Y.Map`s in `MeetingLiveDocHelper` (not plain objects).
 13. **Boot:** `prepareSocket` stays socket-free on an organization host; Meeting owns its own session.
 14. **Do not mirror** `meeting.live.*` into `types/events.ts` / socket event registries.
-15. **Verify** with existing scripts: `yarn type-check` in `backend/` and `website/`. Functional check: two browsers on one live meeting, plus a forced disconnect with an offline edit. Confirm only one `/meeting` socket per tab.
+15. **Verify** with existing scripts: `yarn type-check` in `backend/` and `website/`. Functional check: two browsers on one live meeting, forced disconnect with an offline edit, bad token → `error` set, transport drop → no `error` + retry. Confirm only one `/meeting` socket per tab.
 
 ## Non-negotiable rules
 
@@ -73,3 +75,4 @@ description: >-
 - No participant trust assumed from optional handshake `organizationId` alone.
 - No writing meeting SQL columns from a socket controller (`meeting-live-state.md` §6).
 - Meeting realtime lives only on `/meeting`.
+- No product `stages` / `can` / `actions` math inside the transport module.

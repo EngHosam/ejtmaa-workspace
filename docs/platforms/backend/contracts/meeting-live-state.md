@@ -5,7 +5,7 @@
 The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, `status`, and `participants` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
 
 Transport (namespace, handshake, events, authorization): `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
-Website consumer (`MeetingLiveProvider` / `useMeetingLive`, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1.
+Website consumer (`MeetingLiveProvider` / `useMeetingLive` / `useMeetingLiveSession`, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1, §5.3.
 Meeting domain (columns, GQL, requester write path): `docs/platforms/backend/contracts/meeting-domain.md`.
 
 Dependency: `yjs@13.6.27` (`backend/package.json`), same major/minor as the website copy.
@@ -241,7 +241,7 @@ Untracked build output under `backend/lib/`, `backend/.exporters/`, `backend/.ty
 
 - `docs/platforms/backend/contracts/meeting-realtime-socket.md` — namespace, events, authorization
 - `docs/platforms/backend/contracts/meeting-domain.md` — columns, GQL read, requester write path
-- `docs/platforms/website/organization-host-routing.md` §5.1 — website session and SyncedStore binding
+- `docs/platforms/website/organization-host-routing.md` §5.1, §5.3 — website transport, SyncedStore binding, session surface
 - `docs/invariants/backend.md` B25
 - `.cursor/rules/meeting-live-state.mdc`
 - `.cursor/rules/meeting-live-map-mirror.mdc`

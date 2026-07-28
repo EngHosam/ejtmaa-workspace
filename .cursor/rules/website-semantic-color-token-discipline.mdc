@@ -66,7 +66,7 @@ To re-verify alignment after any `theme.ts` or `semanticColor` change, run the a
 ## Related
 
 - `docs/platforms/website/ui-foundation.md` (semantic color audit & type guard; runtime per-tenant color maps)
-- `docs/platforms/website/organization-host-routing.md` §5.3 (the shipped per-tenant map)
+- `docs/platforms/website/organization-host-routing.md` §5.4 (the shipped per-tenant map)
 - `docs/platforms/website/brand-identity-alignment.md` (shipped outcome)
 - `docs/invariants/website.md` W10, W43 (incl. runtime per-tenant color maps), W56 (footer bg theme-flipped), W57 (third-party brand color exemption)
 - `.cursor/rules/website-action-control-loader-contrast.mdc` (spinner contrast on filled controls — sibling concern)

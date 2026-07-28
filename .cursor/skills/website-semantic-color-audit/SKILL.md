@@ -33,7 +33,7 @@ description: >-
    - only brand keys are computed from the tenant seeds, with `BrandColors` fallbacks for null/unparseable input;
    - on-fill text is derived from seed luminance, not assumed white;
    - no key is dead — every key has a consumer, or is a declared reserve recorded in the owning doc section.
-   Authority: `.cursor/rules/website-semantic-color-token-discipline.mdc` § Runtime per-tenant color maps; `docs/platforms/website/organization-host-routing.md` §5.3.
+   Authority: `.cursor/rules/website-semantic-color-token-discipline.mdc` § Runtime per-tenant color maps; `docs/platforms/website/organization-host-routing.md` §5.4.
 9. **Verify no gradients (automated).** Grep `gradient|Gradient|linear-gradient|radial-gradient|conic-gradient` under `website/src`. It must return no matches. `theme.ts` exports no gradient API and no website style path may use a CSS gradient (including decorative overlays, clipped text, and scrollbar thumbs). Any hit is a defect: replace with a solid `semanticColor.*` token via `getColor` / Utils props. See `.cursor/rules/website-no-gradients.mdc`.
 9. **Verify.** Re-run `yarn type-check`. Do not invent new test/tooling.
 
