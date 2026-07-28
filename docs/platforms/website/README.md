@@ -300,7 +300,7 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | `POST /website/custom/org/start` + `org_host` middleware | `../backend/contracts/client-portal-http-website.md` |
 | Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
 | Known limits (unwired `org_host`, empty Meeting page body, client-only chair gates) | `organization-host-routing.md` §8 |
-| `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` / `website-meeting-live-session.mdc` | Host-mode gating + Meeting transport + session surface |
+| `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` / `website-meeting-live-session.mdc` / `website-meeting-shell.mdc` | Host-mode gating + Meeting transport + session surface + READY shell IA |
 
 ## Change set traceability — MicroBand footer credit spelling
 

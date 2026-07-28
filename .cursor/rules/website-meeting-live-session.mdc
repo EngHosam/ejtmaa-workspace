@@ -30,7 +30,7 @@ Transport / `connect_error`: `.cursor/rules/meeting-realtime-socket.mdc`.
 
 When `linking !== "READY"`: `meeting`/`me` stages are `null` and every `can.*` is false.
 
-`MeetingShell` must show **only** `MeetingLinkingScreen` until READY — no header/drawer/footer/page children.
+`MeetingShell` must show **only** `MeetingLinkingScreen` until READY — no header/drawer/footer/page children. READY shell drawer/header IA: `.cursor/rules/website-meeting-shell.mdc`.
 
 ## Gate UI patterns
 

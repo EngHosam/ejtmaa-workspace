@@ -59,7 +59,7 @@ Shipped groups:
 | Customer meetings | `customer/meetings/*` (screens, rows, cards, `MeetingMetaChips`, `MeetingNote` alert chrome, `MeetingParticipantGroup`, and the UI-only mirrors `meetingNotifyTemplateMode` / `meetingScheduleLead`), `customer/hooks/useCustomerMeetings` |
 | Customer form modals | `customer/modals/*` (`MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal` — registered; see `flow-form-foundation.md` §3.8b) |
 | Live meeting (organization host) | `meeting/hooks/useMeetingLive` (`MeetingLiveProvider` + `useMeetingLive`), `meeting/hooks/useMeetingLiveMe`, `meeting/meetingLiveSession` + `meeting/hooks/useMeetingLiveSession`, `meeting/MeetingLinkingScreen` — `organization-host-routing.md` §5.1, §5.2, §5.3 |
-| Meeting shell (organization host) | `meeting/MeetingHeader`, `meeting/MeetingFooter`, `meeting/MeetingDrawerPanel`, `meeting/MeetingDrawerOverlay`, `meeting/hooks/useOrganization` — `organization-host-routing.md` §5.4 (READY shell only; linking gate precedes it) |
+| Meeting shell (organization host) | `meeting/MeetingHeader`, `meeting/MeetingFooter`, `meeting/MeetingDrawerPanel`, `meeting/MeetingDrawerOverlay`, `meeting/hooks/useOrganization` — `organization-host-routing.md` §5.4 (READY shell only; linking gate precedes it); drawer/header IA: `.cursor/rules/website-meeting-shell.mdc` |
 
 Planned groups (target contract):
 

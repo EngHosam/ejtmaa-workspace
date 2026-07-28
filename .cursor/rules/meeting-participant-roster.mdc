@@ -20,7 +20,7 @@ Authoritative contract: `docs/platforms/backend/contracts/meeting-participant-do
 
 - Store `type`: `CHAIRPERSON` | `MEMBER` | `VIEWER` (localized enum `meetingParticipantType`).
 - Do **not** store a free-form permissions JSONB or a `can_vote` boolean on the row.
-- Session permissions are fixed per type (see domain contract §8). Implement as a helper when session/socket work ships — do not invent a parallel ACL on `Member`.
+- Session permissions are fixed per type (see domain contract §8), including **request talking** for `CHAIRPERSON`, `MEMBER`, and `VIEWER`. Implement as a helper when session/socket work ships — do not invent a parallel ACL on `Member`.
 
 ## Attendance
 

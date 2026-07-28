@@ -229,7 +229,7 @@ Explicit product decision (replaces a `can_vote` boolean): permissions are **fix
 |---|---|---|---|
 | view meeting | yes | yes | yes |
 | vote | yes | yes | no |
-| request talking | yes | yes | no |
+| request talking | yes | yes | yes |
 | manage live vote / queue | yes | no | no |
 | start / complete meeting | yes | no | no |
 

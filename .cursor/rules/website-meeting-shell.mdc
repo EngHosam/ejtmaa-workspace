@@ -1,0 +1,46 @@
+---
+description: Organization-host Meeting shell IA — role drawer tiles, wide live tile, header request-to-speak
+globs:
+  - website/src/app/ui/components/meeting/MeetingDrawerPanel.tsx
+  - website/src/app/ui/components/meeting/MeetingHeader.tsx
+  - website/src/app/ui/components/meeting/MeetingDrawerOverlay.tsx
+  - website/src/app/ui/layouts/MeetingLayout.tsx
+alwaysApply: false
+---
+
+# Website Meeting shell (org host)
+
+Authority: `docs/platforms/website/organization-host-routing.md` §5.4.
+Linking gate / session surface: `.cursor/rules/website-meeting-live-session.mdc`.
+Participant type permissions: `docs/platforms/backend/contracts/meeting-participant-domain.md` §8.
+
+## When the shell mounts
+
+`MeetingShell` renders header / drawer / footer / children only when `stages.linking === "READY"`. Do not assume drawer/header run during PENDING or FAILED.
+
+## Drawer tiles (role IA)
+
+Role from `useMeetingLiveMe().type` (`CHAIRPERSON` vs other).
+
+| Role | Tiles (order) |
+|---|---|
+| Chairperson | `live`, `talkQueue`, `attendance`, `agenda`, `decisionsAndVote` |
+| Member / Viewer | `live`, `agenda`, `decisionsAndVote` |
+
+- **No** `participants` tile.
+- `live` is full-row (`wide` → `gridColumn: 1 / -1`).
+- Every tile ships `available={false}` until that surface is activated (no route, no handler).
+- Tile chrome matches existing meeting drawer `DrawerGridItem` (org `OrganizationColors`, `semanticDims`).
+
+## Header request-to-speak
+
+- Show only when `me` exists and `me.type !== "CHAIRPERSON"` (MEMBER and VIEWER).
+- Control is mic + visible `requestTalk` label; accessible name `requestTalkAria` (session-scoped). No switch track.
+- Placeholder: disabled + `aria-disabled`; no handler.
+- Chairperson manages speaking via drawer `talkQueue`, not a header control.
+
+## Colors / Utils
+
+- Shell product chrome uses `organization?.colors ?? defaultOrganizationColors()`.
+- `As={"button"}`: `baseCssStyle` = `...ElementStyles.buttonReset` only; `gridColumn` / `:hover` / `transition` in `cssStyle`.
+- Menu glyph may keep `semanticColor.iconPrimary` on `DrawerMenuIcon` (shared with customer shell mark).

@@ -46,8 +46,8 @@ description: >-
 - `.cursor/rules/website-authed-drawer-subpage-governance.mdc`
 - `.cursor/rules/website-breadcrumb-product-placement.mdc`
 - `.cursor/rules/website-breadcrumb-descendant-root-label.mdc`
-- `.cursor/skills/website-customer-drawer-nav/SKILL.md`
-- `.cursor/skills/website-customer-breadcrumb-subpage/SKILL.md`
+- `.cursor/skills/website-meeting-live-session/SKILL.md`
+- `.cursor/skills/website-meeting-shell/SKILL.md`
 - `docs/invariants/website.md`
 
 ## Instructions

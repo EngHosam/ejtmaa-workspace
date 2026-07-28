@@ -7,7 +7,8 @@ description: >-
   or fixing socket session, sync/reconnect, connect_error vs meeting.live.error,
   MeetingIOControllerBase, live sync/update controllers, MeetingLiveDocHelper,
   live_state persistence, or meeting-socket config. For stages/can/actions or
-  linking gate UI, use skill website-meeting-live-session instead.
+  linking gate UI, use skill website-meeting-live-session. For READY shell
+  drawer/header IA, use skill website-meeting-shell.
 ---
 
 # Meeting realtime socket (`meeting.live.*` on `/meeting`)
@@ -19,12 +20,14 @@ description: >-
 - Debugging edits that do not propagate, handshake FAILED vs transport retry, a rejected write, duplicate sockets, or state lost after a reconnect.
 - Touching `live_state` persistence or the live document registry.
 - **Not** for product stages/can/actions or `MeetingLinkingScreen` — use `.cursor/skills/website-meeting-live-session/SKILL.md`.
+- **Not** for READY shell drawer tiles / header request-to-speak — use `.cursor/skills/website-meeting-shell/SKILL.md`.
 
 ## Read first
 
 - `docs/platforms/backend/contracts/meeting-realtime-socket.md` — namespace, events, authorization
 - `docs/platforms/backend/contracts/meeting-live-state.md` — document, BLOB, registry, deferred column apply
-- `docs/platforms/website/organization-host-routing.md` §5.1, §5.2
+- `docs/platforms/website/organization-host-routing.md` §5.1, §5.2 (transport); §5.4 + skill `website-meeting-shell` for READY shell IA
+- `.cursor/skills/website-meeting-live-session/SKILL.md` / `.cursor/skills/website-meeting-shell/SKILL.md` when scope crosses into product UI
 - `docs/platforms/backend/modules/nodejs-socket-library.md` §7, §10
 - `.cursor/rules/meeting-realtime-socket.mdc`
 - `.cursor/rules/meeting-live-state.mdc`
