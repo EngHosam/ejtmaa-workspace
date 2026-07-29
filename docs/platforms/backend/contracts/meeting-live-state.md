@@ -2,7 +2,7 @@
 
 ## Scope
 
-The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, `status`, and `participants` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
+The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, `status`, `datetime`, and `participants` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
 
 Transport (namespace, handshake, events, authorization): `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
 Website consumer (`MeetingLiveProvider` / `useMeetingLive` / `useMeetingLiveSession`, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1, §5.3.
@@ -55,11 +55,14 @@ type MeetingLiveMap = {
     subject: string;
     type: MeetingLiveType;
     status: MeetingLiveStatus;
+    datetime: string;            // ISO-8601 from SQL Meeting.datetime
     participants: Record<string, MeetingLiveParticipant>; // keyed by member id
 };
 ```
 
 Attendance is timestamp-only (`attendedAt` / `leftAt`); there is no separate boolean. Connection presence fields are seeded `OFFLINE` / null timestamps on first document create; writers that flip online/offline are **not** shipped yet (`meeting-realtime-socket.md` shipped limits).
+
+`datetime` is the scheduled start used by the website client session gate for the self-check-in open window (`MeetingModel.ATTEND_OPEN_BEFORE_MS` — 30 minutes before start). It is seeded from SQL and is **not** a collaborative edit target.
 
 ### 1.3 Document codec and seed
 
@@ -69,7 +72,7 @@ Codec/seed helpers are **module-private**. Public surface of this file is the re
 
 | Member | Role |
 |---|---|
-| `createLiveDoc(fields)` | Private. One `transact`: sets `subject` / `type` / `status`; builds nested `participants` as `Y.Map` of per-id `Y.Map(Object.entries(participant))` |
+| `createLiveDoc(fields)` | Private. One `transact`: sets `subject` / `type` / `status` / `datetime`; builds nested `participants` as `Y.Map` of per-id `Y.Map(Object.entries(participant))` |
 | `encodeLiveDoc` / `decodeLiveDoc` | Private. V2 BLOB codec |
 | `buildLiveParticipants(meeting)` | Private. `meeting.getParticipants({ include: [{ association: "member", required: true }] })` → `Record` keyed by `member_id`; skips a row only if `member` is somehow missing; ISO-maps `attended_at` / `left_at`; seeds `connectionStatus: "OFFLINE"` |
 | `getLiveDoc(meeting)` | Private. Non-empty `live_state` → `decodeLiveDoc`; else `createLiveDoc` from SQL columns + `buildLiveParticipants` |
@@ -182,7 +185,7 @@ Until then the SQL meeting columns keep the values the requester write path left
 4. **Eviction only on approve / demotion.** `destroyMeetingLiveDoc` is called from those two requester paths (§3.1); `peekMeetingLiveDoc` still has no caller. Nothing evicts an entry when a session simply ends, so memory still grows with the number of meetings touched until the process restarts.
 5. **Single instance.** The registry is process memory. Two backend processes would each hold an independent document for the same meeting and overwrite each other's BLOB; horizontal scaling needs a shared document plane first.
 6. **Seed write on first load.** A meeting whose BLOB is `null` gets one write on first sync even when nobody edits. Harmless because a session only opens for a live meeting, whose columns are no longer edited through the form.
-7. **No automatic BLOB schema migration.** A non-empty `live_state` is decoded as-is. Documents created before `participants` existed are not back-filled on load; a requester reset (§3.1) clears the BLOB so the next sync re-seeds from SQL.
+7. **No automatic BLOB schema migration.** A non-empty `live_state` is decoded as-is. Documents created before `participants` / `datetime` existed are not back-filled on load; a requester reset (§3.1) clears the BLOB so the next sync re-seeds from SQL.
 
 ## 8) Traceability
 
@@ -207,9 +210,9 @@ Working-tree delivery that relocated live codec out of `Meeting`, extended `Meet
 
 | Path | State | Where described |
 |---|---|---|
-| `src/app/types/meeting.ts` | modified — `MEETING_LIVE_MAP` / `MEETING_LIVE_STATUSES` / `MeetingLiveParticipant*` / `participants` on `MeetingLiveMap` | §1.2 |
-| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — private codec+seed (incl. nested participants), registry unchanged in role | §1.3, §2 |
-| `src/app/orm/models/Meeting.ts` | modified — removed live-session statics/instance helpers; keeps `live_state` column only | §1.1 |
+| `src/app/types/meeting.ts` | modified — `MEETING_LIVE_MAP` / `MEETING_LIVE_STATUSES` / `MeetingLiveParticipant*` / `participants` / `datetime` on `MeetingLiveMap` | §1.2 |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — private codec+seed (incl. nested participants + `datetime`), registry unchanged in role | §1.3, §2 |
+| `src/app/orm/models/Meeting.ts` | modified — removed live-session statics/instance helpers; keeps `live_state` column; schedule + `ATTEND_OPEN_BEFORE_MS` statics live on the model | §1.1; `meeting-domain.md` §3.2b |
 | `src/app/orm/models/Customer.ts` | modified — Ability notify-template path `include: ["member"]` (association name, not model class) | §1.3; `meeting-domain.md` Ability notify gate |
 | `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | modified — write gate uses `MEETING_LIVE_STATUSES` from mirror | `meeting-realtime-socket.md` §3.2, §4 |
 
@@ -237,10 +240,22 @@ Working-tree delivery that relocated live codec out of `Meeting`, extended `Meet
 
 Untracked build output under `backend/lib/`, `backend/.exporters/`, `backend/.types/`, `backend/.webpack_root.ts` and `website/server/` is generated by build scripts and is not part of the source contract.
 
+## 9b) Change set inventory (live `datetime` seed)
+
+| Path | State | Where described |
+|---|---|---|
+| `backend/src/app/types/meeting.ts` | modified — `MeetingLiveMap.datetime` | §1.2 |
+| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | modified — seed `datetime` on first create; decode existing BLOB as-is (no scalar backfill) | §1.3, §7 |
+| `backend/src/app/orm/models/Meeting.ts` | modified — `ATTEND_OPEN_BEFORE_MS` | `meeting-domain.md` §3.2b |
+| `website/src/types/meeting.ts` | modified — identical mirror | §1.2 |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | this page | — |
+| `docs/platforms/backend/contracts/meeting-participant-domain.md` | self-check-in open window | §3.6 there |
+| `docs/platforms/website/organization-host-routing.md` | client `can.attend` / room gate | §5.3–§5.5, §10d |
+
 ## 10) Related
 
 - `docs/platforms/backend/contracts/meeting-realtime-socket.md` — namespace, events, authorization
-- `docs/platforms/backend/contracts/meeting-domain.md` — columns, GQL read, requester write path
+- `docs/platforms/backend/contracts/meeting-domain.md` — columns, GQL read, requester write path, `ATTEND_OPEN_BEFORE_MS`
 - `docs/platforms/website/organization-host-routing.md` §5.1, §5.3 — website transport, SyncedStore binding, session surface
 - `docs/invariants/backend.md` B25
 - `.cursor/rules/meeting-live-state.mdc`

@@ -36,4 +36,5 @@ description: >-
 6. READY shell drawer/header IA belongs to skill `website-meeting-shell` — do not redefine tile sets here.
 7. Actions: no-op when `!can.*`; write via internal `batch` only (`STARTED` / `COMPLETED` / ISO timestamps on `me`). Do not export `batch` on the session surface. Do not assign `meeting.*` / `me.*` from UI.
 8. Do not re-implement `connect_error` branching here — transport owns it; session only reads `error` / connected / synced.
-9. Verify with `yarn type-check` in `website/`.
+9. Attend window: mirror `MeetingModel.ATTEND_OPEN_BEFORE_MS` in `meetingAttendWindow.ts`; feed `datetime` + `nowMs` into `resolveMeetingLiveSession`; flip `can.attend` with one `setTimeout` at open time (not a polling interval). `can.enterLive` is navigation-only.
+10. Verify with `yarn type-check` in `website/`.

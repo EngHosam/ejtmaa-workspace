@@ -223,7 +223,8 @@ Public product API for Meeting UI. Transport stays in §5.1 (`MeetingLiveProvide
 | Piece | File | Role |
 |---|---|---|
 | Pure state | `website/src/app/ui/components/meeting/meetingLiveSession.ts` | `resolveMeetingLiveSession(input)` → `MeetingLiveSessionState` (`linking` + `can` only) |
-| Provider + hook | `website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | `MeetingLiveSessionProvider` (under `MeetingLiveProvider`) + public `useMeetingLiveSession()` context reader |
+| Attend window mirror | `website/src/app/ui/components/meeting/meetingAttendWindow.ts` | `ATTEND_OPEN_BEFORE_MS` (mirror of `MeetingModel.ATTEND_OPEN_BEFORE_MS`), `isAttendWindowOpen`, `attendOpensAtIso` |
+| Provider + hook | `website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | `MeetingLiveSessionProvider` (under `MeetingLiveProvider`) + public `useMeetingLiveSession()` context reader; passes `meeting.datetime` + `nowMs`; schedules one `setTimeout` until attend opens so `can.attend` flips without reload |
 | Gate UI | `website/src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | Full-viewport PENDING / FAILED when linking is not READY |
 
 #### Public shape
@@ -262,16 +263,21 @@ When `linking !== "READY"`, every `can.*` = `false`. The session value still inc
 
 #### Capabilities (`can`)
 
-Computed only when linking is READY:
+Computed only when linking is READY. Inputs include live `status`, `meType`, `attendedAt`, `leftAt`, live map `datetime` (ISO scheduled start), and `nowMs` (wall clock from the session provider).
 
 | Key | True when |
 |---|---|
 | `startMeeting` | `meType === "CHAIRPERSON"` and `status === "WAITING_TO_START"` |
 | `endMeeting` | chairperson and `status === "STARTED"` |
-| `attend` | any `meType`, status `WAITING_TO_START` or `STARTED`, no `attendedAt`, no `leftAt` |
+| `attend` | any `meType`, status `WAITING_TO_START` or `STARTED`, no `attendedAt`, no `leftAt`, and `nowMs >= datetime − MeetingModel.ATTEND_OPEN_BEFORE_MS` (30 minutes before scheduled start; website mirror `isAttendWindowOpen`) |
 | `left` | any `meType`, status `WAITING_TO_START` or `STARTED`, has `attendedAt`, no `leftAt` |
+| `enterLive` | has `attendedAt` and no `leftAt` (any type) — **navigation gate only** (no `actions.enterLive` write) |
 
-These are **client session gates** for the hook's actions. They do **not** replace the backend write gate (`MEETING_LIVE_STATUSES` on `meeting.live.update`) and do **not** yet enforce participant type on the server (§8).
+Attend stays allowed after the window opens for the rest of a live session (`WAITING_TO_START` or `STARTED`). Missing / invalid `datetime` keeps `can.attend` false.
+
+These are **client session gates**. They do **not** replace the backend write gate (`MEETING_LIVE_STATUSES` on `meeting.live.update`), do **not** validate `attendedAt` timestamps on the socket, and do **not** yet enforce participant type on the server (§8).
+
+**Clock refresh.** While linking is READY, `datetime` is set, and the participant has not attended, the session provider schedules a single `setTimeout` for `datetime − ATTEND_OPEN_BEFORE_MS` and then sets `nowMs = Date.now()` so `can.attend` can become true without a reload. Background-tab throttling, effect cleanup on linking/`datetime`/`attendedAt` changes, leaving the meeting route, and large forward clock jumps while a timeout is pending can delay or cancel that flip until the effect runs again.
 
 #### Actions (sync)
 
@@ -337,7 +343,7 @@ The button chrome is `website/src/app/ui/components/HeaderIconButton.tsx` — a 
 
 The glyph is the shared `DrawerMenuIcon`. Its leading bar is themeable through the optional `accentClr` prop, defaulting to `semanticColor.accentActionBackground`; the two horizontal bars are always `semanticColor.iconPrimary`. `MeetingHeader` passes `semanticColor.iconPrimary` so all three bars read as one content-colored mark (dark in light scheme, near-white in dark). `CustomerHeader` passes nothing and keeps the accent bar.
 
-**Drawer tiles.** Role-based from `useMeetingLiveSession().me?.type` (local `DrawerGridItemDef[]` with `id: MeetingDrawerPage` = `Exclude<MeetingPage, "init">` in `MeetingDrawerPanel`). The READY shell (header/drawer) mounts only after `linking === "READY"`. A full-row **Home** control (`itemHome` + shared `HomeMark` forced white via `actionIconOnFill` on both `frameClr` and `accentClr` — same monochrome-on-fill idea as `DrawerMenuIcon accentClr` on the menu button; do not use `FiHome`) sits above the role grid and calls `setPage("init")` (selected when `page === "init"`). Chairperson (`CHAIRPERSON`): `live` (`FiVideo`), `talkQueue` (`FiMic`), `attendance` (`FiClipboard`), `agenda` (`FiList`), `decisionsAndVote` (`FiCheckSquare`). Member and viewer: `live`, `agenda`, `decisionsAndVote` only. No `participants` tile and no `init` inside the role grid. The `live` tile is full-row (`wide` → `gridColumn: 1 / -1`) so it spans both columns of the 2-column grid; other tiles stay single-cell. Tiles call `useMeetingPage().setPage(id)` (and `onClose` on the mobile overlay).
+**Drawer tiles.** Role-based from `useMeetingLiveSession().me?.type` (local `DrawerGridItemDef[]` with `id: MeetingDrawerPage` = `Exclude<MeetingPage, "init">` in `MeetingDrawerPanel`). The READY shell (header/drawer) mounts only after `linking === "READY"`. A full-row **Home** control (`itemHome` + shared `HomeMark` forced white via `actionIconOnFill` on both `frameClr` and `accentClr` — same monochrome-on-fill idea as `DrawerMenuIcon accentClr` on the menu button; do not use `FiHome`) sits above the role grid and calls `setPage("init")` (selected when `page === "init"`). Chairperson (`CHAIRPERSON`): `live` (`FiVideo`), `talkQueue` (`FiMic`), `attendance` (`FiClipboard`), `agenda` (`FiList`), `decisionsAndVote` (`FiCheckSquare`). Member and viewer: `live`, `agenda`, `decisionsAndVote` only. No `participants` tile and no `init` inside the role grid. The `live` tile is full-row (`wide` → `gridColumn: 1 / -1`) so it spans both columns of the 2-column grid; other tiles stay single-cell. Tiles call `useMeetingPage().setPage(id)` (and `onClose` on the mobile overlay). When `!can.enterLive`, the `live` tile is **disabled** (`opc` 0.55, no hover scale, native `disabled` / `aria-disabled`); visible label stays Meeting room / غرفة الاجتماع; `title` / `aria-label` use `init.attendRequiresForRoom`. Other drawer pages are not gated on attendance.
 
 **Selected tile chrome** (landing FAQ / message-card family — not solid primary fill):
 
@@ -371,7 +377,7 @@ The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls 
 | `footer` | `rights` |
 | `linking` | `logoAria`, `pendingStatus`, `failedMessage` |
 | `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemHome`, `itemLive`, `itemTalkQueue`, `itemAttendance`, `itemAgenda`, `itemDecisionsAndVote`, `utilityPrefs` |
-| `init` | `logoAria`, type/status labels, `attend` / `attendAria`, `attendedTitle` / `attendedAt`, `leftTitle` |
+| `init` | `logoAria`, type/status labels, `attend` / `attendAria`, `attendAvailableIn`, `attendRequiresForRoom`, `attendedTitle` / `attendedAt`, `roomUnlockedHint`, `leftTitle` |
 
 `MeetingFooter` additionally reads `ui.layouts.mainLayout.footerTitle` for the platform name; it has no key of its own for it.
 
@@ -399,8 +405,10 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 |---|---|
 | Org identity | Large logo (`h: 6rem`) or primary monogram (first letter on `primaryActionBackground` / `primaryActionText`) when `logo_url` is absent; org name (`subHead`) |
 | Meeting meta | `meeting.subject` when present; type chip (`PERIODIC` / `EMERGENCY` → `sectionBrandBackground` + `textBrand`); status chip (`WAITING_TO_START` / `STARTED` / … → `sectionAccentBackground` + `textAccent`). Missing live fields omit their UI (no placeholders) |
-| Attendance | `can.attend` → primary CTA (`primaryActionBackground` / `primaryActionText`) → `actions.attend` only (session write contract). Attended (`attendedAt` and not `leftAt`) → confirmation strip (check + `attendedTitle` + `attendedAt` via `useMoment().mDatetime`). Left (`leftAt`) → `leftTitle` copy. No disabled fake attend button |
-| Colors / copy | `organization?.colors ?? defaultOrganizationColors()` only. Copy under `ui.layouts.meetingLayout.init` (ar + en, identical keys) |
+| Attendance | Branch order: (1) `can.attend` → primary CTA → `actions.attend` only. (2) Present (`attendedAt` and not `leftAt`) → confirmation strip (check + `attendedTitle` + `attendedAt` via `useMoment().mDatetime`) + `roomUnlockedHint`. (3) `leftAt` → `leftTitle`. (4) Else → accent info strip: when live `datetime` is present **and the open window has not started yet**, `attendAvailableIn` with Moment locale-aware remaining duration until `datetime − ATTEND_OPEN_BEFORE_MS` (`moment(opensAt).from(now, true)`, refreshed on init every 30s while that strip shows) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button |
+| Colors / copy | `organization?.colors ?? defaultOrganizationColors()` only. Copy under `ui.layouts.meetingLayout.init` (ar + en, identical keys): includes `attendAvailableIn`, `attendRequiresForRoom`, `roomUnlockedHint` |
+
+**Meeting room (`live`) gate.** All participant types need present check-in (`can.enterLive`) before the Meeting room page. Drawer: disabled `live` tile when locked (§5.4). `MeetingLivePage` also redirects to `"init"` when `!can.enterLive` (defense if `page` was already `"live"`). Agenda / talkQueue / other drawer ids stay ungated. Chair `startMeeting` / `endMeeting` are unchanged.
 
 **Drawer `live` tile label.** Tile id stays `"live"`; user-facing copy is **Meeting room** (en) / **غرفة الاجتماع** (ar) via `meetingLayout.drawer.itemLive` — not “Live” / “البث”.
 
@@ -490,14 +498,15 @@ What the website side depends on:
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
 2. **Drawer in-shell pages are title stubs (§5.5).** `MeetingLivePage` / `TalkQueue` / `Attendance` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. Header request-to-speak for MEMBER and VIEWER remains disabled.
-3. **Collaborative live map fields** — `subject`, `type`, `status`, `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
+3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
 7. **Organization-host pages other than `Meeting` have no realtime channel.** A tenant-wide org socket is not part of the shipped surface.
-8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` are chairperson-only **client** gates on `useMeetingLiveSession` actions; they are not enforced by the socket controllers yet.
+8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` / `can.attend` / `can.enterLive` are **client** gates on `useMeetingLiveSession`; the attend open window and Meeting-room attendance requirement are **not** enforced by socket controllers or SQL writers yet.
 9. **The meeting shell picks its READY tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. While linking is not READY, only the gate screen renders (no drawer SSR flicker for that path). `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
 10. **Non-transport `connect_error` maps to session code `"NOT_VALID"`** for UI purposes; the linking FAILED copy stays the generic `failedMessage` (no distinct credential string on screen yet).
+11. **Attend-window clock refresh is best-effort.** The session `setTimeout` and init countdown interval can be delayed or cleared by background-tab throttling, effect dependency changes, leaving the meeting route, or large forward clock jumps while a timeout is pending (§5.3).
 
 ## 9) Environment
 
@@ -530,19 +539,20 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
 | `src/app/ui/pages/Meeting.tsx` | page switch on `useMeetingPage().page` (`"init"` → `MeetingInitPage`; drawer ids → named stub pages) | §5, §5.5 |
-| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | `"init"` lobby — org identity, meeting meta, attend / attended | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | `"init"` lobby — org identity, meeting meta, attend window / attended / room gate copy | §5.5 |
 | `src/app/ui/components/meeting/pages/MeetingPageStub.tsx` | shared title-only placeholder chrome for non-init drawer pages | §5.5, §8 |
-| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | `"live"` body (title stub via `MeetingPageStub` + `itemLive`) | §5.5, §8 |
+| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | `"live"` body; bounces to `"init"` when `!can.enterLive`; else title stub | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingTalkQueuePage.tsx` | `"talkQueue"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | `"attendance"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingAgendaPage.tsx` | `"agenda"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx` | `"decisionsAndVote"` body (title stub) | §5.5, §8 |
-| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header` incl. `requestTalk`/`requestTalkAria`, `footer`, `linking`, `drawer` incl. `itemHome`, `init`) | §5.3, §5.4, §5.5 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header` incl. `requestTalk`/`requestTalkAria`, `footer`, `linking`, `drawer` incl. `itemHome`, `init` incl. attend-window / room-gate keys) | §5.3, §5.4, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
-| `src/app/ui/components/meeting/meetingLiveSession.ts` | pure `resolveMeetingLiveSession` → `MeetingLiveSessionState` (`linking` + `can`) | §5.3 |
-| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | `MeetingLiveSessionProvider` + `useMeetingLiveSession` — `{ linking, can, actions, meeting, me }` | §5.3 |
+| `src/app/ui/components/meeting/meetingAttendWindow.ts` | attend-window mirror (`ATTEND_OPEN_BEFORE_MS`, `isAttendWindowOpen`, `attendOpensAtIso`) | §5.3, §5.5 |
+| `src/app/ui/components/meeting/meetingLiveSession.ts` | pure `resolveMeetingLiveSession` → `MeetingLiveSessionState` (`linking` + `can` incl. attend window + `enterLive`) | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | `MeetingLiveSessionProvider` + `useMeetingLiveSession` — `{ linking, can, actions, meeting, me }`; `datetime` + `nowMs` + open-window `setTimeout` | §5.3 |
 | `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | PENDING / FAILED gate UI via session `linking` (`Loadable` / `FiAlertCircle`) | §5.3 |
 | `src/types/meeting.ts` | mirrored live map (`MeetingLiveMap`, `participants`, `MEETING_LIVE_*`; pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
@@ -551,7 +561,7 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` shell/brand token split (incl. fixed-white `actionIconOnFill`); light `softLight` mix 0.78 | §5.4 |
 | `src/app/ui/components/meeting/MeetingHeader.tsx` | menu + org logo/name; disabled request-to-speak (`requestTalk` / `requestTalkAria`) for MEMBER and VIEWER; accent rail; `fixed` mobile bar | §5.4 |
 | `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line | §5.4 |
-| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | Home + role tile grid (`wide` live); `setPage` + selected accent chrome; prefs row | §5.4, §5.5 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | Home + role tile grid (`wide` live); disable locked `live` (`ariaLabel`); `setPage` + selected accent chrome; prefs row | §5.4, §5.5 |
 | `src/app/ui/components/meeting/MeetingDrawerOverlay.tsx` | mobile portal overlay | §5.4 |
 | `src/app/ui/components/HeaderIconButton.tsx` | top-level shared icon button; consumed by `CustomerHeader` + `MeetingHeader` | §5.4; `component-structure.md` §3 |
 | `src/app/ui/components/customer/CustomerHeader.tsx` | consumes `HeaderIconButton` from the shared top level | §5.4 |
@@ -583,9 +593,9 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | join `Rooms.MEETING`; bind the live event set | `../backend/contracts/meeting-realtime-socket.md` §3 |
 | `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | sync handshake + server state vector | `../backend/contracts/meeting-realtime-socket.md` §3.1 |
 | `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | validation, status gate, apply, room broadcast | `../backend/contracts/meeting-realtime-socket.md` §3.2 |
-| `src/app/helpers/MeetingLiveDocHelper.ts` | private codec+seed (incl. nested `participants`) + registry + BLOB persistence | `../backend/contracts/meeting-live-state.md` §1.3, §2 |
-| `src/app/types/meeting.ts` | mirrored `MeetingLiveMap` / `MEETING_LIVE_*` / participant unions (pair with `website/src/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
-| `src/app/orm/models/Meeting.ts` | `live_state` column only | `../backend/contracts/meeting-live-state.md` §1.1 |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | private codec+seed (incl. nested `participants` + `datetime`) + registry + BLOB persistence | `../backend/contracts/meeting-live-state.md` §1.3, §2 |
+| `src/app/types/meeting.ts` | mirrored `MeetingLiveMap` / `MEETING_LIVE_*` / participant unions (pair with `website/src/types/meeting.ts`; includes `datetime`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
+| `src/app/orm/models/Meeting.ts` | `live_state` column; schedule + `ATTEND_OPEN_BEFORE_MS` statics | `../backend/contracts/meeting-live-state.md` §1.1; `meeting-domain.md` §3.2b |
 | `src/app/gql/bridges/customer/MeetingBridge.ts` | `live_state` excluded from GQL attrs | `../backend/contracts/meeting-live-state.md` §4 |
 | `src/resources/configs/socket/io.ts` | `/meeting` namespace + `meeting_auth` + meeting controllers | `../backend/contracts/meeting-realtime-socket.md` §1 |
 | `src/resources/consts/NotificationsConsts.ts` | `MEETING` namespace / FCM / room | `../backend/contracts/meeting-realtime-socket.md` §4 |
@@ -706,11 +716,52 @@ Current delivery on top of §10b: full-row **Home** → `"init"` (`itemHome` + m
 | `.cursor/rules/website-customer-utils-composed-marks.mdc` | `HomeMark` `frameClr`/`accentClr`; meeting monochrome-on-fill | governance |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | Home + selected chrome + stub replacement workflow | governance |
 
+## 10d) Change set inventory (attend window + Meeting room gate)
+
+Current delivery on top of §10a–§10c: live map `datetime` seed; `MeetingModel.ATTEND_OPEN_BEFORE_MS`; website `meetingAttendWindow` + `can.attend` open window + `can.enterLive`; init remaining-duration copy only while the window is not yet open; disabled drawer `live` tile (`ariaLabel`); `MeetingLivePage` bounce. Full path map remains in §10; behavior in §5.3–§5.5 and backend live-state / participant / meeting-domain contracts.
+
+### `backend/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/types/meeting.ts` | modified — `MeetingLiveMap.datetime` | §5.1; `meeting-live-state.md` §1.2 |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — seed `datetime` on create (no BLOB backfill) | `meeting-live-state.md` §1.3 |
+| `src/app/orm/models/Meeting.ts` | modified — `ATTEND_OPEN_BEFORE_MS` | `meeting-domain.md` §3.2b |
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/types/meeting.ts` | modified — mirror `datetime` | §5.1 |
+| `src/app/ui/components/meeting/meetingAttendWindow.ts` | added — attend-window mirror | §5.3 |
+| `src/app/ui/components/meeting/meetingLiveSession.ts` | modified — `enterLive`; attend window in `resolveCan` | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — `datetime` / `nowMs` / open `setTimeout` | §5.3 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — remaining attend copy only while `!isAttendWindowOpen`; room hints | §5.5 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | modified — disable `live` when `!can.enterLive`; locked `ariaLabel` = `init.attendRequiresForRoom` | §5.4 |
+| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | modified — bounce to `"init"` when locked | §5.5 |
+| `src/resources/translations/ar.ts`, `en.ts` | modified — `attendAvailableIn`, `attendRequiresForRoom`, `roomUnlockedHint` | §5.5 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check`; not narrated | — |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.3–§5.5, §8, §10, §10d | — |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | `datetime` on live map + seed | live-state contract |
+| `docs/platforms/backend/contracts/meeting-participant-domain.md` | self-check-in open window | §3.6 there |
+| `docs/platforms/backend/contracts/meeting-domain.md` | `ATTEND_OPEN_BEFORE_MS` | §3.2b there |
+| `.cursor/rules/website-meeting-live-session.mdc` | attend window + `enterLive` + clock refresh | governance |
+| `.cursor/rules/website-meeting-shell.mdc` | init remaining only pre-window; disabled `live` + `ariaLabel` | governance |
+| `.cursor/rules/website-backend-policy-mirror.mdc` | `meetingAttendWindow.ts` mirror | governance |
+| `.cursor/skills/website-meeting-live-session/SKILL.md` | session attend / enterLive workflow | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | init + room gate workflow | governance |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
+- Diff `backend/src/app/types/meeting.ts` against `website/src/types/meeting.ts` (must stay identical).
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with `MeetingInitPage` lobby (attend CTA when `can.attend`); drawer Home returns to `"init"`; drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with `MeetingInitPage` lobby (attend CTA when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
 - Init lobby light chips: `sectionBrandBackground` / `sectionAccentBackground` readable on `pageBackground` (org `softLight` mix 0.78).
 - Selected drawer tile: soft `sectionAccentBackground` + partial start accent rail + `textAccent`; icon well stays primary (white glyph / white `HomeMark`).
 - Socket: organization host opens **no** boot socket; `MeetingLayout` opens `/meeting` once via `MeetingLiveProvider` / `useMeetingLiveInstance`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.

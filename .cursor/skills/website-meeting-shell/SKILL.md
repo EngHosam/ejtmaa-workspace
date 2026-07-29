@@ -47,5 +47,6 @@ description: >-
 8. Request-to-speak lives in `MeetingHeader` for MEMBER and VIEWER only (mic + `requestTalk`; accessible name `requestTalkAria`). No switch track. Chairperson uses drawer `talkQueue`. Read `me` from `useMeetingLiveSession()`.
 9. Colors from `OrganizationColors` / `defaultOrganizationColors()`. Solid action wells use `actionIconOnFill` (fixed white) — not luminance `primaryActionText`. Light section tints: keep `softLight` mix **0.78** in `useOrganization` (fix there, not in page JSX). Style props: `buttonReset` in `baseCssStyle`; behavioral CSS in `cssStyle`.
 10. Copy under `ui.layouts.meetingLayout` — `drawer` (incl. `itemHome`), `header`, `linking`, and `init` (ar + en, identical keys).
-11. `MeetingInitPage`: org logo/name + live `subject`/type/status; attend via `can.attend` / `actions.attend`; attended confirmation (not a disabled button); colors only from `OrganizationColors`.
-12. Verify with `yarn type-check` in `website/`.
+11. `MeetingInitPage`: org logo/name + live `subject`/type/status; attend via `can.attend` / `actions.attend`; remaining-duration `attendAvailableIn` only while `!isAttendWindowOpen` (else `attendRequiresForRoom` alone if still blocked); attended confirmation + `roomUnlockedHint`; colors only from `OrganizationColors`.
+12. Drawer `live`: disable when `!can.enterLive` (`ariaLabel` = `attendRequiresForRoom`); `MeetingLivePage` bounce to `"init"` when locked.
+13. Verify with `yarn type-check` in `website/`.

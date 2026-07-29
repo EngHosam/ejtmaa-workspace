@@ -84,14 +84,15 @@ Exported TS types: `MeetingType`, `MeetingStatus`, `MeetingNotifyStatus` from `G
 
 ### 3.2b Schedule constants
 
-Two statics on `MeetingModel` are the single source for every schedule gate. Ability, Joi, and the requester read them; nothing re-declares the numbers.
+Statics on `MeetingModel` are the single source for the numbers they own. Ability, Joi, and the requester read the schedule pair; nothing re-declares those. The attend-open constant is authority for the live self-check-in window (website client gate today).
 
 | Static | Value | Used by |
 |---|---|---|
 | `TWO_HOURS_MS` | `2 * 60 * 60 * 1000` | `notify_start_at` derivation (create / update / approve) and the edit-freeze window (§9.1a) |
 | `MIN_LEAD_MS` | `12 * 60 * 60 * 1000` | `isMeetingDatetime` Joi rule and the approve lead gate (§9.1a) |
+| `ATTEND_OPEN_BEFORE_MS` | `30 * 60 * 1000` | Self-check-in may open at `datetime − ATTEND_OPEN_BEFORE_MS`; website mirror `meetingAttendWindow.ts` + `can.attend` (`organization-host-routing.md` §5.3; `meeting-participant-domain.md` §3.6). Not a Joi/Ability write gate. |
 
-Website mirrors both in `meetings/meetingScheduleLead.ts` for copy and client validation only (`flow-customer-meetings.md` §6.5).
+Website schedule-lead UI mirrors (when present) stay copy/client validation only (`flow-customer-meetings.md` §6.5). The attend-window mirror is `website/src/app/ui/components/meeting/meetingAttendWindow.ts`.
 
 ### 3.3 Enums (localized)
 
@@ -410,7 +411,7 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 | `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | Basics, approve, delete, participant, agenda, and decision requester subs; `notify_start_at` derivation; private `demoteApprovedMeetingToDraft` + live-doc destroy | §9.1a, §9.3 |
 | `backend/requesters.website.ts` | Backend customer `meeting` sub map | §9.4 |
 | `website/src/types/requesters/requesters.website.ts` | Exact website customer `meeting` sub-map mirror | §9.4 |
-| `backend/src/app/orm/models/Meeting.ts` | ORM source of truth; `TWO_HOURS_MS` / `MIN_LEAD_MS` statics; `live_state` column | §3, §3.2b, §3.6 |
+| `backend/src/app/orm/models/Meeting.ts` | ORM source of truth; `TWO_HOURS_MS` / `MIN_LEAD_MS` / `ATTEND_OPEN_BEFORE_MS` statics; `live_state` column | §3, §3.2b, §3.6 |
 | `backend/src/app/helpers/MeetingLiveDocHelper.ts` | Live document registry and BLOB persistence; `destroyMeetingLiveDoc` consumed by approve/demotion | `meeting-live-state.md` §2–§3 |
 | `backend/src/app/socket/controllers/meeting/*` | `/meeting` connection and `meeting.live.*` controllers | `meeting-realtime-socket.md` §3 |
 | `backend/src/app/orm/models/Member.ts` | `forSelect(lang)` used to hydrate chairperson and roster entity references | §9.2–§9.3 |

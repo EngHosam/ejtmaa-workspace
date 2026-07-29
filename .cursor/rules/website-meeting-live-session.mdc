@@ -2,6 +2,7 @@
 description: MeetingLiveSession product surface — provider under MeetingLiveProvider, linking/can/actions/meeting/me, linking gate
 globs:
   - website/src/app/ui/components/meeting/meetingLiveSession.ts
+  - website/src/app/ui/components/meeting/meetingAttendWindow.ts
   - website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx
   - website/src/app/ui/components/meeting/MeetingLinkingScreen.tsx
   - website/src/app/ui/layouts/MeetingLayout.tsx
@@ -58,4 +59,7 @@ When `linking !== "READY"`: every `can.*` is false. Session value still includes
 | `left` | `me.leftAt = ISO` |
 
 - Sync `() => void`; no-op when `!can.*` (and `attend`/`left` require `me`).
-- Client `can` gates are **not** server authz — socket still gates writes with `MEETING_LIVE_STATUSES` only.
+- `can.enterLive` is a **navigation gate only** (no matching action write): true when `attendedAt` set and `leftAt` unset.
+- `can.attend` also requires the open window: `nowMs >= meeting.datetime − ATTEND_OPEN_BEFORE_MS` (`meetingAttendWindow.ts` mirrors `MeetingModel.ATTEND_OPEN_BEFORE_MS`).
+- Session provider passes `meeting.datetime` + `nowMs` into `resolveMeetingLiveSession`. While READY and not yet attended, schedule one `setTimeout` until the open instant (do not invent a polling interval for capability flip).
+- Client `can` gates are **not** server authz — socket still gates writes with `MEETING_LIVE_STATUSES` only; attend-window / room attendance are not socket-enforced.
