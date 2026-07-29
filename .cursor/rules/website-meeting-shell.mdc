@@ -3,6 +3,7 @@ description: Organization-host Meeting shell IA — role drawer tiles, wide live
 globs:
   - website/src/app/ui/components/meeting/MeetingDrawerPanel.tsx
   - website/src/app/ui/components/meeting/MeetingHeader.tsx
+  - website/src/app/ui/components/meeting/MeetingHeaderMe.tsx
   - website/src/app/ui/components/meeting/MeetingDrawerOverlay.tsx
   - website/src/app/ui/components/meeting/pages/**
   - website/src/app/ui/components/meeting/hooks/useMeetingPage.tsx
@@ -66,9 +67,13 @@ Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 - Tiles call `setPage(id)` (and `onClose` on the mobile overlay); selected tile: soft `sectionAccentBackground`, partial-height start accent rail (`3px`, inset top/bottom), `textAccent` label; icon well stays `primaryActionBackground` + white `actionIconOnFill` (no selected swap, no full perimeter brand border). `aria-current="page"`.
 - Tile chrome matches existing meeting drawer `DrawerGridItem` (org `OrganizationColors`, `semanticDims`).
 
-## Header request-to-speak
+## Header identity + request-to-speak
 
-- Show only when `me` exists and `me.type !== "CHAIRPERSON"` (MEMBER and VIEWER).
+- Current participant cluster: `MeetingHeaderMe` (avatar + name + type chip) when `me` exists; props from session `me.name` / `me.type` / `me.avatarUrl` + org `colors`; trailing push (`pushTrailing`) so it sits before request-to-speak.
+- Do **not** import `customer/IdentityAvatar` into meeting shell — compose the avatar circle with org `primaryActionBackground` and `actionIconOnFill` for the empty glyph.
+- Type copy: `header.typeChairperson` / `typeMember` / `typeViewer` (`CHAIRPERSON` / `VIEWER` / else member). Visible text only — no redundant group `aria-label`.
+- Name: `name.trim()` only (no invented empty-name placeholder). Cluster `maxW` uses numeric rem (`maxW={14}`), not `"14rem"`.
+- Request-to-speak: show only when `me` exists and `me.type !== "CHAIRPERSON"` (MEMBER and VIEWER). Owns `ml="auto"` only when `me` is absent.
 - Control is mic + visible `requestTalk` label; accessible name `requestTalkAria` (session-scoped). No switch track.
 - Placeholder: disabled + `aria-disabled`; no handler.
 - Chairperson manages speaking via drawer `talkQueue`, not a header control.

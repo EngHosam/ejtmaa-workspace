@@ -334,7 +334,8 @@ Copying a `ThemeMap` leaf into the shell group is a defect: `yarn type-check` va
 
 | Component | Shipped behavior |
 |---|---|
-| `meeting/MeetingHeader.tsx` | Menu button (shared `HeaderIconButton`) + org logo, or the org name clamped to one line when there is no logo; for non-chair `me`, a disabled request-to-speak control (mic + `requestTalk` / `requestTalkAria`). A 2px rail in `colors.accentActionBackground` sits on the bottom edge. `fixed` prop switches between the in-flow desktop bar and the mobile `Fixed` bar at `zIndex.header`. |
+| `meeting/MeetingHeader.tsx` | Menu button (shared `HeaderIconButton`) + org logo, or the org name clamped to one line when there is no logo; when `me` exists, trailing `MeetingHeaderMe` (avatar + name + type chip); for non-chair `me`, a disabled request-to-speak control (mic + `requestTalk` / `requestTalkAria`). A 2px rail in `colors.accentActionBackground` sits on the bottom edge. `fixed` prop switches between the in-flow desktop bar and the mobile `Fixed` bar at `zIndex.header`. |
+| `meeting/MeetingHeaderMe.tsx` | Presentational current-participant cluster: props `name` / `type` / `avatarUrl` / `colors` / optional `pushTrailing`. Avatar circle (~`2.2rem`) uses org `primaryActionBackground` + image or `FiUser` on `actionIconOnFill` (do **not** import `customer/IdentityAvatar`). Name: `name.trim()`, `smallAction` bold, ellipsis, `maxW={14}` on the cluster. Type chip: soft `sectionAccentBackground` + `textAccent`; labels `typeChairperson` / `typeMember` / `typeViewer` (`CHAIRPERSON` / `VIEWER` / else → member). Visible text only — no redundant group `aria-label`. |
 | `meeting/MeetingFooter.tsx` | Rights line only: `© <year> <platform name> — <rights>`. The name is the **platform** (`ui.layouts.mainLayout.footerTitle`), not the organization. |
 | `meeting/MeetingDrawerPanel.tsx` | Shared panel body for both breakpoints: title row (close when `showClose`), org identity card (logo and/or name), full-row **Home** control (`itemHome` + `HomeMark`) above a role-based 2-column tile grid (`live` full-row, label Meeting room / غرفة الاجتماع) that calls `setPage` from `useMeetingPage`, pinned appearance/language row (`ThemeModeSwitch` + `LanguageSwitch`, both `compact`). |
 | `meeting/MeetingDrawerOverlay.tsx` | Mobile portal overlay following the `CustomerDrawer` pattern: `createPortal` to `body`, `zIndex.modals`, blurred backdrop, RTL-aware slide-in, `no-scroll-drawer` body lock, 220ms unmount delay. Exported **without** `withMemo` — it reads `router.isRTL`. |
@@ -358,7 +359,9 @@ The glyph is the shared `DrawerMenuIcon`. Its leading bar is themeable through t
 
 Tile layout mirrors `CustomerDrawer`'s `DrawerGridItem`: `minH 7.2`, a `3.1`-square icon well, and a `smallAction` bold label clamped to two lines. `DrawerGridItem` accepts either `Icon` (Feather) or `mark` (ReactNode) — Home uses `mark`. Governance: `.cursor/rules/website-meeting-shell.mdc`, skill `website-meeting-shell`.
 
-**Header request-to-speak.** When `me` exists and `me.type !== "CHAIRPERSON"`, `MeetingHeader` shows a disabled control: mic + visible `requestTalk` label; accessible name `requestTalkAria` (session-scoped, distinct from the label). MEMBER and VIEWER both get the control (`meeting-participant-domain.md` §8: request talking for all three types; chairperson uses drawer `talkQueue` instead). Shipped chrome is icon + label only — no switch track, no click handler. Header reads `me` from `useMeetingLiveSession()`.
+**Header identity.** When `me` exists, `MeetingHeader` mounts `MeetingHeaderMe` on the trailing side with `pushTrailing` (cluster owns `ml="auto"`). Props come from live session `me` (`name`, `type`, `avatarUrl`) plus org `colors` — no extra GQL. Request-to-speak sits **after** the cluster and takes `ml="auto"` only when `me` is absent. Do not import `customer/IdentityAvatar` (portal `semanticColor`); avatar well ink is org `actionIconOnFill`. Type labels: `header.typeChairperson` / `typeMember` / `typeViewer`. Name display is `name.trim()` (no invented empty-name glyph). Cluster width capped with numeric rem shorthand `maxW={14}`.
+
+**Header request-to-speak.** When `me` exists and `me.type !== "CHAIRPERSON"`, `MeetingHeader` shows a disabled control after the identity cluster: mic + visible `requestTalk` label; accessible name `requestTalkAria` (session-scoped, distinct from the label). MEMBER and VIEWER both get the control (`meeting-participant-domain.md` §8: request talking for all three types; chairperson uses drawer `talkQueue` instead). Shipped chrome is icon + label only — no switch track, no click handler. Header reads `me` from `useMeetingLiveSession()`.
 
 #### Layout composition
 
@@ -373,7 +376,7 @@ The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls 
 
 | Group | Keys |
 |---|---|
-| `header` | `menu`, `logoAria`, `requestTalk`, `requestTalkAria` |
+| `header` | `menu`, `logoAria`, `typeChairperson`, `typeMember`, `typeViewer`, `requestTalk`, `requestTalkAria` |
 | `footer` | `rights` |
 | `linking` | `logoAria`, `pendingStatus`, `failedMessage` |
 | `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemHome`, `itemLive`, `itemTalkQueue`, `itemAttendance`, `itemAgenda`, `itemDecisionsAndVote`, `utilityPrefs` |
@@ -497,7 +500,7 @@ What the website side depends on:
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
-2. **Drawer in-shell pages are title stubs (§5.5).** `MeetingLivePage` / `TalkQueue` / `Attendance` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. Header request-to-speak for MEMBER and VIEWER remains disabled.
+2. **Drawer in-shell pages are title stubs (§5.5).** `MeetingLivePage` / `TalkQueue` / `Attendance` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
 3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
@@ -546,7 +549,7 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | `"attendance"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingAgendaPage.tsx` | `"agenda"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx` | `"decisionsAndVote"` body (title stub) | §5.5, §8 |
-| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header` incl. `requestTalk`/`requestTalkAria`, `footer`, `linking`, `drawer` incl. `itemHome`, `init` incl. attend-window / room-gate keys) | §5.3, §5.4, §5.5 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header` incl. type keys / `requestTalk`/`requestTalkAria`, `footer`, `linking`, `drawer` incl. `itemHome`, `init` incl. attend-window / room-gate keys) | §5.3, §5.4, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
@@ -559,7 +562,8 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — live → session → page providers, linking gate, branded shell, responsive READY tree | §5, §5.1, §5.3, §5.4, §5.5 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
 | `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` shell/brand token split (incl. fixed-white `actionIconOnFill`); light `softLight` mix 0.78 | §5.4 |
-| `src/app/ui/components/meeting/MeetingHeader.tsx` | menu + org logo/name; disabled request-to-speak (`requestTalk` / `requestTalkAria`) for MEMBER and VIEWER; accent rail; `fixed` mobile bar | §5.4 |
+| `src/app/ui/components/meeting/MeetingHeader.tsx` | menu + org logo/name; `MeetingHeaderMe` when `me` exists; disabled request-to-speak (`requestTalk` / `requestTalkAria`) for MEMBER and VIEWER; accent rail; `fixed` mobile bar | §5.4 |
+| `src/app/ui/components/meeting/MeetingHeaderMe.tsx` | current participant avatar + name + type chip (org colors, session `me`) | §5.4 |
 | `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line | §5.4 |
 | `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | Home + role tile grid (`wide` live); disable locked `live` (`ariaLabel`); `setPage` + selected accent chrome; prefs row | §5.4, §5.5 |
 | `src/app/ui/components/meeting/MeetingDrawerOverlay.tsx` | mobile portal overlay | §5.4 |
@@ -756,12 +760,34 @@ Current delivery on top of §10a–§10c: live map `datetime` seed; `MeetingMode
 | `.cursor/skills/website-meeting-live-session/SKILL.md` | session attend / enterLive workflow | governance |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | init + room gate workflow | governance |
 
+## 10e) Change set inventory (MeetingHeader identity)
+
+Current delivery on top of §10a–§10d: READY-shell header shows the current live participant via presentational `MeetingHeaderMe` (session `me` fields + org colors). No backend / live-type / GQL change. Full path map remains in §10; behavior in §5.4.
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/components/meeting/MeetingHeaderMe.tsx` | added — avatar + name + type chip | §5.4 |
+| `src/app/ui/components/meeting/MeetingHeader.tsx` | modified — mount `MeetingHeaderMe` when `me`; trailing `ml` ownership with request-talk | §5.4 |
+| `src/resources/translations/ar.ts`, `en.ts` | modified — `header.typeChairperson` / `typeMember` / `typeViewer` | §5.4 i18n table |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check`; not narrated | — |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.4 header identity, §8/§10 tables, §10e | — |
+| `docs/platforms/website/component-structure.md` | meeting-shell row lists `MeetingHeaderMe` | component inventory |
+| `.cursor/rules/website-meeting-shell.mdc` | Header identity + request-to-speak; globs include `MeetingHeaderMe.tsx` | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | header identity step | governance |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Diff `backend/src/app/types/meeting.ts` against `website/src/types/meeting.ts` (must stay identical).
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with `MeetingInitPage` lobby (attend CTA when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
 - Init lobby light chips: `sectionBrandBackground` / `sectionAccentBackground` readable on `pageBackground` (org `softLight` mix 0.78).
 - Selected drawer tile: soft `sectionAccentBackground` + partial start accent rail + `textAccent`; icon well stays primary (white glyph / white `HomeMark`).
 - Socket: organization host opens **no** boot socket; `MeetingLayout` opens `/meeting` once via `MeetingLiveProvider` / `useMeetingLiveInstance`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.
