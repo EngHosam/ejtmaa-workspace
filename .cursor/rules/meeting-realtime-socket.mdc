@@ -93,4 +93,4 @@ Handshake auth failures are **`connect_error`**, never `meeting.live.error`. Lin
 - Keeping the live module as `.ts` while it exports JSX provider markup (must be `.tsx`).
 - Stopping Socket.IO reconnection on transport-only `connect_error` (`TransportError`).
 - Leaving auth handshake `connect_error` without setting session `error` (UI would stick on PENDING).
-- Encoding product linking / can / actions math inside `useMeetingLive` — that belongs in `meetingLiveSession` / `useMeetingLiveSession`.
+- Encoding product linking / can / actions math inside `useMeetingLive` — that belongs in `useMeetingLiveSession`.

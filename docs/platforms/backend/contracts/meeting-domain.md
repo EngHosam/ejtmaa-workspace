@@ -90,9 +90,9 @@ Statics on `MeetingModel` are the single source for the numbers they own. Abilit
 |---|---|---|
 | `TWO_HOURS_MS` | `2 * 60 * 60 * 1000` | `notify_start_at` derivation (create / update / approve) and the edit-freeze window (§9.1a) |
 | `MIN_LEAD_MS` | `12 * 60 * 60 * 1000` | `isMeetingDatetime` Joi rule and the approve lead gate (§9.1a) |
-| `ATTEND_OPEN_BEFORE_MS` | `30 * 60 * 1000` | Self-check-in may open at `datetime − ATTEND_OPEN_BEFORE_MS`; website mirror `meetingAttendWindow.ts` + `can.attend` (`organization-host-routing.md` §5.3; `meeting-participant-domain.md` §3.6). Not a Joi/Ability write gate. |
+| `ATTEND_OPEN_BEFORE_MS` | `30 * 60 * 1000` | Self-check-in may open at `datetime − ATTEND_OPEN_BEFORE_MS`; website mirror private inside `useMeetingAttendWindow.ts`; session exposes `attendWindow` and feeds `windowOpen` into `can.attend` (`organization-host-routing.md` §5.3; `meeting-participant-domain.md` §3.6). Not a Joi/Ability write gate. |
 
-Website schedule-lead UI mirrors (when present) stay copy/client validation only (`flow-customer-meetings.md` §6.5). The attend-window mirror is `website/src/app/ui/components/meeting/meetingAttendWindow.ts`.
+Website schedule-lead UI mirrors (when present) stay copy/client validation only (`flow-customer-meetings.md` §6.5). The attend-window mirror lives in `website/src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` (session-owned clock; screens read `attendWindow`).
 
 ### 3.3 Enums (localized)
 

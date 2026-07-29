@@ -10,10 +10,10 @@ The website may re-state a backend rule to build copy, disable a control, or pre
 
 ## Required
 
-- One module per rule family, next to its consumers, exporting the constants and the predicates together. Shipped: `customer/meetings/meetingScheduleLead.ts` (lead + freeze windows, voting participant types — when present under customer meetings), `customer/meetings/meetingNotifyTemplateMode.ts` (contact-mode resolver — when present), `components/meeting/meetingAttendWindow.ts` (self-check-in open window for live session `can.attend` / init remaining copy).
+- One module per rule family, next to its consumers. Pure mirrors export constants + predicates together when callers are non-hook code. Shipped: `customer/meetings/meetingScheduleLead.ts`, `customer/meetings/meetingNotifyTemplateMode.ts` (when present). Attend window: `components/meeting/hooks/useMeetingAttendWindow.ts` — session calls it **once** and exposes `attendWindow`; screens read from session (do not call the hook again). Mirror math stays private.
 - Every mirrored constant names its backend source in a one-line comment (`Mirror of backend MeetingModel.MIN_LEAD_MS — keep in sync.` / `MeetingModel.ATTEND_OPEN_BEFORE_MS`).
-- Derived predicates live in the mirror module too, so a rule change is one edit: `countVotingParticipants` is used by the details roster **and** `useCustomerHome`, not re-filtered per screen; `isAttendWindowOpen` is used by `resolveCan` and remaining-duration UI helpers.
-- The server keeps the enforcing gate (Joi rule, Ability, requester) for write-path schedule rules. Live attend-window / `enterLive` are **client session gates** today — copy must still match `isAttendWindowOpen` / `can.enterLive`, and must not claim socket enforcement that is not shipped.
+- Derived predicates live in the mirror module too, so a rule change is one edit: `countVotingParticipants` is used by the details roster **and** `useCustomerHome`, not re-filtered per screen. Attend-window consumers must not re-copy the 30-minute math.
+- The server keeps the enforcing gate (Joi rule, Ability, requester) for write-path schedule rules. Live attend-window / `enterLive` are **client session gates** today — copy must still match `windowOpen` / `can.enterLive`, and must not claim socket enforcement that is not shipped.
 
 ## Forbidden
 

@@ -141,7 +141,7 @@ Config layout: root entry `configs/socket.ts` is the shared boot factory; `confi
 | Page | `website/src/app/ui/pages/Meeting.tsx` — switches in-shell pages from `useMeetingPage().page` (§5.5); default `"init"` → `meeting/pages/MeetingInitPage` |
 | In-shell page state | `useMeetingPage.tsx` — `MeetingPage` type + `MeetingPageProvider` / `useMeetingPage` (§5.5) |
 | Live transport | `website/src/app/ui/components/meeting/hooks/useMeetingLive.tsx` — socket + Yjs + SyncedStore instance + provider + public context reader (product module under `components/meeting/`, **not** `ui/base/hooks`) |
-| Live session surface | `meetingLiveSession.ts` + `MeetingLiveSessionProvider` / `useMeetingLiveSession` — `{ linking, can, actions, meeting, me }` (§5.3) |
+| Live session surface | `hooks/useMeetingLiveSession.tsx` — resolve + provider → `{ linking, can, actions, meeting, me, attendWindow }` (§5.3) |
 | Current participant | `website/src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` — SyncedStore proxy for the route member's roster entry (§5.2); product UI prefers `me` from session (§5.3) |
 | Linking gate UI | `website/src/app/ui/components/meeting/MeetingLinkingScreen.tsx` — full-viewport PENDING / FAILED chrome (§5.3) |
 
@@ -216,15 +216,15 @@ Naming: under the `MeetingLive*` family, `Me` means the session member (parallel
 
 The Meeting page does not consume this hook directly; it is the index helper used inside `MeetingLiveSessionProvider` (§5.3) to populate session `me`. READY shell (`MeetingHeader` / `MeetingDrawerPanel`) reads `me` from `useMeetingLiveSession()`.
 
-### 5.3) Meeting live session surface (`linking` / `can` / `actions` / `meeting` / `me`)
+### 5.3) Meeting live session surface (`linking` / `can` / `actions` / `meeting` / `me` / `attendWindow`)
 
-Public product API for Meeting UI. Transport stays in §5.1 (`MeetingLiveProvider`). Session is a **nested** provider under it: `MeetingLiveSessionProvider` owns one resolve + `actions` for the whole tree; consumers read via `useMeetingLiveSession()`.
+Public product API for Meeting UI. Transport stays in §5.1 (`MeetingLiveProvider`). Session is a **nested** provider under it: `MeetingLiveSessionProvider` owns one resolve + `actions` + **one** attend-window clock for the whole tree; consumers read via `useMeetingLiveSession()`.
 
 | Piece | File | Role |
 |---|---|---|
-| Pure state | `website/src/app/ui/components/meeting/meetingLiveSession.ts` | `resolveMeetingLiveSession(input)` → `MeetingLiveSessionState` (`linking` + `can` only) |
-| Attend window mirror | `website/src/app/ui/components/meeting/meetingAttendWindow.ts` | `ATTEND_OPEN_BEFORE_MS` (mirror of `MeetingModel.ATTEND_OPEN_BEFORE_MS`), `isAttendWindowOpen`, `attendOpensAtIso` |
-| Provider + hook | `website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | `MeetingLiveSessionProvider` (under `MeetingLiveProvider`) + public `useMeetingLiveSession()` context reader; passes `meeting.datetime` + `nowMs`; schedules one `setTimeout` until attend opens so `can.attend` flips without reload |
+| Attend-window clock | `website/src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` | Mirror of `MeetingModel.ATTEND_OPEN_BEFORE_MS` (math **private**). Returns `{ opensAtIso, windowOpen, nowMs }`. While waiting: one open `setTimeout` + 30s ticks. Invalid `datetime` → no `opensAtIso`, `windowOpen` false |
+| Pure session state | `website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | `resolveMeetingLiveSession` → `MeetingLiveSessionState` (`linking` + `can`); takes `windowOpen` for `can.attend` |
+| Provider + hook | same file | Calls `useMeetingAttendWindow(meeting.datetime)` **once**; passes `windowOpen` into resolve; exposes `attendWindow` on the session value |
 | Gate UI | `website/src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | Full-viewport PENDING / FAILED when linking is not READY |
 
 #### Public shape
@@ -236,10 +236,13 @@ Public product API for Meeting UI. Transport stays in §5.1 (`MeetingLiveProvide
   actions: MeetingLiveSessionActions;
   meeting: Partial<MeetingLiveMap>;     // read
   me: MeetingLiveParticipant | undefined; // read
+  attendWindow: MeetingAttendWindowHookOp; // opensAtIso / windowOpen / nowMs
 }
 ```
 
 `MeetingLiveLinking` is the **only** derived session enum. Meeting lifecycle and attendance are read from `meeting.status` and `me.attendedAt` / `me.leftAt` — no remapped stage enums.
+
+**Single clock.** Product screens (including `MeetingInitPage`) must **not** call `useMeetingAttendWindow`. They read `attendWindow` from session. Do not re-export private mirror helpers (`ATTEND_OPEN_BEFORE_MS`, `isAttendWindowOpen`, `attendOpensAtIso`).
 
 #### Write contract
 
@@ -259,25 +262,25 @@ Proxies remain technically mutable; enforcement is this contract plus governance
 | `READY` | `connected && synced` and no error |
 | `PENDING` | otherwise (including transport-only `connect_error` while Socket.IO retries) |
 
-When `linking !== "READY"`, every `can.*` = `false`. The session value still includes `meeting` / `me` proxies; the shell does not mount product chrome until READY.
+When `linking !== "READY"`, every `can.*` = `false`. The session value still includes `meeting` / `me` / `attendWindow`; the shell does not mount product chrome until READY.
 
 #### Capabilities (`can`)
 
-Computed only when linking is READY. Inputs include live `status`, `meType`, `attendedAt`, `leftAt`, live map `datetime` (ISO scheduled start), and `nowMs` (wall clock from the session provider).
+Computed only when linking is READY. Inputs include live `status`, `meType`, `attendedAt`, `leftAt`, and `windowOpen` from session `attendWindow`.
 
 | Key | True when |
 |---|---|
 | `startMeeting` | `meType === "CHAIRPERSON"` and `status === "WAITING_TO_START"` |
 | `endMeeting` | chairperson and `status === "STARTED"` |
-| `attend` | any `meType`, status `WAITING_TO_START` or `STARTED`, no `attendedAt`, no `leftAt`, and `nowMs >= datetime − MeetingModel.ATTEND_OPEN_BEFORE_MS` (30 minutes before scheduled start; website mirror `isAttendWindowOpen`) |
+| `attend` | any `meType`, status `WAITING_TO_START` or `STARTED`, no `attendedAt`, no `leftAt`, and `windowOpen` (open at `datetime − MeetingModel.ATTEND_OPEN_BEFORE_MS`) |
 | `left` | any `meType`, status `WAITING_TO_START` or `STARTED`, has `attendedAt`, no `leftAt` |
 | `enterLive` | has `attendedAt` and no `leftAt` (any type) — **navigation gate only** (no `actions.enterLive` write) |
 
-Attend stays allowed after the window opens for the rest of a live session (`WAITING_TO_START` or `STARTED`). Missing / invalid `datetime` keeps `can.attend` false.
+Attend stays allowed after the window opens for the rest of a live session (`WAITING_TO_START` or `STARTED`). Missing / invalid `datetime` keeps `windowOpen` false → `can.attend` false.
 
 These are **client session gates**. They do **not** replace the backend write gate (`MEETING_LIVE_STATUSES` on `meeting.live.update`), do **not** validate `attendedAt` timestamps on the socket, and do **not** yet enforce participant type on the server (§8).
 
-**Clock refresh.** While linking is READY, `datetime` is set, and the participant has not attended, the session provider schedules a single `setTimeout` for `datetime − ATTEND_OPEN_BEFORE_MS` and then sets `nowMs = Date.now()` so `can.attend` can become true without a reload. Background-tab throttling, effect cleanup on linking/`datetime`/`attendedAt` changes, leaving the meeting route, and large forward clock jumps while a timeout is pending can delay or cancel that flip until the effect runs again.
+**Clock refresh.** Session-owned `useMeetingAttendWindow` flips `windowOpen` with one `setTimeout` at the open instant (plus 30s ticks while waiting for Init remaining-duration copy). Background-tab throttling, effect cleanup on `datetime` changes, leaving the meeting route, and large forward clock jumps while a timeout is pending can delay or cancel that flip until the effect runs again.
 
 #### Actions (sync)
 
@@ -315,16 +318,19 @@ i18n under `ui.layouts.meetingLayout.linking`: `logoAria`, `pendingStatus`, `fai
 
 - Reads `state.organizationHost` through `useSector` and returns `null` when `id` is absent, so a consumer cannot render tenant chrome on a non-organization host.
 - Returns `{ id, name, description, logo_url, colors }`. Raw `primary_color` / `secondary_color` are **not** re-exported — a consumer must go through `colors`.
-- `colors` is an `OrganizationColors` map whose keys mirror `semanticColor` naming, so a component reads `colors.cardBackground` exactly like it would read `semanticColor.cardBackground`.
-- Seeds resolve with the installed `color` package: `primary_color` → brand, `secondary_color` → accent. A `null`, empty, or unparseable value falls back to `BrandColors.navy` / `BrandColors.orange`. The whole map is `useMemo`-ed on the six store fields. Light-scheme section tints (`sectionBrandBackground` / `sectionAccentBackground`) mix the seed toward white at **0.78** (not near-white wash) so chips and soft fills stay readable on `pageBackground`; dark-scheme section tints keep the existing soft rgba overlays.
+- `colors` is an `OrganizationColors` map whose keys mirror `semanticColor` naming for the shell half, plus computed brand and scheme-pair keys. A consumer reads `colors.cardBackground` like `semanticColor.cardBackground`, and attendance tiles use dedicated `idleCardBackground` / `presentCardBackground` — never invent a local fill when contrast fails.
+- Seeds resolve with the installed `color` package: `primary_color` → brand, `secondary_color` → accent. A `null`, empty, or unparseable value falls back to `BrandColors.navy` / `BrandColors.orange`. The whole map is `useMemo`-ed on the six store fields. Light-scheme section tints (`sectionBrandBackground` / `sectionAccentBackground`) mix the seed toward white at **0.78** (not near-white wash) so chips and soft fills stay readable on `pageBackground`; dark-scheme section tints keep the existing soft rgba overlays. `presentCardBackground` is a stronger accent wash (**0.62** / **0.18**) so it stays distinct from type chips on `sectionAccentBackground`.
 - `defaultOrganizationColors()` builds the same map from the two `BrandColors` fallbacks; every consumer uses `organization?.colors ?? defaultOrganizationColors()` so the shell renders before the slice hydrates.
 
-**Token split (non-negotiable).** Shell/neutral keys are assigned the `semanticColor.*` token itself, never a copied literal — `ColorType` accepts a `ThemeMapPath` and `getColor` resolves it per scheme, so these follow `theme.ts` automatically. Only the **nine** brand keys are computed from the seeds:
+**Token split (non-negotiable).** Shell/neutral keys are assigned the `semanticColor.*` token itself, never a copied literal — `ColorType` accepts a `ThemeMapPath` and `getColor` resolves it per scheme, so these follow `theme.ts` automatically. Brand keys are computed from the seeds. Scheme-pair keys are explicit light/dark `ColorType` pairs for surfaces that must diverge by scheme (or must not collide with chip fills):
 
 | Group | Keys | Source |
 |---|---|---|
 | Shell (16) | `pageBackground`, `headerBackground`, `footerBackground`, `drawerBackground`, `cardBackground`, `inputBackground`, `inputBorder`, `navigationBorder`, `footerBorder`, `subtleDivider`, `backdrop`, `textPrimary`, `textSecondary`, `textTertiary`, `iconPrimary`, `iconSecondary` | `semanticColor.<same key>` |
 | Brand (9) | `primaryActionBackground`, `accentActionBackground`, `primaryActionText`, `accentActionText`, `actionIconOnFill`, `sectionBrandBackground`, `sectionAccentBackground`, `textBrand`, `textAccent` | computed from the org seeds (`actionIconOnFill` is fixed white for solid action wells) |
+| Scheme pair (2) | `idleCardBackground`, `presentCardBackground` | idle: light `#FFFFFF` / dark `@transparent`; present: stronger accent wash than `sectionAccentBackground` (softLight **0.62** / softDark **0.18**) so type chips stay distinct |
+
+**Rule:** need a new fill? Add a token here — do not branch `colorScheme` in the component and do not reuse a chip fill for a card body.
 
 Copying a `ThemeMap` leaf into the shell group is a defect: `yarn type-check` validates a token path but cannot detect a stale hex, so a copy drifts silently on the next `theme.ts` edit. `primaryActionText` / `accentActionText` pick white or ink by seed luminance, so an organization may choose a light primary without losing contrast. Authority: `docs/invariants/website.md` W43.
 
@@ -408,24 +414,38 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 |---|---|
 | Org identity | Large logo (`h: 6rem`) or primary monogram (first letter on `primaryActionBackground` / `primaryActionText`) when `logo_url` is absent; org name (`subHead`) |
 | Meeting meta | `meeting.subject` when present; type chip (`PERIODIC` / `EMERGENCY` → `sectionBrandBackground` + `textBrand`); status chip (`WAITING_TO_START` / `STARTED` / … → `sectionAccentBackground` + `textAccent`). Missing live fields omit their UI (no placeholders) |
-| Attendance | Branch order: (1) `can.attend` → primary CTA → `actions.attend` only. (2) Present (`attendedAt` and not `leftAt`) → confirmation strip (check + `attendedTitle` + `attendedAt` via `useMoment().mDatetime`) + `roomUnlockedHint`. (3) `leftAt` → `leftTitle`. (4) Else → accent info strip: when live `datetime` is present **and the open window has not started yet**, `attendAvailableIn` with Moment locale-aware remaining duration until `datetime − ATTEND_OPEN_BEFORE_MS` (`moment(opensAt).from(now, true)`, refreshed on init every 30s while that strip shows) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button |
-| Colors / copy | `organization?.colors ?? defaultOrganizationColors()` only. Copy under `ui.layouts.meetingLayout.init` (ar + en, identical keys): includes `attendAvailableIn`, `attendRequiresForRoom`, `roomUnlockedHint` |
+| Attendance | Branch order: (1) `can.attend` → primary CTA → `actions.attend` only. (2) Present (`can.enterLive`) → confirmation strip (check + first-person `attendedTitle` + first-person relative `attendedAt` via `moment(attendedAt).from(now, true)`) + quieter `roomUnlockedHint` (`caption` + `textTertiary`). (3) `leftAt` → `leftTitle`. (4) Else → accent info strip: when `attendWindow` says the open window has not started yet, `attendAvailableIn` with Moment locale-aware remaining duration (`moment(opensAtIso).from(moment(nowMs), true)`, refreshed by session clock every 30s while waiting) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button. Init reads `attendWindow` from session — does not call `useMeetingAttendWindow` |
+| Colors / copy | `organization?.colors ?? defaultOrganizationColors()` only. Copy under `ui.layouts.meetingLayout.init` (ar + en, identical keys). Init attend strings are **first person**; roster strings under `meetingLayout.attendance` are third person |
 
 **Meeting room (`live`) gate.** All participant types need present check-in (`can.enterLive`) before the Meeting room page. Drawer: disabled `live` tile when locked (§5.4). `MeetingLivePage` also redirects to `"init"` when `!can.enterLive` (defense if `page` was already `"live"`). Agenda / talkQueue / other drawer ids stay ungated. Chair `startMeeting` / `endMeeting` are unchanged.
 
 **Drawer `live` tile label.** Tile id stays `"live"`; user-facing copy is **Meeting room** (en) / **غرفة الاجتماع** (ar) via `meetingLayout.drawer.itemLive` — not “Live” / “البث”.
 
-**Drawer pages (title stubs).** Each drawer id mounts a named page under `meeting/pages/` that currently shows only the drawer label via shared `MeetingPageStub` until product UI ships. Stub chrome: `pageBackground` + `pageTitle` text from `OrganizationColors`. Each `Meeting*Page.tsx` reads its title from `meetingLayout.drawer.item*` and renders `<MeetingPageStub title={…} />`.
+**Drawer pages.** Each drawer id mounts a named page under `meeting/pages/`. **Attendance** (`MeetingAttendancePage`) is shipped product UI (chair-only). Other drawer ids still use shared `MeetingPageStub` (drawer label only) until their product UI ships. Stub chrome: `pageBackground` + `pageTitle` text from `OrganizationColors`.
 
-| `MeetingPage` id | Component |
-|---|---|
-| `live` | `MeetingLivePage` |
-| `talkQueue` | `MeetingTalkQueuePage` |
-| `attendance` | `MeetingAttendancePage` |
-| `agenda` | `MeetingAgendaPage` |
-| `decisionsAndVote` | `MeetingDecisionsAndVotePage` |
+| `MeetingPage` id | Component | Shipped body |
+|---|---|---|
+| `live` | `MeetingLivePage` | stub; bounce to `"init"` when `!can.enterLive` |
+| `talkQueue` | `MeetingTalkQueuePage` | stub |
+| `attendance` | `MeetingAttendancePage` | chair attendance log (below) |
+| `agenda` | `MeetingAgendaPage` | stub |
+| `decisionsAndVote` | `MeetingDecisionsAndVotePage` | stub |
 
 Shared placeholder: `meeting/pages/MeetingPageStub.tsx`. Replace stub body inside the matching named page file when product UI ships — keep the file; do not invent a second route.
+
+**Attendance log (`"attendance"`).** Chairperson-only. `MeetingAttendancePage` bounces non-chair with `useEffect` → `setPage("init")` and render `null` (same pattern as locked `MeetingLivePage`). Data from `useMeetingAttendance` (no navigation side effects). Reads roster from session `meeting.participants` only (no GQL, no direct `batch`).
+
+| Block | Behavior |
+|---|---|
+| Title / subtitle | `attendance.title` + `attendance.subtitle` (page uses only the `attendance` translator — not `drawer`) |
+| Quorum strip | Shown only when `typeof meeting.minMembersCount === "number"` and `minMembersCount > 0`. Present count = `countQuorumPresent` (`CHAIRPERSON` \| `MEMBER` + bucket `present`). Copy: `quorumLabel` / `quorumValue` (`:present` / `:required`) / `quorumMet` \| `quorumUnmet`. Hide strip when `minMembersCount` is missing (pre-seed BLOBs) — do not invent `0` |
+| Filters | Shared `FilterCountChips` (`ui/components/`): page passes resolved `options` (label+count) + `value` / `onChange`; optional org `colors` chrome. No meeting translator inside the chip group |
+| Grid | Utils `Grid` `cols` `{ default: 3, [SW.max_md]: 2, [SW.max_sm]: 1 }`. Empty participants → `Empty` (`emptyParticipants` + `subtitle`). Empty filter → `Empty` (`emptyFilter` only) |
+| Card | `MeetingAttendanceCard`: own avatar/name/type chrome (visual language shared with header identity; **not** `MeetingHeaderMe`). `statusLabel` from data hook. `present` prop. Present: `presentCardBackground` + check disc. Type chip: `sectionAccentBackground`. Else: `idleCardBackground` + `subtleDivider` |
+| Sort | `sortAttendanceParticipants`: present → awaiting → left |
+| Copy | `ui.layouts.meetingLayout.attendance` (ar + en). `filterPresent` = سجّل / Checked in |
+
+Helpers: `meeting/hooks/useMeetingAttendance.ts` (pure helpers + filter / quorum / rows; no navigation). Filters UI: shared `FilterCountChips`.
 
 **Drawer writes.** Tiles call `setPage(id)` and, on the mobile overlay, `onClose`. There is no `init` tile inside the role grid. A full-row **Home** control above the grid calls `setPage("init")` (selected when `page === "init"`). Selected tile chrome (landing FAQ / message-card family): soft `sectionAccentBackground`, partial-height start accent rail (`3px`, inset), `textAccent` label; icon well stays `primaryActionBackground` + white glyph (no selected swap, no full perimeter brand border); `aria-current="page"`.
 
@@ -500,8 +520,8 @@ What the website side depends on:
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
-2. **Drawer in-shell pages are title stubs (§5.5).** `MeetingLivePage` / `TalkQueue` / `Attendance` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
-3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
+2. **Most drawer in-shell pages are still title stubs (§5.5).** `MeetingLivePage` / `TalkQueue` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **`MeetingAttendancePage` is shipped** (chair-only attendance log + quorum). Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
+3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
@@ -509,7 +529,7 @@ What the website side depends on:
 8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` / `can.attend` / `can.enterLive` are **client** gates on `useMeetingLiveSession`; the attend open window and Meeting-room attendance requirement are **not** enforced by socket controllers or SQL writers yet.
 9. **The meeting shell picks its READY tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. While linking is not READY, only the gate screen renders (no drawer SSR flicker for that path). `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
 10. **Non-transport `connect_error` maps to session code `"NOT_VALID"`** for UI purposes; the linking FAILED copy stays the generic `failedMessage` (no distinct credential string on screen yet).
-11. **Attend-window clock refresh is best-effort.** The session `setTimeout` and init countdown interval can be delayed or cleared by background-tab throttling, effect dependency changes, leaving the meeting route, or large forward clock jumps while a timeout is pending (§5.3).
+11. **Attend-window clock refresh is best-effort.** The session-owned `setTimeout` / 30s ticks in `useMeetingAttendWindow` can be delayed or cleared by background-tab throttling, effect dependency changes, leaving the meeting route, or large forward clock jumps while a timeout is pending (§5.3).
 
 ## 9) Environment
 
@@ -546,22 +566,21 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/pages/MeetingPageStub.tsx` | shared title-only placeholder chrome for non-init drawer pages | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | `"live"` body; bounces to `"init"` when `!can.enterLive`; else title stub | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingTalkQueuePage.tsx` | `"talkQueue"` body (title stub) | §5.5, §8 |
-| `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | `"attendance"` body (title stub) | §5.5, §8 |
+| `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | `"attendance"` body — chair attendance log + quorum | §5.5, §8, §10f |
 | `src/app/ui/components/meeting/pages/MeetingAgendaPage.tsx` | `"agenda"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx` | `"decisionsAndVote"` body (title stub) | §5.5, §8 |
 | `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header` incl. type keys / `requestTalk`/`requestTalkAria`, `footer`, `linking`, `drawer` incl. `itemHome`, `init` incl. attend-window / room-gate keys) | §5.3, §5.4, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
-| `src/app/ui/components/meeting/meetingAttendWindow.ts` | attend-window mirror (`ATTEND_OPEN_BEFORE_MS`, `isAttendWindowOpen`, `attendOpensAtIso`) | §5.3, §5.5 |
-| `src/app/ui/components/meeting/meetingLiveSession.ts` | pure `resolveMeetingLiveSession` → `MeetingLiveSessionState` (`linking` + `can` incl. attend window + `enterLive`) | §5.3 |
-| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | `MeetingLiveSessionProvider` + `useMeetingLiveSession` — `{ linking, can, actions, meeting, me }`; `datetime` + `nowMs` + open-window `setTimeout` | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | session surface: resolve + provider; one `useMeetingAttendWindow` call; exposes `attendWindow` | §5.3, §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` | attend-window clock (mirror math private; open timeout + 30s ticks while waiting) | §5.3, §5.5 |
 | `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | PENDING / FAILED gate UI via session `linking` (`Loadable` / `FiAlertCircle`) | §5.3 |
 | `src/types/meeting.ts` | mirrored live map (`MeetingLiveMap`, `participants`, `MEETING_LIVE_*`; pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
 | `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — live → session → page providers, linking gate, branded shell, responsive READY tree | §5, §5.1, §5.3, §5.4, §5.5 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
-| `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` shell/brand token split (incl. fixed-white `actionIconOnFill`); light `softLight` mix 0.78 | §5.4 |
+| `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` (incl. `idleCardBackground` / `presentCardBackground`, fixed-white `actionIconOnFill`); light `softLight` mix 0.78 for section chips | §5.4 |
 | `src/app/ui/components/meeting/MeetingHeader.tsx` | menu + org logo/name; `MeetingHeaderMe` when `me` exists; disabled request-to-speak (`requestTalk` / `requestTalkAria`) for MEMBER and VIEWER; accent rail; `fixed` mobile bar | §5.4 |
 | `src/app/ui/components/meeting/MeetingHeaderMe.tsx` | current participant avatar + name + type chip (org colors, session `me`) | §5.4 |
 | `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line | §5.4 |
@@ -722,7 +741,7 @@ Current delivery on top of §10b: full-row **Home** → `"init"` (`itemHome` + m
 
 ## 10d) Change set inventory (attend window + Meeting room gate)
 
-Current delivery on top of §10a–§10c: live map `datetime` seed; `MeetingModel.ATTEND_OPEN_BEFORE_MS`; website `meetingAttendWindow` + `can.attend` open window + `can.enterLive`; init remaining-duration copy only while the window is not yet open; disabled drawer `live` tile (`ariaLabel`); `MeetingLivePage` bounce. Full path map remains in §10; behavior in §5.3–§5.5 and backend live-state / participant / meeting-domain contracts.
+Current delivery on top of §10a–§10c: live map `datetime` seed; `MeetingModel.ATTEND_OPEN_BEFORE_MS`; website attend-window hook + `can.attend` open window + `can.enterLive`; init remaining-duration copy only while the window is not yet open; disabled drawer `live` tile (`ariaLabel`); `MeetingLivePage` bounce. **Superseded ownership details:** §10g (single session clock + `attendWindow`). Full path map remains in §10; behavior in §5.3–§5.5 and backend live-state / participant / meeting-domain contracts.
 
 ### `backend/`
 
@@ -737,10 +756,9 @@ Current delivery on top of §10a–§10c: live map `datetime` seed; `MeetingMode
 | Path | State | Where described |
 |---|---|---|
 | `src/types/meeting.ts` | modified — mirror `datetime` | §5.1 |
-| `src/app/ui/components/meeting/meetingAttendWindow.ts` | added — attend-window mirror | §5.3 |
-| `src/app/ui/components/meeting/meetingLiveSession.ts` | modified — `enterLive`; attend window in `resolveCan` | §5.3 |
-| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — `datetime` / `nowMs` / open `setTimeout` | §5.3 |
-| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — remaining attend copy only while `!isAttendWindowOpen`; room hints | §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` | added — attend-window clock (later owned solely by session; see §10g) | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — `datetime` / open window via attend hook; see §10g for `attendWindow` | §5.3 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — remaining attend copy; room hints (final: reads session `attendWindow`, §10g) | §5.5 |
 | `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | modified — disable `live` when `!can.enterLive`; locked `ariaLabel` = `init.attendRequiresForRoom` | §5.4 |
 | `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | modified — bounce to `"init"` when locked | §5.5 |
 | `src/resources/translations/ar.ts`, `en.ts` | modified — `attendAvailableIn`, `attendRequiresForRoom`, `roomUnlockedHint` | §5.5 |
@@ -756,7 +774,7 @@ Current delivery on top of §10a–§10c: live map `datetime` seed; `MeetingMode
 | `docs/platforms/backend/contracts/meeting-domain.md` | `ATTEND_OPEN_BEFORE_MS` | §3.2b there |
 | `.cursor/rules/website-meeting-live-session.mdc` | attend window + `enterLive` + clock refresh | governance |
 | `.cursor/rules/website-meeting-shell.mdc` | init remaining only pre-window; disabled `live` + `ariaLabel` | governance |
-| `.cursor/rules/website-backend-policy-mirror.mdc` | `meetingAttendWindow.ts` mirror | governance |
+| `.cursor/rules/website-backend-policy-mirror.mdc` | attend-window hook owned by session (`attendWindow`) | governance |
 | `.cursor/skills/website-meeting-live-session/SKILL.md` | session attend / enterLive workflow | governance |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | init + room gate workflow | governance |
 
@@ -782,14 +800,113 @@ Current delivery on top of §10a–§10d: READY-shell header shows the current l
 | `.cursor/rules/website-meeting-shell.mdc` | Header identity + request-to-speak; globs include `MeetingHeaderMe.tsx` | governance |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | header identity step | governance |
 
+## 10f) Change set inventory (chair attendance log)
+
+Current delivery on top of §10a–§10e: live map `minMembersCount` seed (new empty `live_state` only); chair-only `MeetingAttendancePage` (quorum strip, filters, responsive grid tiles); init attended copy = first-person relative duration + quieter room hint. Full path map remains in §10; behavior in §5.5 and `meeting-live-state.md` §1.2 / §9c.
+
+### `backend/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/types/meeting.ts` | modified — `MeetingLiveMap.minMembersCount` | §5.1; `meeting-live-state.md` §1.2 |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — seed `minMembersCount` on create (no BLOB backfill) | `meeting-live-state.md` §1.3 |
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/types/meeting.ts` | modified — identical mirror | §5.1 |
+| `src/app/ui/components/meeting/hooks/useMeetingAttendance.ts` | added — attendance data hook (buckets/sort/quorum + view-model) | §5.5 |
+| `src/app/ui/components/FilterCountChips.tsx` | added — shared counted filter chips (presentational) | §5.5 |
+| `src/app/ui/components/meeting/MeetingAttendanceCard.tsx` | added — attendance participant card (own chrome; not HeaderMe) | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | modified — chair attendance log (was stub) | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — first-person relative `attendedAt`; `roomUnlockedHint` → `textTertiary` | §5.5 |
+| `src/resources/translations/ar.ts`, `en.ts` | modified — `meetingLayout.attendance.*`; init `attendedAt` first person | §5.5 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check`; not narrated | — |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.5 attendance, §8, §10f | — |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | `minMembersCount` on live map + seed | live-state §1.2, §9c |
+| `docs/platforms/website/component-structure.md` | meeting pages note attendance product UI | component inventory |
+| `.cursor/rules/website-meeting-shell.mdc` | attendance page + init copy voice | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | attendance log workflow | governance |
+
+## 10g) Change set inventory (hook ownership cleanup + single attend clock)
+
+Final delivery on top of §10a–§10f after structure review: delete loose `meetingAttendWindow.ts` / `meetingLiveSession.ts` (logic lives in hook modules); attend-window mirror is **hook-private** and called **once** from session; session public shape adds `attendWindow`; Init reads that field only; chair bounce lives on `MeetingAttendancePage` (not in `useMeetingAttendance`); shared `FilterCountChips`; attendance pure helpers colocated in `useMeetingAttendance.ts`. Behavior authority remains §5.3–§5.5 and backend live-state / meeting-domain contracts.
+
+### `backend/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/types/meeting.ts` | modified — `MeetingLiveMap.minMembersCount` | §5.1; `meeting-live-state.md` §1.2, §9c |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — seed `minMembersCount` on first empty create only (no BLOB backfill) | `meeting-live-state.md` §1.3, §9c |
+| `src/app/orm/models/Meeting.ts` | already has `ATTEND_OPEN_BEFORE_MS` (prior ship; not dirty in this inventory) | `meeting-domain.md` §3.2b |
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/types/meeting.ts` | modified — identical `minMembersCount` mirror | §5.1 |
+| `src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` | **added** — single attend-window clock; mirror math private | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — resolve takes `windowOpen`; instance owns one clock; exposes `attendWindow`; deleted reliance on loose `meetingLiveSession.ts` | §5.3 |
+| `src/app/ui/components/meeting/meetingAttendWindow.ts` | **deleted** — replaced by hook module | §5.3 |
+| `src/app/ui/components/meeting/meetingLiveSession.ts` | **deleted** — resolve/colocation moved into `useMeetingLiveSession.tsx` | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingAttendance.ts` | **added** — buckets/sort/quorum + filter/rows view-model; **no** navigation | §5.5 |
+| `src/app/ui/components/FilterCountChips.tsx` | **added** — shared presentational counted chips (no meeting i18n) | §5.5; `component-structure.md` §3 |
+| `src/app/ui/components/meeting/MeetingAttendanceCard.tsx` | **added** — roster card chrome (not `MeetingHeaderMe`); fills later use org tokens (§10h) | §5.5 |
+| `src/app/ui/components/meeting/hooks/useOrganization.ts` | modified in §10h — `idleCardBackground` / `presentCardBackground` | §5.4, §10h |
+| `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | modified — chair product UI; page owns non-chair bounce | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — reads `attendWindow` from session; present via `can.enterLive`; first-person relative attended copy | §5.5 |
+| `src/resources/translations/ar.ts`, `en.ts` | modified — `meetingLayout.attendance.*`; init first-person `attendedAt` / `attendedTitle` | §5.5 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check`; not narrated | — |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.3 single clock + `attendWindow`, §5.5 attendance, §10g | — |
+| `docs/platforms/website/component-structure.md` | FilterCountChips + meeting hook rows | component inventory |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | `minMembersCount` seed contract | live-state §1.2, §9c |
+| `docs/platforms/backend/contracts/meeting-domain.md` | `ATTEND_OPEN_BEFORE_MS` → website hook + session | §3.2b |
+| `.cursor/rules/website-meeting-live-session.mdc` | single clock; `attendWindow` on session; no page re-call | governance |
+| `.cursor/rules/website-meeting-shell.mdc` | attendance bounce on page; FilterCountChips; card ≠ HeaderMe | governance |
+| `.cursor/rules/website-backend-policy-mirror.mdc` | attend-window hook ownership | governance |
+| `.cursor/rules/meeting-realtime-socket.mdc` | product math belongs in `useMeetingLiveSession` (path fix) | governance |
+| `.cursor/skills/website-meeting-live-session/SKILL.md` | attendWindow workflow | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | attendance page + bounce + chips | governance |
+
+## 10h) Change set inventory (attendance card org color tokens)
+
+On top of §10g: attendance idle/present fills are dedicated `OrganizationColors` scheme pairs — no component-level `colorScheme` patches. Present card must not reuse `sectionAccentBackground` (type chip fill).
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/components/meeting/hooks/useOrganization.ts` | modified — `idleCardBackground` (`#FFFFFF @transparent`); `presentCardBackground` (softLight **0.62** / softDark **0.18**) | §5.4 |
+| `src/app/ui/components/meeting/MeetingAttendanceCard.tsx` | modified — present → `presentCardBackground`; idle → `idleCardBackground`; type chip stays `sectionAccentBackground` | §5.5 |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.4 token split + §5.5 card fills + §10h | — |
+| `.cursor/rules/website-meeting-shell.mdc` | create-token-not-patch; attendance card fills | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | attendance color tokens workflow | governance |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Diff `backend/src/app/types/meeting.ts` against `website/src/types/meeting.ts` (must stay identical).
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
 - Init lobby light chips: `sectionBrandBackground` / `sectionAccentBackground` readable on `pageBackground` (org `softLight` mix 0.78).
 - Selected drawer tile: soft `sectionAccentBackground` + partial start accent rail + `textAccent`; icon well stays primary (white glyph / white `HomeMark`).
+- Attendance cards: present fill uses `presentCardBackground` (distinct from type chip `sectionAccentBackground`); idle fill uses `idleCardBackground` (light card / dark transparent).
 - Socket: organization host opens **no** boot socket; `MeetingLayout` opens `/meeting` once via `MeetingLiveProvider` / `useMeetingLiveInstance`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.
 - Bad `memberToken` / missing roster: handshake refuse → `connect_error` → linking **FAILED** gate (not endless PENDING).
 - Transport drop: `TransportError` → linking stays **PENDING** and reconnect continues.
@@ -812,8 +929,11 @@ Current delivery on top of §10a–§10d: READY-shell header shows the current l
 - `.cursor/rules/meeting-realtime-socket.mdc`
 - `.cursor/rules/website-meeting-live-session.mdc`
 - `.cursor/rules/website-meeting-shell.mdc`
+- `.cursor/rules/website-backend-policy-mirror.mdc`
 - `.cursor/rules/meeting-live-state.mdc`
 - `.cursor/rules/website-mpages-routes-params-contract.mdc`
 - `.cursor/skills/meeting-realtime-socket/SKILL.md`
 - `.cursor/skills/website-meeting-live-session/SKILL.md`
 - `.cursor/skills/website-meeting-shell/SKILL.md`
+
+Change-set inventories: §10a–§10h (latest attendance card tokens = §10h; hook ownership = §10g).

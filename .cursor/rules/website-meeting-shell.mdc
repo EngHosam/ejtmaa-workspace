@@ -4,6 +4,9 @@ globs:
   - website/src/app/ui/components/meeting/MeetingDrawerPanel.tsx
   - website/src/app/ui/components/meeting/MeetingHeader.tsx
   - website/src/app/ui/components/meeting/MeetingHeaderMe.tsx
+  - website/src/app/ui/components/meeting/MeetingAttendanceCard.tsx
+  - website/src/app/ui/components/meeting/hooks/useMeetingAttendance.ts
+  - website/src/app/ui/components/FilterCountChips.tsx
   - website/src/app/ui/components/meeting/MeetingDrawerOverlay.tsx
   - website/src/app/ui/components/meeting/pages/**
   - website/src/app/ui/components/meeting/hooks/useMeetingPage.tsx
@@ -38,17 +41,29 @@ Participant type permissions: `docs/platforms/backend/contracts/meeting-particip
 
 - One `Meeting` route only — local state, not URL segments.
 - Drawer tiles call `setPage`; they do not own page rendering.
-- Non-init pages may be title-only stubs (`MeetingPageStub`) until product UI ships under `meeting/pages/`.
+- Non-init pages may be title-only stubs (`MeetingPageStub`) until product UI ships under `meeting/pages/` — except `"attendance"`, which is shipped chair product UI.
 - Do not put in-shell bodies under `ui/pages/` (route entries only). Do not invent a second route for a drawer target.
 
 ## MeetingInitPage (`"init"`)
 
 - Shared for every `me.type`. Org logo/name + live `subject` / type / status when present.
 - Attend: `can.attend` → `actions.attend` only (no direct proxy / `batch` writes).
-- Before the open window (`!isAttendWindowOpen`): remaining-duration `attendAvailableIn` + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false, show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button.
-- Attended: confirmation strip + `roomUnlockedHint`. Left: `leftTitle`.
+- Before the open window (`!attendWindow.windowOpen`): remaining-duration `attendAvailableIn` + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false, show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button.
+- Attended: confirmation strip + first-person relative `attendedAt` + quieter `roomUnlockedHint` (`textTertiary`). Left: `leftTitle`.
 - Colors only from `OrganizationColors` / `defaultOrganizationColors()`.
 - Drawer `DrawerGridItem` optional accessible override prop is named `ariaLabel` (repo convention — not `a11yLabel`).
+
+## Attendance log (`"attendance"`)
+
+- Chairperson-only. Page owns bounce: non-chair → `setPage("init")` + render `null` (same pattern as locked `MeetingLivePage`). Data hook has no navigation side effects.
+- Quorum strip only when `typeof meeting.minMembersCount === "number"` and `> 0` (hide when missing on older BLOBs — no invented default). Numerator = `CHAIRPERSON` \| `MEMBER` with bucket `present` via `countQuorumPresent`.
+- Helpers + data: `hooks/useMeetingAttendance.ts` (pure bucket/sort/quorum helpers live in the same file as the hook). Filters UI: shared presentational `FilterCountChips` — page passes resolved options from the hook; no meeting translator inside the chip group. Card: `MeetingAttendanceCard.tsx` — own chrome (not `MeetingHeaderMe`).
+- Page copy: single translator `meetingLayout.attendance` (incl. `title`). Do not mix `drawer` translator for the page title.
+- Buckets / filter ids: `present` \| `awaiting` \| `left` (sort present → awaiting → left). Card prop: `present`.
+- Absent card: `idleCardBackground` + `subtleDivider`. Present card: `presentCardBackground` + check disc (`accentActionBackground` + `accentActionText`). Type chip stays `sectionAccentBackground` (must not equal the present card fill).
+- `idleCardBackground` / `presentCardBackground` live on `OrganizationColors` in `useOrganization` — do not branch `colorScheme` or reuse `sectionAccentBackground` for the present card body.
+- Card rows come from the hook (`statusLabel` / `present` ready). Type label resolved inside the card from `header.type*`.
+- Empty participants: `emptyParticipants` + `subtitle`. Empty filter: `emptyFilter` only (Empty default description).
 
 ## Drawer tiles (role IA)
 
@@ -80,9 +95,10 @@ Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 
 ## Colors / Utils
 
-- Shell product chrome uses `organization?.colors ?? defaultOrganizationColors()`.
-- Solid action wells (drawer icon squares): glyph / mark ink is `actionIconOnFill` (fixed `#FFFFFF`), not luminance `primaryActionText`.
-- Light-scheme `sectionBrandBackground` / `sectionAccentBackground`: `softLight` mix default **0.78** in `useOrganization` (readable chips on `pageBackground`). Do not wash toward 0.92; do not hardcode chip fills in page code.
-- `As={"button"}`: `baseCssStyle` = `...ElementStyles.buttonReset` only; `gridColumn` / `:hover` / `transition` in `cssStyle`.
+- Prefer `OrganizationColors` tokens from `useOrganization` / `defaultOrganizationColors()` — including scheme pairs like `idleCardBackground` / `presentCardBackground`.
+- **Create a token — do not patch.** If light/dark need different fills, or two surfaces collide visually, add a `ColorType` pair on `OrganizationColors` in `useOrganization.ts`. Forbidden: `colorScheme` / `useThemeManager` branches for meeting chrome fills; opacity hacks on the whole card; reusing `sectionAccentBackground` for a present card body when the type chip already uses it.
+- Solid action wells (drawer icon squares, selected filter count on primary): glyph ink is `actionIconOnFill` (fixed `#FFFFFF`), not luminance `primaryActionText`. Accent-filled check discs use luminance `accentActionText`.
+- Light-scheme `sectionBrandBackground` / `sectionAccentBackground`: `softLight` mix default **0.78** in `useOrganization` (readable chips on `pageBackground`). Do not wash toward 0.92; do not hardcode chip fills in page code. Present attendance card fill uses `presentCardBackground` (`softLight` **0.62** / `softDark` **0.18**).
+- `As={"button"}`: `baseCssStyle` = `...ElementStyles.buttonReset` only when every state sets `bg` (incl. `"@transparent"`). Use `background: "transparent"` in `baseCssStyle` **only** with `bg={selected ? fill : undefined}`. `fontVariantNumeric` / overflow scroll live in `cssStyle`.
 - Menu glyph may keep `semanticColor.iconPrimary` on `DrawerMenuIcon` (shared with customer shell mark).
 - Meeting Home `HomeMark`: pass `frameClr` + `accentClr` = `actionIconOnFill` so the orange floor rail does not appear on the primary fill well.

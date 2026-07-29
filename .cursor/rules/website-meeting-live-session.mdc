@@ -1,9 +1,8 @@
 ---
-description: MeetingLiveSession product surface — provider under MeetingLiveProvider, linking/can/actions/meeting/me, linking gate
+description: MeetingLiveSession product surface — provider under MeetingLiveProvider, linking/can/actions/meeting/me/attendWindow, linking gate
 globs:
-  - website/src/app/ui/components/meeting/meetingLiveSession.ts
-  - website/src/app/ui/components/meeting/meetingAttendWindow.ts
   - website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx
+  - website/src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts
   - website/src/app/ui/components/meeting/MeetingLinkingScreen.tsx
   - website/src/app/ui/layouts/MeetingLayout.tsx
 alwaysApply: false
@@ -17,8 +16,9 @@ Transport / `connect_error`: `.cursor/rules/meeting-realtime-socket.mdc`.
 ## Public surface
 
 - Layout mounts **`MeetingLiveProvider` → `MeetingLiveSessionProvider` → shell**.
-- Product UI consumes **`useMeetingLiveSession()`** (context reader) → `{ linking, can, actions, meeting, me }`.
-- Pure `resolveMeetingLiveSession` returns **`MeetingLiveSessionState`** (`linking` + `can` only). Instance inside the session provider adds `actions`, `meeting`, `me` **once** for the tree.
+- Product UI consumes **`useMeetingLiveSession()`** (context reader) → `{ linking, can, actions, meeting, me, attendWindow }`.
+- Pure `resolveMeetingLiveSession` lives **in the same file** as the provider/hook: `hooks/useMeetingLiveSession.tsx`. Pure resolve returns **`MeetingLiveSessionState`** (`linking` + `can` only). Instance adds `actions`, `meeting`, `me`, `attendWindow` **once** for the tree.
+- Attend-window clock lives in `hooks/useMeetingAttendWindow.ts` — called **once** from the session instance; screens read `attendWindow` (do not call the hook again). Mirror math stays private.
 - `MeetingLiveLinking` = `"PENDING" | "READY" | "FAILED"` — the **only** derived session enum. Do not reintroduce remapped meeting/me stage enums.
 - Do **not** reintroduce a nested `stages` object, re-resolve session in every screen, or fold session into `MeetingLiveProvider`.
 - Keep `useMeetingLive()` for raw transport flags and for `batch` when **implementing** a new action. Do not re-derive linking or action gates in screens.
@@ -37,7 +37,7 @@ Transport / `connect_error`: `.cursor/rules/meeting-realtime-socket.mdc`.
 | `READY` | `connected && synced`, no error |
 | `FAILED` | `error != null` |
 
-When `linking !== "READY"`: every `can.*` is false. Session value still includes `meeting` / `me`; shell does not mount product chrome.
+When `linking !== "READY"`: every `can.*` is false. Session value still includes `meeting` / `me` / `attendWindow`; shell does not mount product chrome.
 
 `MeetingShell` must show **only** `MeetingLinkingScreen` until READY — no header/drawer/footer/page children. READY shell drawer/header IA: `.cursor/rules/website-meeting-shell.mdc`.
 
@@ -60,6 +60,14 @@ When `linking !== "READY"`: every `can.*` is false. Session value still includes
 
 - Sync `() => void`; no-op when `!can.*` (and `attend`/`left` require `me`).
 - `can.enterLive` is a **navigation gate only** (no matching action write): true when `attendedAt` set and `leftAt` unset.
-- `can.attend` also requires the open window: `nowMs >= meeting.datetime − ATTEND_OPEN_BEFORE_MS` (`meetingAttendWindow.ts` mirrors `MeetingModel.ATTEND_OPEN_BEFORE_MS`).
-- Session provider passes `meeting.datetime` + `nowMs` into `resolveMeetingLiveSession`. While READY and not yet attended, schedule one `setTimeout` until the open instant (do not invent a polling interval for capability flip).
+- `can.attend` also requires `attendWindow.windowOpen` (mirror of `MeetingModel.ATTEND_OPEN_BEFORE_MS` private to `useMeetingAttendWindow`).
+- Session provider calls `useMeetingAttendWindow(meeting.datetime)` once, passes `windowOpen` into resolve, and exposes `attendWindow` on the session value.
 - Client `can` gates are **not** server authz — socket still gates writes with `MEETING_LIVE_STATUSES` only; attend-window / room attendance are not socket-enforced.
+- Init remaining-duration copy reads `attendWindow` from session — do not call `useMeetingAttendWindow` again in the page.
+
+## Forbidden
+
+- Calling `useMeetingAttendWindow` from product pages/shell (second clock).
+- Reintroducing loose `meeting/meetingAttendWindow.ts` or `meeting/meetingLiveSession.ts` at the meeting root.
+- Exporting attend-window mirror predicates/constants from the hook module.
+- Putting navigation (`setPage`) inside attendance/session data hooks.

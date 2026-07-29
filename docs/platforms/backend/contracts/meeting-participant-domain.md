@@ -114,7 +114,7 @@ Mixin declare blocks on MeetingParticipant: `meeting` / `member` (`BelongsTo*`).
 | `attended_at` | When the participant checked themselves in; null means not present for report/quorum |
 | `left_at` | When they left (self leave or end-of-session stamp when writers ship); null means not left / never checked in |
 
-**Self-check-in open window.** Attendance may be recorded starting at `Meeting.datetime − MeetingModel.ATTEND_OPEN_BEFORE_MS` (30 minutes before the scheduled start), and remains allowed while the live session status is `WAITING_TO_START` or `STARTED`. Earlier than that window is not allowed. Today this gate is enforced on the website client session (`can.attend`); socket field validation of `attendedAt` writes is **not** shipped.
+**Self-check-in open window.** Attendance may be recorded starting at `Meeting.datetime − MeetingModel.ATTEND_OPEN_BEFORE_MS` (30 minutes before the scheduled start), and remains allowed while the live session status is `WAITING_TO_START` or `STARTED`. Earlier than that window is not allowed. Today this gate is enforced on the website client session (`can.attend` via session `attendWindow.windowOpen`); socket field validation of `attendedAt` writes is **not** shipped.
 
 Axes stay separate from invite delivery:
 
