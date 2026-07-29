@@ -414,7 +414,7 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 |---|---|
 | Org identity | Large logo (`h: 6rem`) or primary monogram (first letter on `primaryActionBackground` / `primaryActionText`) when `logo_url` is absent; org name (`subHead`) |
 | Meeting meta | `meeting.subject` when present; type chip (`PERIODIC` / `EMERGENCY` → `sectionBrandBackground` + `textBrand`); status chip (`WAITING_TO_START` / `STARTED` / … → `sectionAccentBackground` + `textAccent`). Missing live fields omit their UI (no placeholders) |
-| Attendance | Branch order: (1) `can.attend` → primary CTA → `actions.attend` only. (2) Present (`can.enterLive`) → confirmation strip (check + first-person `attendedTitle` + first-person relative `attendedAt` via `moment(attendedAt).from(now, true)`) + quieter `roomUnlockedHint` (`caption` + `textTertiary`). (3) `leftAt` → `leftTitle`. (4) Else → accent info strip: when `attendWindow` says the open window has not started yet, `attendAvailableIn` with Moment locale-aware remaining duration (`moment(opensAtIso).from(moment(nowMs), true)`, refreshed by session clock every 30s while waiting) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button. Init reads `attendWindow` from session — does not call `useMeetingAttendWindow` |
+| Attendance | Branch order: (1) `can.attend` → primary CTA → `actions.attend` + caption `attendRequiresForRoom` under the button. (2) Present (`can.enterLive`) → confirmation strip (check + first-person `attendedTitle` + first-person relative `attendedAt` via `moment(attendedAt).from(now, true)`) + quieter `roomUnlockedHint` (`caption` + `textTertiary`). (3) `leftAt` → `leftTitle`. (4) Else → accent info strip: when `attendWindow` says the open window has not started yet, `attendAvailableIn` with Moment locale-aware remaining duration (`moment(opensAtIso).from(moment(nowMs), true)`, refreshed by session clock every 30s while waiting) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button. Init reads `attendWindow` from session — does not call `useMeetingAttendWindow` |
 | Colors / copy | `organization?.colors ?? defaultOrganizationColors()` only. Copy under `ui.layouts.meetingLayout.init` (ar + en, identical keys). Init attend strings are **first person**; roster strings under `meetingLayout.attendance` are third person |
 
 **Meeting room (`live`) gate.** All participant types need present check-in (`can.enterLive`) before the Meeting room page. Drawer: disabled `live` tile when locked (§5.4). `MeetingLivePage` also redirects to `"init"` when `!can.enterLive` (defense if `page` was already `"live"`). Agenda / talkQueue / other drawer ids stay ungated. Chair `startMeeting` / `endMeeting` are unchanged.
@@ -898,12 +898,30 @@ On top of §10g: attendance idle/present fills are dedicated `OrganizationColors
 | `.cursor/rules/website-meeting-shell.mdc` | create-token-not-patch; attendance card fills | governance |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | attendance color tokens workflow | governance |
 
+## 10i) Change set inventory (Init attend CTA caption)
+
+On top of §10h: when `can.attend`, Init shows primary attend button **plus** `attendRequiresForRoom` caption under it (same key as the waiting strip and locked `live` tile aria). No new translation keys.
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — `can.attend` branch: CTA + `attendRequiresForRoom` caption | §5.5 |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.5 attendance branch (1); §10i | — |
+| `.cursor/rules/website-meeting-shell.mdc` | Init attend CTA + caption | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | Init attend CTA + caption step | governance |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Diff `backend/src/app/types/meeting.ts` against `website/src/types/meeting.ts` (must stay identical).
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
 - Init lobby light chips: `sectionBrandBackground` / `sectionAccentBackground` readable on `pageBackground` (org `softLight` mix 0.78).
 - Selected drawer tile: soft `sectionAccentBackground` + partial start accent rail + `textAccent`; icon well stays primary (white glyph / white `HomeMark`).
 - Attendance cards: present fill uses `presentCardBackground` (distinct from type chip `sectionAccentBackground`); idle fill uses `idleCardBackground` (light card / dark transparent).
@@ -936,4 +954,4 @@ On top of §10g: attendance idle/present fills are dedicated `OrganizationColors
 - `.cursor/skills/website-meeting-live-session/SKILL.md`
 - `.cursor/skills/website-meeting-shell/SKILL.md`
 
-Change-set inventories: §10a–§10h (latest attendance card tokens = §10h; hook ownership = §10g).
+Change-set inventories: §10a–§10i (latest Init attend caption = §10i; card tokens = §10h; hook ownership = §10g).

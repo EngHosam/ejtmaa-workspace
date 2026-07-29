@@ -47,7 +47,7 @@ Participant type permissions: `docs/platforms/backend/contracts/meeting-particip
 ## MeetingInitPage (`"init"`)
 
 - Shared for every `me.type`. Org logo/name + live `subject` / type / status when present.
-- Attend: `can.attend` → `actions.attend` only (no direct proxy / `batch` writes).
+- Attend: `can.attend` → `actions.attend` + caption `attendRequiresForRoom` under the button (no direct proxy / `batch` writes).
 - Before the open window (`!attendWindow.windowOpen`): remaining-duration `attendAvailableIn` + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false, show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button.
 - Attended: confirmation strip + first-person relative `attendedAt` + quieter `roomUnlockedHint` (`textTertiary`). Left: `leftTitle`.
 - Colors only from `OrganizationColors` / `defaultOrganizationColors()`.
