@@ -1,22 +1,42 @@
 ---
-description: Organization-host Meeting shell IA — role drawer tiles, wide live tile, header request-to-speak
+description: Organization-host Meeting shell IA — role drawer tiles, wide live tile, header request-to-speak, in-shell MeetingPage
 globs:
   - website/src/app/ui/components/meeting/MeetingDrawerPanel.tsx
   - website/src/app/ui/components/meeting/MeetingHeader.tsx
   - website/src/app/ui/components/meeting/MeetingDrawerOverlay.tsx
+  - website/src/app/ui/components/meeting/pages/MeetingInitPage.tsx
+  - website/src/app/ui/components/meeting/hooks/useMeetingPage.tsx
   - website/src/app/ui/layouts/MeetingLayout.tsx
+  - website/src/app/ui/pages/Meeting.tsx
 alwaysApply: false
 ---
 
 # Website Meeting shell (org host)
 
-Authority: `docs/platforms/website/organization-host-routing.md` §5.4.
+Authority: `docs/platforms/website/organization-host-routing.md` §5.4–§5.5.
 Linking gate / session surface: `.cursor/rules/website-meeting-live-session.mdc`.
 Participant type permissions: `docs/platforms/backend/contracts/meeting-participant-domain.md` §8.
 
 ## When the shell mounts
 
 `MeetingShell` renders header / drawer / footer / children only when `linking === "READY"`. Do not assume drawer/header run during PENDING or FAILED.
+
+## In-shell page (`MeetingPage`)
+
+`MeetingLayout` nests `MeetingPageProvider` under live/session providers (`useState<MeetingPage>("init")`) — same provider chain style as the other Meeting providers.
+
+| Piece | Role |
+|---|---|
+| `MeetingPage` (in `useMeetingPage.tsx`) | Page id union including `"init"` |
+| `MeetingDrawerPage` (local in `MeetingDrawerPanel`) | `Exclude<MeetingPage, "init">` for tile ids |
+| `MeetingPageProvider` / `useMeetingPage` | Shared `page` / `setPage` for drawer + page children |
+| `Meeting.tsx` | Owns the page switch — which component mounts for `page` |
+| `meeting/pages/*` | In-shell page bodies (`MeetingInitPage` for `"init"`) |
+
+- One `Meeting` route only — local state, not URL segments.
+- Drawer tiles call `setPage`; they do not own page rendering.
+- Non-init pages may return `null` until that product surface ships under `meeting/pages/`.
+- Do not put in-shell bodies under `ui/pages/` (route entries only). Do not invent a second route for a drawer target.
 
 ## Drawer tiles (role IA)
 
@@ -28,8 +48,9 @@ Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 | Member / Viewer | `live`, `agenda`, `decisionsAndVote` |
 
 - **No** `participants` tile.
+- **No** `init` tile — `"init"` is the default page only.
 - `live` is full-row (`wide` → `gridColumn: 1 / -1`).
-- Every tile ships `available={false}` until that surface is activated (no route, no handler).
+- Tiles call `setPage(id)` (and `onClose` on the mobile overlay); selected tile uses `aria-current="page"` and accent border.
 - Tile chrome matches existing meeting drawer `DrawerGridItem` (org `OrganizationColors`, `semanticDims`).
 
 ## Header request-to-speak

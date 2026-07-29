@@ -43,7 +43,7 @@ Authority: `docs/platforms/website/organization-host-routing.md`, invariant W58.
 
 1. Send HTTP `organizationId` only when a value exists — `axios.ts` `otherHeaders`. Never serialize `"undefined"`.
 2. Shared boot `configs/socket.ts` sends `token` only for authed customer `/customer`. It must **not** send `organizationId`.
-3. Organization host `prepareSocket` returns without creating a socket. Meeting realtime uses `meeting-socket.ts` + `MeetingLiveProvider` / `useMeetingLiveInstance` on `/meeting`. Public UI: `useMeetingLive` (transport/CRDT), `MeetingLiveSessionProvider` / `useMeetingLiveSession` (linking/can/actions/meeting/me), and READY shell drawer/header IA (`.cursor/rules/website-meeting-shell.mdc`) — see also `.cursor/rules/meeting-realtime-socket.mdc` and `.cursor/rules/website-meeting-live-session.mdc`.
+3. Organization host `prepareSocket` returns without creating a socket. Meeting realtime uses `meeting-socket.ts` + `MeetingLiveProvider` / `useMeetingLiveInstance` on `/meeting`. Public UI: `useMeetingLive` (transport/CRDT), `MeetingLiveSessionProvider` / `useMeetingLiveSession` (linking/can/actions/meeting/me), `MeetingPageProvider` / `useMeetingPage` (in-shell page), and READY shell drawer/header IA (`.cursor/rules/website-meeting-shell.mdc`) — see also `.cursor/rules/meeting-realtime-socket.mdc` and `.cursor/rules/website-meeting-live-session.mdc`.
 4. Optional Meeting handshake `organizationId` (from store) is defense-in-depth only; required proof is member token + meeting ids.
 5. Backend reads the HTTP value as the lowercase `organizationid` header (Express normalizes header names).
 

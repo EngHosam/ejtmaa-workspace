@@ -13,7 +13,7 @@
 | [`graphql-mirror-and-tooling.md`](graphql-mirror-and-tooling.md) | GQL mirror sync |
 | [`route-registry-contract.md`](route-registry-contract.md) | Customer route registry |
 | [`ssr-boot-and-startup.md`](ssr-boot-and-startup.md) | SSR boot lifecycle |
-| [`organization-host-routing.md`](organization-host-routing.md) | Apex vs organization host: boot split, `orgHostOnly` gate, Meeting `/meeting` session + linking gate |
+| [`organization-host-routing.md`](organization-host-routing.md) | Apex vs organization host: boot split, `orgHostOnly` gate, Meeting `/meeting` session + linking gate + in-shell `MeetingPage` |
 | [`shared-ui-and-shell.md`](shared-ui-and-shell.md) | Shell components |
 | [`page-error.md`](page-error.md) | Error (403/404/500) page composition |
 | [`landing-page.md`](landing-page.md) | Public landing page (10 sections, shell, style/color invariants) |
@@ -292,14 +292,15 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | Host classification (`resolveRequestHost`) + `extendMyInstance` | `organization-host-routing.md` §2 |
 | Boot split (`organizationHost.start` before apex start) | `organization-host-routing.md` §1.1; `ssr-boot-and-startup.md` §2, §5 |
 | `organizationHost` store slice + `organizationId` HTTP header; Meeting handshake query | `organization-host-routing.md` §3 |
-| `orgHostOnly` route gate + `Meeting` route/layout + `MeetingLiveProvider` / `MeetingLiveSessionProvider` / `useMeetingLive` / `useMeetingLiveSession` | `organization-host-routing.md` §1.2, §5, §5.1, §5.3; `route-registry-contract.md` §3.1, §5.4; invariant W58 |
+| `orgHostOnly` route gate + `Meeting` route/layout + `MeetingLiveProvider` / `MeetingLiveSessionProvider` / `MeetingPageProvider` / `useMeetingLive` / `useMeetingLiveSession` / `useMeetingPage` | `organization-host-routing.md` §1.2, §5, §5.1, §5.3, §5.5; `route-registry-contract.md` §3.1, §5.4; invariant W58 |
 | Live meeting document (Yjs + SyncedStore) + `useMeetingLiveMe` + linking gate (`MeetingLiveLinking`) | `organization-host-routing.md` §5.1, §5.2, §5.3; `../backend/contracts/meeting-live-state.md` |
 | Meeting socket config (`src/resources/configs/meeting-socket.ts`) | `organization-host-routing.md` §3, §5.1 |
 | Shared boot socket (`prepareSocket`: org host none / customer `/customer`) | `organization-host-routing.md` §4 |
 | Nested `MPagesRoutes.params` contract | `route-registry-contract.md` §3.1 |
 | `POST /website/custom/org/start` + `org_host` middleware | `../backend/contracts/client-portal-http-website.md` |
 | Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
-| Known limits (unwired `org_host`, empty Meeting page body, client-only chair gates) | `organization-host-routing.md` §8 |
+| Known limits (unwired `org_host`, stub non-init `MeetingPage` bodies, client-only chair gates) | `organization-host-routing.md` §8 |
+| Meeting shell branding + drawer/header IA + in-shell `MeetingPage` | `organization-host-routing.md` §5.4, §5.5; `.cursor/rules/website-meeting-shell.mdc` |
 | `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` / `website-meeting-live-session.mdc` / `website-meeting-shell.mdc` | Host-mode gating + Meeting transport + session surface + READY shell IA |
 
 ## Change set traceability — MicroBand footer credit spelling

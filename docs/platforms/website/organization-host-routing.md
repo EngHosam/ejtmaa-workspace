@@ -137,8 +137,9 @@ Config layout: root entry `configs/socket.ts` is the shared boot factory; `confi
 | Identify / path | `Meeting` → `/meeting/:memberId/:memberToken/:meetingId` |
 | `MPagesRoutes` | `params: { memberId: string; memberToken: string; meetingId: string }` |
 | Flags | `layout: "MEETING"`, `orgHostOnly: true`, `preLoadedPage` |
-| Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — `MeetingLiveProvider` → `MeetingLiveSessionProvider` + linking gate (§5.3) then organization-branded shell (header, drawer, footer — §5.4); mapped in `MyApp.getLayout()` under `case "MEETING"` |
-| Page | `website/src/app/ui/pages/Meeting.tsx` — `Main()` returns `null` (no product UI yet); session still runs under `MeetingLiveProvider` in the layout |
+| Layout | `website/src/app/ui/layouts/MeetingLayout.tsx` — `MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider` → `MeetingShell` (linking gate §5.3, branded shell §5.4, in-shell page §5.5); mapped in `MyApp.getLayout()` under `case "MEETING"` |
+| Page | `website/src/app/ui/pages/Meeting.tsx` — switches in-shell pages from `useMeetingPage().page` (§5.5); default `"init"` → `meeting/pages/MeetingInitPage` |
+| In-shell page state | `useMeetingPage.tsx` — `MeetingPage` type + `MeetingPageProvider` / `useMeetingPage` (§5.5) |
 | Live transport | `website/src/app/ui/components/meeting/hooks/useMeetingLive.tsx` — socket + Yjs + SyncedStore instance + provider + public context reader (product module under `components/meeting/`, **not** `ui/base/hooks`) |
 | Live session surface | `meetingLiveSession.ts` + `MeetingLiveSessionProvider` / `useMeetingLiveSession` — `{ linking, can, actions, meeting, me }` (§5.3) |
 | Current participant | `website/src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` — SyncedStore proxy for the route member's roster entry (§5.2); product UI prefers `me` from session (§5.3) |
@@ -329,20 +330,20 @@ Five of the brand keys — `accentActionText`, `sectionBrandBackground`, `sectio
 |---|---|
 | `meeting/MeetingHeader.tsx` | Menu button (shared `HeaderIconButton`) + org logo, or the org name clamped to one line when there is no logo; for non-chair `me`, a disabled request-to-speak control (mic + `requestTalk` / `requestTalkAria`). A 2px rail in `colors.accentActionBackground` sits on the bottom edge. `fixed` prop switches between the in-flow desktop bar and the mobile `Fixed` bar at `zIndex.header`. |
 | `meeting/MeetingFooter.tsx` | Rights line only: `© <year> <platform name> — <rights>`. The name is the **platform** (`ui.layouts.mainLayout.footerTitle`), not the organization. |
-| `meeting/MeetingDrawerPanel.tsx` | Shared panel body for both breakpoints: title row (close when `showClose`), org identity card (logo and/or name), role-based 2-column tile grid (`live` full-row), pinned appearance/language row (`ThemeModeSwitch` + `LanguageSwitch`, both `compact`). |
+| `meeting/MeetingDrawerPanel.tsx` | Shared panel body for both breakpoints: title row (close when `showClose`), org identity card (logo and/or name), role-based 2-column tile grid (`live` full-row) that calls `setPage` from `useMeetingPage`, pinned appearance/language row (`ThemeModeSwitch` + `LanguageSwitch`, both `compact`). |
 | `meeting/MeetingDrawerOverlay.tsx` | Mobile portal overlay following the `CustomerDrawer` pattern: `createPortal` to `body`, `zIndex.modals`, blurred backdrop, RTL-aware slide-in, `no-scroll-drawer` body lock, 220ms unmount delay. Exported **without** `withMemo` — it reads `router.isRTL`. |
 
 The button chrome is `website/src/app/ui/components/HeaderIconButton.tsx` — a top-level shared component (`component-structure.md` §3), consumed by both `CustomerHeader` and `MeetingHeader`. It owns its own tokens (`inputBackground`, `inputBorder`, `iconPrimary`, `semanticDims.control.iconButtonSize`, `semanticDims.card.radius`) and exposes no color props, so the two headers cannot drift.
 
 The glyph is the shared `DrawerMenuIcon`. Its leading bar is themeable through the optional `accentClr` prop, defaulting to `semanticColor.accentActionBackground`; the two horizontal bars are always `semanticColor.iconPrimary`. `MeetingHeader` passes `semanticColor.iconPrimary` so all three bars read as one content-colored mark (dark in light scheme, near-white in dark). `CustomerHeader` passes nothing and keeps the accent bar.
 
-**Drawer tiles.** Role-based from `useMeetingLiveSession().me?.type` (local `DrawerGridItemDef[]`). The READY shell (header/drawer) mounts only after `linking === "READY"`. Chairperson (`CHAIRPERSON`): `live` (`FiVideo`), `talkQueue` (`FiMic`), `attendance` (`FiClipboard`), `agenda` (`FiList`), `decisionsAndVote` (`FiCheckSquare`). Member and viewer: `live`, `agenda`, `decisionsAndVote` only. No `participants` tile. The `live` tile is full-row (`wide` → `gridColumn: 1 / -1`) so it spans both columns of the 2-column grid; other tiles stay single-cell. Every tile is passed `available={false}` (dimmed `opc 0.55`, `disabled` + `aria-disabled`, no click handler or route). Tile chrome mirrors `CustomerDrawer`'s `DrawerGridItem`: `minH 7.2`, a `3.1`-square icon well in `colors.primaryActionBackground` with the glyph in `colors.primaryActionText`, and a `smallAction` bold label clamped to two lines. Governance: `.cursor/rules/website-meeting-shell.mdc`, skill `website-meeting-shell`.
+**Drawer tiles.** Role-based from `useMeetingLiveSession().me?.type` (local `DrawerGridItemDef[]` with `id: MeetingDrawerPage` = `Exclude<MeetingPage, "init">` in `MeetingDrawerPanel`). The READY shell (header/drawer) mounts only after `linking === "READY"`. Chairperson (`CHAIRPERSON`): `live` (`FiVideo`), `talkQueue` (`FiMic`), `attendance` (`FiClipboard`), `agenda` (`FiList`), `decisionsAndVote` (`FiCheckSquare`). Member and viewer: `live`, `agenda`, `decisionsAndVote` only. No `participants` tile and no `init` tile (`"init"` is the default in-shell page only — §5.5). The `live` tile is full-row (`wide` → `gridColumn: 1 / -1`) so it spans both columns of the 2-column grid; other tiles stay single-cell. Tiles call `useMeetingPage().setPage(id)` (and `onClose` on the mobile overlay); selected tile uses `aria-current="page"` and accent border (`colors.accentActionBackground`). Tile chrome mirrors `CustomerDrawer`'s `DrawerGridItem`: `minH 7.2`, a `3.1`-square icon well in `colors.primaryActionBackground` with the glyph in `colors.primaryActionText`, and a `smallAction` bold label clamped to two lines. Governance: `.cursor/rules/website-meeting-shell.mdc`, skill `website-meeting-shell`.
 
 **Header request-to-speak.** When `me` exists and `me.type !== "CHAIRPERSON"`, `MeetingHeader` shows a disabled control: mic + visible `requestTalk` label; accessible name `requestTalkAria` (session-scoped, distinct from the label). MEMBER and VIEWER both get the control (`meeting-participant-domain.md` §8: request talking for all three types; chairperson uses drawer `talkQueue` instead). Shipped chrome is icon + label only — no switch track, no click handler. Header reads `me` from `useMeetingLiveSession()`.
 
 #### Layout composition
 
-`MeetingLayout` wraps both breakpoint trees in a single outer `MeetingLiveProvider` → `MeetingLiveSessionProvider`. Inside, `MeetingShell` runs the linking gate (§5.3) **before** picking desktop vs mobile chrome: when `linking !== "READY"`, only `MeetingLinkingScreen` mounts. When READY, the shell picks one of two trees from a `matchMedia(min-width: SW.min_lg)` effect (same shape as `MainLayout`). `children` is rendered once per READY tree.
+`MeetingLayout` wraps both breakpoint trees in a single outer provider chain: `MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`. Inside, `MeetingShell` runs the linking gate (§5.3) **before** picking desktop vs mobile chrome: when `linking !== "READY"`, only `MeetingLinkingScreen` mounts (page `children` are not rendered). When READY, the shell picks one of two trees from a `matchMedia(min-width: SW.min_lg)` effect (same shape as `MainLayout`). `children` is rendered once per READY tree.
 
 - **Desktop:** a `Row` of [drawer column | `Col`(header, content, footer)]. The drawer column is **in flow** (not an overlay) and `position: sticky; top: 0` at `h/maxH: 100vh`, so it stays viewport-tall while the page scrolls and never covers the footer. Its width animates between `semanticDims.shell.drawerWidth` and `0`, with `pointerEvents: none` while collapsed.
 - **Mobile:** the `CustomerMainLayout` shape — `MeetingHeader fixed`, content `minH: 100vh` with a `paddingTop` matching `Dims.headerHeight` / `Dims.mobileHeaderHeight`, and the portal overlay.
@@ -359,6 +360,32 @@ The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls 
 | `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemLive`, `itemTalkQueue`, `itemAttendance`, `itemAgenda`, `itemDecisionsAndVote`, `utilityPrefs` |
 
 `MeetingFooter` additionally reads `ui.layouts.mainLayout.footerTitle` for the platform name; it has no key of its own for it.
+
+### 5.5) In-shell page (`MeetingPage`)
+
+One `Meeting` **route** (`ui/pages/Meeting.tsx`). In-shell navigation is **local React state**, not URL segments and not a second route registry entry.
+
+**Provider placement.** `MeetingPageProvider` sits in `MeetingLayout` under live + session providers (same chain style — not inside `MeetingShell` after READY):
+
+`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider` → `MeetingShell`
+
+Because the provider wraps `MeetingShell`, `page` state survives linking PENDING/FAILED ↔ READY transitions for the life of the layout mount. During non-READY, shell content (drawer + route children) does not mount, so nothing reads `page` until READY.
+
+| Piece | Path | Role |
+|---|---|---|
+| `MeetingPage` | `hooks/useMeetingPage.tsx` | `"init" \| "live" \| "talkQueue" \| "attendance" \| "agenda" \| "decisionsAndVote"` |
+| `MeetingPageProvider` / `useMeetingPage` | same file | `useState<MeetingPage>("init")`; exposes `{ page, setPage }` |
+| `MeetingDrawerPage` | local type in `MeetingDrawerPanel.tsx` | `Exclude<MeetingPage, "init">` — tile ids only |
+| Page switch | `ui/pages/Meeting.tsx` (`MeetingContent`) | `switch (page)` — owns which body mounts |
+| Page bodies | `components/meeting/pages/*` | Product UI per id; not under `ui/pages/` (route entries stay there) |
+
+**Default.** `"init"` → `meeting/pages/MeetingInitPage.tsx`: empty `Col` shell (`pageBackground`, `semanticDims.page.padY`). No copy and no session actions yet.
+
+**Drawer writes.** Tiles call `setPage(id)` and, on the mobile overlay, `onClose`. There is no `init` tile. Selected tile: `page === id` → accent border + `aria-current="page"`.
+
+**Stubs.** `Meeting.tsx` returns `null` for `"live"`, `"talkQueue"`, `"attendance"`, `"agenda"`, and `"decisionsAndVote"` until those bodies ship under `meeting/pages/`.
+
+Governance: `.cursor/rules/website-meeting-shell.mdc`, skill `website-meeting-shell`. Authority for shell chrome remains §5.4.
 
 ## 6) Backend surfaces
 
@@ -429,16 +456,15 @@ What the website side depends on:
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
-2. **`Meeting` page body is empty.** `Meeting.tsx` `Main()` returns `null`. Layout mounts the live session + linking gate; after READY, the branded shell mounts with empty page children — no meeting product sections yet.
+2. **Non-init `MeetingPage` bodies are stubs (§5.5).** `"init"` mounts empty `MeetingInitPage`; drawer tiles can set `"live"` / `"talkQueue"` / `"attendance"` / `"agenda"` / `"decisionsAndVote"`, but `Meeting.tsx` returns `null` for those ids until pages ship under `meeting/pages/`. Header request-to-speak for MEMBER and VIEWER remains disabled.
 3. **Collaborative live map fields** — `subject`, `type`, `status`, `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
 7. **Organization-host pages other than `Meeting` have no realtime channel.** A tenant-wide org socket is not part of the shipped surface.
 8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` are chairperson-only **client** gates on `useMeetingLiveSession` actions; they are not enforced by the socket controllers yet.
-9. **Every meeting drawer tile is disabled** (§5.4). Role-based placeholders (chair: live / talk queue / attendance / agenda / decisions&vote; member+viewer: live / agenda / decisions&vote) have no route and no handler; the icon-well hover treatment is unreachable until tiles get targets. Header request-to-speak for MEMBER and VIEWER is likewise disabled.
-10. **The meeting shell picks its READY tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. While linking is not READY, only the gate screen renders (no drawer SSR flicker for that path). `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
-11. **Non-transport `connect_error` maps to session code `"NOT_VALID"`** for UI purposes; the linking FAILED copy stays the generic `failedMessage` (no distinct credential string on screen yet).
+9. **The meeting shell picks its READY tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. While linking is not READY, only the gate screen renders (no drawer SSR flicker for that path). `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
+10. **Non-transport `connect_error` maps to session code `"NOT_VALID"`** for UI purposes; the linking FAILED copy stays the generic `failedMessage` (no distinct credential string on screen yet).
 
 ## 9) Environment
 
@@ -470,7 +496,9 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/store/reduces/index.ts` | slice registration + `MDefaultStoreState` | §3 |
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
-| `src/app/ui/pages/Meeting.tsx` | empty page body (`Main` → `null`); live session owned by layout | §5 |
+| `src/app/ui/pages/Meeting.tsx` | page switch on `useMeetingPage().page` (`"init"` → `MeetingInitPage`) | §5, §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | default `"init"` in-shell page (empty branded shell) | §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
 | `src/app/ui/components/meeting/meetingLiveSession.ts` | pure `resolveMeetingLiveSession` → `MeetingLiveSessionState` (`linking` + `can`) | §5.3 |
@@ -478,12 +506,12 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | PENDING / FAILED gate UI via session `linking` (`Loadable` / `FiAlertCircle`) | §5.3 |
 | `src/types/meeting.ts` | mirrored live map (`MeetingLiveMap`, `participants`, `MEETING_LIVE_*`; pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
-| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — `MeetingLiveProvider` → `MeetingLiveSessionProvider`, linking gate, branded shell, responsive READY tree | §5, §5.1, §5.3, §5.4 |
+| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — live → session → page providers, linking gate, branded shell, responsive READY tree | §5, §5.1, §5.3, §5.4, §5.5 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
 | `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` shell/brand token split | §5.4 |
 | `src/app/ui/components/meeting/MeetingHeader.tsx` | menu + org logo/name; disabled request-to-speak (`requestTalk` / `requestTalkAria`) for MEMBER and VIEWER; accent rail; `fixed` mobile bar | §5.4 |
 | `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line | §5.4 |
-| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | role-based tile grid (`wide` live); all tiles `available={false}`; prefs row | §5.4 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | role-based tile grid (`wide` live); `setPage` + selected chrome; prefs row | §5.4, §5.5 |
 | `src/app/ui/components/meeting/MeetingDrawerOverlay.tsx` | mobile portal overlay | §5.4 |
 | `src/app/ui/components/HeaderIconButton.tsx` | top-level shared icon button; consumed by `CustomerHeader` + `MeetingHeader` | §5.4; `component-structure.md` §3 |
 | `src/app/ui/components/customer/CustomerHeader.tsx` | consumes `HeaderIconButton` from the shared top level | §5.4 |
@@ -530,7 +558,7 @@ Every path that implements this contract, with the section that describes it.
 | `.cursor/rules/organization-host-routing.mdc` | host mode, route gate, transport identification |
 | `.cursor/rules/meeting-realtime-socket.mdc` | Meeting session placement, hook contract, `connect_error`, backend pairing |
 | `.cursor/rules/website-meeting-live-session.mdc` | `MeetingLiveSessionProvider` / `useMeetingLiveSession` linking/can/actions/meeting/me + linking gate UI |
-| `.cursor/rules/website-meeting-shell.mdc` | READY shell drawer tile IA + header request-to-speak |
+| `.cursor/rules/website-meeting-shell.mdc` | READY shell drawer IA + in-shell `MeetingPage` + header request-to-speak |
 | `.cursor/rules/meeting-live-state.mdc` | CRDT document ownership, V2 codec, BLOB exposure |
 | `.cursor/rules/meeting-live-map-mirror.mdc` | identical `MeetingLiveMap` files on backend ↔ website |
 | `.cursor/rules/sequelize-include-by-association-name.mdc` | Sequelize `include` by association name (backend companion) |
@@ -540,12 +568,12 @@ Every path that implements this contract, with the section that describes it.
 | `.cursor/rules/website-semantic-color-token-discipline.mdc` | runtime per-tenant color maps — shell keys reference `semanticColor`, only brand keys are computed (§5.4) |
 | `.cursor/skills/meeting-realtime-socket/SKILL.md` | Meeting realtime transport workflow |
 | `.cursor/skills/website-meeting-live-session/SKILL.md` | Meeting session surface + linking gate workflow |
-| `.cursor/skills/website-meeting-shell/SKILL.md` | Meeting READY shell drawer/header IA workflow |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | Meeting READY shell + in-shell `MeetingPage` workflow |
 | `.cursor/skills/nodejs-socket-server-event/SKILL.md` | backend socket surface workflow |
 
 ## 10a) Change set inventory (flat MeetingLiveSession + nested session provider)
 
-Current delivery for the product session surface: drop nested `stages` remaps; ship `{ linking, can, actions, meeting, me }` via `MeetingLiveSessionProvider` under `MeetingLiveProvider`. Path map for the whole org-host contract remains in §10.
+Historical delivery for the product session surface: drop nested `stages` remaps; ship `{ linking, can, actions, meeting, me }` via `MeetingLiveSessionProvider` under `MeetingLiveProvider`. Path map for the whole org-host contract remains in §10. In-shell `MeetingPage` is §10b / §5.5.
 
 ### `website/`
 
@@ -576,11 +604,37 @@ Current delivery for the product session surface: drop nested `stages` remaps; s
 | `.cursor/skills/website-meeting-shell/SKILL.md` | session `me` for role IA | governance |
 | `.cursor/skills/meeting-realtime-socket/SKILL.md` | defers product session to live-session skill | governance |
 
+## 10b) Change set inventory (in-shell `MeetingPage`)
+
+Current delivery: local `MeetingPage` state (`"init"` default), `MeetingPageProvider` in the layout chain, drawer `setPage`, page switch in `Meeting.tsx`, bodies under `components/meeting/pages/`. Full path map remains in §10; behavior in §5.5.
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | added — `MeetingPage` + `MeetingPageProvider` + `useMeetingPage` | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | added — default `"init"` body (empty shell) | §5.5 |
+| `src/app/ui/pages/Meeting.tsx` | modified — `MeetingContent` switch on `page` | §5, §5.5 |
+| `src/app/ui/layouts/MeetingLayout.tsx` | modified — nest `MeetingPageProvider` under session provider | §5.5 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | modified — local `MeetingDrawerPage`; tiles `setPage` + selected chrome; removed `available={false}` | §5.4, §5.5 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check`; not narrated | — |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.5 + §8 + §10b | — |
+| `docs/platforms/website/component-structure.md` | meeting shell / page index rows | component index |
+| `docs/platforms/website/README.md` | known limits + change-set pointers | overview |
+| `.cursor/rules/website-meeting-shell.mdc` | in-shell `MeetingPage` placement, `meeting/pages/*`, drawer writes | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | page provider + `meeting/pages` workflow | governance |
+| `.cursor/rules/organization-host-routing.mdc` | public UI names `MeetingPageProvider` | governance |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider`) + linking gate; after READY, branded shell with empty page body; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with in-shell `"init"` page (`MeetingInitPage`); `/customer/...` renders `Error` `404`.
 - Socket: organization host opens **no** boot socket; `MeetingLayout` opens `/meeting` once via `MeetingLiveProvider` / `useMeetingLiveInstance`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.
 - Bad `memberToken` / missing roster: handshake refuse → `connect_error` → linking **FAILED** gate (not endless PENDING).
 - Transport drop: `TransportError` → linking stays **PENDING** and reconnect continues.

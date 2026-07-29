@@ -59,7 +59,7 @@ Shipped groups:
 | Customer meetings | `customer/meetings/*` (screens, rows, cards, `MeetingMetaChips`, `MeetingNote` alert chrome, `MeetingParticipantGroup`, and the UI-only mirrors `meetingNotifyTemplateMode` / `meetingScheduleLead`), `customer/hooks/useCustomerMeetings` |
 | Customer form modals | `customer/modals/*` (`MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal` — registered; see `flow-form-foundation.md` §3.8b) |
 | Live meeting (organization host) | `meeting/hooks/useMeetingLive` (`MeetingLiveProvider` + `useMeetingLive`), `meeting/hooks/useMeetingLiveMe`, `meeting/meetingLiveSession` + `meeting/hooks/useMeetingLiveSession` (`MeetingLiveSessionProvider` + `linking` / `can` / `actions` / `meeting` / `me`), `meeting/MeetingLinkingScreen` — `organization-host-routing.md` §5.1, §5.2, §5.3 |
-| Meeting shell (organization host) | `meeting/MeetingHeader`, `meeting/MeetingFooter`, `meeting/MeetingDrawerPanel`, `meeting/MeetingDrawerOverlay`, `meeting/hooks/useOrganization` — `organization-host-routing.md` §5.4 (READY shell only; linking gate precedes it); drawer/header IA: `.cursor/rules/website-meeting-shell.mdc` |
+| Meeting shell (organization host) | `meeting/MeetingHeader`, `meeting/MeetingFooter`, `meeting/MeetingDrawerPanel`, `meeting/MeetingDrawerOverlay`, `meeting/hooks/useOrganization`, `meeting/hooks/useMeetingPage` (`MeetingPageProvider`), `meeting/pages/*` (in-shell bodies, e.g. `MeetingInitPage`) — `organization-host-routing.md` §5.4, §5.5 (READY shell only; linking gate precedes it); IA: `.cursor/rules/website-meeting-shell.mdc` |
 
 Planned groups (target contract):
 
@@ -93,7 +93,7 @@ Thin route entry components bound to route identifiers.
 
 Shipped public/auth: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
 
-Organization host: `Meeting` (route + branded `MeetingLayout` shell; page body empty — `organization-host-routing.md` §5).
+Organization host: `Meeting` (route + branded `MeetingLayout` shell; `Meeting.tsx` switches in-shell `MeetingPage` under `meeting/pages/` — `organization-host-routing.md` §5, §5.5).
 
 Customer workspace: shipped `CustomerHome` command map, members directory + form, meetings directory + create form + details, organization settings, message channels directory, message templates directory. Planned: subscription, notifications, static info, support, bottom bar.
 
