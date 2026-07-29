@@ -244,7 +244,10 @@ Utils-composed dual-tone mark (portal ink/white frame + accent floor rail):
 | Consumer | Props |
 |---|---|
 | Breadcrumb root | default `tone="ink"`, `className="bc-crumb-mark"` |
-| Drawer home tile | `tone="onPrimary"`, `size={1.45}` |
+| Customer drawer home tile | `tone="onPrimary"`, `size={1.45}` (keeps default orange floor rail) |
+| Meeting drawer Home | `size={1.45}`, `frameClr` + `accentClr` = org `actionIconOnFill` (monochrome white on primary fill well — same override idea as `DrawerMenuIcon.accentClr`) |
+
+Optional props: `frameClr`, `accentClr` (default floor = `semanticColor.accentActionBackground`). Do not use Feather `FiHome` for brand home chrome.
 
 Governance: `.cursor/rules/website-customer-utils-composed-marks.mdc`.
 

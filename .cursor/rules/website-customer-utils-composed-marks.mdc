@@ -20,12 +20,12 @@ Applies when authoring or replacing **custom dual-tone / brand marks** shared ac
 3. Do **not** implement these marks as `forwardRef` + `IconBaseProps` SVG that calls `useThemeManager` / hardcodes `me-icon` / invents a parallel icon system.
 4. RTL mirroring for start-side asymmetry: prefer flex start-side layout (first child = start) so `dir=rtl` flips naturally. Use `Icn` `flp` only for true directional Feather glyphs.
 5. Customer `HeaderIconButton` accepts marks via the `icon` ReactNode branch; landing header embeds the same mark directly.
-6. Shared home mark: `HomeMark` via `rootMark` / `Crumb.mark` / drawer tile `mark` (ReactNode) — not Feather `FiHome` when dual-tone brand chrome is intended. Use `tone="onPrimary"` on navy action wells.
+6. Shared home mark: `HomeMark` via `rootMark` / `Crumb.mark` / drawer tile `mark` (ReactNode) — not Feather `FiHome` when dual-tone brand chrome is intended. Use `tone="onPrimary"` on navy action wells. Optional `frameClr` / `accentClr` override the frame border and floor rail (same idea as `DrawerMenuIcon.accentClr`). On meeting solid wells, force both to white (`actionIconOnFill`) so the orange floor rail does not show on the fill.
 
 ## Canonical cases
 
-- `DrawerMenuIcon` (`website/src/app/ui/components/DrawerMenuIcon.tsx`): accent rail + two ink bars, default `size={1.2}`. Used by `CustomerHeader` and `LandingHeader` (replacing `FiMenu` on landing).
-- `HomeMark` (`website/src/app/ui/components/HomeMark.tsx`): portal frame + accent floor rail; `tone="ink"` (breadcrumb) / `tone="onPrimary"` (drawer home tile).
+- `DrawerMenuIcon` (`website/src/app/ui/components/DrawerMenuIcon.tsx`): accent rail + two ink bars, default `size={1.2}`. Used by `CustomerHeader` and `LandingHeader` (replacing `FiMenu` on landing). Optional `accentClr` — `MeetingHeader` passes `semanticColor.iconPrimary` for a monochrome mark.
+- `HomeMark` (`website/src/app/ui/components/HomeMark.tsx`): portal frame + accent floor rail; `tone="ink"` (breadcrumb) / `tone="onPrimary"` (customer drawer home). Meeting drawer Home: `frameClr` + `accentClr` = org `actionIconOnFill` (white on fill).
 
 ## Why
 

@@ -23,7 +23,7 @@ Main drawer (`src/app/ui/layouts/main-layout/drawer.ts`): one `business` section
 
 `AuthedAs = "CUSTOMER"`; auth reducer exposes `auth.customer.permissions`.
 
-Shared marks under `src/app/ui/components/`: `DrawerMenuIcon` (header + landing menu), `HomeMark` (breadcrumb root + drawer home tile; tones `ink` / `onPrimary`). Shared breadcrumb under `src/app/ui/components/`: `Breadcrumb` + `useBreadcrumbs` (**not** under `ui/base/`). Shared list-lane primitives: `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `Wrong`. Customer helpers under `customer/`: `HeaderIconButton`, `IdentityAvatar`, `CustomerSubHeader`, `hooks/useMe`, members directory (`hooks/useCustomerMembers`, `members/*` — `flow-customer-members.md`). **Planned:** `CustomerBottomBar`, `BottomIcons`.
+Shared marks under `src/app/ui/components/`: `DrawerMenuIcon` (header + landing menu; optional `accentClr`), `HomeMark` (breadcrumb root + drawer home tile; tones `ink` / `onPrimary`; optional `frameClr` / `accentClr` for monochrome-on-fill, e.g. meeting Home). Shared breadcrumb under `src/app/ui/components/`: `Breadcrumb` + `useBreadcrumbs` (**not** under `ui/base/`). Shared list-lane primitives: `ResultLane`, `CardSkeleton`, `LoadMoreButton`, `SearchField`, `SectionHeading`, `Wrong`. Customer helpers under `customer/`: `HeaderIconButton`, `IdentityAvatar`, `CustomerSubHeader`, `hooks/useMe`, members directory (`hooks/useCustomerMembers`, `members/*` — `flow-customer-members.md`). **Planned:** `CustomerBottomBar`, `BottomIcons`.
 
 ## 2) Document shell
 

@@ -4,9 +4,10 @@ globs:
   - website/src/app/ui/components/meeting/MeetingDrawerPanel.tsx
   - website/src/app/ui/components/meeting/MeetingHeader.tsx
   - website/src/app/ui/components/meeting/MeetingDrawerOverlay.tsx
-  - website/src/app/ui/components/meeting/pages/MeetingInitPage.tsx
+  - website/src/app/ui/components/meeting/pages/**
   - website/src/app/ui/components/meeting/hooks/useMeetingPage.tsx
   - website/src/app/ui/components/meeting/hooks/useOrganization.ts
+  - website/src/app/ui/components/HomeMark.tsx
   - website/src/app/ui/layouts/MeetingLayout.tsx
   - website/src/app/ui/pages/Meeting.tsx
 alwaysApply: false
@@ -32,11 +33,11 @@ Participant type permissions: `docs/platforms/backend/contracts/meeting-particip
 | `MeetingDrawerPage` (local in `MeetingDrawerPanel`) | `Exclude<MeetingPage, "init">` for tile ids |
 | `MeetingPageProvider` / `useMeetingPage` | Shared `page` / `setPage` for drawer + page children |
 | `Meeting.tsx` | Owns the page switch — which component mounts for `page` |
-| `meeting/pages/*` | In-shell page bodies (`MeetingInitPage` lobby shipped) |
+| `meeting/pages/*` | In-shell page bodies (`MeetingInitPage` lobby; drawer ids → named pages, title stubs via `MeetingPageStub`) |
 
 - One `Meeting` route only — local state, not URL segments.
 - Drawer tiles call `setPage`; they do not own page rendering.
-- Non-init pages may return `null` until that product surface ships under `meeting/pages/`.
+- Non-init pages may be title-only stubs (`MeetingPageStub`) until product UI ships under `meeting/pages/`.
 - Do not put in-shell bodies under `ui/pages/` (route entries only). Do not invent a second route for a drawer target.
 
 ## MeetingInitPage (`"init"`)
@@ -56,9 +57,10 @@ Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 | Member / Viewer | `live`, `agenda`, `decisionsAndVote` |
 
 - **No** `participants` tile.
-- **No** `init` tile — `"init"` is the default page only.
+- **No** `init` tile inside the role grid — `"init"` is reached via a **Home** control above the grid (`setPage("init")`, selected when `page === "init"`).
 - `live` is full-row (`wide` → `gridColumn: 1 / -1`). Label copy: **Meeting room** / **غرفة الاجتماع** (`itemLive`); id stays `"live"`.
-- Tiles call `setPage(id)` (and `onClose` on the mobile overlay); selected tile uses `aria-current="page"` and accent border.
+- Home control is full-row above the role grid (`itemHome` + shared `HomeMark` with white `frameClr`/`accentClr` via `actionIconOnFill`, same as drawer-menu monochrome accent override). Do not use `FiHome` or leave HomeMark orange accent on the fill well.
+- Tiles call `setPage(id)` (and `onClose` on the mobile overlay); selected tile: soft `sectionAccentBackground`, partial-height start accent rail (`3px`, inset top/bottom), `textAccent` label; icon well stays `primaryActionBackground` + white `actionIconOnFill` (no selected swap, no full perimeter brand border). `aria-current="page"`.
 - Tile chrome matches existing meeting drawer `DrawerGridItem` (org `OrganizationColors`, `semanticDims`).
 
 ## Header request-to-speak
@@ -71,6 +73,8 @@ Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 ## Colors / Utils
 
 - Shell product chrome uses `organization?.colors ?? defaultOrganizationColors()`.
+- Solid action wells (drawer icon squares): glyph / mark ink is `actionIconOnFill` (fixed `#FFFFFF`), not luminance `primaryActionText`.
 - Light-scheme `sectionBrandBackground` / `sectionAccentBackground`: `softLight` mix default **0.78** in `useOrganization` (readable chips on `pageBackground`). Do not wash toward 0.92; do not hardcode chip fills in page code.
 - `As={"button"}`: `baseCssStyle` = `...ElementStyles.buttonReset` only; `gridColumn` / `:hover` / `transition` in `cssStyle`.
 - Menu glyph may keep `semanticColor.iconPrimary` on `DrawerMenuIcon` (shared with customer shell mark).
+- Meeting Home `HomeMark`: pass `frameClr` + `accentClr` = `actionIconOnFill` so the orange floor rail does not appear on the primary fill well.
