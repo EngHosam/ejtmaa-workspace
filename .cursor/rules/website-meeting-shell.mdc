@@ -1,10 +1,13 @@
 ---
-description: Organization-host Meeting shell IA — role drawer tiles, wide live tile, header request-to-speak, in-shell MeetingPage, MeetingInitPage lobby
+description: Organization-host Meeting shell IA — role drawer tiles, wide live tile, header request-to-speak, in-shell MeetingPage, MeetingInitPage lobby, MeetingLivePage room
 globs:
   - website/src/app/ui/components/meeting/MeetingDrawerPanel.tsx
   - website/src/app/ui/components/meeting/MeetingHeader.tsx
   - website/src/app/ui/components/meeting/MeetingHeaderMe.tsx
   - website/src/app/ui/components/meeting/MeetingAttendanceCard.tsx
+  - website/src/app/ui/components/meeting/MeetingLiveBroadcast.tsx
+  - website/src/app/ui/components/meeting/MeetingPrimaryButton.tsx
+  - website/src/app/ui/components/meeting/MeetingMetaChip.tsx
   - website/src/app/ui/components/meeting/hooks/useMeetingAttendance.ts
   - website/src/app/ui/components/FilterCountChips.tsx
   - website/src/app/ui/components/meeting/MeetingDrawerOverlay.tsx
@@ -22,6 +25,7 @@ alwaysApply: false
 Authority: `docs/platforms/website/organization-host-routing.md` §5.4–§5.5.
 Linking gate / session surface: `.cursor/rules/website-meeting-live-session.mdc`.
 Participant type permissions: `docs/platforms/backend/contracts/meeting-participant-domain.md` §8.
+Enum display labels: `.cursor/rules/website-backend-enum-label-mirror.mdc`.
 
 ## When the shell mounts
 
@@ -37,21 +41,49 @@ Participant type permissions: `docs/platforms/backend/contracts/meeting-particip
 | `MeetingDrawerPage` (local in `MeetingDrawerPanel`) | `Exclude<MeetingPage, "init">` for tile ids |
 | `MeetingPageProvider` / `useMeetingPage` | Shared `page` / `setPage` for drawer + page children |
 | `Meeting.tsx` | Owns the page switch — which component mounts for `page` |
-| `meeting/pages/*` | In-shell page bodies (`MeetingInitPage` lobby; drawer ids → named pages, title stubs via `MeetingPageStub`) |
+| `meeting/pages/*` | In-shell page bodies (`MeetingInitPage` lobby; `MeetingLivePage` room; `MeetingAttendancePage`; other drawer ids may still be `MeetingPageStub`) |
 
 - One `Meeting` route only — local state, not URL segments.
 - Drawer tiles call `setPage`; they do not own page rendering.
-- Non-init pages may be title-only stubs (`MeetingPageStub`) until product UI ships under `meeting/pages/` — except `"attendance"`, which is shipped chair product UI.
+- Non-init pages may be title-only stubs (`MeetingPageStub`) until product UI ships under `meeting/pages/` — except `"attendance"` and `"live"`, which are shipped product UI.
 - Do not put in-shell bodies under `ui/pages/` (route entries only). Do not invent a second route for a drawer target.
 
 ## MeetingInitPage (`"init"`)
 
 - Shared for every `me.type`. Org logo/name + live `subject` / type / status when present.
-- Attend: `can.attend` → `actions.attend` + caption `attendRequiresForRoom` under the button (no direct proxy / `batch` writes).
+- Type/status chips: shared `MeetingMetaChip` (not a private page `MetaChip`; not customer `MeetingMetaChips`).
+- Attend UI: colocated `InitAttendSection` in the same file (page-only). Prefer a real component over nested ternaries or `render*` helpers for multi-branch page sections.
+- Attend: `can.attend` → `MeetingPrimaryButton` → `actions.attend` + caption `attendRequiresForRoom` under the button (no direct proxy / `batch` writes).
 - Before the open window (`!attendWindow.windowOpen`): remaining-duration `attendAvailableIn` + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false, show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button.
 - Attended: confirmation strip + first-person relative `attendedAt` + quieter `roomUnlockedHint` (`textTertiary`). Left: `leftTitle`.
 - Colors only from `OrganizationColors` / `defaultOrganizationColors()`.
 - Drawer `DrawerGridItem` optional accessible override prop is named `ariaLabel` (repo convention — not `a11yLabel`).
+
+## Placement (shared vs page-local)
+
+- **Shared under `meeting/`** when chrome is reusable across shell pages (e.g. `MeetingPrimaryButton`, `MeetingMetaChip`, `MeetingLiveBroadcast`).
+- **Colocated in the page file** when the UI is owned by one in-shell page only (e.g. `InitAttendSection`). Use a named component, not an inline `renderFoo()` helper.
+- Do not invent a second shared file for page-only sections.
+
+## Meeting room (`"live"`)
+
+- Bounce to `"init"` when `!can.enterLive` (same pattern as locked attendance).
+- `meeting.status === "STARTED"` → `MeetingLiveBroadcast` (placeholder copy only until stream UI ships).
+- Else → waiting title + `waitingLead` from `meetingLayout.live`; when `can.startMeeting` → `MeetingPrimaryButton` → `actions.startMeeting` (do not extend the action in the page).
+- Do not call `useMeetingLive` / `batch` / `useMeetingAttendWindow` from this page.
+
+## MeetingPrimaryButton
+
+- Shared org primary full-width CTA under `meeting/MeetingPrimaryButton.tsx`.
+- Props: resolved `label` / `ariaLabel` / `onClick` only — reads org colors via `useOrganization` (no `colors` prop).
+- Do not re-copy Init/Live button chrome inline; do not use `FormActionButton` for meeting-shell org fills (that control uses fixed `semanticColor`).
+
+## MeetingMetaChip
+
+- Shared org type/status chip under `meeting/MeetingMetaChip.tsx`.
+- Props: resolved `label` + `tone` `"brand" | "accent"` only — reads org colors via `useOrganization`.
+- Do not keep a private `MetaChip` inside Init (or other pages) when this shared chip exists.
+- Distinct from customer-portal `MeetingMetaChips` (plural) under `customer/meetings/` — different surface, different tokens.
 
 ## Attendance log (`"attendance"`)
 

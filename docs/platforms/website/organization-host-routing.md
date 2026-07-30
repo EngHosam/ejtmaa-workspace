@@ -387,6 +387,7 @@ The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls 
 | `linking` | `logoAria`, `pendingStatus`, `failedMessage` |
 | `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemHome`, `itemLive`, `itemTalkQueue`, `itemAttendance`, `itemAgenda`, `itemDecisionsAndVote`, `utilityPrefs` |
 | `init` | `logoAria`, type/status labels, `attend` / `attendAria`, `attendAvailableIn`, `attendRequiresForRoom`, `attendedTitle` / `attendedAt`, `roomUnlockedHint`, `leftTitle` |
+| `live` | `statusWaitingToStart`, `waitingLead`, `startMeeting` / `startMeetingAria`, `broadcastPlaceholder` |
 
 `MeetingFooter` additionally reads `ui.layouts.mainLayout.footerTitle` for the platform name; it has no key of its own for it.
 
@@ -413,19 +414,28 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 | Block | Behavior |
 |---|---|
 | Org identity | Large logo (`h: 6rem`) or primary monogram (first letter on `primaryActionBackground` / `primaryActionText`) when `logo_url` is absent; org name (`subHead`) |
-| Meeting meta | `meeting.subject` when present; type chip (`PERIODIC` / `EMERGENCY` → `sectionBrandBackground` + `textBrand`); status chip (`WAITING_TO_START` / `STARTED` / … → `sectionAccentBackground` + `textAccent`). Missing live fields omit their UI (no placeholders) |
-| Attendance | Branch order: (1) `can.attend` → primary CTA → `actions.attend` + caption `attendRequiresForRoom` under the button. (2) Present (`can.enterLive`) → confirmation strip (check + first-person `attendedTitle` + first-person relative `attendedAt` via `moment(attendedAt).from(now, true)`) + quieter `roomUnlockedHint` (`caption` + `textTertiary`). (3) `leftAt` → `leftTitle`. (4) Else → accent info strip: when `attendWindow` says the open window has not started yet, `attendAvailableIn` with Moment locale-aware remaining duration (`moment(opensAtIso).from(moment(nowMs), true)`, refreshed by session clock every 30s while waiting) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button. Init reads `attendWindow` from session — does not call `useMeetingAttendWindow` |
+| Meeting meta | `meeting.subject` when present; type/status chips via shared `MeetingMetaChip` (`tone="brand"` for type, `tone="accent"` for status; org section fills). Missing live fields omit their UI (no placeholders). Not the customer-portal `MeetingMetaChips` (plural) component |
+| Attendance | Owned by colocated `InitAttendSection` inside `MeetingInitPage.tsx` (page-only — not a shared file, not a `render*` helper). Branch order: (1) `can.attend` → `MeetingPrimaryButton` → `actions.attend` + caption `attendRequiresForRoom` under the button. (2) Present (`can.enterLive`) → confirmation strip (check + first-person `attendedTitle` + first-person relative `attendedAt` via `moment(attendedAt).from(now, true)`) + quieter `roomUnlockedHint` (`caption` + `textTertiary`). (3) `leftAt` → `leftTitle`. (4) Else → accent info strip: when `attendWindow` says the open window has not started yet, `attendAvailableIn` with Moment locale-aware remaining duration (`moment(opensAtIso).from(moment(nowMs), true)`, refreshed by session clock every 30s while waiting) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button. Section reads `attendWindow` from session — does not call `useMeetingAttendWindow` |
 | Colors / copy | `organization?.colors ?? defaultOrganizationColors()` only. Copy under `ui.layouts.meetingLayout.init` (ar + en, identical keys). Init attend strings are **first person**; roster strings under `meetingLayout.attendance` are third person |
 
 **Meeting room (`live`) gate.** All participant types need present check-in (`can.enterLive`) before the Meeting room page. Drawer: disabled `live` tile when locked (§5.4). `MeetingLivePage` also redirects to `"init"` when `!can.enterLive` (defense if `page` was already `"live"`). Agenda / talkQueue / other drawer ids stay ungated. Chair `startMeeting` / `endMeeting` are unchanged.
 
+**Meeting room (`live`) body.** After the enterLive gate, `MeetingLivePage` branches on live `meeting.status` only (writable live statuses are `WAITING_TO_START` \| `STARTED` via `MEETING_LIVE_STATUSES`):
+
+| Condition | UI |
+|---|---|
+| `meeting.status === "STARTED"` | `MeetingLiveBroadcast` — placeholder chrome only (`broadcastPlaceholder` under `meetingLayout.live`; product stream UI deferred) |
+| else (typically `WAITING_TO_START`) | Centered waiting copy (`statusWaitingToStart` + `waitingLead`); when `can.startMeeting` (chair + `WAITING_TO_START`) show `MeetingPrimaryButton` → `actions.startMeeting` (existing session write: `meeting.status = "STARTED"`). No confirm modal / toast / navigation side effects beyond that write. |
+
+Member / viewer see the same waiting panel without the start button (`can.startMeeting` false). Copy under `ui.layouts.meetingLayout.live` (ar + en). Shared org chrome: `MeetingPrimaryButton` (primary CTA; props `label` / `ariaLabel` / `onClick`) and `MeetingMetaChip` (label + `tone`; used on Init meta). Both read `useOrganization` internally — no `colors` prop. Status / type **enum display strings** must match backend `enums.meetingStatus` / `meetingType` labels in `backend/src/resources/trans/{ar,en}/general.ts` (e.g. `STARTED` = بدأ / Started — not invented “in progress” wording).
+
 **Drawer `live` tile label.** Tile id stays `"live"`; user-facing copy is **Meeting room** (en) / **غرفة الاجتماع** (ar) via `meetingLayout.drawer.itemLive` — not “Live” / “البث”.
 
-**Drawer pages.** Each drawer id mounts a named page under `meeting/pages/`. **Attendance** (`MeetingAttendancePage`) is shipped product UI (chair-only). Other drawer ids still use shared `MeetingPageStub` (drawer label only) until their product UI ships. Stub chrome: `pageBackground` + `pageTitle` text from `OrganizationColors`.
+**Drawer pages.** Each drawer id mounts a named page under `meeting/pages/`. **Attendance** (`MeetingAttendancePage`) and **Meeting room** (`MeetingLivePage`) are shipped product UI. Other drawer ids still use shared `MeetingPageStub` (drawer label only) until their product UI ships. Stub chrome: `pageBackground` + `pageTitle` text from `OrganizationColors`.
 
 | `MeetingPage` id | Component | Shipped body |
 |---|---|---|
-| `live` | `MeetingLivePage` | stub; bounce to `"init"` when `!can.enterLive` |
+| `live` | `MeetingLivePage` | waiting panel + chair start / `STARTED` → broadcast placeholder; bounce to `"init"` when `!can.enterLive` |
 | `talkQueue` | `MeetingTalkQueuePage` | stub |
 | `attendance` | `MeetingAttendancePage` | chair attendance log (below) |
 | `agenda` | `MeetingAgendaPage` | stub |
@@ -520,7 +530,7 @@ What the website side depends on:
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
-2. **Most drawer in-shell pages are still title stubs (§5.5).** `MeetingLivePage` / `TalkQueue` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **`MeetingAttendancePage` is shipped** (chair-only attendance log + quorum). Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
+2. **Most drawer in-shell pages are still title stubs (§5.5).** `TalkQueue` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **`MeetingAttendancePage` is shipped** (chair-only attendance log + quorum). **`MeetingLivePage` is shipped** (waiting panel + chair `startMeeting` / `STARTED` → `MeetingLiveBroadcast` placeholder). Broadcast media UI inside `MeetingLiveBroadcast` and post-start side effects beyond the existing status write remain deferred. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
 3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
@@ -562,14 +572,17 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
 | `src/app/ui/pages/Meeting.tsx` | page switch on `useMeetingPage().page` (`"init"` → `MeetingInitPage`; drawer ids → named stub pages) | §5, §5.5 |
-| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | `"init"` lobby — org identity, meeting meta, attend window / attended / room gate copy | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | `"init"` lobby; colocated `InitAttendSection`; meta via `MeetingMetaChip` | §5.5, §10j, §10k |
 | `src/app/ui/components/meeting/pages/MeetingPageStub.tsx` | shared title-only placeholder chrome for non-init drawer pages | §5.5, §8 |
-| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | `"live"` body; bounces to `"init"` when `!can.enterLive`; else title stub | §5.5, §8 |
+| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | `"live"` body; bounces to `"init"` when `!can.enterLive`; waiting + chair start / `STARTED` → broadcast placeholder | §5.5, §8, §10j |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | `STARTED` meeting-room placeholder (temp copy; stream UI deferred) | §5.5, §10j |
+| `src/app/ui/components/meeting/MeetingPrimaryButton.tsx` | org primary CTA (`label` / `ariaLabel` / `onClick`); used by Init attend + Live start | §5.5, §10j |
+| `src/app/ui/components/meeting/MeetingMetaChip.tsx` | org type/status chip (`label` + `tone`); used by Init meta (not customer `MeetingMetaChips`) | §5.5, §10k |
 | `src/app/ui/components/meeting/pages/MeetingTalkQueuePage.tsx` | `"talkQueue"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | `"attendance"` body — chair attendance log + quorum | §5.5, §8, §10f |
 | `src/app/ui/components/meeting/pages/MeetingAgendaPage.tsx` | `"agenda"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx` | `"decisionsAndVote"` body (title stub) | §5.5, §8 |
-| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header` incl. type keys / `requestTalk`/`requestTalkAria`, `footer`, `linking`, `drawer` incl. `itemHome`, `init` incl. attend-window / room-gate keys) | §5.3, §5.4, §5.5 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header` incl. type keys / `requestTalk`/`requestTalkAria`, `footer`, `linking`, `drawer` incl. `itemHome`, `init` incl. attend-window / room-gate keys, `live` waiting/start/broadcast keys, `attendance`) | §5.3, §5.4, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
@@ -916,12 +929,55 @@ On top of §10h: when `can.attend`, Init shows primary attend button **plus** `a
 | `.cursor/rules/website-meeting-shell.mdc` | Init attend CTA + caption | governance |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | Init attend CTA + caption step | governance |
 
+## 10j) Change set inventory (Meeting room waiting / start / broadcast shell)
+
+On top of §10i: replace `MeetingLivePage` title stub with status-gated product body; empty/placeholder `MeetingLiveBroadcast`; shared `MeetingPrimaryButton` for Init attend + Live start; `meetingLayout.live` copy; align website `meetingStatus` / `meetingType` display strings with backend enum labels (`STARTED` = بدأ / Started).
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | modified — enterLive bounce; `STARTED` → broadcast; else waiting + `can.startMeeting` CTA | §5.5 |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | **added** — placeholder broadcast shell (`broadcastPlaceholder`) | §5.5 |
+| `src/app/ui/components/meeting/MeetingPrimaryButton.tsx` | **added** — org primary full-width CTA | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — attend CTA uses `MeetingPrimaryButton` | §5.5 |
+| `src/resources/translations/ar.ts`, `en.ts` | modified — `meetingLayout.live.*`; enum label alignment for `statusStarted` / related STARTED copy | §5.5 |
+| `lib/tsconfig.tsbuildinfo` | modified — TypeScript incremental build info (generated; not behavioral) | — |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.5 live body; §8; §10 / §10j | — |
+| `.cursor/rules/website-meeting-shell.mdc` | Meeting room body + `MeetingPrimaryButton` | governance |
+| `.cursor/rules/website-backend-enum-label-mirror.mdc` | website enum display labels must match backend `general.ts` enums | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | Meeting room + primary button steps | governance |
+
+## 10k) Change set inventory (Init structure + MeetingMetaChip)
+
+On top of §10j: extract shared org `MeetingMetaChip`; replace Init nested-ternary / `renderAttendSection` with colocated page-only `InitAttendSection` component; keep page-only sections in the page file and shared chrome under `meeting/`.
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/components/meeting/MeetingMetaChip.tsx` | **added** — shared org type/status chip (`label` + `tone`) | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — `InitAttendSection` colocated; meta uses `MeetingMetaChip` | §5.5 |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.5 Init structure; §10k | — |
+| `.cursor/rules/website-meeting-shell.mdc` | `MeetingMetaChip` + page-local section placement | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | InitAttendSection / MetaChip steps | governance |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Diff `backend/src/app/types/meeting.ts` against `website/src/types/meeting.ts` (must stay identical).
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; Meeting room shows waiting + chair start when not started and `MeetingLiveBroadcast` placeholder when `STARTED`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
 - Init lobby light chips: `sectionBrandBackground` / `sectionAccentBackground` readable on `pageBackground` (org `softLight` mix 0.78).
 - Selected drawer tile: soft `sectionAccentBackground` + partial start accent rail + `textAccent`; icon well stays primary (white glyph / white `HomeMark`).
 - Attendance cards: present fill uses `presentCardBackground` (distinct from type chip `sectionAccentBackground`); idle fill uses `idleCardBackground` (light card / dark transparent).

@@ -1,0 +1,45 @@
+---
+description: Website enum display labels must match backend general.ts enum labels — no invented status/type wording
+globs:
+  - website/src/resources/translations/ar.ts
+  - website/src/resources/translations/en.ts
+  - website/src/app/ui/components/meeting/**/*.tsx
+  - website/src/app/ui/components/customer/meetings/**/*.tsx
+  - website/src/app/ui/components/customer/home/**/*.tsx
+alwaysApply: false
+---
+
+# Website backend enum label mirror
+
+Authority: `backend/src/resources/trans/ar/general.ts` and `backend/src/resources/trans/en/general.ts` under `enums.*`.
+
+## Rule
+
+When website UI shows a **backend enum value** as a human label (chips, filters, badges, status lines), the Arabic and English strings MUST match that enum’s `label` in backend `general.ts` for the same locale.
+
+Shipped examples that must stay aligned:
+
+| Backend enum | Value | ar `label` | en `label` |
+|---|---|---|---|
+| `meetingStatus` | `DRAFT` | مسودة | Draft |
+| `meetingStatus` | `WAITING_TO_START` | بانتظار البدء | Waiting to start |
+| `meetingStatus` | `STARTED` | بدأ | Started |
+| `meetingStatus` | `COMPLETED` | مكتمل | Completed |
+| `meetingStatus` | `CANCELED` | ملغى | Canceled |
+| `meetingType` | `PERIODIC` | دوري | Periodic |
+| `meetingType` | `EMERGENCY` | طارئ | Emergency |
+| `meetingParticipantType` | `CHAIRPERSON` / `MEMBER` / `VIEWER` | رئيس الاجتماع / عضو / مشاهد | Chairperson / Member / Viewer |
+
+Website keys that restate these values (e.g. `meetingLayout.init.statusStarted`, `pages.customer.meetings.statusStarted`, home STARTED badges) are **mirrors**, not a second vocabulary.
+
+## Forbidden
+
+- Invented synonyms for the same enum value (e.g. «جارٍ» / «جاري» / “In progress” / “Live” for `STARTED`).
+- Changing only the website string when the backend label is the product authority — update backend `general.ts` first (both ar + en), then mirror into website.
+- Treating loading/connecting UX copy (“جاري التحميل…”) as a `meetingStatus` label — those are unrelated.
+
+## Related
+
+- Policy mirrors (numbers/windows): `.cursor/rules/website-backend-policy-mirror.mdc`
+- Meeting shell status chips / live room: `.cursor/rules/website-meeting-shell.mdc`
+- Docs: `docs/platforms/website/organization-host-routing.md` §5.5
