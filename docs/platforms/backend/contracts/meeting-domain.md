@@ -22,7 +22,7 @@ Current Ejtmaa meeting surface:
 
 Out of scope (not shipped):
 
-- LiveKit join requesters / website client wiring (helper shipped — see `livekit-media-plane.md`),
+- LiveKit client `Room.connect` / A/V UI (join-token HTTP + participant token cache shipped — see `livekit-media-plane.md` §6),
 - reflecting the live session fields back onto the SQL columns (`meeting-live-state.md` §6),
 - notify send pipeline / `notify_status` transitions from UI,
 - cancel-after-approve,

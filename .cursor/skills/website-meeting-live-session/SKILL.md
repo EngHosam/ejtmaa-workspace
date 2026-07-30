@@ -7,7 +7,8 @@ description: >-
   Use when adding Meeting product UI that must respect linking, wiring
   start/end/attend/left actions, attend-window clock ownership, or fixing the
   org-host meeting gate screen. For socket/Yjs transport, use skill
-  meeting-realtime-socket instead.
+  meeting-realtime-socket instead. For LiveKit join-token fetch / mount,
+  use skill meeting-livekit-token.
 ---
 
 # Website Meeting live session

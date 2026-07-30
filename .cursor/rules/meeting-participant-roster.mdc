@@ -27,6 +27,11 @@ Authoritative contract: `docs/platforms/backend/contracts/meeting-participant-do
 - Self check-in: optional `attended_at` + optional `left_at` only.
 - Present for report = `attended_at` is set. No separate `first_online_at` / `attended` boolean / `joined_at`.
 
+## LiveKit token cache
+
+- Optional `livekit_token` + `livekit_token_expires_at` on the join row for reuse-or-mint (`livekit-media-plane.md` §6).
+- Never expose those columns on GQL.
+
 ## Customer GQL
 
 - Nested only: `_Meeting.participants: [_MeetingParticipant]` with `member: _Member`.

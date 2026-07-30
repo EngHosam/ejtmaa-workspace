@@ -27,7 +27,7 @@ Out of scope (not shipped):
 - supervisor MeetingParticipant GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for participants,
-- LiveKit join requesters / client wiring (server helper exists — see `livekit-media-plane.md`),
+- LiveKit client `Room.connect` / A/V UI (join-token HTTP + participant cache columns shipped — see `livekit-media-plane.md`),
 - Yjs session planes.
 
 ## 2) Domain purpose
@@ -55,7 +55,7 @@ Persistence names:
 ### 3.1 Attrs layout
 
 - `//relations` — `meeting_id`, `member_id`
-- `//info` — `type`, `notified`, `delivery_status`, `attended_at`, `left_at`
+- `//info` — `type`, `notified`, `delivery_status`, `attended_at`, `left_at`, `livekit_token`, `livekit_token_expires_at`
 
 ### 3.2 Columns
 
@@ -68,6 +68,8 @@ Persistence names:
 | `delivery_status` | STRING(191) | no | enum `meetingParticipantDeliveryStatus`; default `PENDING` |
 | `attended_at` | DATE | yes | self check-in time; null = not present; default `null` |
 | `left_at` | DATE | yes | self leave / session leave; default `null` |
+| `livekit_token` | TEXT | yes | cached LiveKit JWT for this roster row; default `null`; **not** on GQL |
+| `livekit_token_expires_at` | DATE | yes | mint expiry for reuse gate (≥6h remaining); default `null`; **not** on GQL |
 
 Exported TS types: `MeetingParticipantType`, `MeetingParticipantDeliveryStatus` from `G_Tr` enum keys.
 
@@ -129,6 +131,17 @@ Explicit declines for this surface:
 - Do **not** use an `attended` boolean when `attended_at` nullability already encodes present/absent.
 - Do **not** add `joined_at` as a second name for the same event.
 
+### 3.7 LiveKit token cache (media plane)
+
+Optional columns on the join row for reuse-or-mint (not business attendance):
+
+| Field | Meaning |
+|---|---|
+| `livekit_token` | Cached LiveKit JWT for this roster member |
+| `livekit_token_expires_at` | Mint expiry used by the ≥6h reuse gate |
+
+Writer: `MeetingLiveKitTokenController` (`livekit-media-plane.md` §6). **Never** on GQL. Require local ORM alter/sync when columns are new — no checked-in migration.
+
 ## 4) Customer GraphQL surface
 
 SDL:
@@ -150,7 +163,7 @@ Relations:
 
 Pagination: `total_count`.
 
-**Not exposed as scalars:** `meeting_id`, `member_id`, surrogate `id`.
+**Not exposed as scalars:** `meeting_id`, `member_id`, surrogate `id`, `livekit_token`, `livekit_token_expires_at`.
 
 **Not exposed yet:** `meeting: _Meeting` (inverse nest deferred).
 

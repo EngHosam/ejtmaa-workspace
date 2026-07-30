@@ -520,7 +520,7 @@ No auth, customer, or permission data is returned; the website consumes it as st
 - attaches `req.organizationHostMiddleware = { organization }`,
 - exports `currentOrganization(req, sure?)` for controllers.
 
-**Not attached to any route in this change set** — see §8.
+**Wired on** `POST /custom/org/livekit_token` (per-route). `/custom/org/start` does not use it — see §8 and `../backend/contracts/livekit-media-plane.md` §6.
 
 ### 6.3 Socket `/meeting`
 
@@ -552,7 +552,7 @@ What the website side depends on:
 
 ## 8) Known limits (shipped state, intentional)
 
-1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
+1. **`org_host` is wired on LiveKit token fetch.** `POST /custom/org/livekit_token` uses per-route `middleware("org_host")`. `/custom/org/start` still resolves the organization from the body without `org_host`. Contract: `../backend/contracts/livekit-media-plane.md` §6; website hook `useMeetingLiveKitToken` mounts in `MeetingLiveBroadcast` as a temporary `status`+`token` probe for real join-token testing — remove when broadcast A/V lands.
 2. **Most drawer in-shell pages are still title stubs (§5.5).** `TalkQueue` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **`MeetingAttendancePage` is shipped** (chair-only attendance log + quorum). **`MeetingLivePage` is shipped** (waiting + chair start). While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + solid `MeetingPageOverlay` for other pages). Broadcast media UI and post-start side effects beyond the existing status write remain deferred. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
 3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
@@ -597,7 +597,7 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/pages/Meeting.tsx` | page switch; while `STARTED` persistent `MeetingLiveBroadcast` + `MeetingPageOverlay` for non-`live` pages | §5, §5.5 |
 | `src/app/ui/components/meeting/MeetingPageOverlay.tsx` | solid floating sheet for non-`live` while `STARTED` (column width; `ph=page.padY`; floating close) | §5.5 |
 | `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | `"live"` waiting + chair start; bounce to `"init"` when `!can.enterLive`; `pv` only | §5.5, §8, §10j, §10l |
-| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | persistent `STARTED` broadcast placeholder (`pv` only; stream UI deferred) | §5.5, §10j, §10l |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | persistent `STARTED` broadcast; temporary LiveKit `status`+`token` probe (`pv` only; remove when A/V lands) | §5.5, §10j, §10l; `../backend/contracts/livekit-media-plane.md` §6.5 |
 | `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | `"init"` lobby; colocated `InitAttendSection`; meta via `MeetingMetaChip`; `pv` only | §5.5, §10j, §10k, §10l |
 | `src/app/ui/components/meeting/pages/MeetingPageStub.tsx` | shared title-only placeholder chrome for non-init drawer pages; `pv` only | §5.5, §8, §10l |
 | `src/app/ui/components/meeting/MeetingPrimaryButton.tsx` | org primary CTA (`label` / `ariaLabel` / `onClick`); used by Init attend + Live start | §5.5, §10j |
@@ -612,6 +612,10 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | session surface: resolve + provider; one `useMeetingAttendWindow` call; exposes `attendWindow` | §5.3, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` | attend-window clock (mirror math private; open timeout + 30s ticks while waiting) | §5.3, §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | LiveKit JWT fetch (`{ token, status }`); quiet network retry; temporary probe mount in `MeetingLiveBroadcast` | `../backend/contracts/livekit-media-plane.md` §6.5 |
+| `src/resources/configs/axios/api.ts` | `CUSTOM.ORG_LIVEKIT_TOKEN` → `/custom/org/livekit_token` | `../backend/contracts/livekit-media-plane.md` §6.1 |
+| `src/resources/configs/axios.ts` | honor `skipNetworkToast` on network reject | `../backend/contracts/livekit-media-plane.md` §6.5 |
+| `src/types/extends/global.ts` | `AxiosRequestConfig.skipNetworkToast` | `../backend/contracts/livekit-media-plane.md` §6.5 |
 | `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | PENDING / FAILED gate UI via session `linking` (`Loadable` / `FiAlertCircle`) | §5.3 |
 | `src/types/meeting.ts` | mirrored live map (`MeetingLiveMap`, `participants`, `MEETING_LIVE_*`; pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
@@ -644,7 +648,10 @@ Every path that implements this contract, with the section that describes it.
 | Path | Role | Documented in |
 |---|---|---|
 | `src/app/http/controllers/website/custom/OrgStartController.ts` | org start payload + resolution | §6.1 |
-| `src/app/http/routes/website.ts` | `OrgCustomRouter` + `POST /custom/org/start` | §6.1 |
+| `src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts` | LiveKit join-token (`org_host` + peek `STARTED` + reuse-or-mint) | `../backend/contracts/livekit-media-plane.md` §6 |
+| `src/app/http/routes/website.ts` | `OrgCustomRouter` + `POST /custom/org/start` + `POST /custom/org/livekit_token` | §6.1; `../backend/contracts/livekit-media-plane.md` §6.1 |
+| `src/app/orm/models/MeetingParticipant.ts` | roster join + optional `livekit_token` / `livekit_token_expires_at` | `../backend/contracts/meeting-participant-domain.md`; `livekit-media-plane.md` §6 |
+| `src/resources/trans/ar/messages.ts`, `src/resources/trans/en/messages.ts` | `MEETING_NOT_LIVE` | `../backend/contracts/livekit-media-plane.md` §7.2 |
 | `src/app/http/middlewares/OrganizationHostMiddleware.ts` | header-based org resolve + `currentOrganization` | §6.2, §8 |
 | `src/resources/configs/http/middlewares/index.ts` | `org_host` registration | §6.2 |
 | `src/app/socket/middlewares/AuthenticationIOMiddleware.ts` | actor handshake `token` + `SocketData` for `/customer`, `/supervisor` | `../backend/contracts/meeting-realtime-socket.md` §2 |
@@ -666,6 +673,8 @@ Every path that implements this contract, with the section that describes it.
 | Path | Role |
 |---|---|
 | `.cursor/rules/organization-host-routing.mdc` | host mode, route gate, transport identification |
+| `.cursor/rules/livekit-media-plane.mdc` | LiveKit helper + join-token HTTP + participant JWT cache |
+| `.cursor/rules/meeting-participant-roster.mdc` | roster join + LiveKit token columns never on GQL |
 | `.cursor/rules/meeting-realtime-socket.mdc` | Meeting session placement, hook contract, `connect_error`, backend pairing |
 | `.cursor/rules/website-meeting-live-session.mdc` | `MeetingLiveSessionProvider` / `useMeetingLiveSession` linking/can/actions/meeting/me + linking gate UI |
 | `.cursor/rules/website-meeting-shell.mdc` | READY shell drawer IA + in-shell `MeetingPage` + header request-to-speak |
@@ -677,6 +686,7 @@ Every path that implements this contract, with the section that describes it.
 | `.cursor/rules/socket-event-mirroring.mdc` | outbound mirror scope |
 | `.cursor/rules/website-semantic-color-token-discipline.mdc` | runtime per-tenant color maps — shell keys reference `semanticColor`, only brand keys are computed (§5.4) |
 | `.cursor/skills/meeting-realtime-socket/SKILL.md` | Meeting realtime transport workflow |
+| `.cursor/skills/meeting-livekit-token/SKILL.md` | LiveKit join-token HTTP + website fetch hook |
 | `.cursor/skills/website-meeting-live-session/SKILL.md` | Meeting session surface + linking gate workflow |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | Meeting READY shell + in-shell `MeetingPage` workflow |
 | `.cursor/skills/nodejs-socket-server-event/SKILL.md` | backend socket surface workflow |

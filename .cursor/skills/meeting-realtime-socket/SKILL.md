@@ -21,6 +21,7 @@ description: >-
 - Touching `live_state` persistence or the live document registry.
 - **Not** for product linking/can/actions/meeting/me or `MeetingLinkingScreen` — use `.cursor/skills/website-meeting-live-session/SKILL.md`.
 - **Not** for READY shell drawer tiles / header request-to-speak — use `.cursor/skills/website-meeting-shell/SKILL.md`.
+- **Not** for LiveKit join-token HTTP / `useMeetingLiveKitToken` — use `.cursor/skills/meeting-livekit-token/SKILL.md`.
 
 ## Read first
 

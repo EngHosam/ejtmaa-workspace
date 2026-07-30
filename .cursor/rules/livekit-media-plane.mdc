@@ -1,12 +1,13 @@
 ---
-description: LiveKit media plane — helper-only, no ORM, A/V not business state
-globs: backend/src/app/helpers/LiveKitHelper.ts,backend/.env.example,backend/package.json
+description: LiveKit media plane — helper, join-token HTTP, participant token cache (not a LiveKit ORM/room table)
+globs: backend/src/app/helpers/LiveKitHelper.ts,backend/src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/.env.example,backend/package.json,website/src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts,website/src/resources/configs/axios/api.ts,website/src/types/extends/global.ts
 alwaysApply: false
 ---
 
 # LiveKit media plane
 
 Authoritative contract: `docs/platforms/backend/contracts/livekit-media-plane.md`.
+Workflow skill: `.cursor/skills/meeting-livekit-token/SKILL.md`.
 
 ## Boundaries
 
@@ -19,13 +20,18 @@ Authoritative contract: `docs/platforms/backend/contracts/livekit-media-plane.md
 - File: `backend/src/app/helpers/LiveKitHelper.ts`.
 - Dependency: `livekit-server-sdk` pinned (currently `2.17.0`).
 - Env: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (prefer dashboard `wss://` URL).
-- Default token TTL: `LiveKitHelper.DEFAULT_ACCESS_TOKEN_TTL` (`12h` from mint). Change that constant to retarget; override per call with `options.ttl`.
+- Default token TTL: `LiveKitHelper.DEFAULT_ACCESS_TOKEN_TTL` (`12h` from mint). Change that constant to retarget; override per call with `options.ttl`. Persist SQL expiry with the same 12h window.
 - Return **client** URL from `clientUrl()` / `createAccessToken` (`ws`/`wss`), not a raw `https` host for browser connect.
 - Mint with `AccessToken` + `addGrant` + `await toJwt()` (SDK v2 async).
 - Room APIs via `LiveKitAPI` → `api.room.*`.
 
 ## Ownership
 
-- Helper does **not** own roster/org/`STARTED` authz or SQL attendance writes — requesters do.
-- One JWT per member join; never reuse one token across members.
+- Helper does **not** own roster/org/`STARTED` authz or SQL attendance writes — `MeetingLiveKitTokenController` (and requesters when used) do.
+- Controller file name is **`MeetingLiveKitTokenController`** (not `OrgLiveKitTokenController`) even though the route lives under `OrgCustomRouter` `/custom/org/...`.
+- Join-token HTTP: `POST /website/custom/org/livekit_token` with per-route `org_host`; `STARTED` via `peekMeetingLiveDoc` + `readLiveFields` (**no create**). Peek is in-process only.
+- Persist reused JWTs on `MeetingParticipant.livekit_token` / `livekit_token_expires_at` only — never on GQL.
+- One JWT per member; never reuse one token across members.
+- Website hook public API: `{ token, status }` (`idle|pending|ready|error`). Quiet network retry uses `skipNetworkToast` via `declare module "axios"` in `website/src/types/extends/global.ts` — no Axios casts.
+- Temporary probe in `MeetingLiveBroadcast` shows `status` + `token` for real join-token testing — remove when broadcast A/V lands.
 - Do not commit secrets; keep values in gitignored `.env` only.
