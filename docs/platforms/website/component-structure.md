@@ -59,7 +59,7 @@ Shipped groups:
 | Customer meetings | `customer/meetings/*` (screens, rows, cards, `MeetingMetaChips`, `MeetingNote` alert chrome, `MeetingParticipantGroup`, and the UI-only mirrors `meetingNotifyTemplateMode` / `meetingScheduleLead`), `customer/hooks/useCustomerMeetings` |
 | Customer form modals | `customer/modals/*` (`MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal` — registered; see `flow-form-foundation.md` §3.8b) |
 | Live meeting (organization host) | `meeting/hooks/useMeetingLive` (`MeetingLiveProvider` + `useMeetingLive`), `meeting/hooks/useMeetingLiveMe`, `meeting/hooks/useMeetingAttendWindow` (clock; called only from session), `meeting/hooks/useMeetingLiveSession` (resolve + provider → `linking` / `can` / `actions` / `meeting` / `me` / `attendWindow`), `meeting/MeetingLinkingScreen` — `organization-host-routing.md` §5.1, §5.2, §5.3 |
-| Meeting shell (organization host) | `meeting/MeetingHeader`, `meeting/MeetingHeaderMe`, `meeting/MeetingFooter`, `meeting/MeetingDrawerPanel`, `meeting/MeetingDrawerOverlay`, `meeting/MeetingAttendanceCard` (own chrome; not HeaderMe), `meeting/hooks/useMeetingAttendance` (data VM; no navigation), `meeting/hooks/useOrganization`, `meeting/hooks/useMeetingPage` (`MeetingPageProvider`), `meeting/pages/*` (`MeetingInitPage` lobby reads session `attendWindow`; `MeetingAttendancePage` chair log + page-owned bounce; other drawer ids via named pages + shared `MeetingPageStub` until product UI) — `organization-host-routing.md` §5.4, §5.5 (READY shell only; linking gate precedes it); IA: `.cursor/rules/website-meeting-shell.mdc` |
+| Meeting shell (organization host) | `meeting/MeetingHeader`, `meeting/MeetingHeaderMe`, `meeting/MeetingFooter`, `meeting/MeetingDrawerPanel`, `meeting/MeetingDrawerOverlay`, `meeting/MeetingLiveBroadcast`, `meeting/MeetingPageOverlay` (solid floating sheet while `STARTED`; `ph=page.padY`), `meeting/MeetingPrimaryButton`, `meeting/MeetingMetaChip`, `meeting/MeetingAttendanceCard` (own chrome; not HeaderMe), `meeting/hooks/useMeetingAttendance` (data VM; no navigation), `meeting/hooks/useOrganization`, `meeting/hooks/useMeetingPage` (`MeetingPageProvider`), `meeting/pages/*` (`MeetingInitPage` lobby reads session `attendWindow`; `MeetingLivePage` waiting/start only; `MeetingAttendancePage` chair log + page-owned bounce; other drawer ids via named pages + shared `MeetingPageStub` until product UI) — `organization-host-routing.md` §5.4, §5.5 (READY shell only; linking gate precedes it); IA: `.cursor/rules/website-meeting-shell.mdc` |
 
 Planned groups (target contract):
 
@@ -93,7 +93,7 @@ Thin route entry components bound to route identifiers.
 
 Shipped public/auth: `Login`, `Register`, `ResetPassword`, `Home`, `UiMockup`, `Error`.
 
-Organization host: `Meeting` (route + branded `MeetingLayout` shell; `Meeting.tsx` switches in-shell `MeetingPage` under `meeting/pages/` — `organization-host-routing.md` §5, §5.5).
+Organization host: `Meeting` (route + branded `MeetingLayout` shell; `Meeting.tsx` switches in-shell `MeetingPage` under `meeting/pages/`; while `STARTED`, persistent `MeetingLiveBroadcast` + solid `MeetingPageOverlay` for non-`live` — `organization-host-routing.md` §5, §5.5).
 
 Customer workspace: shipped `CustomerHome` command map, members directory + form, meetings directory + create form + details, organization settings, message channels directory, message templates directory. Planned: subscription, notifications, static info, support, bottom bar.
 

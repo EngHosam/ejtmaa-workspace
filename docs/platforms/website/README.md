@@ -285,7 +285,7 @@ Current-state reflection of the customer-home change set. The source behavior is
 
 ## Change set traceability — organization host routing
 
-Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest shell delivery inventory: §10c (Home + stubs + selected chrome).
+Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest shell delivery inventory: §10l (persistent broadcast + solid `MeetingPageOverlay` + Meeting info tile + content `FlexContainer`).
 
 | Concern | Documented where |
 |---|---|
@@ -300,7 +300,7 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | `POST /website/custom/org/start` + `org_host` middleware | `../backend/contracts/client-portal-http-website.md` |
 | Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
 | Known limits (unwired `org_host`, drawer page title stubs via `MeetingPageStub`, client-only chair gates) | `organization-host-routing.md` §8 |
-| Meeting shell branding + drawer Home / selected chrome + in-shell `MeetingPage` | `organization-host-routing.md` §5.4, §5.5, §10c; `.cursor/rules/website-meeting-shell.mdc` |
+| Meeting shell branding + Meeting info after `live` / selected chrome + STARTED broadcast stack + solid overlay + in-shell `MeetingPage` | `organization-host-routing.md` §5.4, §5.5, §10l; `.cursor/rules/website-meeting-shell.mdc` |
 | `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` / `website-meeting-live-session.mdc` / `website-meeting-shell.mdc` | Host-mode gating + Meeting transport + session surface + READY shell IA |
 
 ## Change set traceability — MicroBand footer credit spelling

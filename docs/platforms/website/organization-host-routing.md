@@ -343,14 +343,16 @@ Copying a `ThemeMap` leaf into the shell group is a defect: `yarn type-check` va
 | `meeting/MeetingHeader.tsx` | Menu button (shared `HeaderIconButton`) + org logo, or the org name clamped to one line when there is no logo; when `me` exists, trailing `MeetingHeaderMe` (avatar + name + type chip); for non-chair `me`, a disabled request-to-speak control (mic + `requestTalk` / `requestTalkAria`). A 2px rail in `colors.accentActionBackground` sits on the bottom edge. `fixed` prop switches between the in-flow desktop bar and the mobile `Fixed` bar at `zIndex.header`. |
 | `meeting/MeetingHeaderMe.tsx` | Presentational current-participant cluster: props `name` / `type` / `avatarUrl` / `colors` / optional `pushTrailing`. Avatar circle (~`2.2rem`) uses org `primaryActionBackground` + image or `FiUser` on `actionIconOnFill` (do **not** import `customer/IdentityAvatar`). Name: `name.trim()`, `smallAction` bold, ellipsis, `maxW={14}` on the cluster. Type chip: soft `sectionAccentBackground` + `textAccent`; labels `typeChairperson` / `typeMember` / `typeViewer` (`CHAIRPERSON` / `VIEWER` / else → member). Visible text only — no redundant group `aria-label`. |
 | `meeting/MeetingFooter.tsx` | Rights line only: `© <year> <platform name> — <rights>`. The name is the **platform** (`ui.layouts.mainLayout.footerTitle`), not the organization. |
-| `meeting/MeetingDrawerPanel.tsx` | Shared panel body for both breakpoints: title row (close when `showClose`), org identity card (logo and/or name), full-row **Home** control (`itemHome` + `HomeMark`) above a role-based 2-column tile grid (`live` full-row, label Meeting room / غرفة الاجتماع) that calls `setPage` from `useMeetingPage`, pinned appearance/language row (`ThemeModeSwitch` + `LanguageSwitch`, both `compact`). |
+| `meeting/MeetingDrawerPanel.tsx` | Shared panel body for both breakpoints: title row (close when `showClose`), org identity card (logo and/or name), role-based 2-column tile grid with full-row `live` (Meeting room / غرفة الاجتماع) then full-row Meeting info (`itemHome` + `HomeMark` → `"init"`), then remaining role tiles; calls `setPage` from `useMeetingPage`; pinned appearance/language row (`ThemeModeSwitch` + `LanguageSwitch`, both `compact`). |
 | `meeting/MeetingDrawerOverlay.tsx` | Mobile portal overlay following the `CustomerDrawer` pattern: `createPortal` to `body`, `zIndex.modals`, blurred backdrop, RTL-aware slide-in, `no-scroll-drawer` body lock, 220ms unmount delay. Exported **without** `withMemo` — it reads `router.isRTL`. |
+
+Header and footer put their chrome inside `Container`. READY route children mount in the same width via `FlexContainer` (`dir="column"`, `flx_1`, `minH={0}`) in `MeetingLayout` — page / broadcast / overlay share that column. In-shell page bodies use vertical pad only (`pv`). `MeetingPageOverlay` adds horizontal pad equal to that token (`ph={page.padY}`) so floating pages keep equal inset on all sides.
 
 The button chrome is `website/src/app/ui/components/HeaderIconButton.tsx` — a top-level shared component (`component-structure.md` §3), consumed by both `CustomerHeader` and `MeetingHeader`. It owns its own tokens (`inputBackground`, `inputBorder`, `iconPrimary`, `semanticDims.control.iconButtonSize`, `semanticDims.card.radius`) and exposes no color props, so the two headers cannot drift.
 
 The glyph is the shared `DrawerMenuIcon`. Its leading bar is themeable through the optional `accentClr` prop, defaulting to `semanticColor.accentActionBackground`; the two horizontal bars are always `semanticColor.iconPrimary`. `MeetingHeader` passes `semanticColor.iconPrimary` so all three bars read as one content-colored mark (dark in light scheme, near-white in dark). `CustomerHeader` passes nothing and keeps the accent bar.
 
-**Drawer tiles.** Role-based from `useMeetingLiveSession().me?.type` (local `DrawerGridItemDef[]` with `id: MeetingDrawerPage` = `Exclude<MeetingPage, "init">` in `MeetingDrawerPanel`). The READY shell (header/drawer) mounts only after `linking === "READY"`. A full-row **Home** control (`itemHome` + shared `HomeMark` forced white via `actionIconOnFill` on both `frameClr` and `accentClr` — same monochrome-on-fill idea as `DrawerMenuIcon accentClr` on the menu button; do not use `FiHome`) sits above the role grid and calls `setPage("init")` (selected when `page === "init"`). Chairperson (`CHAIRPERSON`): `live` (`FiVideo`), `talkQueue` (`FiMic`), `attendance` (`FiClipboard`), `agenda` (`FiList`), `decisionsAndVote` (`FiCheckSquare`). Member and viewer: `live`, `agenda`, `decisionsAndVote` only. No `participants` tile and no `init` inside the role grid. The `live` tile is full-row (`wide` → `gridColumn: 1 / -1`) so it spans both columns of the 2-column grid; other tiles stay single-cell. Tiles call `useMeetingPage().setPage(id)` (and `onClose` on the mobile overlay). When `!can.enterLive`, the `live` tile is **disabled** (`opc` 0.55, no hover scale, native `disabled` / `aria-disabled`); visible label stays Meeting room / غرفة الاجتماع; `title` / `aria-label` use `init.attendRequiresForRoom`. Other drawer pages are not gated on attendance.
+**Drawer tiles.** Role-based from `useMeetingLiveSession().me?.type` (local `DrawerGridItemDef[]` with `id: MeetingDrawerPage` = `Exclude<MeetingPage, "init">` in `MeetingDrawerPanel`). The READY shell (header/drawer) mounts only after `linking === "READY"`. Order in the 2-column grid: full-row `live` first (Meeting room / غرفة الاجتماع), then full-row **Meeting info** (`itemHome` + shared `HomeMark` forced white via `actionIconOnFill` on both `frameClr` and `accentClr` — same monochrome-on-fill idea as `DrawerMenuIcon accentClr` on the menu button; do not use `FiHome`) calling `setPage("init")` (selected when `page === "init"`; label Meeting info / معلومات الاجتماع), then the remaining role tiles. Chairperson (`CHAIRPERSON`): `live` (`FiVideo`), Meeting info, `talkQueue` (`FiMic`), `attendance` (`FiClipboard`), `agenda` (`FiList`), `decisionsAndVote` (`FiCheckSquare`). Member and viewer: `live`, Meeting info, `agenda`, `decisionsAndVote` only. No `participants` tile and no `init` id inside `DrawerGridItemDef[]`. The `live` and Meeting info tiles are full-row (`wide` → `gridColumn: 1 / -1`); other tiles stay single-cell. Tiles call `useMeetingPage().setPage(id)` (and `onClose` on the mobile overlay). When `!can.enterLive`, the `live` tile is **disabled** (`opc` 0.55, no hover scale, native `disabled` / `aria-disabled`); visible label stays Meeting room / غرفة الاجتماع; `title` / `aria-label` use `init.attendRequiresForRoom`. While `meeting.status === "STARTED"` and `can.enterLive`, the `live` tile shows a corner accent broadcast ping (`accentActionBackground` pulse; a11y label appends `init.statusStarted`). Other drawer pages are not gated on attendance.
 
 **Selected tile chrome** (landing FAQ / message-card family — not solid primary fill):
 
@@ -373,8 +375,8 @@ Tile layout mirrors `CustomerDrawer`'s `DrawerGridItem`: `minH 7.2`, a `3.1`-squ
 
 `MeetingLayout` wraps both breakpoint trees in a single outer provider chain: `MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`. Inside, `MeetingShell` runs the linking gate (§5.3) **before** picking desktop vs mobile chrome: when `linking !== "READY"`, only `MeetingLinkingScreen` mounts (page `children` are not rendered). When READY, the shell picks one of two trees from a `matchMedia(min-width: SW.min_lg)` effect (same shape as `MainLayout`). `children` is rendered once per READY tree.
 
-- **Desktop:** a `Row` of [drawer column | `Col`(header, content, footer)]. The drawer column is **in flow** (not an overlay) and `position: sticky; top: 0` at `h/maxH: 100vh`, so it stays viewport-tall while the page scrolls and never covers the footer. Its width animates between `semanticDims.shell.drawerWidth` and `0`, with `pointerEvents: none` while collapsed.
-- **Mobile:** the `CustomerMainLayout` shape — `MeetingHeader fixed`, content `minH: 100vh` with a `paddingTop` matching `Dims.headerHeight` / `Dims.mobileHeaderHeight`, and the portal overlay.
+- **Desktop:** a `Row` of [drawer column | `Col`(header, `FlexContainer` content, footer)]. The drawer column is **in flow** (not an overlay) and `position: sticky; top: 0` at `h/maxH: 100vh`, so it stays viewport-tall while the page scrolls and never covers the footer. Its width animates between `semanticDims.shell.drawerWidth` and `0`, with `pointerEvents: none` while collapsed. Content children sit in `FlexContainer` (`dir="column"`, `flx_1`, `minH={0}`) — same width contract as header/footer `Container` (`defaultContainerSizeDims`).
+- **Mobile:** the `CustomerMainLayout` shape — `MeetingHeader fixed`, content `minH: 100vh` with a `paddingTop` matching `Dims.headerHeight` / `Dims.mobileHeaderHeight`, then the same `FlexContainer` for children, and the portal overlay.
 
 The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls (`Col` + `flx_1` + `minH={0}` + `customScroll`), which keeps the appearance/language row visible at the bottom instead of pushing it below the fold as the tile list grows.
 
@@ -388,6 +390,7 @@ The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls 
 | `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemHome`, `itemLive`, `itemTalkQueue`, `itemAttendance`, `itemAgenda`, `itemDecisionsAndVote`, `utilityPrefs` |
 | `init` | `logoAria`, type/status labels, `attend` / `attendAria`, `attendAvailableIn`, `attendRequiresForRoom`, `attendedTitle` / `attendedAt`, `roomUnlockedHint`, `leftTitle` |
 | `live` | `statusWaitingToStart`, `waitingLead`, `startMeeting` / `startMeetingAria`, `broadcastPlaceholder` |
+| `overlay` | `closeAria` |
 
 `MeetingFooter` additionally reads `ui.layouts.mainLayout.footerTitle` for the platform name; it has no key of its own for it.
 
@@ -420,22 +423,42 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 
 **Meeting room (`live`) gate.** All participant types need present check-in (`can.enterLive`) before the Meeting room page. Drawer: disabled `live` tile when locked (§5.4). `MeetingLivePage` also redirects to `"init"` when `!can.enterLive` (defense if `page` was already `"live"`). Agenda / talkQueue / other drawer ids stay ungated. Chair `startMeeting` / `endMeeting` are unchanged.
 
-**Meeting room (`live`) body.** After the enterLive gate, `MeetingLivePage` branches on live `meeting.status` only (writable live statuses are `WAITING_TO_START` \| `STARTED` via `MEETING_LIVE_STATUSES`):
+**Meeting room (`live`) body.** `MeetingLivePage` is waiting/start only (after the enterLive gate):
 
 | Condition | UI |
 |---|---|
-| `meeting.status === "STARTED"` | `MeetingLiveBroadcast` — placeholder chrome only (`broadcastPlaceholder` under `meetingLayout.live`; product stream UI deferred) |
-| else (typically `WAITING_TO_START`) | Centered waiting copy (`statusWaitingToStart` + `waitingLead`); when `can.startMeeting` (chair + `WAITING_TO_START`) show `MeetingPrimaryButton` → `actions.startMeeting` (existing session write: `meeting.status = "STARTED"`). No confirm modal / toast / navigation side effects beyond that write. |
+| Waiting (typically `WAITING_TO_START`) | Centered waiting copy (`statusWaitingToStart` + `waitingLead`); when `can.startMeeting` show `MeetingPrimaryButton` → `actions.startMeeting` |
+| `STARTED` | Not rendered as exclusive page content — see persistent broadcast stack below |
 
-Member / viewer see the same waiting panel without the start button (`can.startMeeting` false). Copy under `ui.layouts.meetingLayout.live` (ar + en). Shared org chrome: `MeetingPrimaryButton` (primary CTA; props `label` / `ariaLabel` / `onClick`) and `MeetingMetaChip` (label + `tone`; used on Init meta). Both read `useOrganization` internally — no `colors` prop. Status / type **enum display strings** must match backend `enums.meetingStatus` / `meetingType` labels in `backend/src/resources/trans/{ar,en}/general.ts` (e.g. `STARTED` = بدأ / Started — not invented “in progress” wording).
+**Persistent broadcast + floating pages (`STARTED`).** Owned by `Meeting.tsx` `MeetingContent`:
+
+| Condition | UI |
+|---|---|
+| `status !== "STARTED"` | Exclusive `renderPage(page)` (same as before) |
+| `STARTED` and `page === "live"` | `MeetingLiveBroadcast` only (placeholder chrome; stream UI deferred) |
+| `STARTED` and `page !== "live"` | `MeetingLiveBroadcast` stays mounted underneath; current page in `MeetingPageOverlay` |
+
+**`MeetingPageOverlay` contract (observed):**
+
+| Trait | Shipped value |
+|---|---|
+| Geometry | Absolute fill of the READY content `FlexContainer`; solid sheet `l`/`r` `0` (same column width as header/footer `Container`); vertical float inset `t`/`b` = `page.padY` |
+| Surface | Org `pageBackground` + `inputBorder` + `card.radius`; **solid only** — no blur, frost, scrim, or transparency experiments |
+| Scroll body | `ph={page.padY}` so floating page content matches page bodies’ `pv={page.padY}` (equal inset on all sides while floating) |
+| Close | Floating over content (compact theme/lang chrome: `semanticColor.input*` + size `2.35`); `overlay.closeAria`; **no** reserved top pad that defeats floating |
+| Dismiss | Close control, outside tap (vertical margin / backdrop Absolute), or Meeting room drawer tile → `setPage("live")` |
+
+`STARTED && page === "live" && !can.enterLive` → effect `setPage("init")`. Drawer `live` tile shows a corner accent ping while `STARTED` and enterLive.
+
+Member / viewer see the same waiting panel without the start button (`can.startMeeting` false). Copy under `ui.layouts.meetingLayout.live` (ar + en). Shared org chrome: `MeetingPrimaryButton` and `MeetingMetaChip`. Status / type **enum display strings** must match backend `enums.meetingStatus` / `meetingType` labels in `backend/src/resources/trans/{ar,en}/general.ts` (e.g. `STARTED` = بدأ / Started).
 
 **Drawer `live` tile label.** Tile id stays `"live"`; user-facing copy is **Meeting room** (en) / **غرفة الاجتماع** (ar) via `meetingLayout.drawer.itemLive` — not “Live” / “البث”.
 
-**Drawer pages.** Each drawer id mounts a named page under `meeting/pages/`. **Attendance** (`MeetingAttendancePage`) and **Meeting room** (`MeetingLivePage`) are shipped product UI. Other drawer ids still use shared `MeetingPageStub` (drawer label only) until their product UI ships. Stub chrome: `pageBackground` + `pageTitle` text from `OrganizationColors`.
+**Drawer pages.** Each drawer id mounts a named page under `meeting/pages/`. **Attendance** (`MeetingAttendancePage`) and **Meeting room** (`MeetingLivePage` waiting/start) are shipped product UI. Other drawer ids still use shared `MeetingPageStub` until their product UI ships.
 
 | `MeetingPage` id | Component | Shipped body |
 |---|---|---|
-| `live` | `MeetingLivePage` | waiting panel + chair start / `STARTED` → broadcast placeholder; bounce to `"init"` when `!can.enterLive` |
+| `live` | `MeetingLivePage` | waiting panel + chair start; bounce to `"init"` when `!can.enterLive` (broadcast owned by `Meeting.tsx` when `STARTED`) |
 | `talkQueue` | `MeetingTalkQueuePage` | stub |
 | `attendance` | `MeetingAttendancePage` | chair attendance log (below) |
 | `agenda` | `MeetingAgendaPage` | stub |
@@ -457,7 +480,7 @@ Shared placeholder: `meeting/pages/MeetingPageStub.tsx`. Replace stub body insid
 
 Helpers: `meeting/hooks/useMeetingAttendance.ts` (pure helpers + filter / quorum / rows; no navigation). Filters UI: shared `FilterCountChips`.
 
-**Drawer writes.** Tiles call `setPage(id)` and, on the mobile overlay, `onClose`. There is no `init` tile inside the role grid. A full-row **Home** control above the grid calls `setPage("init")` (selected when `page === "init"`). Selected tile chrome (landing FAQ / message-card family): soft `sectionAccentBackground`, partial-height start accent rail (`3px`, inset), `textAccent` label; icon well stays `primaryActionBackground` + white glyph (no selected swap, no full perimeter brand border); `aria-current="page"`.
+**Drawer writes.** Tiles call `setPage(id)` and, on the mobile overlay, `onClose`. Meeting info (`itemHome` + `HomeMark`) is full-row **after** `live` inside the grid (`setPage("init")`; selected when `page === "init"`; label Meeting info / معلومات الاجتماع). Selected tile chrome: soft `sectionAccentBackground`, partial-height start accent rail (`3px`, inset), `textAccent` label; icon well stays `primaryActionBackground` + white glyph; `aria-current="page"`. While `STARTED` and enterLive, the `live` tile shows a corner accent broadcast ping.
 
 Governance: `.cursor/rules/website-meeting-shell.mdc`, skill `website-meeting-shell`. Authority for shell chrome and org color map remains §5.4.
 
@@ -530,7 +553,7 @@ What the website side depends on:
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is registered but unwired.** No HTTP route consumes `currentOrganization` yet; it is attached when organization-scoped endpoints land.
-2. **Most drawer in-shell pages are still title stubs (§5.5).** `TalkQueue` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **`MeetingAttendancePage` is shipped** (chair-only attendance log + quorum). **`MeetingLivePage` is shipped** (waiting panel + chair `startMeeting` / `STARTED` → `MeetingLiveBroadcast` placeholder). Broadcast media UI inside `MeetingLiveBroadcast` and post-start side effects beyond the existing status write remain deferred. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
+2. **Most drawer in-shell pages are still title stubs (§5.5).** `TalkQueue` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **`MeetingAttendancePage` is shipped** (chair-only attendance log + quorum). **`MeetingLivePage` is shipped** (waiting + chair start). While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + solid `MeetingPageOverlay` for other pages). Broadcast media UI and post-start side effects beyond the existing status write remain deferred. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
 3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
@@ -571,18 +594,19 @@ Every path that implements this contract, with the section that describes it.
 | `src/resources/configs/store/reduces/index.ts` | slice registration + `MDefaultStoreState` | §3 |
 | `src/resources/configs/routes.ts` | `Meeting` route with `orgHostOnly`; nested `MPagesRoutes` params for Meeting + fixed customer param routes | §5; `route-registry-contract.md` §3.1 |
 | `src/types/extends/global.ts` | `resolveRequestHost` on `MyInstance`; `orgHostOnly`; `Layout` `"MEETING"` | §2, §5 |
-| `src/app/ui/pages/Meeting.tsx` | page switch on `useMeetingPage().page` (`"init"` → `MeetingInitPage`; drawer ids → named stub pages) | §5, §5.5 |
-| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | `"init"` lobby; colocated `InitAttendSection`; meta via `MeetingMetaChip` | §5.5, §10j, §10k |
-| `src/app/ui/components/meeting/pages/MeetingPageStub.tsx` | shared title-only placeholder chrome for non-init drawer pages | §5.5, §8 |
-| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | `"live"` body; bounces to `"init"` when `!can.enterLive`; waiting + chair start / `STARTED` → broadcast placeholder | §5.5, §8, §10j |
-| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | `STARTED` meeting-room placeholder (temp copy; stream UI deferred) | §5.5, §10j |
+| `src/app/ui/pages/Meeting.tsx` | page switch; while `STARTED` persistent `MeetingLiveBroadcast` + `MeetingPageOverlay` for non-`live` pages | §5, §5.5 |
+| `src/app/ui/components/meeting/MeetingPageOverlay.tsx` | solid floating sheet for non-`live` while `STARTED` (column width; `ph=page.padY`; floating close) | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | `"live"` waiting + chair start; bounce to `"init"` when `!can.enterLive`; `pv` only | §5.5, §8, §10j, §10l |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | persistent `STARTED` broadcast placeholder (`pv` only; stream UI deferred) | §5.5, §10j, §10l |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | `"init"` lobby; colocated `InitAttendSection`; meta via `MeetingMetaChip`; `pv` only | §5.5, §10j, §10k, §10l |
+| `src/app/ui/components/meeting/pages/MeetingPageStub.tsx` | shared title-only placeholder chrome for non-init drawer pages; `pv` only | §5.5, §8, §10l |
 | `src/app/ui/components/meeting/MeetingPrimaryButton.tsx` | org primary CTA (`label` / `ariaLabel` / `onClick`); used by Init attend + Live start | §5.5, §10j |
 | `src/app/ui/components/meeting/MeetingMetaChip.tsx` | org type/status chip (`label` + `tone`); used by Init meta (not customer `MeetingMetaChips`) | §5.5, §10k |
 | `src/app/ui/components/meeting/pages/MeetingTalkQueuePage.tsx` | `"talkQueue"` body (title stub) | §5.5, §8 |
-| `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | `"attendance"` body — chair attendance log + quorum | §5.5, §8, §10f |
+| `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | `"attendance"` body — chair attendance log + quorum; `pv` only | §5.5, §8, §10f, §10l |
 | `src/app/ui/components/meeting/pages/MeetingAgendaPage.tsx` | `"agenda"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx` | `"decisionsAndVote"` body (title stub) | §5.5, §8 |
-| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header` incl. type keys / `requestTalk`/`requestTalkAria`, `footer`, `linking`, `drawer` incl. `itemHome`, `init` incl. attend-window / room-gate keys, `live` waiting/start/broadcast keys, `attendance`) | §5.3, §5.4, §5.5 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header`, `footer`, `linking`, `drawer` incl. `itemHome`, `init`, `live`, `overlay.closeAria`, `attendance`) | §5.3, §5.4, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
@@ -591,13 +615,13 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | PENDING / FAILED gate UI via session `linking` (`Loadable` / `FiAlertCircle`) | §5.3 |
 | `src/types/meeting.ts` | mirrored live map (`MeetingLiveMap`, `participants`, `MEETING_LIVE_*`; pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
-| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — live → session → page providers, linking gate, branded shell, responsive READY tree | §5, §5.1, §5.3, §5.4, §5.5 |
+| `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — live → session → page providers, linking gate, branded shell, READY `FlexContainer` content column | §5, §5.1, §5.3, §5.4, §5.5 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
 | `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` (incl. `idleCardBackground` / `presentCardBackground`, fixed-white `actionIconOnFill`); light `softLight` mix 0.78 for section chips | §5.4 |
 | `src/app/ui/components/meeting/MeetingHeader.tsx` | menu + org logo/name; `MeetingHeaderMe` when `me` exists; disabled request-to-speak (`requestTalk` / `requestTalkAria`) for MEMBER and VIEWER; accent rail; `fixed` mobile bar | §5.4 |
 | `src/app/ui/components/meeting/MeetingHeaderMe.tsx` | current participant avatar + name + type chip (org colors, session `me`) | §5.4 |
-| `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line | §5.4 |
-| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | Home + role tile grid (`wide` live); disable locked `live` (`ariaLabel`); `setPage` + selected accent chrome; prefs row | §5.4, §5.5 |
+| `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line (no unjustified top margin) | §5.4 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | Meeting info after `live`; role tile grid (`wide` live); live corner ping while `STARTED`; disable locked `live` (`ariaLabel`); `setPage` + selected accent chrome; prefs row | §5.4, §5.5 |
 | `src/app/ui/components/meeting/MeetingDrawerOverlay.tsx` | mobile portal overlay | §5.4 |
 | `src/app/ui/components/HeaderIconButton.tsx` | top-level shared icon button; consumed by `CustomerHeader` + `MeetingHeader` | §5.4; `component-structure.md` §3 |
 | `src/app/ui/components/customer/CustomerHeader.tsx` | consumes `HeaderIconButton` from the shared top level | §5.4 |
@@ -972,12 +996,43 @@ On top of §10j: extract shared org `MeetingMetaChip`; replace Init nested-terna
 | `.cursor/rules/website-meeting-shell.mdc` | `MeetingMetaChip` + page-local section placement | governance |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | InitAttendSection / MetaChip steps | governance |
 
+## 10l) Change set inventory (persistent broadcast + solid page overlay + Meeting info tile)
+
+On top of §10k: while `STARTED`, `Meeting.tsx` keeps `MeetingLiveBroadcast` mounted and floats non-`live` pages in solid `MeetingPageOverlay` (floating close; dismiss → `"live"`); `MeetingLivePage` is waiting/start only; drawer Meeting info (`itemHome`) sits full-row after `live`; `live` tile corner ping while `STARTED` + enterLive; READY content column is `FlexContainer` (align with header/footer `Container`); exclusive page bodies use `pv` only; overlay scroll body adds `ph={page.padY}`; `meetingLayout.overlay.closeAria`.
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/pages/Meeting.tsx` | modified — `STARTED` stack: persistent broadcast + overlay for non-`live`; bounce when `STARTED` + `live` + `!enterLive` | §5.5 |
+| `src/app/ui/components/meeting/MeetingPageOverlay.tsx` | **added** — solid sheet full content-column width; vertical float inset; scroll `ph=page.padY`; floating close; outside tap dismiss | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | modified — waiting/start only (no broadcast branch); `pv` only | §5.5 |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | modified — mount owner is `Meeting.tsx` while `STARTED`; `pv` only | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — `pv` only (no horizontal pad; overlay supplies `ph` when floating) | §5.4, §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | modified — drop `ph={page.padX}`; `pv` only | §5.4, §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingPageStub.tsx` | modified — `pv` only | §5.5 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | modified — Meeting info after `live`; live corner ping; always-filled tile `buttonReset` | §5.4 |
+| `src/app/ui/layouts/MeetingLayout.tsx` | modified — READY children in `FlexContainer`; flex/`minH={0}` for Absolute overlay height | §5.4 |
+| `src/app/ui/components/meeting/MeetingFooter.tsx` | modified — drop unjustified `mt={3}` | §5.4 |
+| `src/resources/translations/ar.ts`, `en.ts` | modified — `drawer.itemHome` Meeting info / معلومات الاجتماع; `overlay.closeAria` | §5.3–§5.5 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check`; not narrated | — |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.4–§5.5 overlay stack + column width; §8; §10 / §10l; §11 | — |
+| `docs/platforms/website/component-structure.md` | meeting shell index includes broadcast + overlay + primary/meta; `Meeting` page STARTED stack note | component index |
+| `docs/platforms/website/README.md` | organization-host change-set pointer → §10l | platform index |
+| `.cursor/rules/website-meeting-shell.mdc` | STARTED broadcast stack + solid overlay + FlexContainer column + overlay `ph` + Meeting info after live | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | same IA / overlay / column pad steps | governance |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Diff `backend/src/app/types/meeting.ts` against `website/src/types/meeting.ts` (must stay identical).
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); drawer Home returns to `"init"`; drawer `live` disabled until `can.enterLive`; Meeting room shows waiting + chair start when not started and `MeetingLiveBroadcast` placeholder when `STARTED`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); READY content column is `FlexContainer` (aligns with header/footer `Container`); drawer Meeting info returns to `"init"`; drawer `live` disabled until `can.enterLive` (corner ping while `STARTED`); Meeting room shows waiting + chair start when not started; while `STARTED`, persistent `MeetingLiveBroadcast` with other pages in solid `MeetingPageOverlay` (`ph=page.padY` matches page `pv`); chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); other drawer ids mount title stubs; `/customer/...` renders `Error` `404`.
 - Init lobby light chips: `sectionBrandBackground` / `sectionAccentBackground` readable on `pageBackground` (org `softLight` mix 0.78).
 - Selected drawer tile: soft `sectionAccentBackground` + partial start accent rail + `textAccent`; icon well stays primary (white glyph / white `HomeMark`).
 - Attendance cards: present fill uses `presentCardBackground` (distinct from type chip `sectionAccentBackground`); idle fill uses `idleCardBackground` (light card / dark transparent).
@@ -1010,4 +1065,4 @@ On top of §10j: extract shared org `MeetingMetaChip`; replace Init nested-terna
 - `.cursor/skills/website-meeting-live-session/SKILL.md`
 - `.cursor/skills/website-meeting-shell/SKILL.md`
 
-Change-set inventories: §10a–§10i (latest Init attend caption = §10i; card tokens = §10h; hook ownership = §10g).
+Change-set inventories: §10a–§10l (latest = persistent broadcast + solid overlay + Meeting info = §10l).
