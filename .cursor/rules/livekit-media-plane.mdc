@@ -28,10 +28,12 @@ Workflow skill: `.cursor/skills/meeting-livekit-token/SKILL.md`.
 ## Ownership
 
 - Helper does **not** own roster/org/`STARTED` authz or SQL attendance writes — `MeetingLiveKitTokenController` (and requesters when used) do.
+- Publish grants are LiveKit defaults for every roster member; do not claim participant-type media policy exists until `canPublish` is mapped from `MeetingParticipant.type`.
 - Controller file name is **`MeetingLiveKitTokenController`** (not `OrgLiveKitTokenController`) even though the route lives under `OrgCustomRouter` `/custom/org/...`.
 - Join-token HTTP: `POST /website/custom/org/livekit_token` with per-route `org_host`; `STARTED` via `peekMeetingLiveDoc` + `readLiveFields` (**no create**). Peek is in-process only.
 - Persist reused JWTs on `MeetingParticipant.livekit_token` / `livekit_token_expires_at` only — never on GQL.
 - One JWT per member; never reuse one token across members.
-- Website hook public API: `{ token, status }` (`idle|pending|ready|error`). Quiet network retry uses `skipNetworkToast` via `declare module "axios"` in `website/src/types/extends/global.ts` — no Axios casts.
-- Temporary probe in `MeetingLiveBroadcast` shows `status` + `token` for real join-token testing — remove when broadcast A/V lands.
+- Response is `{ token, url }`. `url` is recomputed from env via `clientUrl()` on every response — never persisted beside the cached JWT.
+- Website hook public API is a union on `status` (`idle|pending|ready|error`): `ready` carries `token` **and** `url`; every other status carries neither. Quiet network retry uses `skipNetworkToast` via `declare module "axios"` in `website/src/types/extends/global.ts` — no Axios casts.
+- Browser consumer is `useMeetingLiveKitRoom` → `MeetingLiveBroadcast`; its invariants live in `.cursor/rules/website-meeting-livekit-broadcast.mdc`.
 - Do not commit secrets; keep values in gitignored `.env` only.

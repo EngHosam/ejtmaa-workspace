@@ -1,0 +1,56 @@
+---
+description: Website Meeting broadcast client — useMeetingLiveKitRoom room ownership, track attach lifecycle, mic vs sound, cooperative mute-all, MeetingLiveBroadcast stage
+globs:
+  - website/src/app/ui/components/meeting/MeetingLiveBroadcast.tsx
+  - website/src/app/ui/components/meeting/hooks/useMeetingLiveKitRoom.ts
+  - website/src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts
+alwaysApply: false
+---
+
+# Website Meeting broadcast (LiveKit client)
+
+Authority: `docs/platforms/website/flow-meeting-broadcast.md`.
+Join token / backend: `.cursor/rules/livekit-media-plane.mdc`. Session `can` / linking: `.cursor/rules/website-meeting-live-session.mdc`. Shell IA: `.cursor/rules/website-meeting-shell.mdc`.
+Workflow: `.cursor/skills/website-meeting-broadcast/SKILL.md`.
+
+## Ownership
+
+- `useMeetingLiveKitRoom` is the **only** owner of `Room`, connection status, and media state. The component keeps no room, track, or connection state.
+- Connect URL comes from the token response (`{ token, url }`). Never hardcode a LiveKit host and never add a website env key for it.
+- `useMeetingLiveKitToken` stays a discriminated union: `ready` ⇒ `token` **and** `url`; anything else ⇒ both `null`. A partial payload must not reach `Room.connect`.
+- Token `error` must surface as broadcast `error` (never `idle`) — an eternal spinner is a defect.
+- Import `livekit-server-sdk` only in `backend/`; `livekit-client` only in `website/`.
+
+## Track attach lifecycle (do not regress)
+
+- The attach effect depends on **`track` only**. Adding a UI flag to it makes React `detach` → pause → clear `srcObject`, cancelling authorized playback.
+- Element mute is imperative in its own effect (`el.muted = soundMuted`) — no React-controlled `muted` attribute on an attached element.
+- `<audio>` carries **no** `autoPlay` / `playsInline` (playback belongs to `attach()` + `startAudio()`); `<video>` stays `muted` + `autoPlay` + `playsInline`.
+- `readPeer`: muted camera publication → `videoTrack: null` (avatar tile). Muted mic publication → **keep** the track attached.
+
+## Mic vs sound
+
+- Mic = my publish. Sound = my local playback. Two states, two controls, never merged.
+- `soundStatus` starts `muted` on mount and after every reset (browser autoplay gate). Enabling calls `room.startAudio()` inside the click stack; on rejection revert to `muted`.
+- Nothing auto-publishes on connect; `videoStatus` / `micStatus` start `muted` and a publish rejection yields `unauthorized` (an output status, never an input).
+
+## Mute-all
+
+- Commands are the fixed strings `ejtmaa.livekit.mute_all_videos` / `ejtmaa.livekit.mute_all_mics` over `publishData({ reliable: true })`; LiveKit excludes the sender.
+- Gate the buttons on `can.muteAllMedia` (session capability), not on a local `me?.type` check.
+- Known and accepted: the receiver applies any well-formed command from any peer. If enforcement is ever required, it belongs on the server (`roomAdmin` / `mutePublishedTrack`) — do not fake it with a client check and do not describe the UI gate as authorization.
+
+## Stage
+
+- Exclusive states only: media stack (`connected`) **or** `Loadable` (`connecting` / `idle`) **or** `LaneFailed` (`error`). No spinner or error card layered over live tiles.
+- Failure copy goes through shared `LaneFailed` with `title` / `description`; pass `onRetry` only when a real retry path exists.
+- Tiles keep `asp={16 / 9}` with the avatar placeholder when there is no track; identity (name / avatar) prefers the session roster, LiveKit `name` is the fallback only.
+- Controls: label states the current state (`Sound is on`), accessible name is the control noun (`Sound`), `aria-pressed` carries state, label hides at `SW.max_sm`.
+- Colors come from `useOrganization().colors` (`organization?.colors ?? defaultOrganizationColors()`), never `semanticColor` directly in this surface.
+
+## Forbidden
+
+- Mounting the broadcast outside the `STARTED` stack in `Meeting.tsx`, or creating a second `Room` anywhere.
+- Playing back the local mic (self-echo).
+- Adding `Room` options (`webAudioMix`, `adaptiveStream`, `dynacast`) or device pickers without a documented product decision.
+- Deriving attendance from media join/leave.

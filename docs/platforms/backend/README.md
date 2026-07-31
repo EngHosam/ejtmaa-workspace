@@ -28,7 +28,7 @@
 | [`talk-record-domain.md`](contracts/talk-record-domain.md) | TalkRecord ORM + nested GQL under Meeting |
 | [`plan-domain.md`](contracts/plan-domain.md) | Plan (الباقة) catalog ORM + public customer GQL |
 | [`subscription-domain.md`](contracts/subscription-domain.md) | Subscription (الاشتراك) entitlement ORM + GQL reads + `subscribe` static + expire task |
-| [`livekit-media-plane.md`](contracts/livekit-media-plane.md) | LiveKit helper + org-host join-token HTTP + participant JWT cache |
+| [`livekit-media-plane.md`](contracts/livekit-media-plane.md) | LiveKit helper + org-host join-token HTTP (`{ token, url }`) + participant JWT cache; browser client in `../website/flow-meeting-broadcast.md` |
 | [`socket-event-mirroring.md`](contracts/socket-event-mirroring.md) | Socket notify events |
 | [`meeting-realtime-socket.md`](contracts/meeting-realtime-socket.md) | `/meeting` namespace: handshake auth, room, `meeting.live.*` events |
 | [`meeting-live-state.md`](contracts/meeting-live-state.md) | Meeting CRDT document, `live_state` BLOB, registry and persistence |

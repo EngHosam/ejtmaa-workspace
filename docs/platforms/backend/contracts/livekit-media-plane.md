@@ -7,13 +7,13 @@ Shipped in this change set:
 - dependency `livekit-server-sdk@2.17.0` (pinned) in `backend/`,
 - server helper `LiveKitHelper` for room admin APIs + participant access-token minting,
 - env keys documented in `backend/.env.example`: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`,
-- organization-host HTTP join-token path: `POST /website/custom/org/livekit_token` (`org_host` + member proof + live-registry `STARTED` gate + reuse-or-mint on `MeetingParticipant`),
-- website hook `useMeetingLiveKitToken` (public `{ token, status }`; temporary probe UI in `MeetingLiveBroadcast` for real join-token testing — remove when broadcast A/V lands).
+- organization-host HTTP join-token path: `POST /website/custom/org/livekit_token` (`org_host` + member proof + live-registry `STARTED` gate + reuse-or-mint on `MeetingParticipant`) returning `{ token, url }`,
+- website hook `useMeetingLiveKitToken` (discriminated union — `ready` carries both `token` and `url`),
+- website client consumer: `livekit-client` `Room.connect` + broadcast A/V UI — contract lives in `../../website/flow-meeting-broadcast.md`.
 
 Out of scope (not shipped):
 
 - GraphQL mutations that mint tokens,
-- website LiveKit client `Room.connect` / A/V UI,
 - setting `MeetingParticipant.attended_at` / `left_at` on join/leave,
 - mapping `MeetingParticipant.type` → publish grants,
 - LiveKit webhooks, egress/recording, SIP, agents,
@@ -40,6 +40,8 @@ Product naming: room name is derived from `Meeting.id` — not persisted as a me
 | `livekit-server-sdk` | `2.17.0` | Official Node server SDK (`AccessToken`, `LiveKitAPI`, room service) |
 
 Lockfile: `backend/yarn.lock`.
+
+Browser counterpart is a **website** dependency (`livekit-client`, exact pin) — never imported in `backend/`, and the server SDK is never imported in `website/`. See `../../website/flow-meeting-broadcast.md` §3.
 
 Install note: engine conflicts on some transitive packages may require `yarn add … --ignore-engines` in this repo’s Node version; version pin remains exact in `package.json`.
 
@@ -127,13 +129,16 @@ If neither `canPublish` nor `canSubscribe` is set, LiveKit’s grant default app
 | Route | `POST /website/custom/org/livekit_token` on `OrgCustomRouter` with per-route `middleware("org_host")` |
 | Controller | `MeetingLiveKitTokenController` (meeting-domain name; lives under `custom/` next to `OrgStartController` — do **not** name it `OrgLiveKitTokenController`) |
 | Website API key | `API.CUSTOM.ORG_LIVEKIT_TOKEN` → `/custom/org/livekit_token` |
-| Website hook | `useMeetingLiveKitToken` → public `{ token, status }` only |
+| Website hook | `useMeetingLiveKitToken` → public `{ status, token, url }` (union: both values only when `ready`) |
+| Website consumer | `useMeetingLiveKitRoom` → `Room.connect(url, token)` (`../../website/flow-meeting-broadcast.md` §5) |
 
 ### 6.2 Request / response
 
 - Header: `organizationId` (resolved by `org_host` → `currentOrganization`).
 - Body: `{ memberId, token, meetingId }` (`token` = `Member.access_token`).
-- Success body: `{ token }` (LiveKit JWT only — no `url`).
+- Success body: `{ token, url }` — the LiveKit JWT plus the **client** connect URL from `LiveKitHelper.clientUrl()` (`ws` / `wss`).
+
+The URL travels with the token on purpose: the website has no LiveKit env key and must never hardcode a host, so the same response that authorizes a room also says which server to reach.
 
 ### 6.3 Controller steps (authz + mint)
 
@@ -142,7 +147,8 @@ If neither `canPublish` nor `canSubscribe` is set, LiveKit’s grant default app
 3. Prove `Meeting` under `organization.get("id")` and member `organization_id` matches.
 4. Prove `MeetingParticipant` roster row for `(meeting_id, member_id)`.
 5. `STARTED` gate: `peekMeetingLiveDoc(meetingId)` only (**no create**). Missing in-process registry entry or `readLiveFields(doc).status !== "STARTED"` → `MEETING_NOT_LIVE`.
-6. Reuse `MeetingParticipant.livekit_token` when `livekit_token_expires_at` is at least 6 hours ahead; otherwise mint via `LiveKitHelper.createAccessToken` (`identity` = member id string, default TTL `DEFAULT_ACCESS_TOKEN_TTL` / `12h`), persist token + `livekit_token_expires_at = now + 12 hours` (keep aligned with that constant), return `{ token }`.
+6. Reuse `MeetingParticipant.livekit_token` when `livekit_token_expires_at` is at least 6 hours ahead; otherwise mint via `LiveKitHelper.createAccessToken` (`identity` = member id string, default TTL `DEFAULT_ACCESS_TOKEN_TTL` / `12h`), persist token + `livekit_token_expires_at = now + 12 hours` (keep aligned with that constant).
+7. Return `{ token, url }` — `url` is always recomputed from env via `LiveKitHelper.clientUrl()`, never persisted next to the cached JWT (a redeployed LiveKit host must not be pinned by an old roster row).
 
 One LiveKit room per meeting; one stored JWT per roster member (never share across members).
 
@@ -160,12 +166,14 @@ One LiveKit room per meeting; one stored JWT per roster member (never share acro
 |---|---|
 | `idle` | Live session not `STARTED` and/or missing `memberId` / `memberToken` / `meetingId` — **no** HTTP request |
 | `pending` | Fetch in flight, or network error quiet-retry while still active |
-| `ready` | Axios `READY` and mapped `token` present |
+| `ready` | Axios `READY` and **both** mapped `token` and `url` present |
 | `error` | Axios `ERROR` with a response body (`isResType`) — business/auth failures; **no** quiet retry |
+
+Public shape is a discriminated union: `ready` ⇒ `token: string` + `url: string`; every other status ⇒ both `null`. A response that omits `url` therefore stays `pending` (retry-eligible) instead of reaching `Room.connect` with a partial payload.
 
 Quiet network retry: `config.skipNetworkToast: true` + `setTimeout` 3s while `active`. Declared on `AxiosRequestConfig` in `website/src/types/extends/global.ts`; honored in `website/src/resources/configs/axios.ts` reject middleware.
 
-Hook mounts in `MeetingLiveBroadcast` as a **temporary test probe**: renders `status` always and `token` when present. Remove this probe UI when the full broadcast / `Room.connect` surface ships. Depends on `useMeetingLiveSession().meeting.status` for the `STARTED` gate (product session, not SQL).
+Consumed by `useMeetingLiveKitRoom` (the only caller), which owns the `Room` and the A/V surface. Depends on `useMeetingLiveSession().meeting.status` for the `STARTED` gate (product session, not SQL).
 
 ## 7) Failure modes
 
@@ -191,9 +199,9 @@ Website: `NOT_VALID_CREDENTIAL` still hits the global errors funnel (existing ax
 
 ## 8) Frontend / GQL
 
-- Website: `useMeetingLiveKitToken` under `meeting/hooks/`; temporary probe in `MeetingLiveBroadcast` shows `status` + `token` for real join-token testing — remove when broadcast A/V lands.
+- Website: `useMeetingLiveKitToken` under `meeting/hooks/` feeds `useMeetingLiveKitRoom`, which connects the room and drives `MeetingLiveBroadcast`. Full client contract (peers, publish toggles, playback autoplay gate, cooperative mute-all, ceilings): `../../website/flow-meeting-broadcast.md`.
 - No GQL surface for LiveKit tokens or `MeetingParticipant.livekit_*` columns.
-- Client connect URL from `createAccessToken` is not returned on the public hook API yet; `Room.connect` remains deferred.
+- Publish grants are still LiveKit defaults for every roster member — `MeetingParticipant.type` is not mapped to `canPublish`, so participant-type media policy remains unenforced on both planes.
 
 ## 9) Traceability map (this change set)
 
@@ -202,7 +210,7 @@ Website: `NOT_VALID_CREDENTIAL` still hits the global errors funnel (existing ax
 | Path | Role | Section |
 |---|---|---|
 | `src/app/helpers/LiveKitHelper.ts` | Helper (already on main; media plane SoT) | §5 |
-| `src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts` | Join-token HTTP (new; renames prior `OrgLiveKitTokenController` draft) | §6 |
+| `src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts` | Join-token HTTP (renamed from the prior `OrgLiveKitTokenController` draft); now returns `{ token, url }` | §6 |
 | `src/app/http/controllers/website/custom/OrgLiveKitTokenController.ts` | **Deleted** — renamed to `MeetingLiveKitTokenController` | §6.1 |
 | `src/app/http/routes/website.ts` | `POST /custom/org/livekit_token` + `org_host` | §6.1 |
 | `src/app/orm/models/MeetingParticipant.ts` | `livekit_token` / `livekit_token_expires_at` | §6.3 |
@@ -217,8 +225,10 @@ Website: `NOT_VALID_CREDENTIAL` still hits the global errors funnel (existing ax
 
 | Path | Role | Section |
 |---|---|---|
-| `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | Fetch hook | §6.5, §8 |
-| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | Temporary `status` + `token` probe (remove when A/V broadcast lands) | §6.5, §8 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | Fetch hook (`{ status, token, url }` union) | §6.5, §8 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveKitRoom.ts` | `Room.connect` owner + A/V state | §8; `../../website/flow-meeting-broadcast.md` §5 |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | Broadcast stage (probe UI removed) | §8; `../../website/flow-meeting-broadcast.md` §6 |
+| `package.json` / `yarn.lock` | `livekit-client` exact pin | §3; `../../website/flow-meeting-broadcast.md` §3 |
 | `src/resources/configs/axios/api.ts` | `CUSTOM.ORG_LIVEKIT_TOKEN` | §6.1 |
 | `src/resources/configs/axios.ts` | Honor `skipNetworkToast` | §6.5 |
 | `src/types/extends/global.ts` | `AxiosRequestConfig.skipNetworkToast` | §6.5 |
@@ -234,9 +244,12 @@ Website: `NOT_VALID_CREDENTIAL` still hits the global errors funnel (existing ax
 | `docs/platforms/backend/contracts/http-and-requesters.md` | `org_host` first wired route | related |
 | `docs/platforms/backend/contracts/meeting-domain.md` | Meeting media pointer | related |
 | `docs/platforms/backend/modules/runtime-integrations.md` | Env + helper + join-token index | related |
+| `docs/platforms/website/flow-meeting-broadcast.md` | Website client contract (room hook + stage + ceilings) | related |
 | `docs/platforms/website/organization-host-routing.md` | Host limits + path map | related |
 | `docs/platforms/website/README.md` | Website index row | related |
 | `.cursor/rules/livekit-media-plane.mdc` | Durable media-plane invariants | governance |
+| `.cursor/rules/website-meeting-livekit-broadcast.mdc` | Durable browser-client invariants | governance |
+| `.cursor/skills/website-meeting-broadcast/SKILL.md` | Broadcast extension workflow | governance |
 | `.cursor/rules/meeting-participant-roster.mdc` | Token-cache columns never on GQL | governance |
 | `.cursor/skills/meeting-livekit-token/SKILL.md` | Cross-surface join-token workflow | governance |
 
@@ -247,5 +260,7 @@ Website: `NOT_VALID_CREDENTIAL` still hits the global errors funnel (existing ax
 - `docs/platforms/backend/modules/runtime-integrations.md`
 - `docs/platforms/backend/contracts/client-portal-http-website.md`
 - `docs/platforms/website/organization-host-routing.md`
+- `docs/platforms/website/flow-meeting-broadcast.md`
 - `.cursor/skills/meeting-livekit-token/SKILL.md`
+- `.cursor/skills/website-meeting-broadcast/SKILL.md`
 - Official SDK: `livekit-server-sdk` AccessToken + `LiveKitAPI` room APIs

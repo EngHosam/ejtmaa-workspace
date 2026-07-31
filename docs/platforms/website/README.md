@@ -34,6 +34,7 @@
 | Customer organization | [`flow-customer-organization.md`](flow-customer-organization.md) | Org settings form (read + upsert) |
 | Customer message channels | [`flow-customer-message-channels.md`](flow-customer-message-channels.md) | Org delivery-channel directory + form |
 | Customer message templates | [`flow-customer-message-templates.md`](flow-customer-message-templates.md) | Org message-template directory + form |
+| Meeting broadcast | [`flow-meeting-broadcast.md`](flow-meeting-broadcast.md) | Organization-host LiveKit A/V stage (room hook + controls + ceilings) |
 
 ## Invariants
 
@@ -285,7 +286,7 @@ Current-state reflection of the customer-home change set. The source behavior is
 
 ## Change set traceability — organization host routing
 
-Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest shell delivery inventory: §10l (persistent broadcast + solid `MeetingPageOverlay` + Meeting info tile + content `FlexContainer`).
+Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest delivery inventory: §10m (LiveKit broadcast A/V — see [`flow-meeting-broadcast.md`](flow-meeting-broadcast.md)); previous shell inventory: §10l (persistent broadcast + solid `MeetingPageOverlay` + Meeting info tile + content `FlexContainer`).
 
 | Concern | Documented where |
 |---|---|
@@ -298,7 +299,8 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | Shared boot socket (`prepareSocket`: org host none / customer `/customer`) | `organization-host-routing.md` §4 |
 | Nested `MPagesRoutes.params` contract | `route-registry-contract.md` §3.1 |
 | `POST /website/custom/org/start` + `org_host` middleware | `../backend/contracts/client-portal-http-website.md` |
-| LiveKit join-token HTTP + `useMeetingLiveKitToken` | `../backend/contracts/livekit-media-plane.md` §6; `organization-host-routing.md` §8, §10 |
+| LiveKit join-token HTTP (`{ token, url }`) + `useMeetingLiveKitToken` | `../backend/contracts/livekit-media-plane.md` §6; `flow-meeting-broadcast.md` §4 |
+| Broadcast A/V client (`useMeetingLiveKitRoom` + `MeetingLiveBroadcast`, camera/mic/sound, cooperative mute-all, media ceilings) | `flow-meeting-broadcast.md`; `organization-host-routing.md` §5.5, §8, §10m |
 | Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
 | Known limits (`org_host` on LiveKit token; drawer page title stubs via `MeetingPageStub`; client-only chair gates) | `organization-host-routing.md` §8 |
 | Meeting shell branding + Meeting info after `live` / selected chrome + STARTED broadcast stack + solid overlay + in-shell `MeetingPage` | `organization-host-routing.md` §5.4, §5.5, §10l; `.cursor/rules/website-meeting-shell.mdc` |

@@ -51,12 +51,12 @@ Website contract: `docs/platforms/website/organization-host-routing.md`.
 - Middleware: `org_host` (per-route; not on the `OrgCustomRouter` group).
 - Controller: `backend/src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts` (meeting-domain name under `custom/`).
 - Body: `{ memberId, token, meetingId }` (`token` = `Member.access_token`).
-- Response: `{ token }` (LiveKit JWT only).
+- Response: `{ token, url }` — LiveKit JWT + client connect URL (`LiveKitHelper.clientUrl()`, `ws`/`wss`; recomputed from env, never persisted).
 - Authz: member + meeting org + roster + in-process live-doc `STARTED` (`peekMeetingLiveDoc`); reuse-or-mint on `MeetingParticipant.livekit_*`.
 - Errors: `NOT_VALID_CREDENTIAL`, `MEETING_NOT_LIVE`, `org_host` `404`.
-- Website: `API.CUSTOM.ORG_LIVEKIT_TOKEN` + `useMeetingLiveKitToken` (`{ token, status }`; temporary `status`+`token` probe in `MeetingLiveBroadcast` for real testing — remove when broadcast A/V lands).
+- Website: `API.CUSTOM.ORG_LIVEKIT_TOKEN` + `useMeetingLiveKitToken` (union — `ready` carries `token` **and** `url`) → `useMeetingLiveKitRoom` connects the room for `MeetingLiveBroadcast`.
 
-Full contract: `livekit-media-plane.md` §6.
+Full contract: `livekit-media-plane.md` §6. Website client: `../../website/flow-meeting-broadcast.md`.
 
 ## Actor model
 

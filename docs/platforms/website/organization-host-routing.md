@@ -275,6 +275,7 @@ Computed only when linking is READY. Inputs include live `status`, `meType`, `at
 | `attend` | any `meType`, status `WAITING_TO_START` or `STARTED`, no `attendedAt`, no `leftAt`, and `windowOpen` (open at `datetime − MeetingModel.ATTEND_OPEN_BEFORE_MS`) |
 | `left` | any `meType`, status `WAITING_TO_START` or `STARTED`, has `attendedAt`, no `leftAt` |
 | `enterLive` | has `attendedAt` and no `leftAt` (any type) — **navigation gate only** (no `actions.enterLive` write) |
+| `muteAllMedia` | chairperson and `status === "STARTED"` — **UI gate only** for the broadcast mute-all controls (no `actions` entry; the command rides the LiveKit data channel, `flow-meeting-broadcast.md` §7) |
 
 Attend stays allowed after the window opens for the rest of a live session (`WAITING_TO_START` or `STARTED`). Missing / invalid `datetime` keeps `windowOpen` false → `can.attend` false.
 
@@ -304,9 +305,11 @@ Actions are synchronous (`() => void`). Socket fan-out is side effect of the CRD
 | Linking | Chrome |
 |---|---|
 | `PENDING` | Org logo and/or name (both when present), project `Loadable` (`loading`), `pendingStatus` copy |
-| `FAILED` | Same identity, `FiAlertCircle` + `semanticColor.stateError`, fixed `failedMessage` copy |
+| `FAILED` | Early return: shared `LaneFailed` (`components/Wrong`) with `failedMessage` title + `failedHint` description, inside a `relative` full-height wrapper on org `pageBackground`. No org identity block on this path, and no retry button (there is no retry entry point) |
 
-i18n under `ui.layouts.meetingLayout.linking`: `logoAria`, `pendingStatus`, `failedMessage` (ar + en).
+`LaneFailed` is an absolute fill, so the wrapper must be `relative`; do not hand-roll an icon + message pair here again (`flow-meeting-broadcast.md` §8).
+
+i18n under `ui.layouts.meetingLayout.linking`: `logoAria`, `pendingStatus`, `failedMessage` (card title — no trailing period), `failedHint` (ar + en).
 
 ### 5.4) Meeting shell (organization branding)
 
@@ -386,10 +389,11 @@ The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls 
 |---|---|
 | `header` | `menu`, `logoAria`, `typeChairperson`, `typeMember`, `typeViewer`, `requestTalk`, `requestTalkAria` |
 | `footer` | `rights` |
-| `linking` | `logoAria`, `pendingStatus`, `failedMessage` |
+| `linking` | `logoAria`, `pendingStatus`, `failedMessage`, `failedHint` |
 | `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemHome`, `itemLive`, `itemTalkQueue`, `itemAttendance`, `itemAgenda`, `itemDecisionsAndVote`, `utilityPrefs` |
 | `init` | `logoAria`, type/status labels, `attend` / `attendAria`, `attendAvailableIn`, `attendRequiresForRoom`, `attendedTitle` / `attendedAt`, `roomUnlockedHint`, `leftTitle` |
-| `live` | `statusWaitingToStart`, `waitingLead`, `startMeeting` / `startMeetingAria`, `broadcastPlaceholder` |
+| `live` | `statusWaitingToStart`, `waitingLead`, `startMeeting` / `startMeetingAria`, `broadcastPlaceholder` (**orphan** — belonged to the removed probe UI; nothing reads it) |
+| `broadcast` | `connecting`, `connectionError` / `connectionErrorHint`, `videoOn` / `videoOff` / `videoAria`, `micOn` / `micOff` / `micAria`, `soundOn` / `soundOff` / `soundAria`, `muteAllVideos` / `muteAllVideosAria`, `muteAllMics` / `muteAllMicsAria` (`flow-meeting-broadcast.md` §9) |
 | `overlay` | `closeAria` |
 
 `MeetingFooter` additionally reads `ui.layouts.mainLayout.footerTitle` for the platform name; it has no key of its own for it.
@@ -435,8 +439,10 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 | Condition | UI |
 |---|---|
 | `status !== "STARTED"` | Exclusive `renderPage(page)` (same as before) |
-| `STARTED` and `page === "live"` | `MeetingLiveBroadcast` only (placeholder chrome; stream UI deferred) |
+| `STARTED` and `page === "live"` | `MeetingLiveBroadcast` only — real LiveKit A/V stage |
 | `STARTED` and `page !== "live"` | `MeetingLiveBroadcast` stays mounted underneath; current page in `MeetingPageOverlay` |
+
+**Broadcast body (LiveKit).** `MeetingLiveBroadcast` owns the media surface through `useMeetingLiveKitRoom` (token → `Room.connect` → peers → publish/playback toggles → cooperative mute-all). Because `Meeting.tsx` keeps it mounted for the whole `STARTED` span, the room survives in-shell page switches; leaving `STARTED` or unmounting disconnects it. Stage states are exclusive (media stack / `Loadable` / `LaneFailed`), controls are camera + mic + **sound** (playback is a separate control from the mic), and the chair mute-all group renders on `can.muteAllMedia`. Full contract, ceilings, and failure modes: `flow-meeting-broadcast.md`.
 
 **`MeetingPageOverlay` contract (observed):**
 
@@ -552,8 +558,8 @@ What the website side depends on:
 
 ## 8) Known limits (shipped state, intentional)
 
-1. **`org_host` is wired on LiveKit token fetch.** `POST /custom/org/livekit_token` uses per-route `middleware("org_host")`. `/custom/org/start` still resolves the organization from the body without `org_host`. Contract: `../backend/contracts/livekit-media-plane.md` §6; website hook `useMeetingLiveKitToken` mounts in `MeetingLiveBroadcast` as a temporary `status`+`token` probe for real join-token testing — remove when broadcast A/V lands.
-2. **Most drawer in-shell pages are still title stubs (§5.5).** `TalkQueue` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **`MeetingAttendancePage` is shipped** (chair-only attendance log + quorum). **`MeetingLivePage` is shipped** (waiting + chair start). While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + solid `MeetingPageOverlay` for other pages). Broadcast media UI and post-start side effects beyond the existing status write remain deferred. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
+1. **`org_host` is wired on LiveKit token fetch.** `POST /custom/org/livekit_token` uses per-route `middleware("org_host")`. `/custom/org/start` still resolves the organization from the body without `org_host`. The response now carries `{ token, url }`, and `useMeetingLiveKitToken` feeds `useMeetingLiveKitRoom` (no probe UI). Contract: `../backend/contracts/livekit-media-plane.md` §6.
+2. **Most drawer in-shell pages are still title stubs (§5.5).** `TalkQueue` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **`MeetingAttendancePage` is shipped** (chair-only attendance log + quorum). **`MeetingLivePage` is shipped** (waiting + chair start). While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + solid `MeetingPageOverlay` for other pages) and now carries real LiveKit A/V. Post-start side effects beyond the existing status write remain deferred. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
 3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants`. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
@@ -562,7 +568,9 @@ What the website side depends on:
 8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` / `can.attend` / `can.enterLive` are **client** gates on `useMeetingLiveSession`; the attend open window and Meeting-room attendance requirement are **not** enforced by socket controllers or SQL writers yet.
 9. **The meeting shell picks its READY tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. While linking is not READY, only the gate screen renders (no drawer SSR flicker for that path). `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
 10. **Non-transport `connect_error` maps to session code `"NOT_VALID"`** for UI purposes; the linking FAILED copy stays the generic `failedMessage` (no distinct credential string on screen yet).
-11. **Attend-window clock refresh is best-effort.** The session-owned `setTimeout` / 30s ticks in `useMeetingAttendWindow` can be delayed or cleared by background-tab throttling, effect dependency changes, leaving the meeting route, or large forward clock jumps while a timeout is pending (§5.3).
+11. **Broadcast mute-all is cooperative, not enforced.** The chair button is gated by `can.muteAllMedia`, but the receiving hook applies any well-formed data-channel command from any peer, and a muted peer can re-enable immediately. There is no `roomAdmin` server mute and no participant-type publish grant. Accepted for now; full ceiling list in `flow-meeting-broadcast.md` §10.
+12. **A failed broadcast connection has no in-UI retry.** `Disconnected` or a rejected token renders the failure card and waits for a page reload; only network-level token failures retry quietly (`flow-meeting-broadcast.md` §10.3).
+13. **Attend-window clock refresh is best-effort.** The session-owned `setTimeout` / 30s ticks in `useMeetingAttendWindow` can be delayed or cleared by background-tab throttling, effect dependency changes, leaving the meeting route, or large forward clock jumps while a timeout is pending (§5.3).
 
 ## 9) Environment
 
@@ -597,7 +605,7 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/pages/Meeting.tsx` | page switch; while `STARTED` persistent `MeetingLiveBroadcast` + `MeetingPageOverlay` for non-`live` pages | §5, §5.5 |
 | `src/app/ui/components/meeting/MeetingPageOverlay.tsx` | solid floating sheet for non-`live` while `STARTED` (column width; `ph=page.padY`; floating close) | §5.5 |
 | `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | `"live"` waiting + chair start; bounce to `"init"` when `!can.enterLive`; `pv` only | §5.5, §8, §10j, §10l |
-| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | persistent `STARTED` broadcast; temporary LiveKit `status`+`token` probe (`pv` only; remove when A/V lands) | §5.5, §10j, §10l; `../backend/contracts/livekit-media-plane.md` §6.5 |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | persistent `STARTED` broadcast — LiveKit stage (featured chair + remote grid, track attach, camera/mic/sound controls, chair mute-all on `can.muteAllMedia`; `pv` only) | §5.5, §10j, §10l, §10m; `flow-meeting-broadcast.md` §6 |
 | `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | `"init"` lobby; colocated `InitAttendSection`; meta via `MeetingMetaChip`; `pv` only | §5.5, §10j, §10k, §10l |
 | `src/app/ui/components/meeting/pages/MeetingPageStub.tsx` | shared title-only placeholder chrome for non-init drawer pages; `pv` only | §5.5, §8, §10l |
 | `src/app/ui/components/meeting/MeetingPrimaryButton.tsx` | org primary CTA (`label` / `ariaLabel` / `onClick`); used by Init attend + Live start | §5.5, §10j |
@@ -606,19 +614,21 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | `"attendance"` body — chair attendance log + quorum; `pv` only | §5.5, §8, §10f, §10l |
 | `src/app/ui/components/meeting/pages/MeetingAgendaPage.tsx` | `"agenda"` body (title stub) | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx` | `"decisionsAndVote"` body (title stub) | §5.5, §8 |
-| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header`, `footer`, `linking`, `drawer` incl. `itemHome`, `init`, `live`, `overlay.closeAria`, `attendance`) | §5.3, §5.4, §5.5 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header`, `footer`, `linking` incl. `failedHint`, `drawer` incl. `itemHome`, `init`, `live`, `broadcast`, `overlay.closeAria`, `attendance`) | §5.3, §5.4, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | session surface: resolve + provider; one `useMeetingAttendWindow` call; exposes `attendWindow` | §5.3, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` | attend-window clock (mirror math private; open timeout + 30s ticks while waiting) | §5.3, §5.5 |
-| `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | LiveKit JWT fetch (`{ token, status }`); quiet network retry; temporary probe mount in `MeetingLiveBroadcast` | `../backend/contracts/livekit-media-plane.md` §6.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | LiveKit join fetch — union `{ status, token, url }`; quiet network retry; only caller is the room hook | `../backend/contracts/livekit-media-plane.md` §6.5; `flow-meeting-broadcast.md` §4 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveKitRoom.ts` | `Room.connect` owner: status projection, peer map, publish toggles, sound autoplay gate, cooperative mute-all, lifecycle | `flow-meeting-broadcast.md` §5 |
 | `src/resources/configs/axios/api.ts` | `CUSTOM.ORG_LIVEKIT_TOKEN` → `/custom/org/livekit_token` | `../backend/contracts/livekit-media-plane.md` §6.1 |
 | `src/resources/configs/axios.ts` | honor `skipNetworkToast` on network reject | `../backend/contracts/livekit-media-plane.md` §6.5 |
 | `src/types/extends/global.ts` | `AxiosRequestConfig.skipNetworkToast` | `../backend/contracts/livekit-media-plane.md` §6.5 |
-| `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | PENDING / FAILED gate UI via session `linking` (`Loadable` / `FiAlertCircle`) | §5.3 |
+| `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | PENDING / FAILED gate UI via session `linking` (`Loadable` / shared `LaneFailed`) | §5.3 |
+| `src/app/ui/components/Wrong.tsx` | `LaneFailed` optional `title` / `description` (fallback to `wrong.laneFailed`) | §5.3; `flow-meeting-broadcast.md` §8 |
 | `src/types/meeting.ts` | mirrored live map (`MeetingLiveMap`, `participants`, `MEETING_LIVE_*`; pair with `backend/src/app/types/meeting.ts`) | §5.1; `.cursor/rules/meeting-live-map-mirror.mdc` |
-| `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` exact pins | §5.1 |
+| `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` + `livekit-client` exact pins | §5.1; `flow-meeting-broadcast.md` §3 |
 | `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — live → session → page providers, linking gate, branded shell, READY `FlexContainer` content column | §5, §5.1, §5.3, §5.4, §5.5 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
 | `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` (incl. `idleCardBackground` / `presentCardBackground`, fixed-white `actionIconOnFill`); light `softLight` mix 0.78 for section chips | §5.4 |
@@ -648,7 +658,7 @@ Every path that implements this contract, with the section that describes it.
 | Path | Role | Documented in |
 |---|---|---|
 | `src/app/http/controllers/website/custom/OrgStartController.ts` | org start payload + resolution | §6.1 |
-| `src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts` | LiveKit join-token (`org_host` + peek `STARTED` + reuse-or-mint) | `../backend/contracts/livekit-media-plane.md` §6 |
+| `src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts` | LiveKit join-token (`org_host` + peek `STARTED` + reuse-or-mint); returns `{ token, url }` | `../backend/contracts/livekit-media-plane.md` §6 |
 | `src/app/http/routes/website.ts` | `OrgCustomRouter` + `POST /custom/org/start` + `POST /custom/org/livekit_token` | §6.1; `../backend/contracts/livekit-media-plane.md` §6.1 |
 | `src/app/orm/models/MeetingParticipant.ts` | roster join + optional `livekit_token` / `livekit_token_expires_at` | `../backend/contracts/meeting-participant-domain.md`; `livekit-media-plane.md` §6 |
 | `src/resources/trans/ar/messages.ts`, `src/resources/trans/en/messages.ts` | `MEETING_NOT_LIVE` | `../backend/contracts/livekit-media-plane.md` §7.2 |
@@ -1037,6 +1047,54 @@ On top of §10k: while `STARTED`, `Meeting.tsx` keeps `MeetingLiveBroadcast` mou
 | `.cursor/rules/website-meeting-shell.mdc` | STARTED broadcast stack + solid overlay + FlexContainer column + overlay `ph` + Meeting info after live | governance |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | same IA / overlay / column pad steps | governance |
 
+## 10m) Change set inventory (LiveKit broadcast A/V)
+
+On top of §10l: backend join-token returns `{ token, url }`; `useMeetingLiveKitToken` becomes a discriminated union; new `useMeetingLiveKitRoom` owns `Room.connect` and all media state; `MeetingLiveBroadcast` replaces the token probe with the real stage (featured chair + remote grid, camera/mic/**sound** controls, chair mute-all); session gains gate-only `can.muteAllMedia`; `LaneFailed` accepts `title` / `description` and now serves both broadcast failure and linking FAILED; `meetingLayout.broadcast.*` + `linking.failedHint` copy.
+
+Full behavior contract: `flow-meeting-broadcast.md`.
+
+### `backend/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts` | modified — `Result` + step 7 return `url` from `LiveKitHelper.clientUrl()` | §10 backend table; `../backend/contracts/livekit-media-plane.md` §6.2–§6.3 |
+
+### `website/`
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/components/meeting/hooks/useMeetingLiveKitRoom.ts` | **added** — room lifecycle, status projection, peers, publish/playback, mute-all data channel | `flow-meeting-broadcast.md` §5 |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | modified — real A/V stage (attach components, tiles, controls, chair group); probe removed | §5.5; `flow-meeting-broadcast.md` §6 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | modified — `{ status, token, url }` union | `flow-meeting-broadcast.md` §4 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — `muteAllMedia` capability (type + `canNone` + `resolveCan`) | §5.3; `flow-meeting-broadcast.md` §7 |
+| `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | modified — FAILED early return renders `LaneFailed`; PENDING unchanged | §5.3; `flow-meeting-broadcast.md` §8 |
+| `src/app/ui/components/Wrong.tsx` | modified — `LaneFailed` optional `title` / `description` | `flow-meeting-broadcast.md` §8; `shared-ui-and-shell.md` |
+| `src/resources/translations/ar.ts`, `en.ts` | modified — `meetingLayout.broadcast.*` (16 keys), `linking.failedHint`, `failedMessage` punctuation | §5.3–§5.5; `flow-meeting-broadcast.md` §9 |
+| `package.json`, `yarn.lock` | modified — `livekit-client@2.21.0` exact + transitive entries | `flow-meeting-broadcast.md` §3 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check`; not narrated | — |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/platforms/website/flow-meeting-broadcast.md` | **added** — broadcast client contract | — |
+| `docs/platforms/website/organization-host-routing.md` | this page — §5.3 capability + FAILED chrome, §5.5 broadcast body, §8 limits 11–12, §10 / §10m, §11 | — |
+| `docs/platforms/backend/contracts/livekit-media-plane.md` | `{ token, url }`, hook union, probe removed, client pointer | backend contract |
+| `docs/platforms/backend/contracts/client-portal-http-website.md` | response shape + hook chain | HTTP index |
+| `docs/platforms/backend/modules/runtime-integrations.md` | §7b response + client chain | integration index |
+| `docs/platforms/backend/README.md` | LiveKit row mentions the browser client | backend index |
+| `docs/platforms/website/README.md` | flow index + change-set pointer → §10m | website index |
+| `docs/platforms/website/component-structure.md` | meeting shell list: room hook + broadcast stage | component index |
+| `docs/platforms/website/shared-ui-and-shell.md` | `LaneFailed` override props | shared UI |
+| `docs/invariants/website.md` | **W60** media element ownership | invariants |
+| `docs/README.md` | website doc index row | root index |
+| `.cursor/rules/website-meeting-livekit-broadcast.mdc` | **added** — browser-client invariants | governance |
+| `.cursor/rules/website-meeting-shell.mdc` | pointer to the broadcast rule | governance |
+| `.cursor/rules/livekit-media-plane.mdc` | hook API + response, probe removed | governance |
+| `.cursor/rules/website-meeting-live-session.mdc` | FAILED chrome + `muteAllMedia` gate-only | governance |
+| `.cursor/skills/website-meeting-broadcast/SKILL.md` | **added** — broadcast workflow | governance |
+| `.cursor/skills/meeting-livekit-token/SKILL.md` | `{ token, url }`, probe removed, hand-off | governance |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
@@ -1047,7 +1105,8 @@ On top of §10k: while `STARTED`, `Meeting.tsx` keeps `MeetingLiveBroadcast` mou
 - Selected drawer tile: soft `sectionAccentBackground` + partial start accent rail + `textAccent`; icon well stays primary (white glyph / white `HomeMark`).
 - Attendance cards: present fill uses `presentCardBackground` (distinct from type chip `sectionAccentBackground`); idle fill uses `idleCardBackground` (light card / dark transparent).
 - Socket: organization host opens **no** boot socket; `MeetingLayout` opens `/meeting` once via `MeetingLiveProvider` / `useMeetingLiveInstance`, joins `meeting-{id}`, and emits `meeting.live.sync`; apex authed customer still connects to `/customer`.
-- Bad `memberToken` / missing roster: handshake refuse → `connect_error` → linking **FAILED** gate (not endless PENDING).
+- Broadcast (`STARTED`, two browsers): each side sees the other's tile; camera off → avatar tile; sound starts muted and needs one click; chair mute-all stops other peers only and is absent for non-chairs; token or room failure renders `LaneFailed` instead of a spinner (`flow-meeting-broadcast.md` §13).
+- Bad `memberToken` / missing roster: handshake refuse → `connect_error` → linking **FAILED** gate (not endless PENDING), rendered with the shared `LaneFailed` card.
 - Transport drop: `TransportError` → linking stays **PENDING** and reconnect continues.
 - Two browsers on the same live meeting: a collaborative edit via session `actions` in one reaches the other; both settle with `synced` / linking READY.
 - Forced server disconnect: the client reconnects and re-runs the sync handshake; edits made while disconnected survive because the client answers the server state vector.
@@ -1059,6 +1118,8 @@ On top of §10k: while `STARTED`, `Meeting.tsx` keeps `MeetingLiveBroadcast` mou
 - `docs/platforms/website/route-registry-contract.md` §3.1, §5.4 — nested params + organization-host route block
 - `docs/platforms/backend/contracts/client-portal-http-website.md` — `/website` mount contract
 - `docs/platforms/backend/contracts/meeting-realtime-socket.md` — `/meeting` namespace, handshake auth, rooms, `meeting.live.*`
+- `docs/platforms/website/flow-meeting-broadcast.md` — LiveKit client stage, room hook, media ceilings
+- `docs/platforms/backend/contracts/livekit-media-plane.md` — join-token HTTP + helper + participant JWT cache
 - `docs/platforms/backend/contracts/meeting-live-state.md` — CRDT document, `live_state` BLOB, deferred column apply
 - `docs/platforms/backend/modules/runtime-integrations.md` §5 — socket namespaces, rooms, live events
 - `docs/platforms/backend/modules/nodejs-socket-library.md` §10 — `/meeting` child events
@@ -1068,11 +1129,13 @@ On top of §10k: while `STARTED`, `Meeting.tsx` keeps `MeetingLiveBroadcast` mou
 - `.cursor/rules/meeting-realtime-socket.mdc`
 - `.cursor/rules/website-meeting-live-session.mdc`
 - `.cursor/rules/website-meeting-shell.mdc`
+- `.cursor/rules/website-meeting-livekit-broadcast.mdc`
 - `.cursor/rules/website-backend-policy-mirror.mdc`
 - `.cursor/rules/meeting-live-state.mdc`
 - `.cursor/rules/website-mpages-routes-params-contract.mdc`
 - `.cursor/skills/meeting-realtime-socket/SKILL.md`
 - `.cursor/skills/website-meeting-live-session/SKILL.md`
 - `.cursor/skills/website-meeting-shell/SKILL.md`
+- `.cursor/skills/website-meeting-broadcast/SKILL.md`
 
-Change-set inventories: §10a–§10l (latest = persistent broadcast + solid overlay + Meeting info = §10l).
+Change-set inventories: §10a–§10m (latest = LiveKit broadcast A/V = §10m).

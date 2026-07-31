@@ -308,6 +308,16 @@ A rule the user can see (a picker floor, a readiness row, a schedule note) exist
 
 Contracts: `docs/platforms/website/flow-customer-meetings.md` §6.5, `docs/platforms/website/flow-form-foundation.md` §3.7, `.cursor/rules/website-backend-policy-mirror.mdc`.
 
+## W60. A Media Element Belongs To Its Track, Not To React State
+
+When an SDK owns a `<video>` / `<audio>` element (`track.attach(el)` / `track.detach(el)`), the attach effect MUST depend on the **track only**. `attach()` sets `srcObject` and starts playback; `detach()` pauses the element and clears `srcObject`. Putting any UI flag (mute, layout, selected) in that effect's dependency array makes React tear the stream down and rebuild it on a cosmetic change — which silently cancels a playback that a user gesture just authorized. Everything that is not the track is applied to the element **imperatively** in its own effect (`el.muted = …`), because a React-controlled attribute fights the SDK for the same DOM node.
+
+Browser autoplay policy is part of the contract, not an edge case: remote audio playback starts muted by default, the enable path calls the SDK's start-audio API **inside the click stack**, and a rejected promise reverts the visible state so a control never claims to be on while silent. A muted **publication** is not the same thing as a torn-down track: drop a muted camera track (no frames — render the avatar), keep a muted microphone track attached (dropping it kills playback for everyone in that element).
+
+Shipped reference: `MeetingLiveBroadcast` (`BroadcastVideoAttach` / `BroadcastMicAttach`) + `useMeetingLiveKitRoom`.
+
+See `docs/platforms/website/flow-meeting-broadcast.md` §5.5, §6.2 and `.cursor/rules/website-meeting-livekit-broadcast.mdc`.
+
 ## Related
 
 - `docs/platforms/website/overview.md`

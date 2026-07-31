@@ -82,6 +82,7 @@ READY main column: wrap route children in `FlexContainer` (`dir="column"`, `flx_
 - While `STARTED`: always mount `MeetingLiveBroadcast`; when `page !== "live"`, wrap `renderPage(page)` in `MeetingPageOverlay` (solid inset sheet; dismiss → `setPage("live")` via close, outside tap, or Meeting room tile).
 - `MeetingPageOverlay`: solid only — no blur, frost, or scrim; org `pageBackground` + `inputBorder` + `card.radius`; full content-column width (`l`/`r` 0 — same `FlexContainer` as header/footer); vertical sheet inset for float; scroll body `ph={page.padY}` so floating page content matches page `pv`; floating close over content (compact theme/lang chrome, `semanticColor.input*`) — no reserved top pad that defeats floating.
 - When `STARTED && page === "live" && !can.enterLive`: effect bounces to `"init"`.
+- Broadcast **internals** (LiveKit room, track attach, camera/mic/sound controls, mute-all) are out of scope here: `.cursor/rules/website-meeting-livekit-broadcast.mdc`.
 
 ## MeetingPrimaryButton
 

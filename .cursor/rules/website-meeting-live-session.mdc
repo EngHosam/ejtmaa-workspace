@@ -45,7 +45,7 @@ When `linking !== "READY"`: every `can.*` is false. Session value still includes
 
 - MeetingLinkingScreen reads `linking` from `useMeetingLiveSession()` — no `linking` prop from the layout.
 - PENDING loading: project **`Loadable`** — never invent a custom spinner.
-- FAILED: `FiAlertCircle` + `semanticColor.stateError`.
+- FAILED: shared `LaneFailed` (`components/Wrong`) inside a `relative` page-background wrapper — no hand-rolled icon + message.
 - Org identity: show **logo and name when both exist** (not XOR).
 - Copy under `ui.layouts.meetingLayout.linking` (ar + en).
 
@@ -60,6 +60,7 @@ When `linking !== "READY"`: every `can.*` is false. Session value still includes
 
 - Sync `() => void`; no-op when `!can.*` (and `attend`/`left` require `me`).
 - `can.enterLive` is a **navigation gate only** (no matching action write): true when `attendedAt` set and `leftAt` unset.
+- `can.muteAllMedia` is a **UI gate only** for the chair mute-all controls in `MeetingLiveBroadcast` (chair + `STARTED`); the commands travel on the LiveKit data channel, not `actions`.
 - `can.attend` also requires `attendWindow.windowOpen` (mirror of `MeetingModel.ATTEND_OPEN_BEFORE_MS` private to `useMeetingAttendWindow`).
 - Session provider calls `useMeetingAttendWindow(meeting.datetime)` once, passes `windowOpen` into resolve, and exposes `attendWindow` on the session value.
 - Client `can` gates are **not** server authz — socket still gates writes with `MEETING_LIVE_STATUSES` only; attend-window / room attendance are not socket-enforced.

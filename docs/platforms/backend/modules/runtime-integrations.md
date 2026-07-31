@@ -131,16 +131,17 @@ Active helper:
 Join-token HTTP (organization host):
 - `POST /website/custom/org/livekit_token` + per-route `org_host`
 - Controller: `backend/src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts`
-- Website: `useMeetingLiveKitToken` + `API.CUSTOM.ORG_LIVEKIT_TOKEN`
+- Response: `{ token, url }` (JWT + client connect URL)
+- Website: `useMeetingLiveKitToken` + `API.CUSTOM.ORG_LIVEKIT_TOKEN` → `useMeetingLiveKitRoom` (`Room.connect`) → `MeetingLiveBroadcast`
 
-Dependency: `livekit-server-sdk@2.17.0` (pinned).
+Dependency: `livekit-server-sdk@2.17.0` (pinned) in `backend/`; browser client `livekit-client` is pinned in `website/` only.
 
 Helper responsibilities:
 - derive room name `ejtmaa:meeting:{meetingId}`
 - create/list/delete rooms and mint per-participant access tokens
 - normalize client connect URL (`ws`/`wss`)
 
-Controller owns roster/org/`STARTED` (peek) authz and participant JWT cache writes. Helper does **not** own those, attendance SQL, or website `Room.connect`. Full contract: `docs/platforms/backend/contracts/livekit-media-plane.md`.
+Controller owns roster/org/`STARTED` (peek) authz and participant JWT cache writes. Helper does **not** own those, attendance SQL, or website `Room.connect`. Full contract: `docs/platforms/backend/contracts/livekit-media-plane.md`; browser side: `docs/platforms/website/flow-meeting-broadcast.md`.
 
 ## 8) Database Scripts and Patches
 
