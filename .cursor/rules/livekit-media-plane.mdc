@@ -11,7 +11,7 @@ Workflow skill: `.cursor/skills/meeting-livekit-token/SKILL.md`.
 
 ## Boundaries
 
-- LiveKit = **A/V only**. Do not store agenda, votes, talk queue, or attendance truth in LiveKit. Durable agenda lines stay SQL; session discussion fields live on `MeetingLiveMap` (`meeting-live-state.md`), not on LiveKit.
+- LiveKit = **A/V only**. Do not store agenda, votes, talk queue, or attendance truth in LiveKit. Durable agenda/decision/vote/talk lines stay SQL; session fields live on `MeetingLiveMap` (`meeting-live-state.md`), not on LiveKit.
 - **No** LiveKit ORM model / room table / Zoom-style `platform`/`url` columns on `Meeting`.
 - Room name: `ejtmaa:meeting:{meetingId}` via `LiveKitHelper.roomName` only.
 

@@ -20,7 +20,7 @@ Authority: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/platf
 | Backend | `backend/src/app/types/meeting.ts` |
 | Website | `website/src/types/meeting.ts` |
 
-These two files are a **byte-for-byte contract mirror** of the live CRDT map shape (`MeetingLiveMap` including `participants`, `currentTalkMemberId`, `agendaItems`, `currentAgendaItemId`, `MeetingLiveParticipant` with `talkTurn`, `MeetingLiveAgendaItem`, `MEETING_LIVE_MAP`, `MEETING_LIVE_STATUSES`, participant/connection/agenda-status unions and const arrays, type/status unions) plus the shared header comment.
+These two files are a **byte-for-byte contract mirror** of the live CRDT map shape (`MeetingLiveMap` including `participants`, `currentTalkMemberId`, `agendaItems`, `currentAgendaItemId`, `decisions`, `currentDecisionId`, `MeetingLiveParticipant` with `talkTurn`, `MeetingLiveAgendaItem`, `MeetingLiveDecision` with nested `votes`, `MeetingLiveVote`, `MEETING_LIVE_MAP`, `MEETING_LIVE_STATUSES`, participant/connection/agenda/decision/vote unions and const arrays, type/status unions) plus the shared header comment.
 
 ## Non-negotiables
 
@@ -29,11 +29,12 @@ These two files are a **byte-for-byte contract mirror** of the live CRDT map sha
 3. **Consumers import the local mirror** — backend from `app/types/meeting`, website from `types/meeting`. Live-document field types come only from that mirror.
 4. **After editing, verify the two files match** (diff the pair). Drift is a defect even if each side type-checks alone.
 5. When live map values must stay aligned with SQL/GQL enums, update domain enums **and** the mirrored unions in the same task — the mirror is the live-wire contract; GQL/ORM remain the persistence/API contracts.
-6. Agenda live-mutation flags must be named `isLiveCreated` / `isLiveUpdated` (session provenance). Do not use bare `isCreated` / `isUpdated`. In-session cancel is `MeetingLiveAgendaItemStatus` `"CANCELED"` — do not add `isDeleted` or delete the nested map key for cancel.
+6. Agenda live-mutation flag must be named `isLiveCreated` (session provenance). Do not use bare `isCreated` / `isUpdated` / `isLiveUpdated`. In-session cancel is `MeetingLiveAgendaItemStatus` `"CANCELED"` — do not add `isDeleted` or delete the nested map key for cancel.
+7. Decision uses the same `isLiveCreated` flag; live status may be `"CANCELED"`. Per-decision `votes` is keyed by member id; seed empty (no per-participant placeholders).
 
 ## Forbidden
 
 - Changing only `backend/.../meeting.ts` or only `website/.../meeting.ts`.
 - Importing `_MeetingTypeValue` / `_MeetingStatusValue` / `MeetingType` / `MeetingStatus` into either mirror file.
 - Defining a second live-map shape beside `MeetingLiveMap` for the same CRDT document.
-- Naming agenda session mutation flags `isCreated` / `isUpdated` / `isDeleted`.
+- Naming agenda/decision session mutation flags `isCreated` / `isUpdated` / `isLiveUpdated` / `isDeleted`.

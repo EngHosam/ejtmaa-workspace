@@ -19,7 +19,7 @@ Out of scope (not shipped):
 - supervisor Vote GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for votes,
-- live in-flight vote cursor (socket) — durable casts only in this model.
+- live vote writers / casting into the CRDT (map shape seeds empty `decisions[*].votes` — see `meeting-live-state.md` §1.2 / §9f; durable casts remain this model).
 
 ## 2) Domain purpose
 

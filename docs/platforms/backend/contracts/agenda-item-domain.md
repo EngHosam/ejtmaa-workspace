@@ -17,9 +17,9 @@ Out of scope (not shipped):
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for agenda items,
 - LiveKit ownership of agenda,
-- live-map writers that flip agenda `status` / `isLiveCreated` / `isLiveUpdated` / `currentAgendaItemId` (seeded only — see `meeting-live-state.md`).
+- live-map writers that flip agenda `status` / `isLiveCreated` / `currentAgendaItemId` (seeded only — see `meeting-live-state.md`).
 
-Durable SQL (`id` / `sort_order` / `subject`) remains the authoring and report truth. The live session map mirrors those lines on first empty `live_state` create and adds session-only `status` (incl. `CANCELED`), `isLiveCreated` / `isLiveUpdated`, and root `currentAgendaItemId` that die when the live document is reset — they are **not** SQL columns. In-session cancel uses `status: "CANCELED"`; live agenda lines are not deleted from the map.
+Durable SQL (`id` / `sort_order` / `subject`) remains the authoring and report truth. The live session map mirrors those lines on first empty `live_state` create and adds session-only `status` (incl. `CANCELED`), `isLiveCreated`, and root `currentAgendaItemId` that die when the live document is reset — they are **not** SQL columns. In-session cancel uses `status: "CANCELED"`; live agenda lines are not deleted from the map.
 
 ## 2) Domain purpose
 

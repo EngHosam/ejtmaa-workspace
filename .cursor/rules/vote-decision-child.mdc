@@ -14,6 +14,7 @@ Authoritative contract: `docs/platforms/backend/contracts/vote-domain.md`.
 - `modelName: "vote"` → `Decision.hasMany(Vote())` as `votes` — **no** `as`.
 - Keep denormalized `meeting_id` for report queries.
 - Enum `voteValue`: `YES` | `NO`.
+- Durable SQL casts remain this model. Live map seeds empty `decisions[*].votes` for collaborative casts later (`meeting-live-state.md` §1.2 / §9f) — writers not shipped.
 
 ## Customer GQL
 

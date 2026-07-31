@@ -19,7 +19,7 @@ Out of scope (not shipped):
 - supervisor Decision GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for decisions,
-- Yjs ownership of decisions (SQL is source of truth).
+- Yjs as sole durable source of truth (SQL remains durable authoring; live map seeds `decisions` + empty nested `votes` for the session — see `meeting-live-state.md` §1.2 / §9f).
 
 ## 2) Domain purpose
 
