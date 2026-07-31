@@ -43,14 +43,16 @@ description: >-
 4. **Every handler returns `this.meetingBoundEvents()`**, including rejection paths. Reject with `rejectLive(code)` so the client gets `meeting.live.error` while the listeners stay bound.
 5. **Rooms:** join `Rooms.MEETING(meetingId)` from the connection controller only; broadcast with `socket.to(room)` so the sender is not echoed.
 6. **Document access** goes through `getOrCreateMeetingLiveDoc(meetingId)`. Never construct a second `Y.Doc` for a meeting, never write `live_state` outside `MeetingLiveDocHelper`. Codec/seed stay private in that helper — not on `Meeting` ORM.
-6b. **Roster seed includes** use association names (`include: [{ association: "member", required: true }]`) — see `.cursor/rules/sequelize-include-by-association-name.mdc`.
+6b. **Roster seed includes** use association names (`include: [{ association: "member", required: true }]`) — see `.cursor/rules/sequelize-include-by-association-name.mdc`. Agenda seed uses `meeting.getAgendaItems()` (default association `agendaItems`).
+6c. **Live agenda seed** (first empty `live_state` only): nested per-id `Y.Map` under `agendaItems`; map SQL `sort_order` → `sortOrder`; seed `status: "WAITING"`, `isLiveCreated: false`, `isLiveUpdated: false`; set `currentAgendaItemId` **after** `agendaItems` (`null`). Session cancel is `status: "CANCELED"` — never remove the map key / never add `isDeleted`. Session-only fields are not SQL columns (`meeting-live-state.md` §1.2 / §9d; `agenda-item-domain.md`).
+6d. **Live talk-queue seed** (first empty `live_state` only): per-participant `talkTurn: null`; set `currentTalkMemberId` **after** `participants` (`null`). Session-only — durable history stays `TalkRecord` (`meeting-live-state.md` §1.2 / §9e; `talk-record-domain.md`).
 7. **Codec:** V2 on the BLOB, the sync reply, and the broadcast; convert local V1 doc events with `convertUpdateFormatV1ToV2` before emitting. Payloads travel base64.
 8. **Gate writes** on `MEETING_LIVE_STATUSES` from `types/meeting.ts`. Reads are open to any authenticated participant.
 9. **Website config** at `website/src/resources/configs/meeting-socket.ts` (root sibling of `socket.ts`): `SOCKET_URL("meeting")` + handshake query. Do not nest this factory under `configs/socket/`.
 10. **Website live module** at `components/meeting/hooks/useMeetingLive.tsx`:
     - `useMeetingLiveInstance` owns the transport (private): required `memberId` / `memberToken` / `meetingId`; `createSocketInstance` / `connect` / `disconnect` — never `getSocket`, and no second socket hook beside it.
     - Live document fields use `MeetingLiveMap` from `website/src/types/meeting.ts` (mirrored with `backend/src/app/types/meeting.ts` — see `.cursor/rules/meeting-live-map-mirror.mdc`). Never type the SyncedStore map from GQL enums.
-    - SyncedStore shape `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }` with initializer `{ [MEETING_LIVE_MAP]: {} }` only — do not nest `participants: {}` in the initializer (throws). Read `liveStore[MEETING_LIVE_MAP]`.
+    - SyncedStore shape `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }` with initializer `{ [MEETING_LIVE_MAP]: {} }` only — do not nest `participants: {}` / `agendaItems: {}` in the initializer (throws). Read `liveStore[MEETING_LIVE_MAP]`.
     - Rebuild the store + doc bundle when `meetingId` changes, and pass `[store]` to `useSyncedStore`.
     - Emit `meeting.live.sync` on every `connect`; answer the server `stateVector` in the reply.
     - Apply remote updates with origin `"remote"` and skip that origin when emitting.
@@ -62,7 +64,7 @@ description: >-
     - Public `useMeetingLive()` reads context only — low-level transport/CRDT.
     - Current participant: `useMeetingLiveMe()` indexes `meeting.participants[memberId]`; never clone; field writes use `batch`.
 11. **Mount once** in `MeetingLayout` with a single outer `<MeetingLiveProvider>`. Linking gate chrome is owned by the website-meeting-live-session skill.
-12. **Live map mirror:** if `MeetingLiveMap` / participant fields / `MEETING_LIVE_*` change, update **both** `backend/src/app/types/meeting.ts` and `website/src/types/meeting.ts` identically in the same change; confirm with a file diff. Seed nested `participants` as per-id `Y.Map`s in `MeetingLiveDocHelper` (not plain objects).
+12. **Live map mirror:** if `MeetingLiveMap` / participant / agenda / talk fields / `MEETING_LIVE_*` change, update **both** `backend/src/app/types/meeting.ts` and `website/src/types/meeting.ts` identically in the same change; confirm with a file diff. Seed nested `participants` and `agendaItems` as per-id `Y.Map`s in `MeetingLiveDocHelper` (not plain objects). Live-mutation flags on agenda lines are named `isLiveCreated` / `isLiveUpdated` (not bare `isCreated` / `isUpdated`). Talk queue: `talkTurn` on participant + `currentTalkMemberId` on root (after `participants`).
 13. **Boot:** `prepareSocket` stays socket-free on an organization host; Meeting owns its own session.
 14. **Do not mirror** `meeting.live.*` into `types/events.ts` / socket event registries.
 15. **Verify** with existing scripts: `yarn type-check` in `backend/` and `website/`. Functional check: two browsers on one live meeting, forced disconnect with an offline edit, bad token → `error` set, transport drop → no `error` + retry. Confirm only one `/meeting` socket per tab.

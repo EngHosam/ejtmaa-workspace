@@ -19,7 +19,10 @@ Out of scope (not shipped):
 - supervisor TalkRecord GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for talk records,
-- LiveKit A/V coupling (media is separate; this model is durable SQL queue/history only).
+- LiveKit A/V coupling (media is separate; this model is durable SQL queue/history only),
+- live-map writers that flip `talkTurn` / `currentTalkMemberId` (seeded only — see `meeting-live-state.md`).
+
+Durable SQL `TalkRecord` remains queue/history truth. The live session map carries roster `talkTurn` (`null` = not queued) and root `currentTalkMemberId` (`null` = nobody speaking) as **session-only** fields — not SQL columns (`meeting-live-state.md` §1.2 / §9e).
 
 ## 2) Domain purpose
 
@@ -209,8 +212,11 @@ Nested talk records inherit meeting read gates; no separate root failure modes.
 ## Related
 
 - `docs/platforms/backend/contracts/meeting-domain.md`
+- `docs/platforms/backend/contracts/meeting-live-state.md` — live `talkTurn` / `currentTalkMemberId` (§1.2, §9e)
 - `docs/platforms/backend/contracts/member-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `.cursor/rules/talk-record-meeting-child.mdc`
+- `.cursor/rules/meeting-live-state.mdc`
+- `.cursor/rules/meeting-live-map-mirror.mdc`
 - `.cursor/rules/agenda-item-meeting-child.mdc` (naming preference for default plural associations)
 - `.cursor/rules/gql-root-parent-payload-contract.mdc`

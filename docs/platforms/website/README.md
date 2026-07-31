@@ -286,7 +286,7 @@ Current-state reflection of the customer-home change set. The source behavior is
 
 ## Change set traceability — organization host routing
 
-Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest delivery inventory: §10m (LiveKit broadcast A/V — see [`flow-meeting-broadcast.md`](flow-meeting-broadcast.md)); previous shell inventory: §10l (persistent broadcast + solid `MeetingPageOverlay` + Meeting info tile + content `FlexContainer`).
+Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest delivery inventory: §10o (live talk queue fields — see [`../backend/contracts/meeting-live-state.md`](../backend/contracts/meeting-live-state.md) §9e); previous: §10n (live agenda map fields); §10m (LiveKit broadcast A/V — see [`flow-meeting-broadcast.md`](flow-meeting-broadcast.md)); shell inventory: §10l.
 
 | Concern | Documented where |
 |---|---|
@@ -294,7 +294,7 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | Boot split (`organizationHost.start` before apex start) | `organization-host-routing.md` §1.1; `ssr-boot-and-startup.md` §2, §5 |
 | `organizationHost` store slice + `organizationId` HTTP header; Meeting handshake query | `organization-host-routing.md` §3 |
 | `orgHostOnly` route gate + `Meeting` route/layout + `MeetingLiveProvider` / `MeetingLiveSessionProvider` / `MeetingPageProvider` / `useMeetingLive` / `useMeetingLiveSession` / `useMeetingPage` | `organization-host-routing.md` §1.2, §5, §5.1, §5.3, §5.5; `route-registry-contract.md` §3.1, §5.4; invariant W58 |
-| Live meeting document (Yjs + SyncedStore) + `useMeetingLiveMe` + linking gate (`MeetingLiveLinking`) | `organization-host-routing.md` §5.1, §5.2, §5.3; `../backend/contracts/meeting-live-state.md` |
+| Live meeting document (Yjs + SyncedStore) + `useMeetingLiveMe` + linking gate (`MeetingLiveLinking`) | `organization-host-routing.md` §5.1, §5.2, §5.3, §10n–§10o; `../backend/contracts/meeting-live-state.md` (§9d agenda, §9e talk queue) |
 | Meeting socket config (`src/resources/configs/meeting-socket.ts`) | `organization-host-routing.md` §3, §5.1 |
 | Shared boot socket (`prepareSocket`: org host none / customer `/customer`) | `organization-host-routing.md` §4 |
 | Nested `MPagesRoutes.params` contract | `route-registry-contract.md` §3.1 |

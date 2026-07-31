@@ -44,7 +44,9 @@ Patterns are grounded in:
 - `docs/platforms/backend/contracts/supervisor-customers-and-stats.md` — Supervisor customer reads and stats.
 - `docs/platforms/backend/contracts/socket-event-mirroring.md` — Socket event mirror contract.
 - `docs/platforms/backend/contracts/meeting-realtime-socket.md` — `/meeting` socket namespace, handshake auth, rooms, `meeting.live.*`.
-- `docs/platforms/backend/contracts/meeting-live-state.md` — Meeting CRDT document, `live_state` BLOB, registry and persistence.
+- `docs/platforms/backend/contracts/meeting-live-state.md` — Meeting CRDT document, `live_state` BLOB, registry; live agenda + talk-queue seeds (`agendaItems` / `currentAgendaItemId` / `talkTurn` / `currentTalkMemberId`).
+- `docs/platforms/backend/contracts/talk-record-domain.md` — TalkRecord ORM + nested GQL; live talk fields vs SQL.
+- `docs/platforms/backend/contracts/agenda-item-domain.md` — AgendaItem ORM + nested GQL; live-map session fields vs SQL.
 - `docs/platforms/backend/modules/nodejs-socket-library.md` — `@nodejs/socket` framework reference.
 - `docs/invariants/backend.md` — Backend invariants.
 

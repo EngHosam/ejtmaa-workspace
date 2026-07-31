@@ -13,7 +13,8 @@ Authoritative contract: `docs/platforms/backend/contracts/talk-record-domain.md`
 - Non-actor under `Meeting` (`meeting_id` FK); speaker via `member_id`.
 - `modelName: "talkRecord"` so default `hasMany` is `talkRecords` — **do not** add `as` on `Meeting.hasMany(TalkRecord())`.
 - Bridge `ident` and SDL field must stay `talkRecords`.
-- Durable SQL talk queue/history (not Yjs / LiveKit).
+- Durable SQL talk queue/history (not LiveKit).
+- Live session map: per-participant `talkTurn` + root `currentTalkMemberId` (`meeting-live-state.md`) — session-only; not SQL columns.
 - **No** `decision_id` — queue is meeting-scoped only (product decision).
 - Enum `talkRecordStatus`: `WAITING` | `SPEAKING` | `COMPLETED` | `CANCELED` (default `WAITING`).
 

@@ -22,16 +22,16 @@
 | [`message-template-domain.md`](contracts/message-template-domain.md) | MessageTemplate ORM + customer GQL + write path (kinds, channel FK, `.strip()`, `meta_template_id`) |
 | [`meeting-domain.md`](contracts/meeting-domain.md) | Meeting ORM + customer GQL reads |
 | [`meeting-participant-domain.md`](contracts/meeting-participant-domain.md) | MeetingParticipant roster ORM + nested GQL |
-| [`agenda-item-domain.md`](contracts/agenda-item-domain.md) | AgendaItem ORM + nested GQL under Meeting |
+| [`agenda-item-domain.md`](contracts/agenda-item-domain.md) | AgendaItem ORM + nested GQL under Meeting; live-map session fields vs SQL |
 | [`decision-domain.md`](contracts/decision-domain.md) | Decision ORM + nested GQL under Meeting |
 | [`vote-domain.md`](contracts/vote-domain.md) | Vote ORM + nested GQL under Decision |
-| [`talk-record-domain.md`](contracts/talk-record-domain.md) | TalkRecord ORM + nested GQL under Meeting |
+| [`talk-record-domain.md`](contracts/talk-record-domain.md) | TalkRecord ORM + nested GQL; live `talkTurn` / `currentTalkMemberId` vs SQL |
 | [`plan-domain.md`](contracts/plan-domain.md) | Plan (الباقة) catalog ORM + public customer GQL |
 | [`subscription-domain.md`](contracts/subscription-domain.md) | Subscription (الاشتراك) entitlement ORM + GQL reads + `subscribe` static + expire task |
 | [`livekit-media-plane.md`](contracts/livekit-media-plane.md) | LiveKit helper + org-host join-token HTTP (`{ token, url }`) + participant JWT cache; browser client in `../website/flow-meeting-broadcast.md` |
 | [`socket-event-mirroring.md`](contracts/socket-event-mirroring.md) | Socket notify events |
 | [`meeting-realtime-socket.md`](contracts/meeting-realtime-socket.md) | `/meeting` namespace: handshake auth, room, `meeting.live.*` events |
-| [`meeting-live-state.md`](contracts/meeting-live-state.md) | Meeting CRDT document, `live_state` BLOB, registry and persistence |
+| [`meeting-live-state.md`](contracts/meeting-live-state.md) | Meeting CRDT document, `live_state` BLOB, registry; live agenda + talk-queue seeds |
 
 ## Patterns
 

@@ -13,7 +13,8 @@ Authoritative contract: `docs/platforms/backend/contracts/agenda-item-domain.md`
 - Non-actor under `Meeting` (`meeting_id` FK).
 - `modelName: "agendaItem"` so default `hasMany` is `agendaItems` — **do not** add `as` on `Meeting.hasMany(AgendaItem())`.
 - Bridge `ident` and SDL field must stay `agendaItems`.
-- Durable SQL agenda (not Yjs / LiveKit).
+- Durable SQL agenda for authoring/reports (`id` / `sort_order` / `subject`).
+- Live session map mirrors those lines and adds session-only `status` (incl. `CANCELED`) / `isLiveCreated` / `isLiveUpdated` / `currentAgendaItemId` (`meeting-live-state.md`) — not LiveKit, not SQL columns. No live agenda delete.
 
 ## Customer GQL
 

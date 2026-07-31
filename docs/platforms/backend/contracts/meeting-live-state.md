@@ -2,7 +2,7 @@
 
 ## Scope
 
-The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, `status`, `datetime`, `minMembersCount`, and `participants` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
+The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, `status`, `datetime`, `minMembersCount`, `participants`, `currentTalkMemberId`, `agendaItems`, and `currentAgendaItemId` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
 
 Transport (namespace, handshake, events, authorization): `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
 Website consumer (`MeetingLiveProvider` / `useMeetingLive` / `useMeetingLiveSession`, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1, §5.3.
@@ -36,6 +36,8 @@ File pair: `backend/src/app/types/meeting.ts` ↔ `website/src/types/meeting.ts`
 | `MeetingLiveParticipantTypes` / `MeetingLiveParticipantType` | `CHAIRPERSON` \| `MEMBER` \| `VIEWER` | Per-roster `type` |
 | `MeetingLiveConnectionStatuses` / `MeetingLiveConnectionStatus` | `ONLINE` \| `OFFLINE` | Per-roster connection |
 | `MeetingLiveParticipant` | see below | One roster entry |
+| `MeetingLiveAgendaItemStatuses` / `MeetingLiveAgendaItemStatus` | `WAITING` \| `DISCUSSING` \| `DONE` \| `CANCELED` | Per-agenda-item session status |
+| `MeetingLiveAgendaItem` | see below | One agenda line in the live map |
 | `MeetingLiveMap` | see below | Full live document shape |
 
 ```ts
@@ -49,6 +51,16 @@ type MeetingLiveParticipant = {
     connectionStatus: MeetingLiveConnectionStatus;
     onlineAt: string | null;
     offlineAt: string | null;
+    talkTurn: number | null;     // null = not in live talk queue; number = queue order
+};
+
+type MeetingLiveAgendaItem = {
+    id: string;
+    sortOrder: number;
+    subject: string;
+    status: MeetingLiveAgendaItemStatus; // WAITING | DISCUSSING | DONE | CANCELED
+    isLiveCreated: boolean;
+    isLiveUpdated: boolean;
 };
 
 type MeetingLiveMap = {
@@ -58,14 +70,21 @@ type MeetingLiveMap = {
     datetime: string;            // ISO-8601 from SQL Meeting.datetime
     minMembersCount: number;     // from SQL Meeting.min_members_count
     participants: Record<string, MeetingLiveParticipant>; // keyed by member id
+    currentTalkMemberId: string | null; // null = nobody speaking; else participants key
+    agendaItems: Record<string, MeetingLiveAgendaItem>;   // keyed by agenda item id
+    currentAgendaItemId: string | null;
 };
 ```
 
 Attendance is timestamp-only (`attendedAt` / `leftAt`); there is no separate boolean. Connection presence fields are seeded `OFFLINE` / null timestamps on first document create; writers that flip online/offline are **not** shipped yet (`meeting-realtime-socket.md` shipped limits).
 
+`talkTurn` is the live talk-queue order on the roster entry (`null` = not queued). Root `currentTalkMemberId` is who is speaking now (`null` = nobody). Both are session-only (not SQL `talk_records` columns); they die on session reset (§3.1). Durable queue/history remains `TalkRecord` (`talk-record-domain.md`). Writers that flip talk-queue fields are **not** shipped yet. Existing non-empty BLOBs are decoded as-is (no talk-field backfill).
+
 `datetime` is the scheduled start used by the website client session gate for the self-check-in open window (`MeetingModel.ATTEND_OPEN_BEFORE_MS` — 30 minutes before start). It is seeded from SQL and is **not** a collaborative edit target.
 
 `minMembersCount` is the quorum denominator for the chair attendance log UI. It is seeded from SQL `min_members_count` on **first empty** `live_state` create only and is **not** a collaborative edit target. Existing non-empty BLOBs are decoded as-is (no scalar backfill); clients must treat a missing value as “hide quorum strip,” not invent a default.
+
+`agendaItems` mirrors durable SQL `AgendaItem` lines (`id` / `sort_order` → `sortOrder` / `subject`) on **first empty** `live_state` create. Per-item `status` defaults to `WAITING`; `isLiveCreated` / `isLiveUpdated` default to `false`. Session cancel of a line uses `status: "CANCELED"` (no live delete). Those flags and statuses, with root `currentAgendaItemId` (seeded `null`), exist **only** in the live map — not on SQL `agenda_items`. They die on session reset (§3.1). Writers that flip agenda status, live-mutation flags, or current id are **not** shipped yet. Existing non-empty BLOBs are decoded as-is (no agenda backfill).
 
 ### 1.3 Document codec and seed
 
@@ -75,13 +94,14 @@ Codec/seed helpers are **module-private**. Public surface of this file is the re
 
 | Member | Role |
 |---|---|
-| `createLiveDoc(fields)` | Private. One `transact`: sets `subject` / `type` / `status` / `datetime` / `minMembersCount`; builds nested `participants` as `Y.Map` of per-id `Y.Map(Object.entries(participant))` |
+| `createLiveDoc(fields)` | Private. One `transact`: sets scalars; builds nested `participants` then sets `currentTalkMemberId`; builds nested `agendaItems` then sets `currentAgendaItemId` |
 | `encodeLiveDoc` / `decodeLiveDoc` | Private. V2 BLOB codec |
-| `buildLiveParticipants(meeting)` | Private. `meeting.getParticipants({ include: [{ association: "member", required: true }] })` → `Record` keyed by `member_id`; skips a row only if `member` is somehow missing; ISO-maps `attended_at` / `left_at`; seeds `connectionStatus: "OFFLINE"` |
-| `getLiveDoc(meeting)` | Private. Non-empty `live_state` → `decodeLiveDoc` (no scalar backfill); else `createLiveDoc` from SQL columns (`datetime`, `min_members_count`, …) + `buildLiveParticipants` |
+| `buildLiveParticipants(meeting)` | Private. `meeting.getParticipants({ include: [{ association: "member", required: true }] })` → `Record` keyed by `member_id`; skips a row only if `member` is somehow missing; ISO-maps `attended_at` / `left_at`; seeds `connectionStatus: "OFFLINE"`, `talkTurn: null` |
+| `buildLiveAgendaItems(meeting)` | Private. `meeting.getAgendaItems()` → `Record` keyed by agenda `id`; maps `sort_order` → `sortOrder`, `subject`; seeds `status: "WAITING"`, `isLiveCreated` / `isLiveUpdated: false` |
+| `getLiveDoc(meeting)` | Private. Non-empty `live_state` → `decodeLiveDoc` (no scalar backfill); else `createLiveDoc` from SQL + `buildLiveParticipants` + `currentTalkMemberId: null` + `buildLiveAgendaItems` + `currentAgendaItemId: null` |
 | `readLiveFields(doc)` | **Exported.** `doc.getMap(MEETING_LIVE_MAP).toJSON() as Partial<MeetingLiveMap>` — only sanctioned read-back |
 
-Nested `Y.Map` for each participant is required so collaborative field updates (e.g. `connectionStatus`) merge by identity. A plain object stored under `participants` would not be a collaborative map.
+Nested `Y.Map` for each participant and each agenda item is required so collaborative field updates (e.g. `connectionStatus`, agenda `status`) merge by identity. A plain object stored under `participants` / `agendaItems` would not be a collaborative map.
 
 SQL column enums remain `MeetingType` / `MeetingStatus` from `G_Tr` keys; the CRDT document uses `MeetingLiveMap` only.
 
@@ -188,7 +208,7 @@ Until then the SQL meeting columns keep the values the requester write path left
 4. **Eviction only on approve / demotion.** `destroyMeetingLiveDoc` is called from those two requester paths (§3.1); `peekMeetingLiveDoc` still has no caller. Nothing evicts an entry when a session simply ends, so memory still grows with the number of meetings touched until the process restarts.
 5. **Single instance.** The registry is process memory. Two backend processes would each hold an independent document for the same meeting and overwrite each other's BLOB; horizontal scaling needs a shared document plane first.
 6. **Seed write on first load.** A meeting whose BLOB is `null` gets one write on first sync even when nobody edits. Harmless because a session only opens for a live meeting, whose columns are no longer edited through the form.
-7. **No automatic BLOB schema migration.** A non-empty `live_state` is decoded as-is. Documents created before `participants` / `datetime` / `minMembersCount` existed are not back-filled on load; a requester reset (§3.1) clears the BLOB so the next sync re-seeds from SQL.
+7. **No automatic BLOB schema migration.** A non-empty `live_state` is decoded as-is. Documents created before `participants` / `datetime` / `minMembersCount` / `agendaItems` / `currentAgendaItemId` / `talkTurn` / `currentTalkMemberId` existed are not back-filled on load; a requester reset (§3.1) clears the BLOB so the next sync re-seeds from SQL.
 
 ## 8) Traceability
 
@@ -265,13 +285,78 @@ Untracked build output under `backend/lib/`, `backend/.exporters/`, `backend/.ty
 | `docs/platforms/backend/contracts/meeting-live-state.md` | this page | — |
 | `docs/platforms/website/organization-host-routing.md` | chair attendance quorum strip | §5.5, §10f |
 
+## 9d) Change set inventory (live agenda map — shipped)
+
+**Shipped behavior (final).** On first empty `live_state` create, `MeetingLiveDocHelper` seeds nested `agendaItems` from SQL `AgendaItem` rows (`id`, `sort_order` → `sortOrder`, `subject`) with session defaults `status: "WAITING"`, `isLiveCreated: false`, `isLiveUpdated: false`, and root `currentAgendaItemId: null`. Nested per-id `Y.Map`s (same pattern as `participants`). `createLiveDoc` sets `currentAgendaItemId` **after** `agendaItems`. Session cancel of a line is `status: "CANCELED"` — **no** live delete / **no** `isDeleted`. `isLiveCreated` / `isLiveUpdated` mean the chair created or updated the line **during the live session** (names chosen so they are not confused with SQL authoring). Existing non-empty BLOBs decode as-is (no agenda backfill). Session reset (§3.1) clears the BLOB so the next sync re-seeds. **Not shipped:** client/server writers that flip agenda `status`, live-mutation flags, or `currentAgendaItemId`; agenda UI on `MeetingAgendaPage` (still stub). SQL `agenda_items` columns unchanged.
+
+**Design decisions recorded during delivery (not separate code states):** interim `isDeleted` was rejected in favor of `CANCELED`; interim `isCreated` / `isUpdated` renamed to `isLiveCreated` / `isLiveUpdated`.
+
+### Exhaustive path inventory
+
+| Path | Repo | State | Where described |
+|---|---|---|---|
+| `backend/src/app/types/meeting.ts` | backend | modified — `MeetingLiveAgendaItemStatuses` / `MeetingLiveAgendaItem` / `agendaItems` / `currentAgendaItemId` | §1.2 |
+| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | backend | modified — `buildLiveAgendaItems`; nested seed; `currentAgendaItemId` after `agendaItems` | §1.3, §7 |
+| `website/src/types/meeting.ts` | website | modified — byte-identical mirror | §1.2; `.cursor/rules/meeting-live-map-mirror.mdc` |
+| `website/lib/tsconfig.tsbuildinfo` | website | modified — TypeScript incremental build cache only | **excluded from narrative** (generated noise from `yarn type-check`) |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | root | modified — this page | — |
+| `docs/platforms/backend/contracts/agenda-item-domain.md` | root | modified — SQL vs live-map session fields; cancel via `CANCELED` | scope + §2 + related |
+| `docs/platforms/website/organization-host-routing.md` | root | modified — SyncedStore / shipped live-map field list; §10n | §5.1, shipped limits, §10n |
+| `.cursor/rules/meeting-live-state.mdc` | root | modified — nested `agendaItems`; map-only session fields; no live delete | governance |
+| `.cursor/rules/meeting-live-map-mirror.mdc` | root | modified — mirror includes agenda types | governance |
+| `.cursor/rules/agenda-item-meeting-child.mdc` | root | modified — live session fields vs SQL | governance |
+| `.cursor/skills/meeting-realtime-socket/SKILL.md` | root | modified — seed/mirror checklist for agenda | skill |
+
+### Triage notes
+
+| Symptom | Likely cause |
+|---|---|
+| Client `meeting.agendaItems` missing after sync | Non-empty pre-agenda `live_state` BLOB (no backfill). Reset via approve/demote (§3.1) or clear BLOB so next sync re-seeds |
+| Flags / `currentAgendaItemId` never change | Expected — writers not shipped; seed only |
+| Expecting SQL column for agenda discussion status | Wrong plane — `status` / `isLiveCreated` / `isLiveUpdated` / `currentAgendaItemId` are live-map only |
+
+## 9e) Change set inventory (live talk queue fields — shipped)
+
+**Shipped behavior.** On first empty `live_state` create, each live participant seeds `talkTurn: null` (not in queue). Root `currentTalkMemberId` seeds `null` (nobody speaking) and is set in `createLiveDoc` **after** `participants`. Session-only; not SQL `talk_records`. Durable talk history remains `TalkRecord`. **Not shipped:** writers / talk-queue UI.
+
+| Path | Repo | State | Where described |
+|---|---|---|---|
+| `backend/src/app/types/meeting.ts` | backend | modified — `talkTurn` / `currentTalkMemberId` | §1.2 |
+| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | backend | modified — seed `talkTurn: null`; `currentTalkMemberId` after `participants` | §1.3 |
+| `website/src/types/meeting.ts` | website | modified — identical mirror | §1.2 |
+| `website/lib/tsconfig.tsbuildinfo` | website | may change from type-check | **excluded** (generated) |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | root | this page | — |
+| `docs/platforms/backend/contracts/talk-record-domain.md` | root | SQL vs live talk fields | scope + Related |
+| `docs/platforms/backend/contracts/livekit-media-plane.md` | root | plane table notes live talk fields | planes |
+| `docs/platforms/website/organization-host-routing.md` | root | live map field list; §10o | §5.1 / §8 / §10o |
+| `docs/platforms/website/README.md` | root | change-set pointer → §10o | website index |
+| `docs/platforms/backend/README.md` | root | index blurbs | backend index |
+| `docs/README.md` | root | live-state index blurb | root index |
+| `.cursor/rules/meeting-live-state.mdc` | root | talk session fields | governance |
+| `.cursor/rules/meeting-live-map-mirror.mdc` | root | mirror includes talk fields | governance |
+| `.cursor/rules/talk-record-meeting-child.mdc` | root | live vs SQL | governance |
+| `.cursor/skills/meeting-realtime-socket/SKILL.md` | root | seed order checklist (6d) | skill |
+
+### Triage notes (talk queue)
+
+| Symptom | Likely cause |
+|---|---|
+| Client missing `talkTurn` / `currentTalkMemberId` after sync | Non-empty pre-talk `live_state` BLOB (no backfill). Reset via approve/demote (§3.1) |
+| `talkTurn` / `currentTalkMemberId` never change | Expected — writers not shipped; seed only |
+| Expecting SQL column for live queue position / current speaker | Wrong plane — session fields are live-map only; durable history is `TalkRecord` |
+
 ## 10) Related
 
 - `docs/platforms/backend/contracts/meeting-realtime-socket.md` — namespace, events, authorization
 - `docs/platforms/backend/contracts/meeting-domain.md` — columns, GQL read, requester write path, `ATTEND_OPEN_BEFORE_MS`
-- `docs/platforms/website/organization-host-routing.md` §5.1, §5.3 — website transport, SyncedStore binding, session surface
+- `docs/platforms/backend/contracts/agenda-item-domain.md` — durable SQL agenda; live map session fields
+- `docs/platforms/backend/contracts/talk-record-domain.md` — durable SQL talk queue/history; live `talkTurn` / `currentTalkMemberId`
+- `docs/platforms/backend/contracts/livekit-media-plane.md` — LiveKit is not agenda/talk truth
+- `docs/platforms/website/organization-host-routing.md` §5.1, §5.3, §10n–§10o — website transport, SyncedStore binding, inventories
 - `docs/invariants/backend.md` B25
 - `.cursor/rules/meeting-live-state.mdc`
 - `.cursor/rules/meeting-live-map-mirror.mdc`
+- `.cursor/rules/agenda-item-meeting-child.mdc`
+- `.cursor/rules/talk-record-meeting-child.mdc`
 - `.cursor/rules/sequelize-include-by-association-name.mdc`
 - `.cursor/skills/meeting-realtime-socket/SKILL.md`
