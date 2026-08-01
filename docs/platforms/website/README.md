@@ -302,7 +302,7 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | LiveKit join-token HTTP (`{ token, url }`) + `useMeetingLiveKitToken` | `../backend/contracts/livekit-media-plane.md` §6; `flow-meeting-broadcast.md` §4 |
 | Broadcast A/V client (`useMeetingLiveKitRoom` + `MeetingLiveBroadcast`, camera/mic/sound, cooperative mute-all, media ceilings) | `flow-meeting-broadcast.md`; `organization-host-routing.md` §5.5, §8, §10m |
 | Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
-| Known limits (`org_host` on LiveKit token; drawer page title stubs via `MeetingPageStub`; client-only chair gates) | `organization-host-routing.md` §8 |
+| Known limits (`org_host` on LiveKit token; remaining drawer stubs `talkQueue` / `decisionsAndVote`; client-only chair gates incl. agenda status; LiveKit token also gated by `can.enterLive`) | `organization-host-routing.md` §8 |
 | Meeting shell branding + Meeting info after `live` / selected chrome + STARTED broadcast stack + solid overlay + in-shell `MeetingPage` | `organization-host-routing.md` §5.4, §5.5, §10l; `.cursor/rules/website-meeting-shell.mdc` |
 | `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` / `website-meeting-live-session.mdc` / `website-meeting-shell.mdc` | Host-mode gating + Meeting transport + session surface + READY shell IA |
 

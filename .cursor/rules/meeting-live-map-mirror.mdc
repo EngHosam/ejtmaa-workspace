@@ -38,3 +38,4 @@ These two files are a **byte-for-byte contract mirror** of the live CRDT map sha
 - Importing `_MeetingTypeValue` / `_MeetingStatusValue` / `MeetingType` / `MeetingStatus` into either mirror file.
 - Defining a second live-map shape beside `MeetingLiveMap` for the same CRDT document.
 - Naming agenda/decision session mutation flags `isCreated` / `isUpdated` / `isLiveUpdated` / `isDeleted`.
+- Adding root `currentAgendaItemId` or `currentDecisionId` — active agenda/decision is status (`DISCUSSING` / `UNDER_VOTING`).

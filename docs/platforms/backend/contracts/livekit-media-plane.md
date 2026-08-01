@@ -165,7 +165,7 @@ One LiveKit room per meeting; one stored JWT per roster member (never share acro
 
 | `status` | When |
 |---|---|
-| `idle` | Live session not `STARTED` and/or missing `memberId` / `memberToken` / `meetingId` — **no** HTTP request |
+| `idle` | `!can.enterLive`, and/or live session not `STARTED`, and/or missing `memberId` / `memberToken` / `meetingId` — **no** HTTP request |
 | `pending` | Fetch in flight, or network error quiet-retry while still active |
 | `ready` | Axios `READY` and **both** mapped `token` and `url` present |
 | `error` | Axios `ERROR` with a response body (`isResType`) — business/auth failures; **no** quiet retry |

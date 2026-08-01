@@ -63,7 +63,7 @@ Backend `MeetingLiveKitTokenController` returns `{ token, url }`, where `url` is
 
 | `status` | When |
 |---|---|
-| `idle` | Session `meeting.status !== "STARTED"` or a missing route id (`memberId` / `memberToken` / `meetingId`) — **no** HTTP request |
+| `idle` | `!can.enterLive`, or session `meeting.status !== "STARTED"`, or a missing route id (`memberId` / `memberToken` / `meetingId`) — **no** HTTP request |
 | `pending` | Request in flight, or quiet network retry (3s) while still active |
 | `ready` | Axios `READY` and **both** `token` and `url` mapped |
 | `error` | Axios `ERROR` with a response body (`isResType`) — business/auth failure, no retry |
@@ -312,7 +312,7 @@ Copy rules observed here: a toggle label states the **current state** (never the
 | `yarn.lock` | modified — client + transitive entries | §3 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveKitRoom.ts` | **added** — central room hook (status, peers, publish, sound, mute-all, lifecycle) | §5 |
 | `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | modified — probe UI replaced by the real stage, attach components, controls, chair group | §6 |
-| `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | modified — discriminated union + `url` mapping | §4 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | join fetch — idle unless `can.enterLive && STARTED` + route ids; union `{ status, token, url }` | §4 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — `muteAllMedia` capability (type, `canNone`, `resolveCan`) | §7 |
 | `src/app/ui/components/meeting/MeetingLinkingScreen.tsx` | modified — FAILED early return renders `LaneFailed`; PENDING path unchanged | §8 |
 | `src/app/ui/components/Wrong.tsx` | modified — `LaneFailed` optional `title` / `description` | §8 |

@@ -17,10 +17,11 @@ Out of scope (not shipped):
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for agenda items,
 - LiveKit ownership of agenda,
-- live-map writers that flip agenda `status` / `isLiveCreated` (seeded only until writers ship — see `meeting-live-state.md`).
+- live-map writers for `isLiveCreated`,
+- SQL reflect of live agenda `status` back onto `AgendaItem` (live chair status writes update the CRDT only — see `meeting-live-state.md` §1.2 / §6),
 - prepare requester that accepts client-owned agenda `status` (create always persists `WAITING`).
 
-Durable SQL (`id` / `sort_order` / `subject` / `status`) remains the authoring and report truth. The live session map mirrors those lines on first empty `live_state` create (including durable `status`) and adds session-only `isLiveCreated` that dies when the live document is reset. Active agenda line is `status: "DISCUSSING"`. In-session cancel uses `status: "CANCELED"` on both SQL and the live map when writers ship; live agenda lines are not deleted from the map.
+Durable SQL (`id` / `sort_order` / `subject` / `status`) remains the authoring and report truth. The live session map mirrors those lines on first empty `live_state` create (including durable `status`) and adds session-only `isLiveCreated` that dies when the live document is reset. Active agenda line is `status: "DISCUSSING"` (no root pointer). In-session cancel uses `status: "CANCELED"` on the live map (SQL sync of that cancel is deferred with §6 reflect); live agenda lines are not deleted from the map. Website org-host agenda UI: `organization-host-routing.md` §5.5.
 
 ## 2) Domain purpose
 

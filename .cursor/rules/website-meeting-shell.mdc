@@ -1,5 +1,5 @@
 ---
-description: Organization-host Meeting shell IA — role drawer tiles, wide live tile, Meeting info after live, STARTED broadcast + solid MeetingPageOverlay, FlexContainer content column, header request-to-speak, in-shell MeetingPage
+description: Organization-host Meeting shell IA — role drawer tiles, wide live tile, Meeting info after live, STARTED broadcast + frosted MeetingPageOverlay, FlexContainer content column, header request-to-speak, in-shell MeetingPage (incl. agenda)
 globs:
   - website/src/app/ui/components/meeting/MeetingDrawerPanel.tsx
   - website/src/app/ui/components/meeting/MeetingHeader.tsx
@@ -12,6 +12,8 @@ globs:
   - website/src/app/ui/components/meeting/hooks/useMeetingAttendance.ts
   - website/src/app/ui/components/FilterCountChips.tsx
   - website/src/app/ui/components/meeting/MeetingDrawerOverlay.tsx
+  - website/src/app/ui/components/meeting/MeetingAgendaCard.tsx
+  - website/src/app/ui/components/meeting/hooks/useMeetingAgenda.ts
   - website/src/app/ui/components/meeting/pages/**
   - website/src/app/ui/components/meeting/hooks/useMeetingPage.tsx
   - website/src/app/ui/components/meeting/hooks/useOrganization.ts
@@ -48,7 +50,7 @@ READY main column: wrap route children in `FlexContainer` (`dir="column"`, `flx_
 
 - One `Meeting` route only — local state, not URL segments.
 - Drawer tiles call `setPage`; they do not own page rendering.
-- Non-init pages may be title-only stubs (`MeetingPageStub`) until product UI ships under `meeting/pages/` — except `"attendance"` and `"live"`, which are shipped product UI.
+- Non-init pages may be title-only stubs (`MeetingPageStub`) until product UI ships under `meeting/pages/` — except `"attendance"`, `"live"`, and `"agenda"`, which are shipped product UI.
 - Do not put in-shell bodies under `ui/pages/` (route entries only). Do not invent a second route for a drawer target.
 
 ## MeetingInitPage (`"init"`)
@@ -79,10 +81,20 @@ READY main column: wrap route children in `FlexContainer` (`dir="column"`, `flx_
 
 - Owner: `Meeting.tsx` `MeetingContent` — not the drawer, not individual pages.
 - Before `STARTED`: exclusive `renderPage(page)` (unchanged).
-- While `STARTED`: always mount `MeetingLiveBroadcast`; when `page !== "live"`, wrap `renderPage(page)` in `MeetingPageOverlay` (solid inset sheet; dismiss → `setPage("live")` via close, outside tap, or Meeting room tile).
-- `MeetingPageOverlay`: solid only — no blur, frost, or scrim; org `pageBackground` + `inputBorder` + `card.radius`; full content-column width (`l`/`r` 0 — same `FlexContainer` as header/footer); vertical sheet inset for float; scroll body `ph={page.padY}` so floating page content matches page `pv`; floating close over content (compact theme/lang chrome, `semanticColor.input*`) — no reserved top pad that defeats floating.
+- While `STARTED`: always mount `MeetingLiveBroadcast`; when `page !== "live"`, wrap `renderPage(page)` in `MeetingPageOverlay` (frosted inset sheet; dismiss → `setPage("live")` via close, outside tap, or Meeting room tile).
+- `MeetingPageOverlay`: org `pageOverlayBackground` (fixed `"rgba(229,235,245,0.9) rgba(6,12,22,0.9)"`) + `inputBorder` + `card.radius` + `backdrop-filter: blur(4px)` — not solid `pageBackground`. Floating page bodies use `bg="@transparent"` so frost shows through.
+- Full content-column width (`l`/`r` 0 — same `FlexContainer` as header/footer); vertical sheet inset for float; scroll body `ph={page.padY}` so floating page content matches page `pv`; floating close over content (compact theme/lang chrome, `semanticColor.input*`) — no reserved top pad that defeats floating.
 - When `STARTED && page === "live" && !can.enterLive`: effect bounces to `"init"`.
 - Broadcast **internals** (LiveKit room, track attach, camera/mic/sound controls, mute-all) are out of scope here: `.cursor/rules/website-meeting-livekit-broadcast.mdc`.
+
+## Agenda (`"agenda"`)
+
+- All roles. Data: `hooks/useMeetingAgenda.ts` from session `meeting.agendaItems` (no GQL, no direct `batch`).
+- Active = `status === "DISCUSSING"` (no root pointer). Split: discussing strip + other list (`sortOrder`). Heading `otherSection` only when discussing exists **and** other rows remain.
+- Card: `MeetingAgendaCard.tsx` — sort badge, full subject (no `maxLi`), read-only status pill **or** chair chips.
+- Chair: pass `statusOptions` / `onSetStatus` only when `can.setAgendaItemStatus`; write via `actions.setAgendaItemStatus` (live map only).
+- Page copy: single translator `meetingLayout.agenda`. Page `bg="@transparent"`.
+- Drawer: when any item is `DISCUSSING`, agenda tile `livePulse` + `agendaDiscussingAria` (def-owned; drawer translator only).
 
 ## MeetingPrimaryButton
 
@@ -121,8 +133,10 @@ Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 - **No** `participants` tile.
 - Meeting info is full-row after `live` (`itemHome` + `HomeMark`; `setPage("init")`; selected when `page === "init"`). Label: **Meeting info** / **معلومات الاجتماع**. Not above the grid; not an `init` id inside `DrawerGridItemDef[]`.
 - `live` is full-row (`wide` → `gridColumn: 1 / -1`). Label copy: **Meeting room** / **غرفة الاجتماع** (`itemLive`); id stays `"live"`.
-- When `meeting.status === "STARTED"` and `can.enterLive`, show a corner broadcast ping on the `live` tile (`accentActionBackground` pulse) — independent of selected chrome.
-- When `!can.enterLive`, disable the `live` tile (`opc` 0.55, `aria-disabled`; `ariaLabel` / `title` = `init.attendRequiresForRoom`). Keep the visible Meeting room label. `MeetingLivePage` also bounces to `"init"` if reached while locked.
+- Put `disabled` / `livePulse` / `ariaLabel` on the **tile def**, not computed inside `flatMap`. Drawer uses **only** `meetingLayout.drawer` translator (`liveLockedAria`, `liveBroadcastingAria`, `agendaDiscussingAria`) — do not pull `init` / `agenda` namespaces into the drawer.
+- When `meeting.status === "STARTED"` and `can.enterLive`, `live` tile `livePulse` (corner broadcast ping) — independent of selected chrome.
+- When `!can.enterLive`, `live` tile `disabled` (`opc` 0.55, `aria-disabled`; `ariaLabel` = `drawer.liveLockedAria`). Keep the visible Meeting room label. `MeetingLivePage` also bounces to `"init"` if reached while locked.
+- When any `agendaItems[*].status === "DISCUSSING"`, `agenda` tile `livePulse` + `agendaDiscussingAria`.
 - Meeting info control: full-row after `live` (`itemHome` + shared `HomeMark` with white `frameClr`/`accentClr` via `actionIconOnFill`, same as drawer-menu monochrome accent override). Do not use `FiHome` or leave HomeMark orange accent on the fill well.
 - Tiles call `setPage(id)` (and `onClose` on the mobile overlay); selected tile: soft `sectionAccentBackground`, partial-height start accent rail (`3px`, inset top/bottom), `textAccent` label; icon well stays `primaryActionBackground` + white `actionIconOnFill` (no selected swap, no full perimeter brand border). `aria-current="page"`.
 - Tile chrome matches existing meeting drawer `DrawerGridItem` (org `OrganizationColors`, `semanticDims`).
@@ -140,8 +154,9 @@ Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 
 ## Colors / Utils
 
-- Prefer `OrganizationColors` tokens from `useOrganization` / `defaultOrganizationColors()` — including scheme pairs like `idleCardBackground` / `presentCardBackground`.
+- Prefer `OrganizationColors` tokens from `useOrganization` / `defaultOrganizationColors()` — including scheme pairs like `idleCardBackground` / `presentCardBackground` and fixed overlay fill `pageOverlayBackground`.
 - **Create a token — do not patch.** If light/dark need different fills, or two surfaces collide visually, add a `ColorType` pair on `OrganizationColors` in `useOrganization.ts`. Forbidden: `colorScheme` / `useThemeManager` branches for meeting chrome fills; opacity hacks on the whole card; reusing `sectionAccentBackground` for a present card body when the type chip already uses it.
+- Floating overlay sheet uses `pageOverlayBackground` (fixed rgba pair at 0.9 alpha) — do not reuse `pageBackground` for the frost sheet. Exclusive floating pages keep `bg="@transparent"`.
 - Solid action wells (drawer icon squares, selected filter count on primary): glyph ink is `actionIconOnFill` (fixed `#FFFFFF`), not luminance `primaryActionText`. Accent-filled check discs use luminance `accentActionText`.
 - Light-scheme `sectionBrandBackground` / `sectionAccentBackground`: `softLight` mix default **0.78** in `useOrganization` (readable chips on `pageBackground`). Do not wash toward 0.92; do not hardcode chip fills in page code. Present attendance card fill uses `presentCardBackground` (`softLight` **0.62** / `softDark` **0.18**).
 - `As={"button"}`: `baseCssStyle` = `...ElementStyles.buttonReset` only when every state sets `bg` (incl. `"@transparent"`). Use `background: "transparent"` in `baseCssStyle` **only** with `bg={selected ? fill : undefined}`. `fontVariantNumeric` / overflow scroll live in `cssStyle`.

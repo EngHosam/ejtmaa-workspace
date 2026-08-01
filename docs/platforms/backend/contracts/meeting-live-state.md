@@ -106,7 +106,7 @@ Attendance is timestamp-only (`attendedAt` / `leftAt`); there is no separate boo
 
 `minMembersCount` is the quorum denominator for the chair attendance log UI. It is seeded from SQL `min_members_count` on **first empty** `live_state` create only and is **not** a collaborative edit target. Existing non-empty BLOBs are decoded as-is (no scalar backfill); clients must treat a missing value as “hide quorum strip,” not invent a default.
 
-`agendaItems` mirrors durable SQL `AgendaItem` lines (`id` / `sort_order` → `sortOrder` / `subject` / `status`) on **first empty** `live_state` create. Per-item `status` is seeded from SQL (`agendaItemStatus`). Session-only `isLiveCreated` defaults to `false`. Session cancel uses `status: "CANCELED"` (no live delete). Active agenda line is the one with `status: "DISCUSSING"` (no separate root pointer). Durable `status` remains on SQL. Writers that flip agenda status or `isLiveCreated` are **not** shipped yet. Existing non-empty BLOBs are decoded as-is (no agenda backfill).
+`agendaItems` mirrors durable SQL `AgendaItem` lines (`id` / `sort_order` → `sortOrder` / `subject` / `status`) on **first empty** `live_state` create. Per-item `status` is seeded from SQL (`agendaItemStatus`). Session-only `isLiveCreated` defaults to `false`. Session cancel uses `status: "CANCELED"` (no live delete). Active agenda line is the one with `status: "DISCUSSING"` (no separate root pointer — do **not** add `currentAgendaItemId`). Durable `status` remains on SQL and is **not** auto-synced from live writes (§6). **Shipped client writer:** website chair `actions.setAgendaItemStatus` updates live-map `status` only (`organization-host-routing.md` §5.3 / §5.5). `isLiveCreated` writers and SQL reflect for agenda status are **not** shipped. Existing non-empty BLOBs are decoded as-is (no agenda backfill).
 
 `decisions` mirrors durable SQL `Decision` rows (**both** `PRE_START` and `DURING`) on **first empty** `live_state` create: `sort_order` → `sortOrder`, `subject`, `phase`, `status`, `voting_type` → `votingType`. Session-only `isLiveCreated` defaults `false`. Per-decision `votes` seeds from SQL `Vote` rows keyed by `member_id` (`value`, `cast_at` → `castAt` ISO); no rows → empty nested collaborative `Y.Map` (logical `{}`). Do **not** pre-book vote keys for non-voters. A new cast appears under `votes[memberId]` when a writer adds it later (writers **not** shipped). Product: `PRE_START` = full list members may vote; `DURING` = chair advances one decision at a time by setting at most one decision to `UNDER_VOTING` (status is the active marker — no separate root pointer). Durable casts remain SQL `Vote` (`vote-domain.md`). Existing non-empty BLOBs decode as-is (no decision/votes backfill).
 
@@ -252,7 +252,7 @@ Until then the SQL meeting columns keep the values the requester write path left
 
 ## 9) Change set inventory (durable agenda/decision enums + live SQL seed)
 
-**Current ship.** Durable `AgendaItem.status` (`agendaItemStatus`) and `decisionStatus.CANCELED`; customer GQL mirrors; first empty `live_state` seeds agenda `status` and decision `votes` from SQL. Session-only live fields remain `isLiveCreated` and `current*Id` pointers. Live map contract + seed order: §§1.2–1.3. **Not shipped:** agenda/decision/vote live writers; UI beyond stubs.
+**Current ship.** Durable `AgendaItem.status` (`agendaItemStatus`) and `decisionStatus.CANCELED`; customer GQL mirrors; first empty `live_state` seeds agenda `status` and decision `votes` from SQL. Session-only live fields: `isLiveCreated` (agenda/decision), `talkTurn`, `currentTalkMemberId`. Active agenda = `status: "DISCUSSING"`; active DURING decision = `status: "UNDER_VOTING"` — **no** root `currentAgendaItemId` / `currentDecisionId`. Live map contract + seed order: §§1.2–1.3. **Shipped website live writer:** chair `setAgendaItemStatus` (map `status` only; no SQL reflect). **Not shipped:** talk-queue / decision / vote / `isLiveCreated` live writers; SQL column reflect from live (§6).
 
 ### Backend
 
@@ -294,7 +294,7 @@ Until then the SQL meeting columns keep the values the requester write path left
 | `docs/platforms/backend/contracts/livekit-media-plane.md` | plane table | planes |
 | `docs/platforms/backend/README.md` | index blurbs | backend index |
 | `docs/README.md` | live-state index blurb | root index |
-| `docs/platforms/website/organization-host-routing.md` | §5.1 / §8 / §10n | website |
+| `docs/platforms/website/organization-host-routing.md` | §5.3–§5.5 / §8 / §10 (agenda UI, overlay frost, session action, LiveKit enterLive) | website |
 | `docs/platforms/website/README.md` | inventory pointer → §9 | website index |
 | `.cursor/rules/meeting-live-state.mdc` | seed/order invariants | governance |
 | `.cursor/rules/meeting-live-map-mirror.mdc` | mirror + `isLiveCreated` only | governance |

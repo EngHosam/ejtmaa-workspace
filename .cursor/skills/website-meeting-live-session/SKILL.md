@@ -5,8 +5,8 @@ description: >-
   (linking/can/actions/meeting/me/attendWindow) nested under MeetingLiveProvider,
   linking PENDING|READY|FAILED gate, and MeetingLinkingScreen under MeetingLayout.
   Use when adding Meeting product UI that must respect linking, wiring
-  start/end/attend/left actions, attend-window clock ownership, or fixing the
-  org-host meeting gate screen. For socket/Yjs transport, use skill
+  start/end/attend/left/setAgendaItemStatus actions, attend-window clock ownership,
+  or fixing the org-host meeting gate screen. For socket/Yjs transport, use skill
   meeting-realtime-socket instead. For LiveKit join-token fetch / mount,
   use skill meeting-livekit-token.
 ---
@@ -17,7 +17,7 @@ description: >-
 
 - Adding Meeting page/shell UI that depends on connection readiness or session capabilities.
 - Changing `resolveMeetingLiveSession`, `MeetingLiveSessionProvider` / `useMeetingLiveSession`, `MeetingLinkingScreen`, or the linking branch in `MeetingLayout`.
-- Wiring start/end/attend/left without screens touching the CRDT or `batch` directly.
+- Wiring start/end/attend/left/setAgendaItemStatus without screens touching the CRDT or `batch` directly.
 
 ## Read first
 
@@ -36,7 +36,8 @@ description: >-
 4. Linking gate: if `linking !== "READY"`, render `MeetingLinkingScreen` alone (no header/drawer/footer/children). The screen reads `linking` from `useMeetingLiveSession()` — do not pass it as a prop.
 5. Gate chrome: PENDING → `Loadable`; FAILED → `FiAlertCircle` + `semanticColor.stateError`; show org logo **and** name when present; copy under `meetingLayout.linking`.
 6. READY shell drawer/header IA belongs to skill `website-meeting-shell` — do not redefine tile sets here.
-7. Actions: no-op when `!can.*`; write via internal `batch` only (`STARTED` / `COMPLETED` / ISO timestamps on `me`). Do not export `batch` on the session surface. Do not assign `meeting.*` / `me.*` from UI.
-8. Do not re-implement `connect_error` branching here — transport owns it; session only reads `error` / connected / synced.
-9. Attend window: only via session `attendWindow` (hook called once in session; mirror math private). `can.attend` uses `windowOpen`. Init reads `attendWindow` for remaining-duration copy — never a second hook call. `can.enterLive` is navigation-only.
-10. Verify with `yarn type-check` in `website/`.
+7. Actions: no-op when `!can.*`; write via internal `batch` only. Do not export `batch` on the session surface. Do not assign `meeting.*` / `me.*` from UI.
+8. `setAgendaItemStatus(id, status)`: `can` = chair + live (`WAITING_TO_START` \| `STARTED`); write `meeting.agendaItems[id].status` only when the item exists. No SQL sync. Active agenda = `DISCUSSING` (no root pointer).
+9. Do not re-implement `connect_error` branching here — transport owns it; session only reads `error` / connected / synced.
+10. Attend window: only via session `attendWindow` (hook called once in session; mirror math private). `can.attend` uses `windowOpen`. Init reads `attendWindow` for remaining-duration copy — never a second hook call. `can.enterLive` is navigation + LiveKit token gate (no action write).
+11. Verify with `yarn type-check` in `website/`.
