@@ -29,10 +29,10 @@ Authority: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/invar
 9. **SyncedStore root is empty `Partial`.** Shape `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }`; initializer `{ [MEETING_LIVE_MAP]: {} }` only. Do not nest `participants: {}` / `agendaItems: {}` / `decisions: {}` (or other nested maps) in the SyncedStore initializer — that throws. Consumers read `liveStore[MEETING_LIVE_MAP]`.
 10. **Live `participants`, `agendaItems`, `decisions`, and per-decision `votes` are nested `Y.Map`s.** Seed builds nested maps so collaborative field updates merge by identity. A plain object under those keys is not a collaborative map. Per-decision `votes` seeds from SQL `Vote` rows (empty `Y.Map` when none; no non-voter placeholders).
 11. **Live map shape is the mirrored `MeetingLiveMap`** in `backend/src/app/types/meeting.ts` ↔ `website/src/types/meeting.ts` (no GQL / ORM / translation imports). SQL and GraphQL keep using `MeetingType` / `MeetingStatus` / `_Meeting*Value`; the CRDT document uses `MeetingLiveMap` only. Changing one mirror without the other is forbidden — see `.cursor/rules/meeting-live-map-mirror.mdc`.
-12. **No automatic BLOB schema migration.** Non-empty `live_state` is decoded as-is; missing `participants` / `agendaItems` / `currentAgendaItemId` / `talkTurn` / `currentTalkMemberId` / `decisions` / `currentDecisionId` / nested `votes` is not back-filled on load. Requester reset (§3.1) clears the BLOB so the next sync re-seeds.
-13. **Agenda session fields:** durable SQL `status` is mirrored into the live map on seed; `isLiveCreated` and root `currentAgendaItemId` are map-only. Cancel is `status: "CANCELED"` (no live delete). Durable agenda lines remain `AgendaItem`.
-14. **Talk-queue session fields stay map-only.** Per-participant `talkTurn` (`null` = not queued) and root `currentTalkMemberId` (`null` = nobody speaking) are not SQL columns; they die with live-document reset. Durable talk history remains `TalkRecord`. Set `currentTalkMemberId` **after** `participants` in `createLiveDoc` (same order rule as `currentAgendaItemId` after `agendaItems`).
-15. **Decision session fields:** seed all SQL decisions; nest `votes` from SQL `Vote` (empty when none); `isLiveCreated` map-only; status may be `CANCELED`; set `currentDecisionId` **after** `decisions`. Do not pre-book vote keys per participant. Durable decisions/votes remain SQL.
+12. **No automatic BLOB schema migration.** Non-empty `live_state` is decoded as-is; missing `participants` / `agendaItems` / `talkTurn` / `currentTalkMemberId` / `decisions` / nested `votes` is not back-filled on load. Requester reset (§3.1) clears the BLOB so the next sync re-seeds.
+13. **Agenda session fields:** durable SQL `status` is mirrored into the live map on seed; `isLiveCreated` is map-only. Active agenda line is `status: "DISCUSSING"`. Cancel is `status: "CANCELED"` (no live delete). Durable agenda lines remain `AgendaItem`.
+14. **Talk-queue session fields stay map-only.** Per-participant `talkTurn` (`null` = not queued) and root `currentTalkMemberId` (`null` = nobody speaking) are not SQL columns; they die with live-document reset. Durable talk history remains `TalkRecord`. Set `currentTalkMemberId` **after** `participants` in `createLiveDoc`.
+15. **Decision session fields:** seed all SQL decisions; nest `votes` from SQL `Vote` (empty when none); `isLiveCreated` map-only; status may be `CANCELED`. DURING active decision is `status: "UNDER_VOTING"` (at most one). Do not pre-book vote keys per participant. Durable decisions/votes remain SQL.
 
 ## Known ceilings (do not "fix" silently)
 
@@ -46,8 +46,6 @@ Debounce with no maximum wait, no flush on shutdown, eviction only on approve/de
 - Adding a second in-memory document store beside the helper registry.
 - Re-adding live codec/statics onto `Meeting` ORM.
 - Live-deleting an agenda map entry for cancel, or adding `isDeleted` on `MeetingLiveAgendaItem` — use `status: "CANCELED"`.
-- Seeding `currentAgendaItemId` before `agendaItems` in `createLiveDoc` (set it after the nested agenda map).
 - Seeding `currentTalkMemberId` before `participants` in `createLiveDoc` (set it after the nested participants map).
-- Seeding `currentDecisionId` before `decisions` in `createLiveDoc` (set it after the nested decisions map).
 - Storing plain `{}` as the Yjs value of `votes` under a decision — use an empty nested `Y.Map`.
 - Pre-seeding empty vote slots for every participant under `votes`.

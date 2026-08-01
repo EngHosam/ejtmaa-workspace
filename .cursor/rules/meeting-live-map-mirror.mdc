@@ -20,7 +20,7 @@ Authority: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/platf
 | Backend | `backend/src/app/types/meeting.ts` |
 | Website | `website/src/types/meeting.ts` |
 
-These two files are a **byte-for-byte contract mirror** of the live CRDT map shape (`MeetingLiveMap` including `participants`, `currentTalkMemberId`, `agendaItems`, `currentAgendaItemId`, `decisions`, `currentDecisionId`, `MeetingLiveParticipant` with `talkTurn`, `MeetingLiveAgendaItem`, `MeetingLiveDecision` with nested `votes`, `MeetingLiveVote`, `MEETING_LIVE_MAP`, `MEETING_LIVE_STATUSES`, participant/connection/agenda/decision/vote unions and const arrays, type/status unions) plus the shared header comment.
+These two files are a **byte-for-byte contract mirror** of the live CRDT map shape (`MeetingLiveMap` including `participants`, `currentTalkMemberId`, `agendaItems`, `decisions`, `MeetingLiveParticipant` with `talkTurn`, `MeetingLiveAgendaItem`, `MeetingLiveDecision` with nested `votes`, `MeetingLiveVote`, `MEETING_LIVE_MAP`, `MEETING_LIVE_STATUSES`, participant/connection/agenda/decision/vote unions and const arrays, type/status unions) plus the shared header comment.
 
 ## Non-negotiables
 

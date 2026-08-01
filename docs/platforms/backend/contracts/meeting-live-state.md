@@ -2,7 +2,7 @@
 
 ## Scope
 
-The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, `status`, `datetime`, `minMembersCount`, `participants`, `currentTalkMemberId`, `agendaItems`, `currentAgendaItemId`, `decisions`, and `currentDecisionId` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
+The collaborative state of a live meeting: the Yjs document that carries `subject`, `type`, `status`, `datetime`, `minMembersCount`, `participants`, `currentTalkMemberId`, `agendaItems`, and `decisions` while the meeting runs, the `meetings.live_state` BLOB that persists it, and the in-memory registry that owns the document per process.
 
 Transport (namespace, handshake, events, authorization): `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
 Website consumer (`MeetingLiveProvider` / `useMeetingLive` / `useMeetingLiveSession`, SyncedStore): `docs/platforms/website/organization-host-routing.md` §5.1, §5.3.
@@ -94,9 +94,7 @@ type MeetingLiveMap = {
     participants: Record<string, MeetingLiveParticipant>; // keyed by member id
     currentTalkMemberId: string | null; // null = nobody speaking; else participants key
     agendaItems: Record<string, MeetingLiveAgendaItem>;   // keyed by agenda item id
-    currentAgendaItemId: string | null;
     decisions: Record<string, MeetingLiveDecision>;       // keyed by decision id (all phases)
-    currentDecisionId: string | null; // mainly DURING chair one-by-one; null = none
 };
 ```
 
@@ -108,9 +106,9 @@ Attendance is timestamp-only (`attendedAt` / `leftAt`); there is no separate boo
 
 `minMembersCount` is the quorum denominator for the chair attendance log UI. It is seeded from SQL `min_members_count` on **first empty** `live_state` create only and is **not** a collaborative edit target. Existing non-empty BLOBs are decoded as-is (no scalar backfill); clients must treat a missing value as “hide quorum strip,” not invent a default.
 
-`agendaItems` mirrors durable SQL `AgendaItem` lines (`id` / `sort_order` → `sortOrder` / `subject` / `status`) on **first empty** `live_state` create. Per-item `status` is seeded from SQL (`agendaItemStatus`). `isLiveCreated` defaults to `false`. Session cancel uses `status: "CANCELED"` (no live delete). Root `currentAgendaItemId` (seeded `null`) and `isLiveCreated` are map-only session fields; durable `status` remains on SQL. Writers that flip agenda status, live-mutation flags, or current id are **not** shipped yet. Existing non-empty BLOBs are decoded as-is (no agenda backfill).
+`agendaItems` mirrors durable SQL `AgendaItem` lines (`id` / `sort_order` → `sortOrder` / `subject` / `status`) on **first empty** `live_state` create. Per-item `status` is seeded from SQL (`agendaItemStatus`). Session-only `isLiveCreated` defaults to `false`. Session cancel uses `status: "CANCELED"` (no live delete). Active agenda line is the one with `status: "DISCUSSING"` (no separate root pointer). Durable `status` remains on SQL. Writers that flip agenda status or `isLiveCreated` are **not** shipped yet. Existing non-empty BLOBs are decoded as-is (no agenda backfill).
 
-`decisions` mirrors durable SQL `Decision` rows (**both** `PRE_START` and `DURING`) on **first empty** `live_state` create: `sort_order` → `sortOrder`, `subject`, `phase`, `status`, `voting_type` → `votingType`. Session-only `isLiveCreated` defaults `false`. Per-decision `votes` seeds from SQL `Vote` rows keyed by `member_id` (`value`, `cast_at` → `castAt` ISO); no rows → empty nested collaborative `Y.Map` (logical `{}`). Do **not** pre-book vote keys for non-voters. A new cast appears under `votes[memberId]` when a writer adds it later (writers **not** shipped). Root `currentDecisionId` seeds `null` (chair one-by-one pointer for `DURING`; `PRE_START` list voting does not require it). Product: `PRE_START` = full list members may vote; `DURING` = chair advances one decision at a time via `currentDecisionId`. Durable casts remain SQL `Vote` (`vote-domain.md`). Existing non-empty BLOBs decode as-is (no decision/votes backfill).
+`decisions` mirrors durable SQL `Decision` rows (**both** `PRE_START` and `DURING`) on **first empty** `live_state` create: `sort_order` → `sortOrder`, `subject`, `phase`, `status`, `voting_type` → `votingType`. Session-only `isLiveCreated` defaults `false`. Per-decision `votes` seeds from SQL `Vote` rows keyed by `member_id` (`value`, `cast_at` → `castAt` ISO); no rows → empty nested collaborative `Y.Map` (logical `{}`). Do **not** pre-book vote keys for non-voters. A new cast appears under `votes[memberId]` when a writer adds it later (writers **not** shipped). Product: `PRE_START` = full list members may vote; `DURING` = chair advances one decision at a time by setting at most one decision to `UNDER_VOTING` (status is the active marker — no separate root pointer). Durable casts remain SQL `Vote` (`vote-domain.md`). Existing non-empty BLOBs decode as-is (no decision/votes backfill).
 
 ### 1.3 Document codec and seed
 
@@ -120,12 +118,12 @@ Codec/seed helpers are **module-private**. Public surface of this file is the re
 
 | Member | Role |
 |---|---|
-| `createLiveDoc(fields)` | Private. One `transact`: nested `participants` then `currentTalkMemberId`; nested `agendaItems` then `currentAgendaItemId`; nested `decisions` (each with nested `votes` `Y.Map`, possibly empty) then `currentDecisionId` |
+| `createLiveDoc(fields)` | Private. One `transact`: nested `participants` then `currentTalkMemberId`; nested `agendaItems`; nested `decisions` (each with nested `votes` `Y.Map`, possibly empty) |
 | `encodeLiveDoc` / `decodeLiveDoc` | Private. V2 BLOB codec |
 | `buildLiveParticipants(meeting)` | Private. `meeting.getParticipants({ include: [{ association: "member", required: true }] })` → `Record` keyed by `member_id`; seeds `connectionStatus: "OFFLINE"`, `talkTurn: null` |
 | `buildLiveAgendaItems(meeting)` | Private. `meeting.getAgendaItems()` → `Record` keyed by agenda `id`; maps SQL `status`; seeds `isLiveCreated: false` |
 | `buildLiveDecisions(meeting)` | Private. `meeting.getDecisions({ include: [{ association: "votes" }] })` → `Record` keyed by decision `id` (all phases); maps SQL fields; seeds `isLiveCreated: false`; `votes` from SQL `Vote` by `member_id` (empty when none; no per-non-voter slots) |
-| `getLiveDoc(meeting)` | Private. Non-empty `live_state` → `decodeLiveDoc` (no backfill); else `createLiveDoc` with participants / talk / agenda / decisions seeds + null current-* ids |
+| `getLiveDoc(meeting)` | Private. Non-empty `live_state` → `decodeLiveDoc` (no backfill); else `createLiveDoc` with participants / talk / agenda / decisions seeds (`currentTalkMemberId: null`) |
 | `readLiveFields(doc)` | **Exported.** `doc.getMap(MEETING_LIVE_MAP).toJSON() as Partial<MeetingLiveMap>` — only sanctioned read-back |
 
 Nested `Y.Map` for each participant, agenda item, decision, and per-decision `votes` map is required so collaborative field updates merge by identity. A plain object under those keys would not be a collaborative map. Seed must not store plain `{}` as the Yjs value of `votes` — use a nested `Y.Map` (logical seed input may be `votes: {}` or populated from SQL).
@@ -235,7 +233,7 @@ Until then the SQL meeting columns keep the values the requester write path left
 4. **Eviction only on approve / demotion.** `destroyMeetingLiveDoc` is called from those two requester paths (§3.1); `peekMeetingLiveDoc` still has no caller. Nothing evicts an entry when a session simply ends, so memory still grows with the number of meetings touched until the process restarts.
 5. **Single instance.** The registry is process memory. Two backend processes would each hold an independent document for the same meeting and overwrite each other's BLOB; horizontal scaling needs a shared document plane first.
 6. **Seed write on first load.** A meeting whose BLOB is `null` gets one write on first sync even when nobody edits. Harmless because a session only opens for a live meeting, whose columns are no longer edited through the form.
-7. **No automatic BLOB schema migration.** A non-empty `live_state` is decoded as-is. Documents created before `participants` / `datetime` / `minMembersCount` / `agendaItems` / `currentAgendaItemId` / `talkTurn` / `currentTalkMemberId` / `decisions` / `currentDecisionId` / nested `votes` existed are not back-filled on load; a requester reset (§3.1) clears the BLOB so the next sync re-seeds from SQL.
+7. **No automatic BLOB schema migration.** A non-empty `live_state` is decoded as-is. Documents created before `participants` / `datetime` / `minMembersCount` / `agendaItems` / `talkTurn` / `currentTalkMemberId` / `decisions` / nested `votes` existed are not back-filled on load; a requester reset (§3.1) clears the BLOB so the next sync re-seeds from SQL.
 
 ## 8) Traceability
 
@@ -319,7 +317,7 @@ Until then the SQL meeting columns keep the values the requester write path left
 - `docs/platforms/backend/contracts/meeting-realtime-socket.md` — namespace, events, authorization
 - `docs/platforms/backend/contracts/meeting-domain.md` — columns, GQL read, requester write path, `ATTEND_OPEN_BEFORE_MS`
 - `docs/platforms/backend/contracts/agenda-item-domain.md` — durable SQL agenda incl. `status`; live mirror + session fields
-- `docs/platforms/backend/contracts/decision-domain.md` — durable SQL decisions incl. `CANCELED`; live `decisions` / `currentDecisionId` / nested `votes`
+- `docs/platforms/backend/contracts/decision-domain.md` — durable SQL decisions incl. `CANCELED`; live `decisions` / nested `votes`
 - `docs/platforms/backend/contracts/vote-domain.md` — durable SQL casts; live nest under `decisions[*].votes` (seeded from SQL)
 - `docs/platforms/backend/contracts/talk-record-domain.md` — durable SQL talk queue/history; live `talkTurn` / `currentTalkMemberId`
 - `docs/platforms/backend/contracts/livekit-media-plane.md` — LiveKit is not agenda/talk/decision/vote truth

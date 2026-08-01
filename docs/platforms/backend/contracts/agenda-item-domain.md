@@ -17,17 +17,17 @@ Out of scope (not shipped):
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for agenda items,
 - LiveKit ownership of agenda,
-- live-map writers that flip agenda `status` / `isLiveCreated` / `currentAgendaItemId` (seeded only until writers ship — see `meeting-live-state.md`).
+- live-map writers that flip agenda `status` / `isLiveCreated` (seeded only until writers ship — see `meeting-live-state.md`).
 - prepare requester that accepts client-owned agenda `status` (create always persists `WAITING`).
 
-Durable SQL (`id` / `sort_order` / `subject` / `status`) remains the authoring and report truth. The live session map mirrors those lines on first empty `live_state` create (including durable `status`) and adds session-only `isLiveCreated` and root `currentAgendaItemId` that die when the live document is reset. In-session cancel uses `status: "CANCELED"` on both SQL and the live map when writers ship; live agenda lines are not deleted from the map.
+Durable SQL (`id` / `sort_order` / `subject` / `status`) remains the authoring and report truth. The live session map mirrors those lines on first empty `live_state` create (including durable `status`) and adds session-only `isLiveCreated` that dies when the live document is reset. Active agenda line is `status: "DISCUSSING"`. In-session cancel uses `status: "CANCELED"` on both SQL and the live map when writers ship; live agenda lines are not deleted from the map.
 
 ## 2) Domain purpose
 
 `AgendaItem` is a **non-actor** ordered line item belonging to a `Meeting`.
 
 - Agenda is authored and stored in SQL so it exists **before** the live session and can feed reports later.
-- Live session map carries a nested `agendaItems` mirror of durable lines (incl. `status`) plus session-only `isLiveCreated` / `currentAgendaItemId` (`meeting-live-state.md` §1.2); LiveKit does not own agenda.
+- Live session map carries a nested `agendaItems` mirror of durable lines (incl. `status`) plus session-only `isLiveCreated` (`meeting-live-state.md` §1.2); LiveKit does not own agenda.
 - Tenant isolation is inherited via `Meeting.organization_id`.
 
 ## 3) ORM model
@@ -188,7 +188,7 @@ Nested agenda inherits the parent meeting read gate:
 ## Related
 
 - `docs/platforms/backend/contracts/meeting-domain.md`
-- `docs/platforms/backend/contracts/meeting-live-state.md` — live `agendaItems` / `currentAgendaItemId` / session-only fields
+- `docs/platforms/backend/contracts/meeting-live-state.md` — live `agendaItems` / session-only fields
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/invariants/backend.md` (B15)
 - `.cursor/rules/agenda-item-meeting-child.mdc`
