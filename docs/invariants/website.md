@@ -318,6 +318,16 @@ Shipped reference: `MeetingLiveBroadcast` (`BroadcastVideoAttach` / `BroadcastMi
 
 See `docs/platforms/website/flow-meeting-broadcast.md` §5.5, §6.2 and `.cursor/rules/website-meeting-livekit-broadcast.mdc`.
 
+## W61. One Order, One Comparator — And Internal Order Is Not A Label
+
+When a shared collection is ordered in more than one place (the list the user reads, the badge on another surface, the action that picks "the next one"), every path MUST resolve the order with the **same** total comparator, tie-break included. A list that sorts on a value and an action that scans for the minimum of that value are two comparators the moment the value can repeat: the row the UI marks as next stops being the row the action takes, and the user's click does something they did not see. Make the ordering key total (add a stable id tie-break) and use it everywhere, in the hook, in the action helper, and in any peer/tile ordering that mirrors it.
+
+An internally allocated ordering value is **not** display copy. Turn numbers, sequence ids, and sort keys grow monotonically, skip values, and carry no meaning to the user — render the position (`index + 1`) instead. The same applies to any "your place" indicator: show what the user is waiting on (how many are ahead, including whoever is currently being served), not the raw key.
+
+Shipped reference: `useMeetingTalkQueue` / `findQueueHead` (`talkTurn` ascending, lexicographic `id` tie-break), `place` renumbering on the chair page, `talkQueueAhead` on the broadcast hand control.
+
+See `docs/platforms/website/organization-host-routing.md` §5.3, §5.5 and `.cursor/rules/meeting-talk-queue.mdc`.
+
 ## Related
 
 - `docs/platforms/website/overview.md`

@@ -20,9 +20,11 @@ Out of scope (not shipped):
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for talk records,
 - LiveKit A/V coupling (media is separate; this model is durable SQL queue/history only),
-- live-map writers that flip `talkTurn` / `currentTalkMemberId` (seeded only — see `meeting-live-state.md`).
+- any sync between the shipped website live talk queue and this model (see below).
 
 Durable SQL `TalkRecord` remains queue/history truth. The live session map carries roster `talkTurn` (`null` = not queued) and root `currentTalkMemberId` (`null` = nobody speaking) as **session-only** fields — not SQL columns (`meeting-live-state.md` §1.2).
+
+**Live queue ships without this model.** The website meeting talk queue (raise hand, give floor, end floor, remove) writes only those two live-map fields (`../../website/organization-host-routing.md` §5.5). It creates **no** `TalkRecord` row, records no start/end timestamps, and produces no durable history — so a completed meeting has no SQL trace of who spoke. Wiring the live queue to this model (on grant / on end floor, with duration) is deliberate future work; do not assume `talk_records` reflects a live session today.
 
 ## 2) Domain purpose
 

@@ -1,7 +1,8 @@
 ---
-description: Website Meeting broadcast client — useMeetingLiveKitRoom room ownership, track attach lifecycle, mic vs sound, cooperative mute-all, MeetingLiveBroadcast stage
+description: Website Meeting broadcast client — useMeetingLiveKitRoom room ownership, track attach lifecycle, mic vs sound, cooperative mute-all, MeetingLiveBroadcast stage, raise-hand control and tile queue badges
 globs:
   - website/src/app/ui/components/meeting/MeetingLiveBroadcast.tsx
+  - website/src/app/ui/components/meeting/MeetingHandRaisedOffIcon.tsx
   - website/src/app/ui/components/meeting/hooks/useMeetingLiveKitRoom.ts
   - website/src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts
 alwaysApply: false
@@ -47,6 +48,19 @@ Workflow: `.cursor/skills/website-meeting-broadcast/SKILL.md`.
 - Tiles keep `asp={16 / 9}` with the avatar placeholder when there is no track; identity (name / avatar) prefers the session roster, LiveKit `name` is the fallback only.
 - Controls: label states the current state (`Sound is on`), accessible name is the control noun (`Sound`), `aria-pressed` carries state, label hides at `SW.max_sm`.
 - Colors come from `useOrganization().colors` (`organization?.colors ?? defaultOrganizationColors()`), never `semanticColor` directly in this surface.
+
+## Talk queue on the stage
+
+Talk state is live-map only (`participants[*].talkTurn`, `meeting.currentTalkMemberId`) and never changes media: no publish grant, no auto-unmute, no featured-slot swap. Contract: `.cursor/rules/meeting-talk-queue.mdc`.
+
+- **Featured tile stays the chairperson.** Floor status is signalled with tile chrome, never by promoting the speaker into the featured slot.
+- Tile chrome props are `queued` / `hasFloor` / `queuedAria` / `floorAria` and are mutually exclusive (`hasFloor` wins). Floor = accent border + inset start rail + accent name text + `FiMic` disc; queued = `HiOutlineHandRaised` disc on `sectionAccentBackground`. Both discs are `role="img"` with a label (they carry state), while the rail is `aria-hidden`.
+- Grid order is a total rank: floor holder → local viewer → queued by `talkTurn` → everyone else by earliest `attendedAt ?? onlineAt`, then `participantId.localeCompare`. Keep the queued bucket on the same key the chair page sorts by.
+- Raise-hand button renders on `can.raiseHand || can.lowerHand` (never for the chair), and `raised` is `can.lowerHand` — no local pressed state.
+- The raised label names the **cancel action** (`handRaised`), so it doubles as the accessible name; do not add a fixed `handAria` noun that contradicts it. `aria-pressed` carries state.
+- Pressed icon is `MeetingHandRaisedOffIcon` (local `IconType`: `HiOutlineHandRaised` path + `FiMicOff`-style slash) so the cancel meaning survives at `SW.max_sm` where the label is hidden and replaced by the ahead-count.
+- The count shown is **people ahead** (lower `talkTurn`, plus the floor holder when it is not me) — never the raw `talkTurn`.
+- No pulse or badge on the hand button; the ambient queue signal is the chair's drawer tile.
 
 ## Forbidden
 

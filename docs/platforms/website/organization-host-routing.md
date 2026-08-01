@@ -266,7 +266,7 @@ When `linking !== "READY"`, every `can.*` = `false`. The session value still inc
 
 #### Capabilities (`can`)
 
-Computed only when linking is READY. Inputs include live `status`, `meType`, `attendedAt`, `leftAt`, and `windowOpen` from session `attendWindow`.
+Computed only when linking is READY. Inputs include live `status`, `meType`, `meId`, `attendedAt`, `leftAt`, `windowOpen` from session `attendWindow`, and the talk-queue inputs `talkTurn` (own `me.talkTurn`), `currentTalkMemberId`, and `queueHeadExists` (`!!findQueueHead(meeting.participants)`).
 
 | Key | True when |
 |---|---|
@@ -277,6 +277,13 @@ Computed only when linking is READY. Inputs include live `status`, `meType`, `at
 | `enterLive` | has `attendedAt` and no `leftAt` (any type) — **navigation gate only** (no `actions.enterLive` write); also gates LiveKit token fetch (`useMeetingLiveKitToken`) |
 | `muteAllMedia` | chairperson and `status === "STARTED"` — **UI gate only** for the broadcast mute-all controls (no `actions` entry; the command rides the LiveKit data channel, `flow-meeting-broadcast.md` §7) |
 | `setAgendaItemStatus` | chairperson and status `WAITING_TO_START` or `STARTED` — live-map agenda line `status` only (no SQL sync) |
+| `raiseHand` | **non-chair** (`MEMBER` \| `VIEWER`), `enterLive`, meeting live, `talkTurn == null`, has `meId`, and `meId !== currentTalkMemberId` |
+| `lowerHand` | non-chair, `enterLive`, meeting live, `talkTurn != null` |
+| `giveTalkFloor` | chairperson, meeting live, and `queueHeadExists` |
+| `removeFromTalkQueue` | chairperson and meeting live |
+| `endTalkFloor` | chairperson, meeting live, and `currentTalkMemberId != null` |
+
+**Talk-queue capability notes.** The chair has no `raiseHand` / `lowerHand`: chair participation in the talk flow is queue administration on the `talkQueue` page (`meeting-participant-domain.md` §8 grants “request talking” to all three types; the chair’s shipped channel is the admin page, not a hand control). `VIEWER` gets the hand control like `MEMBER`. `giveTalkFloor` stays true while someone already holds the floor — granting replaces the current holder (single floor holder, §5.5).
 
 Attend stays allowed after the window opens for the rest of a live session (`WAITING_TO_START` or `STARTED`). Missing / invalid `datetime` keeps `windowOpen` false → `can.attend` false.
 
@@ -295,6 +302,18 @@ Built only in `MeetingLiveSessionProvider` / `useMeetingLiveSessionInstance` (ne
 | `attend` | `me.attendedAt = new Date().toISOString()` |
 | `left` | `me.leftAt = new Date().toISOString()` |
 | `setAgendaItemStatus(id, status)` | no-op when `!can.setAgendaItemStatus` or missing `meeting.agendaItems[id]`; else `item.status = status` (`MeetingLiveAgendaItemStatus`) |
+| `raiseHand` | `me.talkTurn = nextTalkTurn(meeting.participants)` (also requires `me`) |
+| `lowerHand` | `me.talkTurn = null` (also requires `me`) |
+| `giveTalkFloor` | resolve `findQueueHead(...)`; no-op when absent; else `meeting.currentTalkMemberId = head.id` **and** `head.talkTurn = null` in the same batch |
+| `removeFromTalkQueue(memberId)` | no-op when the row is missing or `talkTurn == null`; else `row.talkTurn = null` (floor untouched) |
+| `endTalkFloor` | `meeting.currentTalkMemberId = null` (no auto-promotion of the next queued member) |
+
+Two module-private helpers in the same file back the talk actions:
+
+| Helper | Behavior |
+|---|---|
+| `findQueueHead(participants)` | Lowest non-null `talkTurn`; ties broken by lexicographic `id` so head selection is deterministic on every client |
+| `nextTalkTurn(participants)` | `max(talkTurn) + 1`, then increments while the value is already taken in the local snapshot (`used` set) |
 
 Actions are synchronous (`() => void`). Socket fan-out is side effect of the CRDT update path; a later `meeting.live.error` sets `error` and clears `synced` (§5.1).
 
@@ -346,7 +365,7 @@ Copying a `ThemeMap` leaf into the shell group is a defect: `yarn type-check` va
 
 | Component | Shipped behavior |
 |---|---|
-| `meeting/MeetingHeader.tsx` | Menu button (shared `HeaderIconButton`) + org logo, or the org name clamped to one line when there is no logo; when `me` exists, trailing `MeetingHeaderMe` (avatar + name + type chip); for non-chair `me`, a disabled request-to-speak control (mic + `requestTalk` / `requestTalkAria`). A 2px rail in `colors.accentActionBackground` sits on the bottom edge. `fixed` prop switches between the in-flow desktop bar and the mobile `Fixed` bar at `zIndex.header`. |
+| `meeting/MeetingHeader.tsx` | Menu button (shared `HeaderIconButton`) + org logo, or the org name clamped to one line when there is no logo; when `me` exists, trailing `MeetingHeaderMe` (avatar + name + type chip). No talk control. A 2px rail in `colors.accentActionBackground` sits on the bottom edge. `fixed` prop switches between the in-flow desktop bar and the mobile `Fixed` bar at `zIndex.header`. |
 | `meeting/MeetingHeaderMe.tsx` | Presentational current-participant cluster: props `name` / `type` / `avatarUrl` / `colors` / optional `pushTrailing`. Avatar circle (~`2.2rem`) uses org `primaryActionBackground` + image or `FiUser` on `actionIconOnFill` (do **not** import `customer/IdentityAvatar`). Name: `name.trim()`, `smallAction` bold, ellipsis, `maxW={14}` on the cluster. Type chip: soft `sectionAccentBackground` + `textAccent`; labels `typeChairperson` / `typeMember` / `typeViewer` (`CHAIRPERSON` / `VIEWER` / else → member). Visible text only — no redundant group `aria-label`. |
 | `meeting/MeetingFooter.tsx` | Rights line only: `© <year> <platform name> — <rights>`. The name is the **platform** (`ui.layouts.mainLayout.footerTitle`), not the organization. |
 | `meeting/MeetingDrawerPanel.tsx` | Shared panel body for both breakpoints: title row (close when `showClose`), org identity card (logo and/or name), role-based 2-column tile grid with full-row `live` (Meeting room / غرفة الاجتماع) then full-row Meeting info (`itemHome` + `HomeMark` → `"init"`), then remaining role tiles; calls `setPage` from `useMeetingPage`; pinned appearance/language row (`ThemeModeSwitch` + `LanguageSwitch`, both `compact`). |
@@ -366,6 +385,9 @@ The glyph is the shared `DrawerMenuIcon`. Its leading bar is themeable through t
 |---|---|---|---|
 | `live` | `!can.enterLive` | `STARTED` and `can.enterLive` | `liveLockedAria` when locked; `liveBroadcastingAria` when pulsing |
 | `agenda` | — | any `meeting.agendaItems[*].status === "DISCUSSING"` | `agendaDiscussingAria` when pulsing |
+| `talkQueue` | — | any `meeting.participants[*].talkTurn != null` (chair-only tile) | `talkQueueActiveAria` when pulsing |
+
+The `talkQueue` pulse tracks the **queue**, not the floor: a meeting where one member holds the floor and nobody is waiting does not pulse. The chair has no broadcast hand control, so this tile is the chair's only ambient queue signal.
 
 Visible `live` label stays Meeting room / غرفة الاجتماع when locked (`opc` 0.55, native `disabled` / `aria-disabled`). Other drawer pages are not gated on attendance.
 
@@ -382,9 +404,9 @@ Visible `live` label stays Meeting room / غرفة الاجتماع when locked 
 
 Tile layout mirrors `CustomerDrawer`'s `DrawerGridItem`: `minH 7.2`, a `3.1`-square icon well, and a `smallAction` bold label clamped to two lines. `DrawerGridItem` accepts either `Icon` (Feather) or `mark` (ReactNode) — Home uses `mark`. Governance: `.cursor/rules/website-meeting-shell.mdc`, skill `website-meeting-shell`.
 
-**Header identity.** When `me` exists, `MeetingHeader` mounts `MeetingHeaderMe` on the trailing side with `pushTrailing` (cluster owns `ml="auto"`). Props come from live session `me` (`name`, `type`, `avatarUrl`) plus org `colors` — no extra GQL. Request-to-speak sits **after** the cluster and takes `ml="auto"` only when `me` is absent. Do not import `customer/IdentityAvatar` (portal `semanticColor`); avatar well ink is org `actionIconOnFill`. Type labels: `header.typeChairperson` / `typeMember` / `typeViewer`. Name display is `name.trim()` (no invented empty-name glyph). Cluster width capped with numeric rem shorthand `maxW={14}`.
+**Header identity.** When `me` exists, `MeetingHeader` mounts `MeetingHeaderMe` on the trailing side with `pushTrailing` (cluster owns `ml="auto"`). Props come from live session `me` (`name`, `type`, `avatarUrl`) plus org `colors` — no extra GQL. Do not import `customer/IdentityAvatar` (portal `semanticColor`); avatar well ink is org `actionIconOnFill`. Type labels: `header.typeChairperson` / `typeMember` / `typeViewer`. Name display is `name.trim()` (no invented empty-name glyph). Cluster width capped with numeric rem shorthand `maxW={14}`.
 
-**Header request-to-speak.** When `me` exists and `me.type !== "CHAIRPERSON"`, `MeetingHeader` shows a disabled control after the identity cluster: mic + visible `requestTalk` label; accessible name `requestTalkAria` (session-scoped, distinct from the label). MEMBER and VIEWER both get the control (`meeting-participant-domain.md` §8: request talking for all three types; chairperson uses drawer `talkQueue` instead). Shipped chrome is icon + label only — no switch track, no click handler. Header reads `me` from `useMeetingLiveSession()`.
+**No header talk control.** The header carries menu, org identity, and `MeetingHeaderMe` only. The non-chair raise-hand control lives on the broadcast action row (`flow-meeting-broadcast.md` §6.4) and the chair administers the queue on the `talkQueue` page (§5.5). `header.requestTalk` / `requestTalkAria` no longer exist in either locale — do not reintroduce a header mic placeholder.
 
 #### Layout composition
 
@@ -399,15 +421,16 @@ The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls 
 
 | Group | Keys |
 |---|---|
-| `header` | `menu`, `logoAria`, `typeChairperson`, `typeMember`, `typeViewer`, `requestTalk`, `requestTalkAria` |
+| `header` | `menu`, `logoAria`, `typeChairperson`, `typeMember`, `typeViewer` |
 | `footer` | `rights` |
 | `linking` | `logoAria`, `pendingStatus`, `failedMessage`, `failedHint` |
-| `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemHome`, `itemLive`, `itemTalkQueue`, `itemAttendance`, `itemAgenda`, `itemDecisionsAndVote`, `liveLockedAria`, `liveBroadcastingAria`, `agendaDiscussingAria`, `utilityPrefs` |
+| `drawer` | `title`, `closeAriaLabel`, `logoAria`, `itemHome`, `itemLive`, `itemTalkQueue`, `itemAttendance`, `itemAgenda`, `itemDecisionsAndVote`, `liveLockedAria`, `liveBroadcastingAria`, `agendaDiscussingAria`, `talkQueueActiveAria`, `utilityPrefs` |
 | `init` | `logoAria`, type/status labels, `attend` / `attendAria`, `attendAvailableIn`, `attendRequiresForRoom`, `attendedTitle` / `attendedAt`, `roomUnlockedHint`, `leftTitle` |
 | `attendance` | title/subtitle, quorum, filters, empty copy (see §5.5) |
 | `agenda` | `title`, `subtitle`, `discussingSection`, `otherSection`, `empty`, `statusWaiting` / `statusDiscussing` / `statusDone` / `statusCanceled`, `statusActionsAria` |
+| `talkQueue` | `title`, `subtitle`, `floorSection`, `floorEmpty`, `endFloor` / `endFloorAria`, `queueSection`, `empty`, `giveFloor` / `giveFloorAria`, `remove` / `removeAria` |
 | `live` | `statusWaitingToStart`, `waitingLead`, `startMeeting` / `startMeetingAria` |
-| `broadcast` | `connecting`, `connectionError` / `connectionErrorHint`, `videoOn` / `videoOff` / `videoAria`, `micOn` / `micOff` / `micAria`, `soundOn` / `soundOff` / `soundAria`, `muteAllVideos` / `muteAllVideosAria`, `muteAllMics` / `muteAllMicsAria` (`flow-meeting-broadcast.md` §9) |
+| `broadcast` | `connecting`, `connectionError` / `connectionErrorHint`, `videoOn` / `videoOff` / `videoAria`, `micOn` / `micOff` / `micAria`, `soundOn` / `soundOff` / `soundAria`, `muteAllVideos` / `muteAllVideosAria`, `muteAllMics` / `muteAllMicsAria`, `handRaised` (`:turn`) / `handLowered`, `tileQueuedAria` / `tileFloorAria` (`flow-meeting-broadcast.md` §9) |
 | `overlay` | `closeAria` |
 
 `MeetingFooter` additionally reads `ui.layouts.mainLayout.footerTitle` for the platform name; it has no key of its own for it.
@@ -475,12 +498,12 @@ Member / viewer see the same waiting panel without the start button (`can.startM
 
 **Drawer `live` tile label.** Tile id stays `"live"`; user-facing copy is **Meeting room** (en) / **غرفة الاجتماع** (ar) via `meetingLayout.drawer.itemLive` — not “Live” / “البث”.
 
-**Drawer pages.** Each drawer id mounts a named page under `meeting/pages/`. Shipped product UI: **Attendance**, **Meeting room** (waiting/start), **Agenda**. Remaining drawer ids still use shared `MeetingPageStub` until their product UI ships.
+**Drawer pages.** Each drawer id mounts a named page under `meeting/pages/`. Shipped product UI: **Attendance**, **Meeting room** (waiting/start), **Agenda**, **Talk queue**. Remaining drawer ids still use shared `MeetingPageStub` until their product UI ships.
 
 | `MeetingPage` id | Component | Shipped body |
 |---|---|---|
 | `live` | `MeetingLivePage` | waiting panel + chair start; bounce to `"init"` when `!can.enterLive` (broadcast owned by `Meeting.tsx` when `STARTED`) |
-| `talkQueue` | `MeetingTalkQueuePage` | stub |
+| `talkQueue` | `MeetingTalkQueuePage` | chair talk-queue admin (below) |
 | `attendance` | `MeetingAttendancePage` | chair attendance log (below) |
 | `agenda` | `MeetingAgendaPage` | live agenda directory + chair status controls (below) |
 | `decisionsAndVote` | `MeetingDecisionsAndVotePage` | stub |
@@ -515,6 +538,34 @@ Helpers: `meeting/hooks/useMeetingAgenda.ts` (split discussing/other, status lab
 | Copy | `ui.layouts.meetingLayout.attendance` (ar + en). `filterPresent` = سجّل / Checked in |
 
 Helpers: `meeting/hooks/useMeetingAttendance.ts` (pure helpers + filter / quorum / rows; no navigation). Filters UI: shared `FilterCountChips`.
+
+**Talk queue (`"talkQueue"`).** Chairperson-only. `MeetingTalkQueuePage` bounces non-chair with `useEffect` → `setPage("init")` and renders `null` (same pattern as `MeetingAttendancePage`). Data from `useMeetingTalkQueue` (no navigation side effects); writes go through session `actions` only. Page `bg="@transparent"`, `pv={semanticDims.page.padY}`, list scrolls with `customScroll` on `iconSecondary`.
+
+The whole feature lives on the **live map only** — `participants[*].talkTurn` and `meeting.currentTalkMemberId`. There is **no** SQL `TalkRecord` row, no GQL call, and no socket event beyond the CRDT update (`../backend/contracts/talk-record-domain.md` §1).
+
+| Block | Behavior |
+|---|---|
+| Title / subtitle | `talkQueue.title` + `talkQueue.subtitle` (page uses the `talkQueue` translator; participant **type** labels are the only cross-namespace read, from `header.type*`) |
+| Floor panel | Brand soft panel (`sectionBrandBackground` + `subtleDivider`) headed by `floorSection`. Holder card: `presentCardBackground` + `accentActionBackground` border, avatar (org `primaryActionBackground`, `FiUser` fallback), name, type chip, `FiMic` disc. `endFloor` button (`primaryActionBackground`) renders only when `can.endTalkFloor`. No holder → `floorEmpty` caption |
+| Queue list | `queueSection` heading, then one `MeetingTalkQueueCard` per waiting row. Empty → shared `Empty` (`talkQueue.empty` + `subtitle`) inside a `relative minH={12}` wrapper |
+| Card | `meeting/MeetingTalkQueueCard.tsx`: place badge, avatar + name + type chip, `HiOutlineHandRaised` mark. **Give floor** action renders only when `isHead && canGive`; **Remove** (`FiX` + `remove` / `removeAria`) renders on `canRemove` for every row. Head row uses `presentCardBackground` + accent border; other rows `idleCardBackground` + `subtleDivider` |
+
+**Queue ordering rules (non-negotiable).**
+
+| Rule | Shipped behavior |
+|---|---|
+| Order source | `talkTurn` ascending, `id` lexicographic as tie-break — identical in `useMeetingTalkQueue` and `findQueueHead` so the card marked `isHead` is exactly the row `giveTalkFloor` will grant |
+| FIFO only | No reorder, no promote, no priority. `giveTalkFloor` takes **no argument** and always targets the head |
+| Displayed number | `place` = `index + 1` after sorting (1, 2, 3 …), **not** the raw `talkTurn`. `talkTurn` values are internal and grow monotonically; they are never shown |
+| Grant | Sets `currentTalkMemberId` to the head and clears that member's `talkTurn` in one batch — the holder leaves the queue |
+| End floor | Clears `currentTalkMemberId` only. The next queued member is **not** auto-promoted; the chair grants again explicitly |
+| Remove | Clears one member's `talkTurn`; never touches the floor. Removing the head just makes the next row the head |
+
+Shared-comparator and display-renumbering rationale: `docs/invariants/website.md` W61.
+
+**Raise hand (non-chair).** Members and viewers join the queue from the broadcast action row, not from this page and not from the header (`flow-meeting-broadcast.md` §6.4). Queue membership is also mirrored on broadcast tiles (hand badge) and on the chair's drawer tile pulse (§5.4).
+
+Helper: `meeting/hooks/useMeetingTalkQueue.ts` → `{ isChair, floor, rows, hasQueue }`. It filters `participants` to non-null `talkTurn` (type guard `isQueued`), resolves `floor` from `currentTalkMemberId` (returns `null` when the id points at a missing row), and renumbers into `place`. Card: `meeting/MeetingTalkQueueCard.tsx`.
 
 **Drawer writes.** Tiles call `setPage(id)` and, on the mobile overlay, `onClose`. Meeting info (`itemHome` + `HomeMark`) is full-row **after** `live` inside the grid (`setPage("init")`; selected when `page === "init"`; label Meeting info / معلومات الاجتماع). Selected tile chrome: soft `sectionAccentBackground`, partial-height start accent rail (`3px`, inset), `textAccent` label; icon well stays `primaryActionBackground` + white glyph; `aria-current="page"`. While `STARTED` and enterLive, the `live` tile shows a corner accent broadcast ping.
 
@@ -589,18 +640,20 @@ What the website side depends on:
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is wired on LiveKit token fetch.** `POST /custom/org/livekit_token` uses per-route `middleware("org_host")`. `/custom/org/start` still resolves the organization from the body without `org_host`. The response now carries `{ token, url }`, and `useMeetingLiveKitToken` feeds `useMeetingLiveKitRoom` (no probe UI). Contract: `../backend/contracts/livekit-media-plane.md` §6.
-2. **Some drawer in-shell pages are still title stubs (§5.5).** `TalkQueue` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **Shipped product pages:** `MeetingAttendancePage` (chair-only attendance log + quorum), `MeetingLivePage` (waiting + chair start), `MeetingAgendaPage` (live agenda + chair status chips). While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + frosted `MeetingPageOverlay` for other pages) and carries real LiveKit A/V. Post-start side effects beyond existing live-map writes remain deferred for talk-queue / decisions. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
-3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants` (incl. session-only `talkTurn` default `null`), `currentTalkMemberId` (seeded `null`; who is speaking; set after `participants`), `agendaItems` (SQL line mirror incl. durable `status`; session-only `isLiveCreated` default `false`; no live delete — cancel is `CANCELED`; active line is `DISCUSSING` — **no** root `currentAgendaItemId`), `decisions` (SQL decision mirror all phases + session-only `isLiveCreated` default `false` + nested `votes` from SQL `Vote` or empty; no per-non-voter slots; DURING active decision is `UNDER_VOTING` — **no** root `currentDecisionId`). **Shipped website live writer:** chair `actions.setAgendaItemStatus` (map `status` only). Talk-queue / decision / vote / `isLiveCreated` writers are not shipped. Live values are **not** reflected back onto SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
+2. **One drawer in-shell page is still a title stub (§5.5).** `DecisionsAndVote` mounts and shows the drawer label only (`MeetingPageStub`) until product UI is designed. **Shipped product pages:** `MeetingAttendancePage` (chair-only attendance log + quorum), `MeetingLivePage` (waiting + chair start), `MeetingAgendaPage` (live agenda + chair status chips), `MeetingTalkQueuePage` (chair-only floor + FIFO queue admin). While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + frosted `MeetingPageOverlay` for other pages) and carries real LiveKit A/V. Post-start side effects beyond existing live-map writes remain deferred for decisions. The header carries no talk control (§5.4); non-chair raise-hand lives on the broadcast action row. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
+3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants` (incl. session-only `talkTurn` default `null`), `currentTalkMemberId` (seeded `null`; who is speaking; set after `participants`), `agendaItems` (SQL line mirror incl. durable `status`; session-only `isLiveCreated` default `false`; no live delete — cancel is `CANCELED`; active line is `DISCUSSING` — **no** root `currentAgendaItemId`), `decisions` (SQL decision mirror all phases + session-only `isLiveCreated` default `false` + nested `votes` from SQL `Vote` or empty; no per-non-voter slots; DURING active decision is `UNDER_VOTING` — **no** root `currentDecisionId`). **Shipped website live writers:** chair `actions.setAgendaItemStatus` (map `status` only) and the talk-queue writers `raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` (`talkTurn` + `currentTalkMemberId` only). Decision / vote / `isLiveCreated` writers are not shipped. Live values are **not** reflected back onto SQL columns yet — talk turns produce **no** `TalkRecord` rows (`../backend/contracts/meeting-live-state.md` §6, `../backend/contracts/talk-record-domain.md` §1).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
 7. **Organization-host pages other than `Meeting` have no realtime channel.** A tenant-wide org socket is not part of the shipped surface.
-8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` / `can.attend` / `can.enterLive` / `can.setAgendaItemStatus` are **client** gates on `useMeetingLiveSession`; the attend open window, Meeting-room attendance requirement, and chair-only agenda status are **not** enforced by socket controllers or SQL writers yet.
+8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` / `can.attend` / `can.enterLive` / `can.setAgendaItemStatus` and the talk-queue `can.raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` are **client** gates on `useMeetingLiveSession`; the attend open window, Meeting-room attendance requirement, chair-only agenda status, and chair-only floor administration are **not** enforced by socket controllers or SQL writers yet.
 9. **The meeting shell picks its READY tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. While linking is not READY, only the gate screen renders (no drawer SSR flicker for that path). `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
 10. **Non-transport `connect_error` maps to session code `"NOT_VALID"`** for UI purposes; the linking FAILED copy stays the generic `failedMessage` (no distinct credential string on screen yet).
 11. **Broadcast mute-all is cooperative, not enforced.** The chair button is gated by `can.muteAllMedia`, but the receiving hook applies any well-formed data-channel command from any peer, and a muted peer can re-enable immediately. There is no `roomAdmin` server mute and no participant-type publish grant. Accepted for now; full ceiling list in `flow-meeting-broadcast.md` §10.
 12. **A failed broadcast connection has no in-UI retry.** `Disconnected` or a rejected token renders the failure card and waits for a page reload; only network-level token failures retry quietly (`flow-meeting-broadcast.md` §10.3).
 13. **Attend-window clock refresh is best-effort.** The session-owned `setTimeout` / 30s ticks in `useMeetingAttendWindow` can be delayed or cleared by background-tab throttling, effect dependency changes, leaving the meeting route, or large forward clock jumps while a timeout is pending (§5.3).
+14. **`talkTurn` is allocated client-side, so a simultaneous raise can collide.** `nextTalkTurn` skips values already present in the **local** snapshot, but two clients raising within one CRDT round trip can still pick the same integer. The queue stays deterministic and identical on every client because both `useMeetingTalkQueue` and `findQueueHead` break ties on lexicographic `id`; the only visible effect is that the two colliding members share one arrival slot instead of a strict raise-time order. A server-allocated turn (or a CRDT counter) would be needed to remove the tie entirely.
+15. **The talk queue has no durable trace.** `talkTurn` / `currentTalkMemberId` live only in the CRDT BLOB, so granting or ending the floor writes no `TalkRecord` row, no duration, and no audit entry (`../backend/contracts/talk-record-domain.md` §1). Reloading is safe (the BLOB is persisted), but reporting on who spoke and for how long is not available from this surface.
 
 ## 9) Environment
 
@@ -640,7 +693,10 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/pages/MeetingPageStub.tsx` | shared title-only placeholder chrome for remaining stub drawer pages; `pv` only; `bg="@transparent"` | §5.5, §8 |
 | `src/app/ui/components/meeting/MeetingPrimaryButton.tsx` | org primary CTA (`label` / `ariaLabel` / `onClick`); used by Init attend + Live start | §5.5 |
 | `src/app/ui/components/meeting/MeetingMetaChip.tsx` | org type/status chip (`label` + `tone`); used by Init meta (not customer `MeetingMetaChips`) | §5.5 |
-| `src/app/ui/components/meeting/pages/MeetingTalkQueuePage.tsx` | `"talkQueue"` body (title stub) | §5.5, §8 |
+| `src/app/ui/components/meeting/pages/MeetingTalkQueuePage.tsx` | `"talkQueue"` body — chair-only floor panel + FIFO queue list; bounce to `"init"` for non-chair; `pv` only; `bg="@transparent"` | §5.5, §8 |
+| `src/app/ui/components/meeting/MeetingTalkQueueCard.tsx` | queue row card (place badge, identity, head-only Give floor, Remove) | §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingTalkQueue.ts` | queue rows from live map (`talkTurn` sort + `id` tie-break, `place` renumbering, floor resolution) | §5.5 |
+| `src/app/ui/components/meeting/MeetingHandRaisedOffIcon.tsx` | local `IconType` — `HiOutlineHandRaised` path + `FiMicOff`-style slash for the pressed hand control | `flow-meeting-broadcast.md` §6.4 |
 | `src/app/ui/components/meeting/pages/MeetingAttendancePage.tsx` | `"attendance"` body — chair attendance log + quorum; `pv` only; `bg="@transparent"` | §5.5, §8 |
 | `src/app/ui/components/meeting/pages/MeetingAgendaPage.tsx` | `"agenda"` body — discussing strip + other list + chair status chips; `pv` only; `bg="@transparent"` | §5.5, §8 |
 | `src/app/ui/components/meeting/MeetingAgendaCard.tsx` | agenda list-row card (sort / subject / status pill or chair chips) | §5.5 |
@@ -650,7 +706,7 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
-| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | session surface: resolve + provider; `can`/`actions` incl. `setAgendaItemStatus`; one `useMeetingAttendWindow` call; exposes `attendWindow` | §5.3, §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | session surface: resolve + provider; `can`/`actions` incl. `setAgendaItemStatus` and the five talk-queue writers; private `findQueueHead` / `nextTalkTurn`; one `useMeetingAttendWindow` call; exposes `attendWindow` | §5.3, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` | attend-window clock (mirror math private; open timeout + 30s ticks while waiting) | §5.3, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | LiveKit join fetch — active when `can.enterLive && STARTED` + route ids; union `{ status, token, url }`; quiet network retry | `../backend/contracts/livekit-media-plane.md` §6.5; `flow-meeting-broadcast.md` §4 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveKitRoom.ts` | `Room.connect` owner: status projection, peer map, publish toggles, sound autoplay gate, cooperative mute-all, lifecycle | `flow-meeting-broadcast.md` §5 |
@@ -664,7 +720,7 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — live → session → page providers, linking gate, branded shell, READY `FlexContainer` content column | §5, §5.1, §5.3, §5.4, §5.5 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
 | `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` (incl. `pageOverlayBackground`, `idleCardBackground` / `presentCardBackground`, fixed-white `actionIconOnFill`); light `softLight` mix 0.78 for section chips | §5.4 |
-| `src/app/ui/components/meeting/MeetingHeader.tsx` | menu + org logo/name; `MeetingHeaderMe` when `me` exists; disabled request-to-speak (`requestTalk` / `requestTalkAria`) for MEMBER and VIEWER; accent rail; `fixed` mobile bar | §5.4 |
+| `src/app/ui/components/meeting/MeetingHeader.tsx` | menu + org logo/name; `MeetingHeaderMe` when `me` exists; no talk control; accent rail; `fixed` mobile bar | §5.4 |
 | `src/app/ui/components/meeting/MeetingHeaderMe.tsx` | current participant avatar + name + type chip (org colors, session `me`) | §5.4 |
 | `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line (no unjustified top margin) | §5.4 |
 | `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | Meeting info after `live`; role tile grid; precomputed `disabled` / `livePulse` / `ariaLabel` on defs; drawer-only translator; agenda discussing ping; `setPage` + selected accent chrome; prefs row | §5.4, §5.5 |
@@ -1152,13 +1208,55 @@ Full behavior contract: `flow-meeting-broadcast.md`.
 
 Current live-map + durable-enum ship. Full path inventory and triage: `../backend/contracts/meeting-live-state.md` §9. Behavior: §1.2 / §1.3 there; `agenda-item-domain.md`; `decision-domain.md`; `vote-domain.md`; `talk-record-domain.md`. Website GQL mirrors under `src/types/gql/**`. Writers / agenda / talk / decisions UI beyond stubs are **not** shipped. Live field list on this page: §5.1 / §8.
 
+## 10o) Change set inventory (meeting talk queue)
+
+Live-map-only talk queue: non-chair raise/lower hand, chair floor + FIFO queue administration. Behavior: §5.3 (`can` / `actions`), §5.4 (drawer pulse, header has no talk control), §5.5 (talk-queue page + ordering rules), §8 limits 2 / 3 / 8 / 14 / 15. Broadcast surface: `flow-meeting-broadcast.md` §6. **No backend change** — `backend/` is untouched by this change set (the fields already existed in the seeded live map).
+
+### `website/`
+
+| Path | Change | Documented in |
+|---|---|---|
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — 5 capabilities + 5 actions; `meId` / `talkTurn` / `currentTalkMemberId` / `queueHeadExists` resolve inputs; private `findQueueHead` + `nextTalkTurn` | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingTalkQueue.ts` | **added** — `{ isChair, floor, rows, hasQueue }`; `talkTurn` sort with `id` tie-break; `place` renumbering | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingTalkQueuePage.tsx` | modified — stub replaced by chair-only floor panel + queue list (non-chair bounce to `"init"`) | §5.5 |
+| `src/app/ui/components/meeting/MeetingTalkQueueCard.tsx` | **added** — queue row card; head-only Give floor, per-row Remove | §5.5 |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | modified — `BroadcastHandButton`, tile queued / floor badges + accent rail, `talkQueueAhead`, deterministic `gridPeers` order | `flow-meeting-broadcast.md` §6.1, §6.3, §6.4 |
+| `src/app/ui/components/meeting/MeetingHandRaisedOffIcon.tsx` | **added** — local `IconType` (hand + slash) for the pressed hand control | `flow-meeting-broadcast.md` §6.4 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | modified — chair `talkQueue` tile gains `livePulse` + `talkQueueActiveAria` | §5.4 |
+| `src/app/ui/components/meeting/MeetingHeader.tsx` | modified — request-to-speak control removed (header is menu + identity only) | §5.4 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | modified — `talkQueue` block added; `broadcast` hand + tile aria keys; `drawer.talkQueueActiveAria`; `header.requestTalk` / `requestTalkAria` removed | §5.4, §5.5; `flow-meeting-broadcast.md` §9 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check` | **excluded** (build cache, no behavior) |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | Change |
+|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this section + §5.3 / §5.4 / §5.5 / §8 / §10 traceability |
+| `docs/platforms/website/flow-meeting-broadcast.md` | §6.1 / §6.3 / §6.4 / §9 / §10 talk-queue chrome and ceilings |
+| `docs/platforms/website/README.md` | shipped-state line for the meeting shell |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | §1.2 / §6 — talk fields now have shipped website writers |
+| `docs/platforms/backend/contracts/talk-record-domain.md` | §1 — live queue ships without SQL `TalkRecord` sync |
+| `docs/platforms/website/component-structure.md` | meeting group gains the talk-queue page / card / hook and the local icon |
+| `docs/invariants/website.md` | **W61** one order, one comparator; internal order is not a label |
+| `.cursor/rules/meeting-talk-queue.mdc` | **added** — FIFO / head-only / renumbering / no-auto-promote invariants |
+| `.cursor/rules/website-meeting-live-session.mdc` | talk capabilities + actions rows |
+| `.cursor/rules/website-meeting-shell.mdc` | drawer pulse row; header talk control removed |
+| `.cursor/rules/website-meeting-livekit-broadcast.mdc` | hand control, tile badges, grid order |
+| `.cursor/rules/meeting-live-state.mdc` | shipped-writer note for talk fields |
+| `.cursor/skills/website-meeting-talk-queue/SKILL.md` | **added** — extend-the-queue workflow |
+| `.cursor/skills/website-meeting-live-session/SKILL.md` | talk actions in the write contract |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | talk-queue page + drawer pulse; header control removed |
+| `.cursor/skills/website-meeting-broadcast/SKILL.md` | hand control + tile badges + peer order |
+| `website` gitlink | submodule pointer only — no root behavior |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Diff `backend/src/app/types/meeting.ts` against `website/src/types/meeting.ts` (must stay identical).
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); READY content column is `FlexContainer` (aligns with header/footer `Container`); drawer Meeting info returns to `"init"`; drawer `live` disabled until `can.enterLive` (corner ping while `STARTED`); drawer `agenda` pulses while any item is `DISCUSSING`; Meeting room shows waiting + chair start when not started; while `STARTED`, persistent `MeetingLiveBroadcast` with other pages in frosted `MeetingPageOverlay` (`pageOverlayBackground` + blur 4px; page bodies `@transparent`; `ph=page.padY` matches page `pv`); LiveKit token fetch requires `can.enterLive` then `STARTED`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); `agenda` mounts the live agenda page (chair status chips when `can.setAgendaItemStatus`); remaining drawer ids (`talkQueue`, `decisionsAndVote`) mount title stubs; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); READY content column is `FlexContainer` (aligns with header/footer `Container`); drawer Meeting info returns to `"init"`; drawer `live` disabled until `can.enterLive` (corner ping while `STARTED`); drawer `agenda` pulses while any item is `DISCUSSING`; Meeting room shows waiting + chair start when not started; while `STARTED`, persistent `MeetingLiveBroadcast` with other pages in frosted `MeetingPageOverlay` (`pageOverlayBackground` + blur 4px; page bodies `@transparent`; `ph=page.padY` matches page `pv`); LiveKit token fetch requires `can.enterLive` then `STARTED`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); `agenda` mounts the live agenda page (chair status chips when `can.setAgendaItemStatus`); chair `talkQueue` mounts the queue admin page (non-chair bounce to `"init"`); the remaining drawer id (`decisionsAndVote`) mounts a title stub; `/customer/...` renders `Error` `404`.
 - Agenda: discussing strip only when `DISCUSSING` rows exist; `otherSection` heading only when discussing strip is shown and other rows remain; status write updates live map only (SQL unchanged until reflect step).
+- Talk queue (chair + one member, two browsers): member raises → chair drawer `talkQueue` tile pulses and the row appears as place `1`; a second raise lands at place `2` and never reorders; Give floor is offered on the head row only, moves that member to the floor panel, clears their queue row, and lights their broadcast tile badge; End floor clears the floor without promoting place `1`; Remove clears one row and leaves the floor untouched; the member's hand control returns to `handLowered` when their turn is cleared from either side.
 - Init lobby light chips: `sectionBrandBackground` / `sectionAccentBackground` readable on `pageBackground` (org `softLight` mix 0.78).
 - Selected drawer tile: soft `sectionAccentBackground` + partial start accent rail + `textAccent`; icon well stays primary (white glyph / white `HomeMark`).
 - Attendance cards: present fill uses `presentCardBackground` (distinct from type chip `sectionAccentBackground`); idle fill uses `idleCardBackground` (light card / dark transparent).

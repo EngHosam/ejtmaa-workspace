@@ -5,12 +5,14 @@ description: >-
   useMeetingLiveKitRoom (Room.connect, peer projection, camera/mic publish,
   local sound autoplay gate, cooperative mute-all data channel) and
   MeetingLiveBroadcast (featured chair tile + remote grid, track attach
-  components, control switches, chair mute-all on can.muteAllMedia). Use when
+  components, control switches, chair mute-all on can.muteAllMedia, non-chair
+  raise-hand control, tile queue/floor badges and ranked peer order). Use when
   changing LiveKit client behavior on website/, adding a media control or tile
   state, debugging silent audio or a black tile, or wiring a new data-channel
   command. For the join-token HTTP path use meeting-livekit-token; for shell
   drawer/header IA use website-meeting-shell; for linking/can/actions use
-  website-meeting-live-session.
+  website-meeting-live-session; for talk-queue ordering rules use
+  website-meeting-talk-queue.
 ---
 
 # Website Meeting broadcast
@@ -18,7 +20,7 @@ description: >-
 ## When to Use
 
 - Editing `MeetingLiveBroadcast.tsx` or `hooks/useMeetingLiveKitRoom.ts`.
-- Adding a media control, tile state, or placeholder to the broadcast stage.
+- Adding a media control, tile state, or placeholder to the broadcast stage (including live-map state chrome such as the talk-queue badges and the raise-hand control).
 - Adding a data-channel command, or changing mute-all behavior / its gate.
 - Debugging "video works, no audio", a black/blank tile, an eternal spinner, or a control whose label contradicts its state.
 - Changing the join payload consumed by the room (`{ token, url }`).
@@ -43,5 +45,6 @@ description: >-
 8. **Stage states stay exclusive:** media stack / `Loadable` / `LaneFailed`. Reuse shared chrome with copy overrides instead of hand-rolling an icon + message, and remember `LaneFailed` is an absolute fill (parent must be `relative`).
 9. **Copy:** add both `ar` and `en` under `ui.layouts.meetingLayout.broadcast` with identical key sets. A toggle label states the current state; the accessible name is the control noun; a mute-all name says "everyone else" (LiveKit excludes the sender).
 10. **Identity comes from the session roster** (`meeting.participants`), with the LiveKit peer name as fallback only. LiveKit is a media plane, not an identity or attendance source.
-11. **Document ceilings honestly.** If the change leaves a gap (no enforcement, no retry, no recovery), add it to `flow-meeting-broadcast.md` §10 and the `organization-host-routing.md` §8 limit list rather than implying it works.
-12. **Verify with existing scripts only:** `yarn type-check` in `website/` (and `backend/` when the controller changed). Then the two-browser pass in `flow-meeting-broadcast.md` §13 — including the OS-level mic-mute case before suspecting the code.
+11. **Live-map state on the stage** (talk queue today): signal it with tile chrome and an action-row control — never by swapping the featured chair tile, and never by changing publish/mute state. Tile state badges are `role="img"` with a label; decorative rails are `aria-hidden`. If you order peers by that state, use the same total comparator (ordering key + stable id tie-break) as the page that owns the state. Contract: `.cursor/rules/meeting-talk-queue.mdc`, skill `website-meeting-talk-queue`.
+12. **Document ceilings honestly.** If the change leaves a gap (no enforcement, no retry, no recovery), add it to `flow-meeting-broadcast.md` §10 and the `organization-host-routing.md` §8 limit list rather than implying it works.
+13. **Verify with existing scripts only:** `yarn type-check` in `website/` (and `backend/` when the controller changed). Then the two-browser pass in `flow-meeting-broadcast.md` §13 — including the OS-level mic-mute case before suspecting the code.

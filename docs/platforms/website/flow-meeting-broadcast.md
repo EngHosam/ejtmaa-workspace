@@ -175,11 +175,21 @@ One effect owns the room, keyed on `ready` / `token` / `url` plus the stable cal
 | `BroadcastVideoAttach` | Attaches one video `Track` to a `<video autoPlay playsInline muted>` filling its tile (`objectFit: cover`) |
 | `BroadcastMicAttach` | Attaches one remote audio `Track` to a bare `<audio>`; applies local mute imperatively |
 | `BroadcastTileAvatar` | Round avatar (org `primaryActionBackground`) with image or `FiUser` on `actionIconOnFill`; `aria-hidden` |
-| `BroadcastVideoTile` | `16 / 9` tile (`asp`), org `inputBackground` + `inputBorder` + card radius, video **or** avatar placeholder, name chip pinned bottom-start |
+| `BroadcastVideoTile` | `16 / 9` tile (`asp`), org `inputBackground` + `inputBorder` + card radius, video **or** avatar placeholder, name chip pinned bottom-start, plus optional talk-queue chrome (below) |
 | `BroadcastStatusSwitch` | Camera / mic / sound button: state-derived label + icon, `aria-pressed`, fixed accessible name |
 | `BroadcastChairButton` | Mute-all button (no pressed state) |
+| `BroadcastHandButton` | Non-chair raise / lower hand toggle (`aria-pressed`); accessible name equals the visible label |
 
 Constants: `TILE_ASP = 16 / 9`, `FEATURED_AVATAR = 3.6`, `GRID_AVATAR = 2.6`.
+
+**Tile talk-queue chrome.** `BroadcastVideoTile` takes `queued`, `hasFloor`, `queuedAria`, `floorAria`. It is the only talk-queue signal on the stage — the featured slot **stays the chair** and is never swapped for the floor holder.
+
+| State | Chrome |
+|---|---|
+| `hasFloor` | Border switches to `accentActionBackground`, a `3px` accent rail is pinned `insetInlineStart: 0` (inset `0.7rem` top/bottom, `aria-hidden`), and the name chip text becomes `textAccent`. Corner disc: `accentActionBackground` + `FiMic` in `actionIconOnFill`, `role="img"` + `floorAria` |
+| `queued` and not `hasFloor` | Corner disc: `sectionAccentBackground` + `HiOutlineHandRaised` in `textAccent`, `role="img"` + `queuedAria` |
+
+The two discs share one corner slot and are mutually exclusive (`showQueueBadge = queued && !hasFloor`), so a member who is granted the floor loses the hand badge in the same render. Both discs are `role="img"` with a label rather than `aria-hidden`, because they carry state a sighted user reads from the tile.
 
 ### 6.2 Media element ownership (non-negotiable)
 
@@ -210,6 +220,17 @@ Media stack geometry: a `Flex` that is a column by default and a row from `lg`, 
 
 Featured tile = the chairperson: `chairId` comes from the session roster (`participants` where `type === "CHAIRPERSON"`), then the peer is looked up in `local` (chair viewing their own stage) or `remotes[chairId]`. Name and avatar prefer roster values (`chair?.name`, `chair?.avatarUrl`) and fall back to the LiveKit peer name — LiveKit is a media plane, not an identity source. Grid peers = every remote except the chair, plus the local peer when the viewer is not the chair.
 
+**Grid order (`gridPeers`).** Peers are sorted by a `[bucket, tiebreak]` rank so the queue is legible without moving the featured slot:
+
+| Bucket | Rows | Tiebreak |
+|---|---|---|
+| `0` | the floor holder (`meeting.currentTalkMemberId`) | — |
+| `1` | the local viewer | — |
+| `2` | queued members | `talkTurn` ascending (same order the chair sees) |
+| `3` | everyone else | earliest `attendedAt ?? onlineAt` (`Date.parse`; missing / unparseable → `+Infinity`, i.e. last) |
+
+Equal ranks fall back to `participantId.localeCompare`, so the order is stable and identical on every client. Roster identity for each tile is re-read from `participants[peer.participantId]` (name / avatar / `talkTurn`), with the LiveKit peer name only as a fallback.
+
 One `BroadcastMicAttach` is rendered per remote peer. Local audio is never played back (no self-echo).
 
 ### 6.4 Controls
@@ -222,6 +243,19 @@ A wrapping, centered row of three `BroadcastStatusSwitch` buttons — camera, mi
 - enabled chrome = org `primaryActionBackground` + `primaryActionText`; otherwise `inputBackground` + `textPrimary`.
 
 The chair mute-all pair sits in its own grouped well (`sectionAccentBackground` + `subtleDivider`) so it reads as moderation, not as a personal control, and renders only when `can.muteAllMedia` (§7).
+
+**Raise-hand control (`BroadcastHandButton`).** Sits after the sound switch in the same action row and renders only when `can.raiseHand || can.lowerHand` — i.e. never for the chair, who administers the queue on the `talkQueue` page instead (`organization-host-routing.md` §5.5). `raised` is `can.lowerHand`, so the button state is derived from the live map, not from local state.
+
+| Trait | Shipped behavior |
+|---|---|
+| Click | `raised` → `actions.lowerHand`, otherwise `actions.raiseHand`. The action itself re-checks `can.*`, so a stale render cannot write |
+| Label | `handRaised` (`Cancel request (:turn)`) when raised, `handLowered` (`Request to speak`) otherwise — the raised label states the **action** because pressing it cancels; that is the one deliberate exception to the state-label rule below |
+| Icon | `MeetingHandRaisedOffIcon` (hand + slash) when raised, `HiOutlineHandRaised` otherwise — the slash mirrors `FiMicOff` so the cancel meaning survives when the label is hidden |
+| Accessible name | Equals the visible label (no separate `…Aria` key), because the label already names the action; `aria-pressed` carries the raised state |
+| Chrome | Raised → `primaryActionBackground` + `primaryActionText`; otherwise `inputBackground` + `textPrimary`; `inputBorder` in both |
+| Phone (`SW.max_sm`) | Label hidden (`hideAt`); when raised, a bold tabular-nums count is shown instead (`showAt`), so the icon-only control still says how many are ahead |
+
+`:turn` and the phone count are both `talkQueueAhead` — **people ahead of me**, not my raw `talkTurn`: every participant with a lower non-null `talkTurn`, plus `1` when someone else holds the floor. It reads `0` the moment the member is next and nobody is speaking. There is no pulse or badge on this button; the ambient queue signal belongs to the chair's drawer tile (`organization-host-routing.md` §5.4).
 
 ## 7) Session capability
 
@@ -257,8 +291,12 @@ It is a **UI gate only**, in the same family as `can.enterLive`: there is no `ac
 | `soundAria` | Sound | الصوت |
 | `muteAllVideos` (+ `…Aria`) | Turn off all cameras (+ everyone else's) | إيقاف كاميرات الجميع (+ ما عدا كاميرتي) |
 | `muteAllMics` (+ `…Aria`) | Mute all microphones (+ everyone else's) | كتم ميكروفونات الجميع (+ ما عدا ميكروفوني) |
+| `handLowered` | Request to speak | طلب الحديث |
+| `handRaised` | Cancel request (`:turn`) | إلغاء الطلب (`:turn`) |
+| `tileQueuedAria` | In the talk queue | في طابور الحديث |
+| `tileFloorAria` | Has the floor | معه الكلمة |
 
-Copy rules observed here: a toggle label states the **current state** (never the inverse action), the accessible name is a **noun** for the control, and the mute-all accessible name says "everyone else" because LiveKit excludes the sender.
+Copy rules observed here: a toggle label states the **current state** (never the inverse action), the accessible name is a **noun** for the control, and the mute-all accessible name says "everyone else" because LiveKit excludes the sender. The hand control is the deliberate exception — `handRaised` names the cancel action, so it ships **without** a separate aria key and reuses the visible label as its accessible name (§6.4). Do not reintroduce a `handAria` / `handQueueAria` key; a fixed noun there would contradict the label the user reads.
 
 `meetingLayout.linking` adds `failedHint`; `failedMessage` lost its trailing period because it is now a card **title**.
 
@@ -276,6 +314,7 @@ Copy rules observed here: a toggle label states the **current state** (never the
 8. **Every roster member gets LiveKit's default grant** (publish + subscribe). `MeetingParticipant.type` is not mapped to publish permissions, so a `VIEWER` can publish media as far as LiveKit is concerned.
 9. **Media join is not attendance.** Connecting to the room does not write `attended_at` / `left_at`; attendance stays on the session/socket path.
 10. **In-process `STARTED` peek** ceiling is inherited from the backend controller: a Node process without the live registry entry answers `MEETING_NOT_LIVE`, which the hook surfaces as broadcast `error` (`../backend/contracts/livekit-media-plane.md` §6.4).
+11. **Talk-queue chrome is live-map only, and media never follows it.** The hand badge, floor rail, and grid ordering are driven by `talkTurn` / `currentTalkMemberId`; holding the floor grants no publish permission, unmutes nothing, and does not change the featured tile. A chair who wants only the floor holder heard still uses cooperative mute-all (ceilings 1–2). Queue ordering ceilings (client-allocated `talkTurn`, no durable trace): `organization-host-routing.md` §8 limits 14–15.
 
 ## 11) Failure modes
 
@@ -344,6 +383,16 @@ Copy rules observed here: a toggle label states the **current state** (never the
 | `.cursor/skills/meeting-livekit-token/SKILL.md` | modified — `{ token, url }`, probe removed, hand-off to broadcast skill | governance |
 | `backend` / `website` gitlinks | modified pointers only — no root behavior | — |
 
+### Talk-queue follow-up (later change set)
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | modified — `BroadcastHandButton`, tile `queued` / `hasFloor` chrome, `talkQueueAhead`, ranked `gridPeers` | §6.1, §6.3, §6.4 |
+| `src/app/ui/components/meeting/MeetingHandRaisedOffIcon.tsx` | **added** — hand-with-slash `IconType` for the pressed state | §6.4 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | modified — `broadcast.handRaised` / `handLowered` / `tileQueuedAria` / `tileFloorAria` | §9 |
+
+Full inventory for that change set (session actions, chair page, drawer pulse, header cleanup): `organization-host-routing.md` §10o.
+
 ## 13) Verification
 
 - `yarn type-check` in `website/` and in `backend/` (the only checks that exist for these paths).
@@ -353,6 +402,7 @@ Copy rules observed here: a toggle label states the **current state** (never the
 - Chair mute-all cameras / mics: other peers' publications stop; the chair's own media is untouched; the buttons are absent for non-chairs and disappear when the meeting ends.
 - Kill the LiveKit connection: stage shows the failure card, not a spinner. Reject the token (leave `STARTED`): same card.
 - Break the socket handshake instead: `MeetingLinkingScreen` FAILED shows the shared error card with the linking copy.
+- Hand control (member browser): absent for the chair; raising flips the label to the cancel copy, shows the hand-with-slash icon, puts a hand badge on that member's tile in every browser, and pulses the chair's `talkQueue` drawer tile. Narrow the window under `SW.max_sm`: the label is replaced by the ahead-count. Granting the floor from the chair page swaps the badge for the mic disc plus the accent rail and moves the tile first in the grid.
 
 ## 14) Related
 

@@ -1,0 +1,42 @@
+---
+description: Meeting talk queue contract — live-map-only talkTurn/currentTalkMemberId, strict FIFO, head-only grant, display renumbering, no auto-promote
+globs:
+  - website/src/app/ui/components/meeting/hooks/useMeetingTalkQueue.ts
+  - website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx
+  - website/src/app/ui/components/meeting/pages/MeetingTalkQueuePage.tsx
+  - website/src/app/ui/components/meeting/MeetingTalkQueueCard.tsx
+  - website/src/app/ui/components/meeting/MeetingLiveBroadcast.tsx
+alwaysApply: false
+---
+
+# Meeting talk queue
+
+Authority: `docs/platforms/website/organization-host-routing.md` §5.3 / §5.5.
+Live-map fields: `.cursor/rules/meeting-live-state.mdc` item 14. Stage chrome: `.cursor/rules/website-meeting-livekit-broadcast.mdc`. Page IA: `.cursor/rules/website-meeting-shell.mdc`.
+
+## State
+
+- The entire feature is `participants[*].talkTurn` (`number | null`) and root `currentTalkMemberId` (`string | null`) on the live map. No GQL, no HTTP, no SQL `TalkRecord`, no extra socket event.
+- Writes go through session `actions` only (`raiseHand`, `lowerHand`, `giveTalkFloor`, `removeFromTalkQueue`, `endTalkFloor`) — never `batch` from a page or component.
+- Do **not** add a derived queue array, a `queuePosition` field, or a mirrored count to the live map. Everything is computed from the two fields above.
+
+## Ordering (non-negotiable)
+
+1. **One comparator everywhere.** Queue order is ascending `talkTurn` with lexicographic `id` as tie-break. `useMeetingTalkQueue`, `findQueueHead`, and the broadcast peer ranking must all use it, or the row shown as next stops being the row `giveTalkFloor` takes.
+2. **FIFO only.** No reorder, no priority, no drag. `giveTalkFloor` takes **no member argument** and always grants the head.
+3. **`talkTurn` is internal.** Allocate with `nextTalkTurn` (`max + 1`, then skip values already taken). Never render it; render `place` = `index + 1` after sorting. On a member's own control, render **people ahead** (lower `talkTurn`, plus the floor holder when it is not me), not a raw turn.
+4. **Grant clears the turn.** `giveTalkFloor` sets `currentTalkMemberId` and clears that member's `talkTurn` in the **same** `batch`, so nobody is both queued and on the floor.
+5. **No auto-promote.** `endTalkFloor` clears `currentTalkMemberId` only; the chair grants the next turn explicitly. `removeFromTalkQueue` clears one `talkTurn` and never touches the floor.
+
+## Roles
+
+- Non-chair (`MEMBER` / `VIEWER`) raise/lower their **own** hand, from the broadcast action row only.
+- Chair administers floor and queue on the `talkQueue` page only. The chair has no hand control, and the header has no talk control at all.
+- Every gate is a **client** gate (`can.*`); the socket does not enforce participant type. Do not describe it as authorization in code, copy, or docs.
+
+## Forbidden
+
+- Swapping the featured broadcast tile to the floor holder.
+- Tying the floor to media (publish grant, forced unmute, server mute of others).
+- Writing a `TalkRecord` row, a duration, or any SQL side effect from these actions without a documented decision.
+- A second source of "who is next" (local state, a memo in a component, a different sort in the badge path).
