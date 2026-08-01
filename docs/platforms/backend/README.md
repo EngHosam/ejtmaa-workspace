@@ -22,8 +22,8 @@
 | [`message-template-domain.md`](contracts/message-template-domain.md) | MessageTemplate ORM + customer GQL + write path (kinds, channel FK, `.strip()`, `meta_template_id`) |
 | [`meeting-domain.md`](contracts/meeting-domain.md) | Meeting ORM + customer GQL reads |
 | [`meeting-participant-domain.md`](contracts/meeting-participant-domain.md) | MeetingParticipant roster ORM + nested GQL |
-| [`agenda-item-domain.md`](contracts/agenda-item-domain.md) | AgendaItem ORM + nested GQL under Meeting; live-map session fields vs SQL |
-| [`decision-domain.md`](contracts/decision-domain.md) | Decision ORM + nested GQL; live `decisions` / `currentDecisionId` / empty nested `votes` |
+| [`agenda-item-domain.md`](contracts/agenda-item-domain.md) | AgendaItem ORM + nested GQL under Meeting; durable `status`; live-map session fields |
+| [`decision-domain.md`](contracts/decision-domain.md) | Decision ORM + nested GQL; live `decisions` / `currentDecisionId` / nested `votes` from SQL |
 | [`vote-domain.md`](contracts/vote-domain.md) | Vote ORM + nested GQL under Decision; durable casts vs live nest |
 | [`talk-record-domain.md`](contracts/talk-record-domain.md) | TalkRecord ORM + nested GQL; live `talkTurn` / `currentTalkMemberId` vs SQL |
 | [`plan-domain.md`](contracts/plan-domain.md) | Plan (الباقة) catalog ORM + public customer GQL |

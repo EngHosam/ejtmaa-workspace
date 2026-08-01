@@ -13,13 +13,13 @@ Authoritative contract: `docs/platforms/backend/contracts/agenda-item-domain.md`
 - Non-actor under `Meeting` (`meeting_id` FK).
 - `modelName: "agendaItem"` so default `hasMany` is `agendaItems` — **do not** add `as` on `Meeting.hasMany(AgendaItem())`.
 - Bridge `ident` and SDL field must stay `agendaItems`.
-- Durable SQL agenda for authoring/reports (`id` / `sort_order` / `subject`).
-- Live session map mirrors those lines and adds session-only `status` (incl. `CANCELED`) / `isLiveCreated` / `currentAgendaItemId` (`meeting-live-state.md`) — not LiveKit, not SQL columns. No live agenda delete.
+- Durable SQL agenda for authoring/reports (`id` / `sort_order` / `subject` / `status` via `agendaItemStatus`).
+- Live session map mirrors those lines plus session-only `isLiveCreated` / `currentAgendaItemId` (`meeting-live-state.md`) — not LiveKit. No live agenda delete; cancel is `status: "CANCELED"`.
 
 ## Customer GQL
 
 - Nested only: `_Meeting.agendaItems: [_AgendaItem]`.
-- Expose `id`, `sort_order`, `subject` (+ timestamps / `total_count`).
+- Expose `id`, `sort_order`, `subject`, `status` (+ timestamps / `total_count`).
 - Do **not** expose `meeting_id` scalar; no root agenda queries unless product reopens that decision.
 - `AgendaItemBridge` extends `CustomerBridgeBase`; `GetManyParent = MeetingModel`.
 

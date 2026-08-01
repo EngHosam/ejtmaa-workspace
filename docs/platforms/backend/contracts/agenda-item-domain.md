@@ -17,16 +17,17 @@ Out of scope (not shipped):
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for agenda items,
 - LiveKit ownership of agenda,
-- live-map writers that flip agenda `status` / `isLiveCreated` / `currentAgendaItemId` (seeded only — see `meeting-live-state.md`).
+- live-map writers that flip agenda `status` / `isLiveCreated` / `currentAgendaItemId` (seeded only until writers ship — see `meeting-live-state.md`).
+- prepare requester that accepts client-owned agenda `status` (create always persists `WAITING`).
 
-Durable SQL (`id` / `sort_order` / `subject`) remains the authoring and report truth. The live session map mirrors those lines on first empty `live_state` create and adds session-only `status` (incl. `CANCELED`), `isLiveCreated`, and root `currentAgendaItemId` that die when the live document is reset — they are **not** SQL columns. In-session cancel uses `status: "CANCELED"`; live agenda lines are not deleted from the map.
+Durable SQL (`id` / `sort_order` / `subject` / `status`) remains the authoring and report truth. The live session map mirrors those lines on first empty `live_state` create (including durable `status`) and adds session-only `isLiveCreated` and root `currentAgendaItemId` that die when the live document is reset. In-session cancel uses `status: "CANCELED"` on both SQL and the live map when writers ship; live agenda lines are not deleted from the map.
 
 ## 2) Domain purpose
 
 `AgendaItem` is a **non-actor** ordered line item belonging to a `Meeting`.
 
 - Agenda is authored and stored in SQL so it exists **before** the live session and can feed reports later.
-- Live session map carries a nested `agendaItems` mirror plus session-only discussion fields (`meeting-live-state.md` §1.2); LiveKit does not own agenda.
+- Live session map carries a nested `agendaItems` mirror of durable lines (incl. `status`) plus session-only `isLiveCreated` / `currentAgendaItemId` (`meeting-live-state.md` §1.2); LiveKit does not own agenda.
 - Tenant isolation is inherited via `Meeting.organization_id`.
 
 ## 3) ORM model
@@ -43,7 +44,7 @@ Persistence names:
 ### 3.1 Attrs layout
 
 - `//relations` — `meeting_id`
-- `//info` — `sort_order`, `subject`
+- `//info` — `sort_order`, `subject`, `status`
 
 ### 3.2 Columns
 
@@ -53,6 +54,9 @@ Persistence names:
 | `meeting_id` | UUID | no | FK → Meeting.id |
 | `sort_order` | INTEGER | no | display order within meeting |
 | `subject` | STRING(191) | no | agenda line text |
+| `status` | STRING(191) | no | enum `agendaItemStatus`; default `WAITING` |
+
+Exported TS type: `AgendaItemStatus` (`WAITING` \| `DISCUSSING` \| `DONE` \| `CANCELED`).
 
 ### 3.3 Indexes
 
@@ -85,7 +89,7 @@ SDL: `backend/src/app/gql/definitions/customer.graphql`
 
 Implements `_Timestamps` & `_Pagination`.
 
-Info: `id`, `sort_order`, `subject`.
+Info: `id`, `sort_order`, `subject`, `status` (`_AgendaItemStatus`).
 
 Timestamps: `created_at`, `updated_at`.
 
@@ -176,9 +180,9 @@ Nested agenda inherits the parent meeting read gate:
 | `backend/src/app/gql/gql-types/customer.ts` | Generated | §7 |
 | `website/src/types/gql/definitions/customer.graphql` | Mirror | §7 |
 | `website/src/types/gql/gql-types/customer.ts` | Mirror | §7 |
-| `backend/src/app/types/meeting.ts` | Live map agenda types (session fields) | §1–§2; `meeting-live-state.md` §1.2, §9d |
-| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | Live agenda seed | §1–§2; `meeting-live-state.md` §1.3, §9d |
-| `website/src/types/meeting.ts` | Identical live map mirror | §1–§2; `meeting-live-state.md` §1.2, §9d |
+| `backend/src/app/types/meeting.ts` | Live map agenda types (session fields) | §1–§2; `meeting-live-state.md` §1.2 |
+| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | Live agenda seed | §1–§2; `meeting-live-state.md` §1.3 |
+| `website/src/types/meeting.ts` | Identical live map mirror | §1–§2; `meeting-live-state.md` §1.2 |
 | `backend/.types/models.ts` | Generated registry key `AgendaItem` (gitignored) | excluded from narrative |
 
 ## Related

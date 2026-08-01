@@ -19,7 +19,7 @@ Out of scope (not shipped):
 - supervisor Decision GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for decisions,
-- Yjs as sole durable source of truth (SQL remains durable authoring; live map seeds `decisions` + empty nested `votes` for the session — see `meeting-live-state.md` §1.2 / §9f).
+- Yjs as sole durable source of truth (SQL remains durable authoring; live map seeds `decisions` and nested `votes` from SQL on first empty `live_state` — see `meeting-live-state.md` §1.2 / §9).
 
 ## 2) Domain purpose
 
@@ -67,7 +67,7 @@ Under `backend/src/resources/trans/ar/general.ts` and `en/general.ts`:
 | Enum key | Values |
 |---|---|
 | `decisionPhase` | `PRE_START`, `DURING` |
-| `decisionStatus` | `NEW`, `UNDER_VOTING`, `ACCEPTED`, `REJECTED` |
+| `decisionStatus` | `NEW`, `UNDER_VOTING`, `ACCEPTED`, `REJECTED`, `CANCELED` |
 | `decisionVotingType` | `LIVE`, `SECRET` |
 
 ### 3.4 Indexes

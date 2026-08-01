@@ -14,8 +14,9 @@ Authoritative contract: `docs/platforms/backend/contracts/decision-domain.md`.
 - `modelName: "decision"` so default `hasMany` is `decisions` — **do not** add `as` on `Meeting.hasMany(Decision())`.
 - Bridge `ident` and SDL field must stay `decisions`.
 - Durable SQL (`phase` PRE_START / DURING); SQL remains durable authoring truth.
-- Live session map seeds `decisions` (+ empty nested `votes`) and `currentDecisionId` — see `meeting-live-state.md` §1.2 / §9f. Not Yjs-only ownership.
-- Enums: `decisionPhase`, `decisionStatus` (default `NEW`), optional `decisionVotingType`.
+- Live session map seeds `decisions` (+ nested `votes` from SQL when present) and `currentDecisionId` — see `meeting-live-state.md` §1.2 / §9. Not Yjs-only ownership.
+- Enums: `decisionPhase`, `decisionStatus` (default `NEW`; includes `CANCELED`), optional `decisionVotingType`.
+- Live map status union includes `CANCELED` — same spelling as SQL (`meeting-live-state.md`).
 
 ## Prepare writes
 

@@ -10,7 +10,7 @@ Provider: `backend/src/resources/configs/gql/index.ts`
 | `supervisor` | `backend/src/app/gql/definitions/supervisor.graphql` | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Supervisor actor reads |
 
 Shared SDL:
-- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateType` / `_MessageTemplateTypeValue`, `_MessageChannelType` / `_MessageChannelStatus`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus`, `_PlanStatus`, `_PlanBillingPeriod`, `_SubscriptionStatus`, `_PaymentMethod` (+ Value enums where applicable)
+- `backend/src/app/gql/definitions/base.graphql` — scalars, `_Ability`, `_Notification`, `_Timestamps`, `_Pagination`, `_OrganizationStatus` / `_OrganizationStatusValue`, `_MessageTemplateType` / `_MessageTemplateTypeValue`, `_MessageChannelType` / `_MessageChannelStatus`, `_MeetingType` / `_MeetingStatus` / `_MeetingNotifyStatus`, `_MeetingParticipantType` / `_MeetingParticipantDeliveryStatus`, `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`, `_VoteValue`, `_TalkRecordStatus`, `_AgendaItemStatus`, `_PlanStatus`, `_PlanBillingPeriod`, `_SubscriptionStatus`, `_PaymentMethod` (+ Value enums where applicable)
 
 On-disk draft SDL (reference copy):
 - `backend/src/app/gql/definitions/shared.graphql` — notification query sketch; role SDL files are authoritative in codegen.

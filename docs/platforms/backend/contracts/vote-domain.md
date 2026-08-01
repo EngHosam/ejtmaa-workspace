@@ -18,8 +18,8 @@ Out of scope (not shipped):
 - vote write requesters / mutations,
 - supervisor Vote GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
-- seed rows for votes,
-- live vote writers / casting into the CRDT (map shape seeds empty `decisions[*].votes` — see `meeting-live-state.md` §1.2 / §9f; durable casts remain this model).
+- seed rows for votes (demo/fixtures),
+- live vote writers / casting into the CRDT (first empty `live_state` **does** seed existing SQL votes into `decisions[*].votes` — see `meeting-live-state.md` §1.2 / §9; durable casts remain this model).
 
 ## 2) Domain purpose
 
@@ -157,7 +157,7 @@ meeting(id) { decisions { votes { value cast_at member { id name } } } }
 
 ## 6) Seed
 
-No vote seed in this change set.
+No demo/fixture vote seed rows in this change set. Live CRDT seed of existing SQL votes is documented in `meeting-live-state.md`.
 
 ## 7) Frontend mirrors
 

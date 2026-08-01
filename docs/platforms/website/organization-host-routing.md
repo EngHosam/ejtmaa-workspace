@@ -560,7 +560,7 @@ What the website side depends on:
 
 1. **`org_host` is wired on LiveKit token fetch.** `POST /custom/org/livekit_token` uses per-route `middleware("org_host")`. `/custom/org/start` still resolves the organization from the body without `org_host`. The response now carries `{ token, url }`, and `useMeetingLiveKitToken` feeds `useMeetingLiveKitRoom` (no probe UI). Contract: `../backend/contracts/livekit-media-plane.md` §6.
 2. **Most drawer in-shell pages are still title stubs (§5.5).** `TalkQueue` / `Agenda` / `DecisionsAndVote` mount and show the drawer label only (`MeetingPageStub`) until product UI is designed. **`MeetingAttendancePage` is shipped** (chair-only attendance log + quorum). **`MeetingLivePage` is shipped** (waiting + chair start). While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + solid `MeetingPageOverlay` for other pages) and now carries real LiveKit A/V. Post-start side effects beyond the existing status write remain deferred. Header request-to-speak for MEMBER and VIEWER remains disabled. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
-3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants` (incl. session-only `talkTurn` default `null`), `currentTalkMemberId` (seeded `null`; who is speaking; set after `participants`), `agendaItems` (SQL line mirror + session-only per-item `status` default `WAITING` including `CANCELED` for in-session cancel, `isLiveCreated` default `false`; no live delete), `currentAgendaItemId` (seeded `null`; session-only), `decisions` (SQL decision mirror all phases + session-only `isLiveCreated` default `false` + live `CANCELED` status + nested empty `votes` map; no per-member vote slots at seed), `currentDecisionId` (seeded `null`; set after `decisions`). Agenda / talk-queue / decision/vote writers are not shipped yet. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
+3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants` (incl. session-only `talkTurn` default `null`), `currentTalkMemberId` (seeded `null`; who is speaking; set after `participants`), `agendaItems` (SQL line mirror incl. durable `status`; session-only `isLiveCreated` default `false`; no live delete — cancel is `CANCELED`), `currentAgendaItemId` (seeded `null`; session-only), `decisions` (SQL decision mirror all phases + session-only `isLiveCreated` default `false` + nested `votes` from SQL `Vote` or empty; no per-non-voter slots), `currentDecisionId` (seeded `null`; set after `decisions`). Agenda / talk-queue / decision/vote writers are not shipped yet. Everything else on a meeting still goes through the customer GQL/requester path, and the live values are not reflected back onto the SQL columns yet (`../backend/contracts/meeting-live-state.md` §6).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
@@ -859,7 +859,7 @@ Current delivery on top of §10a–§10d: READY-shell header shows the current l
 
 ## 10f) Change set inventory (chair attendance log)
 
-Current delivery on top of §10a–§10e: live map `minMembersCount` seed (new empty `live_state` only); chair-only `MeetingAttendancePage` (quorum strip, filters, responsive grid tiles); init attended copy = first-person relative duration + quieter room hint. Full path map remains in §10; behavior in §5.5 and `meeting-live-state.md` §1.2 / §9c.
+Current delivery on top of §10a–§10e: live map `minMembersCount` seed (new empty `live_state` only); chair-only `MeetingAttendancePage` (quorum strip, filters, responsive grid tiles); init attended copy = first-person relative duration + quieter room hint. Full path map remains in §10; behavior in §5.5 and `meeting-live-state.md` §1.2.
 
 ### `backend/`
 
@@ -886,7 +886,7 @@ Current delivery on top of §10a–§10e: live map `minMembersCount` seed (new e
 | Path | State | Where described |
 |---|---|---|
 | `docs/platforms/website/organization-host-routing.md` | this page — §5.5 attendance, §8, §10f | — |
-| `docs/platforms/backend/contracts/meeting-live-state.md` | `minMembersCount` on live map + seed | live-state §1.2, §9c |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | `minMembersCount` on live map + seed | live-state §1.2 |
 | `docs/platforms/website/component-structure.md` | meeting pages note attendance product UI | component inventory |
 | `.cursor/rules/website-meeting-shell.mdc` | attendance page + init copy voice | governance |
 | `.cursor/skills/website-meeting-shell/SKILL.md` | attendance log workflow | governance |
@@ -899,8 +899,8 @@ Final delivery on top of §10a–§10f after structure review: delete loose `mee
 
 | Path | State | Where described |
 |---|---|---|
-| `src/app/types/meeting.ts` | modified — `MeetingLiveMap.minMembersCount` | §5.1; `meeting-live-state.md` §1.2, §9c |
-| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — seed `minMembersCount` on first empty create only (no BLOB backfill) | `meeting-live-state.md` §1.3, §9c |
+| `src/app/types/meeting.ts` | modified — `MeetingLiveMap.minMembersCount` | §5.1; `meeting-live-state.md` §1.2 |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — seed `minMembersCount` on first empty create only (no BLOB backfill) | `meeting-live-state.md` §1.3 |
 | `src/app/orm/models/Meeting.ts` | already has `ATTEND_OPEN_BEFORE_MS` (prior ship; not dirty in this inventory) | `meeting-domain.md` §3.2b |
 
 ### `website/`
@@ -927,7 +927,7 @@ Final delivery on top of §10a–§10f after structure review: delete loose `mee
 |---|---|---|
 | `docs/platforms/website/organization-host-routing.md` | this page — §5.3 single clock + `attendWindow`, §5.5 attendance, §10g | — |
 | `docs/platforms/website/component-structure.md` | FilterCountChips + meeting hook rows | component inventory |
-| `docs/platforms/backend/contracts/meeting-live-state.md` | `minMembersCount` seed contract | live-state §1.2, §9c |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | `minMembersCount` seed contract | live-state §1.2 |
 | `docs/platforms/backend/contracts/meeting-domain.md` | `ATTEND_OPEN_BEFORE_MS` → website hook + session | §3.2b |
 | `.cursor/rules/website-meeting-live-session.mdc` | single clock; `attendWindow` on session; no page re-call | governance |
 | `.cursor/rules/website-meeting-shell.mdc` | attendance bounce on page; FilterCountChips; card ≠ HeaderMe | governance |
@@ -1095,108 +1095,9 @@ Full behavior contract: `flow-meeting-broadcast.md`.
 | `.cursor/skills/website-meeting-broadcast/SKILL.md` | **added** — broadcast workflow | governance |
 | `.cursor/skills/meeting-livekit-token/SKILL.md` | `{ token, url }`, probe removed, hand-off | governance |
 
-## 10n) Change set inventory (live agenda map fields)
+## 10n) Change set inventory (durable agenda/decision enums + live SQL seed)
 
-On top of §10m: mirrored `MeetingLiveMap` gains nested `agendaItems` + root `currentAgendaItemId`. Backend seeds from SQL on first empty `live_state` only (`status: "WAITING"`, `isLiveCreated: false`, `currentAgendaItemId: null`). In-session cancel is `status: "CANCELED"` (no live delete). Writers and agenda page UI are **not** shipped. Authority: `../backend/contracts/meeting-live-state.md` §1.2 / §1.3 / §9d; `../backend/contracts/agenda-item-domain.md`.
-
-### Website
-
-| Path | State | Where described |
-|---|---|---|
-| `src/types/meeting.ts` | modified — identical live map mirror (`MeetingLiveAgendaItem*`, `agendaItems`, `currentAgendaItemId`) | §5.1; `meeting-live-state.md` §1.2, §9d |
-| `lib/tsconfig.tsbuildinfo` | modified — incremental TS cache from type-check | **excluded** (generated) |
-
-### Backend (sibling repo)
-
-| Path | State | Where described |
-|---|---|---|
-| `src/app/types/meeting.ts` | modified — live agenda types + map fields | `meeting-live-state.md` §1.2, §9d |
-| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — `buildLiveAgendaItems`; nested seed; `currentAgendaItemId` after `agendaItems` | `meeting-live-state.md` §1.3, §9d |
-
-### Workspace root (`docs/` / `.cursor/`)
-
-| Path | State | Where described |
-|---|---|---|
-| `docs/platforms/backend/contracts/meeting-live-state.md` | modified — agenda shape, seed, §9d inventory + triage | backend contract |
-| `docs/platforms/backend/contracts/agenda-item-domain.md` | modified — SQL vs live session fields | backend contract |
-| `docs/platforms/backend/contracts/livekit-media-plane.md` | modified — plane table notes live map vs LiveKit for agenda | backend contract |
-| `docs/platforms/website/organization-host-routing.md` | this page — §5.1 / shipped limits / §10n | — |
-| `docs/platforms/website/README.md` | change-set pointer → §10n | website index |
-| `.cursor/rules/meeting-live-state.mdc` | modified — nested agenda; map-only session fields | governance |
-| `.cursor/rules/meeting-live-map-mirror.mdc` | modified — mirror includes agenda | governance |
-| `.cursor/rules/agenda-item-meeting-child.mdc` | modified — live session fields | governance |
-| `.cursor/skills/meeting-realtime-socket/SKILL.md` | modified — agenda seed/mirror checklist | skill |
-
-## 10o) Change set inventory (live talk queue fields)
-
-On top of §10n: per-participant `talkTurn` (`null` = not queued) and root `currentTalkMemberId` (`null` = nobody speaking; set after `participants` in `createLiveDoc`). Session-only; durable talk history stays SQL `TalkRecord`. Writers / talk-queue UI / header request-to-speak are **not** shipped. Authority: `../backend/contracts/meeting-live-state.md` §1.2 / §9e; `../backend/contracts/talk-record-domain.md`.
-
-### Website
-
-| Path | State | Where described |
-|---|---|---|
-| `src/types/meeting.ts` | modified — `talkTurn` on `MeetingLiveParticipant`; `currentTalkMemberId` on `MeetingLiveMap` | §5.1; `meeting-live-state.md` §1.2, §9e |
-| `lib/tsconfig.tsbuildinfo` | may change from type-check | **excluded** (generated) |
-
-### Backend (sibling repo)
-
-| Path | State | Where described |
-|---|---|---|
-| `src/app/types/meeting.ts` | modified — identical mirror | `meeting-live-state.md` §1.2, §9e |
-| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — seed `talkTurn: null`; `currentTalkMemberId` after `participants` | `meeting-live-state.md` §1.3, §9e |
-
-### Workspace root (`docs/` / `.cursor/`)
-
-| Path | State | Where described |
-|---|---|---|
-| `docs/platforms/backend/contracts/meeting-live-state.md` | modified — talk fields + §9e inventory | backend contract |
-| `docs/platforms/backend/contracts/talk-record-domain.md` | modified — live vs SQL talk fields | backend contract |
-| `docs/platforms/backend/contracts/livekit-media-plane.md` | modified — plane table notes live talk fields | backend contract |
-| `docs/platforms/website/organization-host-routing.md` | this page — §5.1 / §8 / §10o | — |
-| `docs/platforms/website/README.md` | change-set pointer → §10o | website index |
-| `docs/platforms/backend/README.md` | live-state / talk-record index blurbs | backend index |
-| `docs/README.md` | live-state index blurb | root index |
-| `.cursor/rules/meeting-live-state.mdc` | modified — talk session fields + seed order | governance |
-| `.cursor/rules/meeting-live-map-mirror.mdc` | modified — mirror includes talk fields | governance |
-| `.cursor/rules/talk-record-meeting-child.mdc` | modified — live vs SQL | governance |
-| `.cursor/skills/meeting-realtime-socket/SKILL.md` | modified — talk seed checklist (6d) | skill |
-
-## 10p) Change set inventory (live decisions + empty votes)
-
-On top of §10o: nested `decisions` from all SQL phases; per-decision empty collaborative `votes` map (no member slots / no SQL Vote seed); `currentDecisionId` after `decisions`. Writers / `decisionsAndVote` UI are **not** shipped. Authority: `../backend/contracts/meeting-live-state.md` §1.2 / §9f; `decision-domain.md`; `vote-domain.md`.
-
-### Website
-
-| Path | State | Where described |
-|---|---|---|
-| `src/types/meeting.ts` | modified — `MeetingLiveDecision*` / `MeetingLiveVote*` / `decisions` / `currentDecisionId` | §5.1; `meeting-live-state.md` §1.2, §9f |
-| `lib/tsconfig.tsbuildinfo` | may change from type-check | **excluded** (generated) |
-
-### Backend (sibling repo)
-
-| Path | State | Where described |
-|---|---|---|
-| `src/app/types/meeting.ts` | modified — identical mirror | `meeting-live-state.md` §1.2, §9f |
-| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — `buildLiveDecisions`; empty nested `votes` `Y.Map`; `currentDecisionId` after `decisions` | `meeting-live-state.md` §1.3, §9f |
-
-### Workspace root (`docs/` / `.cursor/`)
-
-| Path | State | Where described |
-|---|---|---|
-| `docs/platforms/backend/contracts/meeting-live-state.md` | modified — decisions/votes + §9f | backend contract |
-| `docs/platforms/backend/contracts/decision-domain.md` | modified — live vs SQL | backend contract |
-| `docs/platforms/backend/contracts/vote-domain.md` | modified — live nest note | backend contract |
-| `docs/platforms/backend/contracts/livekit-media-plane.md` | modified — plane table | backend contract |
-| `docs/platforms/website/organization-host-routing.md` | this page — §5.1 / §8 / §10p | — |
-| `docs/platforms/website/README.md` | change-set pointer → §10p | website index |
-| `docs/platforms/backend/README.md` | live-state index blurb | backend index |
-| `docs/README.md` | live-state index blurb | root index |
-| `.cursor/rules/meeting-live-state.mdc` | modified — decisions + empty votes | governance |
-| `.cursor/rules/meeting-live-map-mirror.mdc` | modified — mirror includes decisions/votes | governance |
-| `.cursor/rules/decision-meeting-child.mdc` | modified — live vs SQL | governance |
-| `.cursor/rules/vote-decision-child.mdc` | modified — live nest note | governance |
-| `.cursor/rules/livekit-media-plane.mdc` | modified — plane note | governance |
-| `.cursor/skills/meeting-realtime-socket/SKILL.md` | modified — 6e decisions seed | skill |
+Current live-map + durable-enum ship. Full path inventory and triage: `../backend/contracts/meeting-live-state.md` §9. Behavior: §1.2 / §1.3 there; `agenda-item-domain.md`; `decision-domain.md`; `vote-domain.md`; `talk-record-domain.md`. Website GQL mirrors under `src/types/gql/**`. Writers / agenda / talk / decisions UI beyond stubs are **not** shipped. Live field list on this page: §5.1 / §8.
 
 ## 11) Verification
 
@@ -1241,4 +1142,4 @@ On top of §10o: nested `decisions` from all SQL phases; per-decision empty coll
 - `.cursor/skills/website-meeting-shell/SKILL.md`
 - `.cursor/skills/website-meeting-broadcast/SKILL.md`
 
-Change-set inventories: §10a–§10p (latest = live decisions + empty votes = §10p; prior = live talk queue = §10o; live agenda = §10n; LiveKit broadcast = §10m).
+Change-set inventories: §10a–§10n (latest live map + durable enums = §10n → `meeting-live-state.md` §9; LiveKit broadcast = §10m).

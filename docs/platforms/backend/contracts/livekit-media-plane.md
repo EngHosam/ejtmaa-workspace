@@ -27,10 +27,10 @@ LiveKit is the **media A/V plane** for meetings.
 | Plane | Owner | Responsibility |
 |---|---|---|
 | Governance + durable session data | SQL (`Meeting` + children) | lifecycle, roster, agenda lines (`id` / `sort_order` / `subject`), decisions, votes, talk queue, attendance stamps |
-| Live collaborative session state | Yjs `MeetingLiveMap` (`live_state`) | session mirrors + session-only fields (e.g. live agenda `status` / `isLiveCreated` / `currentAgendaItemId`; talk `talkTurn` / `currentTalkMemberId`; decisions + empty nested `votes` / `currentDecisionId`) — see `meeting-live-state.md` |
+| Live collaborative session state | Yjs `MeetingLiveMap` (`live_state`) | session mirrors + session-only fields (e.g. agenda `isLiveCreated` / `currentAgendaItemId`; talk `talkTurn` / `currentTalkMemberId`; decisions + nested `votes` from SQL / `currentDecisionId`) — see `meeting-live-state.md` |
 | Media | LiveKit Room | audio/video tracks only |
 
-LiveKit is **not** the source of agenda, votes, talk queue, or attendance truth. Durable agenda/talk/decision/vote authoring remains SQL; the live map may carry session fields for agenda, talk queue, and decisions (`meeting-live-state.md` §1.2 / §9d / §9e / §9f).
+LiveKit is **not** the source of agenda, votes, talk queue, or attendance truth. Durable agenda/talk/decision/vote authoring remains SQL; the live map may carry session fields and SQL mirrors (`meeting-live-state.md` §1.2 / §9).
 
 Product naming: room name is derived from `Meeting.id` — not persisted as a meeting column.
 
