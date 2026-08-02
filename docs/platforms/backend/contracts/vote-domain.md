@@ -19,7 +19,7 @@ Out of scope (not shipped):
 - supervisor Vote GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for votes (demo/fixtures),
-- live vote writers / casting into the CRDT (first empty `live_state` **does** seed existing SQL votes into `decisions[*].votes` — see `meeting-live-state.md` §1.2 / §9; durable casts remain this model).
+- durable persistence of a **live** cast: the website session writes `decisions[*].votes[memberId]` in the CRDT only (`meeting-live-state.md` §1.2 shipped writers, `../../website/organization-host-routing.md` §5.3) and writes **no** `Vote` row; first empty `live_state` does seed existing SQL votes into the map, and durable casts remain this model.
 
 ## 2) Domain purpose
 

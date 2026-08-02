@@ -63,13 +63,17 @@ When `linking !== "READY"`: every `can.*` is false. Session value still includes
 | `giveTalkFloor` | `meeting.currentTalkMemberId = head.id` **and** `head.talkTurn = null` (head from `findQueueHead`; no argument) |
 | `removeFromTalkQueue(memberId)` | `participants[memberId].talkTurn = null` (no-op if missing or not queued) |
 | `endTalkFloor` | `meeting.currentTalkMemberId = null` |
+| `castVote(decisionId, value)` | `decisions[id].votes[meId] = { memberId, value, castAt }` — open ballot, phase `cast` gate, never overwrites an existing cast |
+| `setDecisionStatus(decisionId, status, votingType?)` | open (`DURING` + `NEW` + `votingType` + no other open DURING row) or settle (`ACCEPTED`/`REJECTED` on strict majority, `CANCELED` always) — phase `manage` gate |
+| `clearDecisionVotes(decisionId)` | empties `decisions[id].votes` on an open ballot — phase `manage` gate |
 
 - Sync; no-op when `!can.*` (and `attend`/`left`/`raiseHand`/`lowerHand` require `me`).
 - `can.enterLive` is a **navigation + LiveKit token gate** (no matching action write): true when `attendedAt` set and `leftAt` unset. `useMeetingLiveKitToken` requires `can.enterLive` **before** `STARTED` / route ids.
 - `can.muteAllMedia` is a **UI gate only** for the chair mute-all controls in `MeetingLiveBroadcast` (chair + `STARTED`); the commands travel on the LiveKit data channel, not `actions`.
 - `can.setAgendaItemStatus` is chair + meeting live (`WAITING_TO_START` \| `STARTED`). Live-map `status` only — **no** SQL `AgendaItem` update. Active line = `DISCUSSING` (no root pointer).
 - Talk-queue gates: `raiseHand` / `lowerHand` are **non-chair** + `enterLive` + meeting live (`raiseHand` also needs `talkTurn == null` and `meId !== currentTalkMemberId`); `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` are chair + meeting live (`giveTalkFloor` needs a queue head, `endTalkFloor` needs a floor holder). Live-map `talkTurn` / `currentTalkMemberId` only — **no** SQL `TalkRecord`. Order and display rules: `.cursor/rules/meeting-talk-queue.mdc`.
-- `can.attend` also requires `attendWindow.windowOpen` (mirror of `MeetingModel.ATTEND_OPEN_BEFORE_MS` private to `useMeetingAttendWindow`).
+- Decision gates are **phase-explicit**: `castPreStartVote` / `castDuringVote` (voter) and `managePreStartDecision` / `manageDuringDecision` (chair); pre-start = meeting live, during = `enterLive` + `STARTED`. Actions and `useMeetingDecisions` map a decision to its pair through the exported `decisionPhaseCan(can, phase)` — never hand-pick a key. `countDecisionVotes` is exported for the same reason. Ballot rules: `.cursor/rules/meeting-decisions-vote.mdc`.
+- `can.attend` also requires `attendWindow.windowOpen` (mirror of `MeetingModel.ATTEND_OPEN_BEFORE_MS` private to `useMeetingAttendWindow`) and, for voters, `preStartVotesComplete` (computed once in the instance and passed into resolve).
 - Session provider calls `useMeetingAttendWindow(meeting.datetime)` once, passes `windowOpen` into resolve, and exposes `attendWindow` on the session value.
 - Client `can` gates are **not** server authz — socket still gates writes with `MEETING_LIVE_STATUSES` only; attend-window / room attendance / chair agenda status are not socket-enforced.
 - Init remaining-duration copy reads `attendWindow` from session — do not call `useMeetingAttendWindow` again in the page.

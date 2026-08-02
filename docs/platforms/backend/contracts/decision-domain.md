@@ -19,14 +19,15 @@ Out of scope (not shipped):
 - supervisor Decision GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for decisions,
-- Yjs as sole durable source of truth (SQL remains durable authoring; live map seeds `decisions` and nested `votes` from SQL on first empty `live_state` — see `meeting-live-state.md` §1.2 / §9).
+- Yjs as sole durable source of truth (SQL remains durable authoring; live map seeds `decisions` and nested `votes` from SQL on first empty `live_state` — see `meeting-live-state.md` §1.2 / §9),
+- SQL write-back of a live status transition: the website session settles ballots in the CRDT only, and a `PRE_START` row seeds as `UNDER_VOTING` in the map when SQL holds `NEW` or `UNDER_VOTING` (`meeting-live-state.md` §1.2).
 
 ## 2) Domain purpose
 
 `Decision` is a **non-actor** ordered decision item belonging to a `Meeting`.
 
 - `phase = PRE_START` — prepare-window decision; required for meeting approve completeness (≥1).
-- `phase = DURING` — may be pre-staged in the prepare window (same write rules as PRE_START while `notify_status === NOT_STARTED`); live-session writes are a separate Ability/UI slice.
+- `phase = DURING` — may be pre-staged in the prepare window (same write rules as PRE_START while `notify_status === NOT_STARTED`); live-session writes are a separate Ability/UI slice (CRDT-only today — `../../website/organization-host-routing.md` §5.3).
 - Status / voting-type fields describe voting lifecycle; durable casts live on `Vote` (`vote-domain.md`).
 - Tenant isolation is inherited via `Meeting.organization_id`.
 

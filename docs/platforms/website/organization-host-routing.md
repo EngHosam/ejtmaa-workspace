@@ -266,13 +266,13 @@ When `linking !== "READY"`, every `can.*` = `false`. The session value still inc
 
 #### Capabilities (`can`)
 
-Computed only when linking is READY. Inputs include live `status`, `meType`, `meId`, `attendedAt`, `leftAt`, `windowOpen` from session `attendWindow`, and the talk-queue inputs `talkTurn` (own `me.talkTurn`), `currentTalkMemberId`, and `queueHeadExists` (`!!findQueueHead(meeting.participants)`).
+Computed only when linking is READY. Inputs include live `status`, `meType`, `meId`, `attendedAt`, `leftAt`, `windowOpen` from session `attendWindow`, the talk-queue inputs `talkTurn` (own `me.talkTurn`), `currentTalkMemberId`, `queueHeadExists` (`!!findQueueHead(meeting.participants)`), and the decisions input `preStartVotesComplete` (`isPreStartVotesComplete(meeting.decisions, me.id)`). Every map-derived input is computed **once** in the session instance and passed into `resolveCan` — `resolveCan` never scans `participants` or `decisions`.
 
 | Key | True when |
 |---|---|
 | `startMeeting` | `meType === "CHAIRPERSON"` and `status === "WAITING_TO_START"` |
 | `endMeeting` | chairperson and `status === "STARTED"` |
-| `attend` | any `meType`, status `WAITING_TO_START` or `STARTED`, no `attendedAt`, no `leftAt`, and `windowOpen` (open at `datetime − MeetingModel.ATTEND_OPEN_BEFORE_MS`) |
+| `attend` | any `meType`, status `WAITING_TO_START` or `STARTED`, no `attendedAt`, no `leftAt`, `windowOpen` (open at `datetime − MeetingModel.ATTEND_OPEN_BEFORE_MS`), and — for a **voter** (`CHAIRPERSON` \| `MEMBER`) — `preStartVotesComplete`. A `VIEWER` never has a pre-start ballot, so the vote condition does not apply |
 | `left` | any `meType`, status `WAITING_TO_START` or `STARTED`, has `attendedAt`, no `leftAt` |
 | `enterLive` | has `attendedAt` and no `leftAt` (any type) — **navigation gate only** (no `actions.enterLive` write); also gates LiveKit token fetch (`useMeetingLiveKitToken`) |
 | `muteAllMedia` | chairperson and `status === "STARTED"` — **UI gate only** for the broadcast mute-all controls (no `actions` entry; the command rides the LiveKit data channel, `flow-meeting-broadcast.md` §7) |
@@ -282,6 +282,12 @@ Computed only when linking is READY. Inputs include live `status`, `meType`, `me
 | `giveTalkFloor` | chairperson, meeting live, and `queueHeadExists` |
 | `removeFromTalkQueue` | chairperson and meeting live |
 | `endTalkFloor` | chairperson, meeting live, and `currentTalkMemberId != null` |
+| `castPreStartVote` | voter (`CHAIRPERSON` \| `MEMBER`) and meeting live — pre-start ballots are open before check-in and before start |
+| `castDuringVote` | voter, `enterLive`, and `status === "STARTED"` — an in-meeting ballot needs a present participant in a started session |
+| `managePreStartDecision` | chairperson and meeting live — settle / cancel / revote a pre-start ballot |
+| `manageDuringDecision` | chairperson, `enterLive`, and `status === "STARTED"` — open / settle / cancel / revote an in-meeting ballot |
+
+**Decision capability notes.** The four keys are **phase-explicit on purpose**: one pair per phase, `cast` for voters and `manage` for the chair. A consumer never picks a key by hand — `decisionPhaseCan(can, phase)` (exported from the same file) maps a decision's `phase` to `{ cast, manage }`, and both the actions and `useMeetingDecisions` go through it, so the button the chair sees and the write the action performs cannot disagree. `preStartVotesComplete` is `true` when every `PRE_START` decision that is `UNDER_VOTING` already has `votes[meId]` (vacuously true with no such decision, `false` without `meId`).
 
 **Talk-queue capability notes.** The chair has no `raiseHand` / `lowerHand`: chair participation in the talk flow is queue administration on the `talkQueue` page (`meeting-participant-domain.md` §8 grants “request talking” to all three types; the chair’s shipped channel is the admin page, not a hand control). `VIEWER` gets the hand control like `MEMBER`. `giveTalkFloor` stays true while someone already holds the floor — granting replaces the current holder (single floor holder, §5.5).
 
@@ -307,13 +313,22 @@ Built only in `MeetingLiveSessionProvider` / `useMeetingLiveSessionInstance` (ne
 | `giveTalkFloor` | resolve `findQueueHead(...)`; no-op when absent; else `meeting.currentTalkMemberId = head.id` **and** `head.talkTurn = null` in the same batch |
 | `removeFromTalkQueue(memberId)` | no-op when the row is missing or `talkTurn == null`; else `row.talkTurn = null` (floor untouched) |
 | `endTalkFloor` | `meeting.currentTalkMemberId = null` (no auto-promotion of the next queued member) |
+| `castVote(decisionId, value)` | Requires `me`; no-op unless the decision exists, is `UNDER_VOTING`, `decisionPhaseCan(...).cast`, and `votes[me.id]` is unset; else `votes[me.id] = { memberId, value, castAt: ISO }`. A cast is **final** — the action never overwrites an existing key |
+| `setDecisionStatus(decisionId, status, votingType?)` | No-op unless the decision exists and `decisionPhaseCan(...).manage`. `UNDER_VOTING` = open a vote: `DURING` phase only, from `NEW` only, `votingType` required, refused while `findDuringUnderVoting(...)` already returns a row; writes `votingType` + `status`. Otherwise the decision must currently be `UNDER_VOTING`: `CANCELED` always allowed; `ACCEPTED` requires `yes > no`, `REJECTED` requires `no > yes` (a tie settles nothing) |
+| `clearDecisionVotes(decisionId)` | Revote: no-op unless the decision is `UNDER_VOTING` and `decisionPhaseCan(...).manage`; else deletes every key of `votes` (status and `votingType` stay) |
 
-Two module-private helpers in the same file back the talk actions:
+Module-private helpers in the same file back the talk and decision actions (plus two exported pure helpers used by `useMeetingDecisions`, so counting and phase→capability mapping have one definition each):
 
 | Helper | Behavior |
 |---|---|
 | `findQueueHead(participants)` | Lowest non-null `talkTurn`; ties broken by lexicographic `id` so head selection is deterministic on every client |
 | `nextTalkTurn(participants)` | `max(talkTurn) + 1`, then increments while the value is already taken in the local snapshot (`used` set) |
+| `decisionList(decisions)` | Non-null decision rows of the live map as an array |
+| `isPreStartVotesComplete(decisions, meId)` | `can.attend` input (above) |
+| `findDuringUnderVoting(decisions)` | The one open `DURING` decision, if any — the exclusivity guard for opening a new one |
+| `clearVotes(decision)` | Deletes every `votes` key in place (nested `Y.Map` mutation, not reassignment) |
+| `countDecisionVotes(decision)` — **exported** | `{ yes, no }` over `votes`; used by the settle guard and by row tallies |
+| `decisionPhaseCan(can, phase)` — **exported** | `{ cast, manage }` for that phase (see capability notes) |
 
 Actions are synchronous (`() => void`). Socket fan-out is side effect of the CRDT update path; a later `meeting.live.error` sets `error` and clears `synced` (§5.1).
 
@@ -459,7 +474,7 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 |---|---|
 | Org identity | Large logo (`h: 6rem`) or primary monogram (first letter on `primaryActionBackground` / `primaryActionText`) when `logo_url` is absent; org name (`subHead`) |
 | Meeting meta | `meeting.subject` when present; type/status chips via shared `MeetingMetaChip` (`tone="brand"` for type, `tone="accent"` for status; org section fills). Missing live fields omit their UI (no placeholders). Not the customer-portal `MeetingMetaChips` (plural) component |
-| Attendance | Owned by colocated `InitAttendSection` inside `MeetingInitPage.tsx` (page-only — not a shared file, not a `render*` helper). Branch order: (1) `can.attend` → `MeetingPrimaryButton` → `actions.attend` + caption `attendRequiresForRoom` under the button. (2) Present (`can.enterLive`) → confirmation strip (check + first-person `attendedTitle` + first-person relative `attendedAt` via `moment(attendedAt).from(now, true)`) + quieter `roomUnlockedHint` (`caption` + `textTertiary`). (3) `leftAt` → `leftTitle`. (4) Else → accent info strip: when `attendWindow` says the open window has not started yet, `attendAvailableIn` with Moment locale-aware remaining duration (`moment(opensAtIso).from(moment(nowMs), true)`, refreshed by session clock every 30s while waiting) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button. Section reads `attendWindow` from session — does not call `useMeetingAttendWindow` |
+| Attendance | Owned by colocated `InitAttendSection` inside `MeetingInitPage.tsx` (page-only — not a shared file, not a `render*` helper). Branch order: (1) `can.attend` → `MeetingPrimaryButton` → `actions.attend` + caption `attendRequiresForRoom` under the button. (2) Present (`can.enterLive`) → confirmation strip (check + first-person `attendedTitle` + first-person relative `attendedAt` via `moment(attendedAt).from(now, true)`) + quieter `roomUnlockedHint` (`caption` + `textTertiary`). (3) `leftAt` → `leftTitle`. (4) Window open but `can.attend` still false because pre-start ballots are pending (`hasPendingPreStartVotes` from `useMeetingDecisions`) → `attendNeedsPreStartVotes` caption + `attendGoToVotes` button → `setPage("decisionsAndVote")`. (5) Else → accent info strip: when `attendWindow` says the open window has not started yet, `attendAvailableIn` with Moment locale-aware remaining duration (`moment(opensAtIso).from(moment(nowMs), true)`, refreshed by session clock every 30s while waiting) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button. Section reads `attendWindow` from session — does not call `useMeetingAttendWindow` |
 | Colors / copy | `organization?.colors ?? defaultOrganizationColors()` only. Copy under `ui.layouts.meetingLayout.init` (ar + en, identical keys). Init attend strings are **first person**; roster strings under `meetingLayout.attendance` are third person |
 
 **Meeting room (`live`) gate.** All participant types need present check-in (`can.enterLive`) before the Meeting room page. Drawer: disabled `live` tile when locked (§5.4). `MeetingLivePage` also redirects to `"init"` when `!can.enterLive` (defense if `page` was already `"live"`). Agenda / talkQueue / other drawer ids stay ungated. Chair `startMeeting` / `endMeeting` are unchanged.
@@ -506,7 +521,7 @@ Member / viewer see the same waiting panel without the start button (`can.startM
 | `talkQueue` | `MeetingTalkQueuePage` | chair talk-queue admin (below) |
 | `attendance` | `MeetingAttendancePage` | chair attendance log (below) |
 | `agenda` | `MeetingAgendaPage` | live agenda directory + chair status controls (below) |
-| `decisionsAndVote` | `MeetingDecisionsAndVotePage` | stub |
+| `decisionsAndVote` | `MeetingDecisionsAndVotePage` | decisions directory + voting (below) |
 
 Shared placeholder: `meeting/pages/MeetingPageStub.tsx` (`bg="@transparent"`). Replace stub body inside the matching named page file when product UI ships — keep the file; do not invent a second route.
 
@@ -562,6 +577,45 @@ The whole feature lives on the **live map only** — `participants[*].talkTurn` 
 | Remove | Clears one member's `talkTurn`; never touches the floor. Removing the head just makes the next row the head |
 
 Shared-comparator and display-renumbering rationale: `docs/invariants/website.md` W61.
+
+**Decisions & voting (`"decisionsAndVote"`).** All participant types. `MeetingDecisionsAndVotePage` renders only: every derivation comes from `useMeetingDecisions` and every write goes through session `actions` (no `batch`, no GQL, no SQL `Vote`). Page `bg="@transparent"`, `pv={semanticDims.page.padY}`, list `customScroll` on `iconSecondary`, sections `gap={2}`.
+
+| Section (top → bottom) | Shown when | Content |
+|---|---|---|
+| Current vote | An in-meeting decision is `UNDER_VOTING` | Brand soft panel (`sectionBrandBackground` + `subtleDivider`, `currentSection` heading) — same chrome as the talk-queue floor panel — wrapping that one card, so the live ballot is never buried in the list |
+| In-meeting decisions | `meeting.status === "STARTED"` **and** (other `DURING` rows exist **or** nothing is currently under voting) | `duringSection` heading; remaining `DURING` rows by `sortOrder`, or `Empty` (`duringEmpty`) when the phase has no other row |
+| Pre-start decisions | Always (once any decision exists) | `preStartSection` heading; `PRE_START` rows by `sortOrder`, or `Empty` (`preStartEmpty`) |
+| Whole-page empty | No decision is visible at all | `Empty` (`empty` + `subtitle`) instead of the three sections |
+
+`DURING` rows stay hidden until `STARTED` — before the session starts they are not actionable, so the page shows the pre-start work only.
+
+**Row derivation (`useMeetingDecisions`).** Returns `{ currentDuringRow, preStartRows, duringRows, showDuringSection, hasItems, hasPendingPreStartVotes }`. Each `MeetingDecisionRow` carries display data (`statusLabel`, `votingTypeLabel`, `yesCount` / `noCount` / `castCount`, `ownValue`, `showTally`, `active`) **and** its own gates, so the page passes them straight through:
+
+| Row field | Meaning |
+|---|---|
+| `active` | `status === "UNDER_VOTING"` — drives the accent rail, the highlighted card, and "still accepting votes" |
+| `showTally` | Counts are visible: settled (`ACCEPTED` / `REJECTED`) always, `PRE_START` always (prepare `createDecision` never sets a voting type, so a pre-start ballot is never secret), open `DURING` when `votingType === "LIVE"`, otherwise chair only |
+| `canCast` | `decisionPhaseCan(...).cast` and open and `ownValue == null` |
+| `canStartVoting` | `decisionPhaseCan(...).manage`, phase `DURING`, status `NEW`, and no `DURING` row is currently `UNDER_VOTING` — the one-vote-at-a-time rule surfaces as a hidden control, not a failed click |
+| `canManage` | `decisionPhaseCan(...).manage` and open — adopt / revote / cancel |
+| `adoptStatus` | `"ACCEPTED"` \| `"REJECTED"` \| `null` — the majority outcome, computed **once** here. It picks the adopt label/icon, disables the control on a tie, and is the argument the page passes to `setDecisionStatus`, so label and write can never diverge |
+
+`hasPendingPreStartVotes` is `preStartRows.some(row => row.canCast)` — the same derivation that feeds the Init lobby branch below, not a second scan.
+
+**Card (`MeetingDecisionCard`).** Sort badge, subject, status pill, and meta line (`votingTypeLabel` + `castCount`, the count only while the tally is hidden). Two tally chips (`tallyYes` on `sectionBrandBackground`, `tallyNo` on `sectionAccentBackground`) replace a combined line. The action stack renders below, in this order and only when its gate is true, with a `subtleDivider` hairline above it when the tally is shown and a second one before the chair controls only when a cast block precedes them (never two in a row):
+
+| Control | Chrome |
+|---|---|
+| Cast (`voteYes` / `voteNo`) | Two filled half-width buttons (`primaryActionBackground` / `accentActionBackground`) |
+| Recorded vote | The same pair, **read-only** (`disabled` + `disabledStyle`, `aria-pressed`): the chosen side stays filled, the other dims. There is no "your vote: X" sentence, and a cast cannot be changed |
+| Open a vote (`startLive` / `startSecret`) | Two filled half-width buttons — chair, `DURING`, `NEW` only |
+| Adopt / revote / cancel | Text buttons (`bg="@transparent"` + icon): adopt shows `adoptYes` (`FiCheck`, brand) or `adoptNo` (`FiX`, accent) from `adoptStatus` and is disabled on a tie; `revote` (`FiRotateCcw`) clears votes; `cancelVote` (`FiXCircle`) closes the ballot |
+
+A `CANCELED` card is dimmed (`opc` 0.72). Copy under `ui.layouts.meetingLayout.decisions` (ar + en, identical key sets); the card uses that translator only.
+
+**Init lobby gate.** `InitAttendSection` gains one branch **before** the generic "not yet" strip: when the attend window is open, the participant has not checked in or left, `can.attend` is false, and `hasPendingPreStartVotes` is true → `attendNeedsPreStartVotes` caption + `MeetingPrimaryButton` (`attendGoToVotes`) → `setPage("decisionsAndVote")`. The page reads the flag from `useMeetingDecisions`; it does **not** re-scan `meeting.decisions` and does not re-derive who is a voter.
+
+**Drawer.** When any `DURING` decision is `UNDER_VOTING`, the `decisionsAndVote` tile takes `livePulse` + `decisionsVotingAria` (def-owned, `drawer` translator only) — same treatment as the agenda `DISCUSSING` and talk-queue pulses. The tile def is shared by the chair and non-chair item lists.
 
 **Raise hand (non-chair).** Members and viewers join the queue from the broadcast action row, not from this page and not from the header (`flow-meeting-broadcast.md` §6.4). Queue membership is also mirrored on broadcast tiles (hand badge) and on the chair's drawer tile pulse (§5.4).
 
@@ -640,13 +694,13 @@ What the website side depends on:
 ## 8) Known limits (shipped state, intentional)
 
 1. **`org_host` is wired on LiveKit token fetch.** `POST /custom/org/livekit_token` uses per-route `middleware("org_host")`. `/custom/org/start` still resolves the organization from the body without `org_host`. The response now carries `{ token, url }`, and `useMeetingLiveKitToken` feeds `useMeetingLiveKitRoom` (no probe UI). Contract: `../backend/contracts/livekit-media-plane.md` §6.
-2. **One drawer in-shell page is still a title stub (§5.5).** `DecisionsAndVote` mounts and shows the drawer label only (`MeetingPageStub`) until product UI is designed. **Shipped product pages:** `MeetingAttendancePage` (chair-only attendance log + quorum), `MeetingLivePage` (waiting + chair start), `MeetingAgendaPage` (live agenda + chair status chips), `MeetingTalkQueuePage` (chair-only floor + FIFO queue admin). While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + frosted `MeetingPageOverlay` for other pages) and carries real LiveKit A/V. Post-start side effects beyond existing live-map writes remain deferred for decisions. The header carries no talk control (§5.4); non-chair raise-hand lives on the broadcast action row. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
-3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants` (incl. session-only `talkTurn` default `null`), `currentTalkMemberId` (seeded `null`; who is speaking; set after `participants`), `agendaItems` (SQL line mirror incl. durable `status`; session-only `isLiveCreated` default `false`; no live delete — cancel is `CANCELED`; active line is `DISCUSSING` — **no** root `currentAgendaItemId`), `decisions` (SQL decision mirror all phases + session-only `isLiveCreated` default `false` + nested `votes` from SQL `Vote` or empty; no per-non-voter slots; DURING active decision is `UNDER_VOTING` — **no** root `currentDecisionId`). **Shipped website live writers:** chair `actions.setAgendaItemStatus` (map `status` only) and the talk-queue writers `raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` (`talkTurn` + `currentTalkMemberId` only). Decision / vote / `isLiveCreated` writers are not shipped. Live values are **not** reflected back onto SQL columns yet — talk turns produce **no** `TalkRecord` rows (`../backend/contracts/meeting-live-state.md` §6, `../backend/contracts/talk-record-domain.md` §1).
+2. **Every drawer in-shell page now has product UI (§5.5).** `MeetingAttendancePage` (chair-only attendance log + quorum), `MeetingLivePage` (waiting + chair start), `MeetingAgendaPage` (live agenda + chair status chips), `MeetingTalkQueuePage` (chair-only floor + FIFO queue admin), `MeetingDecisionsAndVotePage` (pre-start + in-meeting ballots). `MeetingPageStub` stays in the tree for future ids but is no longer mounted by any of them. While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + frosted `MeetingPageOverlay` for other pages) and carries real LiveKit A/V. Durable side effects of a decision outcome (SQL `Decision.status`, `Vote` rows, minutes) are still deferred — the ballot lives in the CRDT only. The header carries no talk control (§5.4); non-chair raise-hand lives on the broadcast action row. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
+3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants` (incl. session-only `talkTurn` default `null`), `currentTalkMemberId` (seeded `null`; who is speaking; set after `participants`), `agendaItems` (SQL line mirror incl. durable `status`; session-only `isLiveCreated` default `false`; no live delete — cancel is `CANCELED`; active line is `DISCUSSING` — **no** root `currentAgendaItemId`), `decisions` (SQL decision mirror all phases, with `PRE_START` `NEW`/`UNDER_VOTING` normalized to `UNDER_VOTING` on seed + session-only `isLiveCreated` default `false` + nested `votes` from SQL `Vote` or empty; no per-non-voter slots; DURING active decision is `UNDER_VOTING` — **no** root `currentDecisionId`). **Shipped website live writers:** chair `actions.setAgendaItemStatus` (map `status` only), the talk-queue writers `raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` (`talkTurn` + `currentTalkMemberId` only), and the decisions writers `castVote` / `setDecisionStatus` / `clearDecisionVotes` (decision `status` / `votingType` / nested `votes` only). `isLiveCreated` writers are not shipped. Live values are **not** reflected back onto SQL columns yet — talk turns produce **no** `TalkRecord` rows and casts produce **no** `Vote` rows (`../backend/contracts/meeting-live-state.md` §6, `../backend/contracts/talk-record-domain.md` §1).
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
 7. **Organization-host pages other than `Meeting` have no realtime channel.** A tenant-wide org socket is not part of the shipped surface.
-8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` / `can.attend` / `can.enterLive` / `can.setAgendaItemStatus` and the talk-queue `can.raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` are **client** gates on `useMeetingLiveSession`; the attend open window, Meeting-room attendance requirement, chair-only agenda status, and chair-only floor administration are **not** enforced by socket controllers or SQL writers yet.
+8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` / `can.attend` / `can.enterLive` / `can.setAgendaItemStatus`, the talk-queue `can.raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor`, and the decisions `can.castPreStartVote` / `castDuringVote` / `managePreStartDecision` / `manageDuringDecision` are **client** gates on `useMeetingLiveSession`; the attend open window, Meeting-room attendance requirement, chair-only agenda status, chair-only floor administration, one-open-ballot exclusivity, vote finality (one cast per member), the majority rule on adopt, and the pre-start-ballots-before-check-in rule are **not** enforced by socket controllers or SQL writers yet.
 9. **The meeting shell picks its READY tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. While linking is not READY, only the gate screen renders (no drawer SSR flicker for that path). `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
 10. **Non-transport `connect_error` maps to session code `"NOT_VALID"`** for UI purposes; the linking FAILED copy stays the generic `failedMessage` (no distinct credential string on screen yet).
 11. **Broadcast mute-all is cooperative, not enforced.** The chair button is gated by `can.muteAllMedia`, but the receiving hook applies any well-formed data-channel command from any peer, and a muted peer can re-enable immediately. There is no `roomAdmin` server mute and no participant-type publish grant. Accepted for now; full ceiling list in `flow-meeting-broadcast.md` §10.
@@ -701,12 +755,14 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/pages/MeetingAgendaPage.tsx` | `"agenda"` body — discussing strip + other list + chair status chips; `pv` only; `bg="@transparent"` | §5.5, §8 |
 | `src/app/ui/components/meeting/MeetingAgendaCard.tsx` | agenda list-row card (sort / subject / status pill or chair chips) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingAgenda.ts` | agenda rows from live map (`DISCUSSING` vs other) + status labels/options | §5.5 |
-| `src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx` | `"decisionsAndVote"` body (title stub) | §5.5, §8 |
-| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header`, `footer`, `linking`, `drawer` incl. live/agenda aria keys, `init`, `attendance`, `agenda`, `live`, `broadcast`, `overlay.closeAria`) | §5.3, §5.4, §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx` | `"decisionsAndVote"` body — current-vote panel + in-meeting + pre-start sections; renders rows and forwards `actions` only | §5.5, §8 |
+| `src/app/ui/components/meeting/MeetingDecisionCard.tsx` | decision card (sort / subject / status pill / tally chips / cast + open-vote half buttons / adopt–revote–cancel text buttons); local `HalfButton` + `TextButton` | §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingDecisions.ts` | decision rows from live map (phase split, current `DURING` extraction, tally + own vote, per-row gates, `adoptStatus`, `hasPendingPreStartVotes`) | §5.5 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | `ui.layouts.meetingLayout` (`header`, `footer`, `linking`, `drawer` incl. live/agenda/talk-queue/decisions aria keys, `init` incl. pre-start ballot branch, `attendance`, `agenda`, `decisions`, `live`, `broadcast`, `overlay.closeAria`) | §5.3, §5.4, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
-| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | session surface: resolve + provider; `can`/`actions` incl. `setAgendaItemStatus` and the five talk-queue writers; private `findQueueHead` / `nextTalkTurn`; one `useMeetingAttendWindow` call; exposes `attendWindow` | §5.3, §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | session surface: resolve + provider; `can`/`actions` incl. `setAgendaItemStatus`, the five talk-queue writers, and the three decision writers; private `findQueueHead` / `nextTalkTurn` / decision helpers; exported `countDecisionVotes` / `decisionPhaseCan`; one `useMeetingAttendWindow` call; exposes `attendWindow` | §5.3, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` | attend-window clock (mirror math private; open timeout + 30s ticks while waiting) | §5.3, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | LiveKit join fetch — active when `can.enterLive && STARTED` + route ids; union `{ status, token, url }`; quiet network retry | `../backend/contracts/livekit-media-plane.md` §6.5; `flow-meeting-broadcast.md` §4 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveKitRoom.ts` | `Room.connect` owner: status projection, peer map, publish toggles, sound autoplay gate, cooperative mute-all, lifecycle | `flow-meeting-broadcast.md` §5 |
@@ -1249,14 +1305,51 @@ Live-map-only talk queue: non-chair raise/lower hand, chair floor + FIFO queue a
 | `.cursor/skills/website-meeting-broadcast/SKILL.md` | hand control + tile badges + peer order |
 | `website` gitlink | submodule pointer only — no root behavior |
 
+## 10p) Change set inventory (meeting decisions & voting)
+
+Live-map-only ballots: pre-start voting before check-in, chair-run in-meeting voting after start. Behavior: §5.3 (`can` / `actions` / helpers), §5.4 (drawer pulse), §5.5 (page, rows, card, Init branch), §8 limits 2 / 3 / 8. Seed normalization: `../backend/contracts/meeting-live-state.md` §1.2.
+
+### `backend/`
+
+| Path | Change | Documented in |
+|---|---|---|
+| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — `buildLiveDecisions` seeds `PRE_START` `NEW`/`UNDER_VOTING` as `UNDER_VOTING`; all other rows mirror SQL unchanged | `../backend/contracts/meeting-live-state.md` §1.2 |
+
+### `website/`
+
+| Path | Change | Documented in |
+|---|---|---|
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — 4 phase-explicit decision capabilities + 3 actions; `preStartVotesComplete` resolve input feeding `can.attend`; private `decisionList` / `isPreStartVotesComplete` / `findDuringUnderVoting` / `clearVotes`; exported `countDecisionVotes` / `decisionPhaseCan` | §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingDecisions.ts` | **added** — rows + per-row gates + `adoptStatus`, current `DURING` extraction, section visibility, `hasPendingPreStartVotes` | §5.5 |
+| `src/app/ui/components/meeting/MeetingDecisionCard.tsx` | **added** — decision card with local `HalfButton` (read-only when it has no `onClick`) and `TextButton` | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx` | modified — stub replaced by current-vote panel + in-meeting + pre-start sections; forwards rows and `actions` only | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — attend branch for pending pre-start ballots (`hasPendingPreStartVotes` → `setPage("decisionsAndVote")`) | §5.5 |
+| `src/app/ui/components/meeting/MeetingDrawerPanel.tsx` | modified — shared `decisionsTile` def for both role lists; `livePulse` + `decisionsVotingAria` while a `DURING` ballot is open | §5.4, §5.5 |
+| `src/resources/translations/ar.ts`, `src/resources/translations/en.ts` | modified — `decisions` block; `drawer.decisionsVotingAria`; `init.attendNeedsPreStartVotes` / `attendGoToVotes` / `attendGoToVotesAria` | §5.5 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check` | **excluded** (build cache, no behavior) |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | Change |
+|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this section + §5.3 / §5.5 / §8 / §10 traceability |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | §1.2 seed normalization + shipped decision writers; §9 writer list |
+| `.cursor/rules/meeting-decisions-vote.mdc` | **added** — phase gates, one open ballot, vote finality, majority settle, seed normalization |
+| `.cursor/rules/website-meeting-live-session.mdc` | decision capabilities + actions rows |
+| `.cursor/rules/meeting-live-state.mdc` | item 15 — seed normalization + shipped decision writers |
+| `.cursor/rules/website-meeting-shell.mdc` | decisions page + drawer pulse rows |
+| `.cursor/skills/website-meeting-decisions-vote/SKILL.md` | **added** — extend-the-ballot workflow |
+| `backend` / `website` gitlinks | submodule pointers only — no root behavior |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Diff `backend/src/app/types/meeting.ts` against `website/src/types/meeting.ts` (must stay identical).
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); READY content column is `FlexContainer` (aligns with header/footer `Container`); drawer Meeting info returns to `"init"`; drawer `live` disabled until `can.enterLive` (corner ping while `STARTED`); drawer `agenda` pulses while any item is `DISCUSSING`; Meeting room shows waiting + chair start when not started; while `STARTED`, persistent `MeetingLiveBroadcast` with other pages in frosted `MeetingPageOverlay` (`pageOverlayBackground` + blur 4px; page bodies `@transparent`; `ph=page.padY` matches page `pv`); LiveKit token fetch requires `can.enterLive` then `STARTED`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); `agenda` mounts the live agenda page (chair status chips when `can.setAgendaItemStatus`); chair `talkQueue` mounts the queue admin page (non-chair bounce to `"init"`); the remaining drawer id (`decisionsAndVote`) mounts a title stub; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); READY content column is `FlexContainer` (aligns with header/footer `Container`); drawer Meeting info returns to `"init"`; drawer `live` disabled until `can.enterLive` (corner ping while `STARTED`); drawer `agenda` pulses while any item is `DISCUSSING`; Meeting room shows waiting + chair start when not started; while `STARTED`, persistent `MeetingLiveBroadcast` with other pages in frosted `MeetingPageOverlay` (`pageOverlayBackground` + blur 4px; page bodies `@transparent`; `ph=page.padY` matches page `pv`); LiveKit token fetch requires `can.enterLive` then `STARTED`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); `agenda` mounts the live agenda page (chair status chips when `can.setAgendaItemStatus`); chair `talkQueue` mounts the queue admin page (non-chair bounce to `"init"`); `decisionsAndVote` mounts the ballots page for every type; `/customer/...` renders `Error` `404`.
 - Agenda: discussing strip only when `DISCUSSING` rows exist; `otherSection` heading only when discussing strip is shown and other rows remain; status write updates live map only (SQL unchanged until reflect step).
 - Talk queue (chair + one member, two browsers): member raises → chair drawer `talkQueue` tile pulses and the row appears as place `1`; a second raise lands at place `2` and never reorders; Give floor is offered on the head row only, moves that member to the floor panel, clears their queue row, and lights their broadcast tile badge; End floor clears the floor without promoting place `1`; Remove clears one row and leaves the floor untouched; the member's hand control returns to `handLowered` when their turn is cleared from either side.
+- Decisions (chair + one member, two browsers, before start): pre-start rows are open for both without check-in; the member's Attend button is replaced by the pre-start prompt until every pre-start ballot has their cast, then Attend appears; a cast is one-way (the pair turns read-only). In-meeting rows appear only after `STARTED`: opening a ballot moves it into the Current vote panel, pulses the drawer tile on both sides, and hides Start on every other in-meeting row; Adopt is disabled on a tie and otherwise names the majority side; Revote clears the tally and reopens casting; Cancel closes the ballot.
 - Init lobby light chips: `sectionBrandBackground` / `sectionAccentBackground` readable on `pageBackground` (org `softLight` mix 0.78).
 - Selected drawer tile: soft `sectionAccentBackground` + partial start accent rail + `textAccent`; icon well stays primary (white glyph / white `HomeMark`).
 - Attendance cards: present fill uses `presentCardBackground` (distinct from type chip `sectionAccentBackground`); idle fill uses `idleCardBackground` (light card / dark transparent).
@@ -1288,10 +1381,12 @@ Live-map-only talk queue: non-chair raise/lower hand, chair floor + FIFO queue a
 - `.cursor/rules/website-meeting-livekit-broadcast.mdc`
 - `.cursor/rules/website-backend-policy-mirror.mdc`
 - `.cursor/rules/meeting-live-state.mdc`
+- `.cursor/rules/meeting-decisions-vote.mdc`
 - `.cursor/rules/website-mpages-routes-params-contract.mdc`
 - `.cursor/skills/meeting-realtime-socket/SKILL.md`
 - `.cursor/skills/website-meeting-live-session/SKILL.md`
 - `.cursor/skills/website-meeting-shell/SKILL.md`
 - `.cursor/skills/website-meeting-broadcast/SKILL.md`
+- `.cursor/skills/website-meeting-decisions-vote/SKILL.md`
 
-Change-set inventories: §10a–§10n (latest live map + durable enums = §10n → `meeting-live-state.md` §9; LiveKit broadcast = §10m).
+Change-set inventories: §10a–§10p (latest decisions + voting = §10p; live map + durable enums = §10n → `meeting-live-state.md` §9; LiveKit broadcast = §10m).

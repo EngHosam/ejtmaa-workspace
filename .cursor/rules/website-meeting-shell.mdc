@@ -135,11 +135,12 @@ Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 - **No** `participants` tile.
 - Meeting info is full-row after `live` (`itemHome` + `HomeMark`; `setPage("init")`; selected when `page === "init"`). Label: **Meeting info** / **معلومات الاجتماع**. Not above the grid; not an `init` id inside `DrawerGridItemDef[]`.
 - `live` is full-row (`wide` → `gridColumn: 1 / -1`). Label copy: **Meeting room** / **غرفة الاجتماع** (`itemLive`); id stays `"live"`.
-- Put `disabled` / `livePulse` / `ariaLabel` on the **tile def**, not computed inside `flatMap`. Drawer uses **only** `meetingLayout.drawer` translator (`liveLockedAria`, `liveBroadcastingAria`, `agendaDiscussingAria`, `talkQueueActiveAria`) — do not pull `init` / `agenda` / `talkQueue` namespaces into the drawer.
+- Put `disabled` / `livePulse` / `ariaLabel` on the **tile def**, not computed inside `flatMap`. Drawer uses **only** `meetingLayout.drawer` translator (`liveLockedAria`, `liveBroadcastingAria`, `agendaDiscussingAria`, `talkQueueActiveAria`, `decisionsVotingAria`) — do not pull `init` / `agenda` / `talkQueue` / `decisions` namespaces into the drawer.
 - When `meeting.status === "STARTED"` and `can.enterLive`, `live` tile `livePulse` (corner broadcast ping) — independent of selected chrome.
 - When `!can.enterLive`, `live` tile `disabled` (`opc` 0.55, `aria-disabled`; `ariaLabel` = `drawer.liveLockedAria`). Keep the visible Meeting room label. `MeetingLivePage` also bounces to `"init"` if reached while locked.
 - When any `agendaItems[*].status === "DISCUSSING"`, `agenda` tile `livePulse` + `agendaDiscussingAria`.
 - When any `participants[*].talkTurn != null`, chair `talkQueue` tile `livePulse` + `talkQueueActiveAria`.
+- When any `DURING` decision is `UNDER_VOTING`, `decisionsAndVote` tile `livePulse` + `decisionsVotingAria` (one shared tile def for both role lists — do not duplicate the literal per list).
 - Meeting info control: full-row after `live` (`itemHome` + shared `HomeMark` with white `frameClr`/`accentClr` via `actionIconOnFill`, same as drawer-menu monochrome accent override). Do not use `FiHome` or leave HomeMark orange accent on the fill well.
 - Tiles call `setPage(id)` (and `onClose` on the mobile overlay); selected tile: soft `sectionAccentBackground`, partial-height start accent rail (`3px`, inset top/bottom), `textAccent` label; icon well stays `primaryActionBackground` + white `actionIconOnFill` (no selected swap, no full perimeter brand border). `aria-current="page"`.
 - Tile chrome matches existing meeting drawer `DrawerGridItem` (org `OrganizationColors`, `semanticDims`).
@@ -154,6 +155,17 @@ Role from `useMeetingLiveSession().me?.type` (`CHAIRPERSON` vs other).
 - Page copy: single translator `meetingLayout.talkQueue`; participant type labels are the only cross-namespace read (`header.type*`, same as attendance/queue cards). Page `bg="@transparent"`.
 - Head/floor cards use `presentCardBackground` + `accentActionBackground` border; idle rows `idleCardBackground` + `subtleDivider` (same token pairing as attendance).
 - Drawer: when any `participants[*].talkTurn != null`, `talkQueue` tile `livePulse` + `talkQueueActiveAria`. Pulse tracks the **queue**, not the floor.
+
+## Decisions & voting (`"decisionsAndVote"`)
+
+- All roles. Data: `hooks/useMeetingDecisions.ts` from session `meeting.decisions` (no GQL, no direct `batch`, **no** SQL `Vote`). Writes: `actions.castVote` / `setDecisionStatus` / `clearDecisionVotes` only.
+- Section order: Current vote panel (open `DURING` ballot) → in-meeting section → pre-start section. `DURING` rows are hidden until `meeting.status === "STARTED"`; each visible section renders `Empty` instead of collapsing.
+- Current vote panel reuses the talk-queue floor chrome (`sectionBrandBackground` + `subtleDivider` + `caption` `textBrand` heading) — do not invent a third panel style.
+- Page renders only: `canCast` / `canStartVoting` / `canManage` / `adoptStatus` come from the hook. No capability math, no `meeting.status` read, in the page or the card.
+- Card: `MeetingDecisionCard.tsx` — sort badge, subject, status pill, meta line, two tally chips, then a `subtleDivider` hairline before the action stack. Cast pair and open-vote pair are filled half buttons; the recorded vote is the same pair rendered read-only (`disabled` + `disabledStyle` + `aria-pressed`); adopt / revote / cancel are transparent text buttons with icons.
+- Page copy: single translator `meetingLayout.decisions`. Page `bg="@transparent"`, sections `gap={2}`.
+- Drawer: when any `DURING` decision is `UNDER_VOTING`, `decisionsAndVote` tile `livePulse` + `decisionsVotingAria` (def-owned, shared by both role lists).
+- Ballot rules (phase gates, one open ballot, final cast, majority settle, tally visibility): `.cursor/rules/meeting-decisions-vote.mdc`.
 
 ## Header identity
 

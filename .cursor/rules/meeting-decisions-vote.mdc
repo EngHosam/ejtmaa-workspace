@@ -1,0 +1,49 @@
+---
+description: Meeting decisions and voting contract — phase-explicit capabilities, one open DURING ballot, final casts, majority settle, pre-start ballots gate check-in, live-map only
+globs:
+  - website/src/app/ui/components/meeting/hooks/useMeetingDecisions.ts
+  - website/src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx
+  - website/src/app/ui/components/meeting/pages/MeetingDecisionsAndVotePage.tsx
+  - website/src/app/ui/components/meeting/MeetingDecisionCard.tsx
+  - backend/src/app/helpers/MeetingLiveDocHelper.ts
+alwaysApply: false
+---
+
+# Meeting decisions and voting
+
+Authority: `docs/platforms/website/organization-host-routing.md` §5.3 / §5.5.
+Live-map fields and seed: `.cursor/rules/meeting-live-state.mdc` item 15, `docs/platforms/backend/contracts/meeting-live-state.md` §1.2.
+
+## State
+
+- The whole feature is `decisions[*].status` / `votingType` / nested `votes[memberId]` on the live map. No GQL, no HTTP, no SQL `Decision` / `Vote` write, no extra socket event.
+- The active DURING ballot is `status === "UNDER_VOTING"`. Do **not** add a root pointer, a derived list, or a mirrored tally to the map.
+- Writes go through session `actions.castVote` / `setDecisionStatus` / `clearDecisionVotes` only — never `batch` from a page or component.
+
+## Phase gates (non-negotiable)
+
+1. **Four capabilities, one pair per phase:** `castPreStartVote` / `castDuringVote` (voter = `CHAIRPERSON` | `MEMBER`) and `managePreStartDecision` / `manageDuringDecision` (chair). Pre-start = meeting live; during = `enterLive` **and** `status === "STARTED"`.
+2. **`decisionPhaseCan(can, phase)` is the only phase→capability mapping.** Actions and `useMeetingDecisions` both call it. Never hand-pick a capability key at a call site, and never re-derive a gate (`status === "STARTED"`, `enterLive`, `me?.type`) inside a page or card.
+3. **Pre-start ballots gate check-in.** `can.attend` requires `preStartVotesComplete` for voters — a `VIEWER` is unaffected. The Init prompt reads `hasPendingPreStartVotes` from `useMeetingDecisions`; it does not re-scan `meeting.decisions`.
+
+## Ballot rules (non-negotiable)
+
+4. **One open DURING ballot.** Opening requires phase `DURING`, status `NEW`, a `votingType`, and no other `DURING` row already `UNDER_VOTING`. Pre-start ballots are never "opened" — the seed already has them open.
+5. **A cast is final.** `castVote` writes `votes[meId]` once and refuses when the key exists. There is no change-my-vote path; the UI shows the recorded pair read-only instead of an editable control.
+6. **Settle needs a strict majority.** `ACCEPTED` requires `yes > no`, `REJECTED` requires `no > yes`; a tie settles nothing. The outcome is derived **once** as `adoptStatus` on the row, and that same value drives the label, the disabled state, and the action argument. `CANCELED` is always allowed on an open ballot; revote (`clearDecisionVotes`) empties `votes` and keeps the ballot open.
+7. **Tally visibility.** Settled rows and every `PRE_START` row show counts; an open `DURING` row shows them when `votingType === "LIVE"`, otherwise to the chair only. A secret ballot must not leak counts to voters through any other surface (meta line, aria, badge).
+
+## Surfaces
+
+- Page order: Current vote panel → in-meeting section → pre-start section. `DURING` rows stay hidden until `STARTED`.
+- Row gates (`canCast`, `canStartVoting`, `canManage`, `adoptStatus`) come from `useMeetingDecisions`; `MeetingDecisionsAndVotePage` renders and forwards `actions` only.
+- Drawer: `decisionsAndVote` tile pulses (`livePulse` + `decisionsVotingAria`) while a `DURING` ballot is open — def-owned, `drawer` translator only.
+- Every gate is a **client** gate. The socket accepts any roster member's write; do not describe these rules as authorization in code, copy, or docs.
+
+## Forbidden
+
+- A second definition of vote counting or of the majority outcome (use `countDecisionVotes`, `adoptStatus`).
+- Letting a member re-cast, or a chair cast on someone's behalf.
+- Opening a second DURING ballot, or opening one from `ACCEPTED` / `REJECTED` / `CANCELED`.
+- Writing SQL `Decision.status` or a `Vote` row from these actions without a documented decision.
+- Normalizing decision status anywhere except the seed (`buildLiveDecisions`), or re-normalizing an existing non-empty BLOB.

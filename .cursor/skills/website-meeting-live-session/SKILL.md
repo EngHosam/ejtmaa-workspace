@@ -5,13 +5,15 @@ description: >-
   (linking/can/actions/meeting/me/attendWindow) nested under MeetingLiveProvider,
   linking PENDING|READY|FAILED gate, and MeetingLinkingScreen under MeetingLayout.
   Use when adding Meeting product UI that must respect linking, wiring
-  start/end/attend/left/setAgendaItemStatus or the talk-queue actions
+  start/end/attend/left/setAgendaItemStatus, the talk-queue actions
   (raiseHand/lowerHand/giveTalkFloor/removeFromTalkQueue/endTalkFloor),
+  or the decision actions (castVote/setDecisionStatus/clearDecisionVotes),
   attend-window clock ownership,
   or fixing the org-host meeting gate screen. For socket/Yjs transport, use skill
   meeting-realtime-socket instead. For LiveKit join-token fetch / mount,
   use skill meeting-livekit-token. For talk-queue ordering and UI rules,
-  use skill website-meeting-talk-queue.
+  use skill website-meeting-talk-queue. For ballot rules and the decisions UI,
+  use skill website-meeting-decisions-vote.
 ---
 
 # Website Meeting live session
@@ -43,6 +45,7 @@ description: >-
 7. Actions: no-op when `!can.*`; write via internal `batch` only. Do not export `batch` on the session surface. Do not assign `meeting.*` / `me.*` from UI.
 8. `setAgendaItemStatus(id, status)`: `can` = chair + live (`WAITING_TO_START` \| `STARTED`); write `meeting.agendaItems[id].status` only when the item exists. No SQL sync. Active agenda = `DISCUSSING` (no root pointer).
 9. Talk-queue actions: `raiseHand` / `lowerHand` are non-chair + `enterLive` + live; `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` are chair + live. Selection helpers (`findQueueHead`, `nextTalkTurn`) stay **private** in this file so head selection has one definition; a multi-field write (grant = set floor + clear turn) goes in **one** `batch`. Any `can` input derived from the map (`queueHeadExists`) is computed once in the instance and passed into `resolveCan` — do not scan `participants` inside `resolveCan`. Rules: `.cursor/rules/meeting-talk-queue.mdc`.
-10. Do not re-implement `connect_error` branching here — transport owns it; session only reads `error` / connected / synced.
-11. Attend window: only via session `attendWindow` (hook called once in session; mirror math private). `can.attend` uses `windowOpen`. Init reads `attendWindow` for remaining-duration copy — never a second hook call. `can.enterLive` is navigation + LiveKit token gate (no action write).
-12. Verify with `yarn type-check` in `website/`.
+10. Decision actions: `castVote` / `setDecisionStatus` / `clearDecisionVotes` are gated by four **phase-explicit** capabilities (`castPreStartVote` / `castDuringVote` for voters, `managePreStartDecision` / `manageDuringDecision` for the chair; pre-start = meeting live, during = `enterLive` + `STARTED`). Actions and `useMeetingDecisions` resolve a decision's pair through the exported `decisionPhaseCan(can, phase)`; `countDecisionVotes` is exported for the same single-definition reason. The map-derived `preStartVotesComplete` input is computed once in the instance and feeds `can.attend`. Ballot invariants (one open DURING ballot, final cast, majority settle): `.cursor/rules/meeting-decisions-vote.mdc`.
+11. Do not re-implement `connect_error` branching here — transport owns it; session only reads `error` / connected / synced.
+12. Attend window: only via session `attendWindow` (hook called once in session; mirror math private). `can.attend` uses `windowOpen`. Init reads `attendWindow` for remaining-duration copy — never a second hook call. `can.enterLive` is navigation + LiveKit token gate (no action write).
+13. Verify with `yarn type-check` in `website/`.
