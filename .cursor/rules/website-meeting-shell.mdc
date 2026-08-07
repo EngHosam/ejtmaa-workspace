@@ -36,7 +36,9 @@ Enum display labels: `.cursor/rules/website-backend-enum-label-mirror.mdc`.
 
 `MeetingShell` renders header / drawer / footer / children only when `linking === "READY"`. Do not assume drawer/header run during PENDING or FAILED.
 
-READY main column: wrap route children in `FlexContainer` (`dir="column"`, `flx_1`, `minH={0}`) so page / broadcast / overlay width matches header & footer `Container` (`defaultContainerSizeDims`). Page bodies use vertical pad only (`pv`) — no extra horizontal `p` / `ph` on exclusive pages. Floating overlay owns matching horizontal pad (`ph` = `page.padY`, same token as page `pv`).
+READY main column: wrap route children in `FlexContainer` (`dir="column"`, `flx_1`, `minH={0}`) so page / broadcast / overlay width matches header & footer `Container` (`defaultContainerSizeDims`). The READY shell is **viewport-locked** (`overflow: hidden`; desktop `h/maxH: 100vh`, mobile `h/maxH: 100dvh` with footer inside the flex column) so that flex budget is real — exclusive pages and the broadcast stage own their own internal scroll (`customScroll`). Page bodies use vertical pad only (`pv`) — no extra horizontal `p` / `ph` on exclusive pages. Floating overlay owns matching horizontal pad (`ph` = `page.padY`, same token as page `pv`).
+
+Exclusive scroll owners (Init, Live waiting, and any future exclusive page under the locked shell): `flx_1` + `minH={0}` + `overflowY: auto` + `customScroll` on org `iconSecondary`. Use `ai_c` for horizontal centering — **never** Flex `center` on the scroll owner (`justifyContent: center` clips the top when content overflows).
 
 ## In-shell page (`MeetingPage`)
 
@@ -84,7 +86,7 @@ READY main column: wrap route children in `FlexContainer` (`dir="column"`, `flx_
 - Owner: `Meeting.tsx` `MeetingContent` — not the drawer, not individual pages.
 - Before `STARTED`: exclusive `renderPage(page)` (unchanged).
 - While `STARTED`: always mount `MeetingLiveBroadcast`; when `page !== "live"`, wrap `renderPage(page)` in `MeetingPageOverlay` (frosted inset sheet; dismiss → `setPage("live")` via close, outside tap, or Meeting room tile).
-- `MeetingPageOverlay`: org `pageOverlayBackground` (fixed `"rgba(229,235,245,0.9) rgba(6,12,22,0.9)"`) + `inputBorder` + `card.radius` + `backdrop-filter: blur(4px)` — not solid `pageBackground`. Floating page bodies use `bg="@transparent"` so frost shows through.
+- `MeetingPageOverlay`: org `pageOverlayBackground` (fixed `"rgba(229,235,245,0.9) rgba(6,12,22,0.9)"`) + `inputBorder` + `card.radius` + `backdrop-filter: blur(4px)` — not solid `pageBackground`. Floating page bodies use `bg="@transparent"` so frost shows through. Overlay root `z` must stay above the broadcast floating action bar (`z={3}` over bar `z={2}`).
 - Full content-column width (`l`/`r` 0 — same `FlexContainer` as header/footer); vertical sheet inset for float; scroll body `ph={page.padY}` so floating page content matches page `pv`; floating close over content (compact theme/lang chrome, `semanticColor.input*`) — no reserved top pad that defeats floating.
 - When `STARTED && page === "live" && !can.enterLive`: effect bounces to `"init"`.
 - Broadcast **internals** (LiveKit room, track attach, camera/mic/sound controls, mute-all) are out of scope here: `.cursor/rules/website-meeting-livekit-broadcast.mdc`.

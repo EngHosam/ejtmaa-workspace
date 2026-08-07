@@ -427,10 +427,10 @@ Tile layout mirrors `CustomerDrawer`'s `DrawerGridItem`: `minH 7.2`, a `3.1`-squ
 
 `MeetingLayout` wraps both breakpoint trees in a single outer provider chain: `MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`. Inside, `MeetingShell` runs the linking gate (§5.3) **before** picking desktop vs mobile chrome: when `linking !== "READY"`, only `MeetingLinkingScreen` mounts (page `children` are not rendered). When READY, the shell picks one of two trees from a `matchMedia(min-width: SW.min_lg)` effect (same shape as `MainLayout`). `children` is rendered once per READY tree.
 
-- **Desktop:** a `Row` of [drawer column | `Col`(header, `FlexContainer` content, footer)]. The drawer column is **in flow** (not an overlay) and `position: sticky; top: 0` at `h/maxH: 100vh`, so it stays viewport-tall while the page scrolls and never covers the footer. Its width animates between `semanticDims.shell.drawerWidth` and `0`, with `pointerEvents: none` while collapsed. Content children sit in `FlexContainer` (`dir="column"`, `flx_1`, `minH={0}`) — same width contract as header/footer `Container` (`defaultContainerSizeDims`).
-- **Mobile:** the `CustomerMainLayout` shape — `MeetingHeader fixed`, content `minH: 100vh` with a `paddingTop` matching `Dims.headerHeight` / `Dims.mobileHeaderHeight`, then the same `FlexContainer` for children, and the portal overlay.
+- **Desktop:** a viewport-locked `Box` (`h/maxH: 100vh`, `overflow: hidden`) holding a `Row` of [drawer column | `Col`(header, `FlexContainer` content, footer)]. The drawer column is **in flow** (not an overlay) and `position: sticky; top: 0` at `h/maxH: 100%` of the shell, so it stays shell-tall and never covers the footer. Its width animates between `semanticDims.shell.drawerWidth` and `0`, with `pointerEvents: none` while collapsed. The main `Col` is also `h/maxH: 100%` + `overflow: hidden` so `FlexContainer` (`dir="column"`, `flx_1`, `minH={0}`) receives a **definite** height budget — same width contract as header/footer `Container` (`defaultContainerSizeDims`). Pages and the broadcast stage own their own internal scroll; the document must not grow past the viewport.
+- **Mobile:** a viewport-locked column (`h/maxH: 100dvh`, `overflow: hidden`, flex column) — `MeetingHeader fixed`, content `Col` (`flx_1`, `minH={0}`, `paddingTop` matching `Dims.headerHeight` / `Dims.mobileHeaderHeight` at `SW.max_md`, `overflow: hidden`), the same `FlexContainer` for children, then `MeetingFooter` **inside** the shell (not below a growing page). The portal overlay still covers the tree when the drawer opens.
 
-The panel is capped at `maxH: 100vh` with `minH: 0`; only the tile grid scrolls (`Col` + `flx_1` + `minH={0}` + `customScroll`), which keeps the appearance/language row visible at the bottom instead of pushing it below the fold as the tile list grows.
+The drawer panel is capped at `maxH: 100%` of its sticky column with `minH: 0`; only the tile grid scrolls (`Col` + `flx_1` + `minH={0}` + `customScroll`), which keeps the appearance/language row visible at the bottom instead of pushing it below the fold as the tile list grows.
 
 **i18n.** `ui.layouts.meetingLayout` in both `ar.ts` and `en.ts`, with identical key sets:
 
@@ -476,6 +476,7 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 | Meeting meta | `meeting.subject` when present; type/status chips via shared `MeetingMetaChip` (`tone="brand"` for type, `tone="accent"` for status; org section fills). Missing live fields omit their UI (no placeholders). Not the customer-portal `MeetingMetaChips` (plural) component |
 | Attendance | Owned by colocated `InitAttendSection` inside `MeetingInitPage.tsx` (page-only — not a shared file, not a `render*` helper). Branch order: (1) `can.attend` → `MeetingPrimaryButton` → `actions.attend` + caption `attendRequiresForRoom` under the button. (2) Present (`can.enterLive`) → confirmation strip (check + first-person `attendedTitle` + first-person relative `attendedAt` via `moment(attendedAt).from(now, true)`) + quieter `roomUnlockedHint` (`caption` + `textTertiary`). (3) `leftAt` → `leftTitle`. (4) Window open but `can.attend` still false because pre-start ballots are pending (`hasPendingPreStartVotes` from `useMeetingDecisions`) → `attendNeedsPreStartVotes` caption + `attendGoToVotes` button → `setPage("decisionsAndVote")`. (5) Else → accent info strip: when `attendWindow` says the open window has not started yet, `attendAvailableIn` with Moment locale-aware remaining duration (`moment(opensAtIso).from(moment(nowMs), true)`, refreshed by session clock every 30s while waiting) + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false (e.g. non-live status), show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button. Section reads `attendWindow` from session — does not call `useMeetingAttendWindow` |
 | Colors / copy | `organization?.colors ?? defaultOrganizationColors()` only. Copy under `ui.layouts.meetingLayout.init` (ar + en, identical keys). Init attend strings are **first person**; roster strings under `meetingLayout.attendance` are third person |
+| Scroll (viewport-locked shell) | Root page `Col` is the scroll owner: `flx_1`, `minH={0}`, `overflowY: auto` + `customScroll` on org `iconSecondary`. Use `ai_c` for horizontal centering — **not** Flex `center` (that sets `justifyContent: center` and clips the top of overflowing content) |
 
 **Meeting room (`live`) gate.** All participant types need present check-in (`can.enterLive`) before the Meeting room page. Drawer: disabled `live` tile when locked (§5.4). `MeetingLivePage` also redirects to `"init"` when `!can.enterLive` (defense if `page` was already `"live"`). Agenda / talkQueue / other drawer ids stay ungated. Chair `startMeeting` / `endMeeting` are unchanged.
 
@@ -483,8 +484,10 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 
 | Condition | UI |
 |---|---|
-| Waiting (typically `WAITING_TO_START`) | Centered waiting copy (`statusWaitingToStart` + `waitingLead`); when `can.startMeeting` show `MeetingPrimaryButton` → `actions.startMeeting` |
+| Waiting (typically `WAITING_TO_START`) | Waiting copy (`statusWaitingToStart` + `waitingLead`); when `can.startMeeting` show `MeetingPrimaryButton` → `actions.startMeeting` |
 | `STARTED` | Not rendered as exclusive page content — see persistent broadcast stack below |
+
+Same scroll contract as Init: root `Col` owns `customScroll`; `ai_c` not Flex `center`.
 
 **Persistent broadcast + floating pages (`STARTED`).** Owned by `Meeting.tsx` `MeetingContent`:
 
@@ -494,13 +497,14 @@ Because the provider wraps `MeetingShell`, `page` state survives linking PENDING
 | `STARTED` and `page === "live"` | `MeetingLiveBroadcast` only — real LiveKit A/V stage |
 | `STARTED` and `page !== "live"` | `MeetingLiveBroadcast` stays mounted underneath; current page in `MeetingPageOverlay` |
 
-**Broadcast body (LiveKit).** `MeetingLiveBroadcast` owns the media surface through `useMeetingLiveKitRoom` (token → `Room.connect` → peers → publish/playback toggles → cooperative mute-all). Because `Meeting.tsx` keeps it mounted for the whole `STARTED` span, the room survives in-shell page switches; leaving `STARTED` or unmounting disconnects it. Stage states are exclusive (media stack / `Loadable` / `LaneFailed`), controls are camera + mic + **sound** (playback is a separate control from the mic), and the chair mute-all group renders on `can.muteAllMedia`. Full contract, ceilings, and failure modes: `flow-meeting-broadcast.md`.
+**Broadcast body (LiveKit).** `MeetingLiveBroadcast` owns the media surface through `useMeetingLiveKitRoom` (token → `Room.connect` → peers → publish/playback toggles → cooperative mute-all). Because `Meeting.tsx` keeps it mounted for the whole `STARTED` span, the room survives in-shell page switches; leaving `STARTED` or unmounting disconnects it. Stage states are exclusive (media stack / `Loadable` / `LaneFailed`). Featured chair + remote grid share **one** scroll owner; camera / mic / sound (+ hand / mute-all) float over the stage in a compact elevated cluster. Full contract, ceilings, and failure modes: `flow-meeting-broadcast.md`.
 
 **`MeetingPageOverlay` contract (observed):**
 
 | Trait | Shipped value |
 |---|---|
 | Geometry | Absolute fill of the READY content `FlexContainer`; sheet `l`/`r` `0` (same column width as header/footer `Container`); vertical float inset `t`/`b` = `page.padY` |
+| Stacking | Outer Absolute `z={3}` — must stay above the broadcast floating action bar (`z={2}`) |
 | Surface | Org `pageOverlayBackground` (fixed rgba pair, **0.9** alpha) + `inputBorder` + `card.radius` + `backdrop-filter` / `-webkit-backdrop-filter: blur(4px)` so the LiveKit stage reads through |
 | Page bodies under overlay | Floating exclusive pages use `bg="@transparent"` (not `pageBackground`) so the frosted sheet is the only fill |
 | Scroll body | `ph={page.padY}` so floating page content matches page bodies’ `pv={page.padY}` (equal inset on all sides while floating) |
@@ -1341,12 +1345,39 @@ Live-map-only ballots: pre-start voting before check-in, chair-run in-meeting vo
 | `.cursor/skills/website-meeting-decisions-vote/SKILL.md` | **added** — extend-the-ballot workflow |
 | `backend` / `website` gitlinks | submodule pointers only — no root behavior |
 
+## 10q) Change set inventory (viewport-locked Meeting shell + floating broadcast chrome)
+
+Shell no longer grows with content; broadcast stage scrolls as one unit (featured + grid); media controls float over the stage; exclusive Init/Live pages own internal scroll under the locked shell. Behavior: §5.4 (layout composition), §5.5 (Init/Live scroll, overlay stacking, broadcast body), `flow-meeting-broadcast.md` §6.3–§6.4.
+
+### `website/`
+
+| Path | Change | Documented in |
+|---|---|---|
+| `src/app/ui/layouts/MeetingLayout.tsx` | modified — READY desktop `100vh` + mobile `100dvh` viewport lock (`overflow: hidden`); main column / content `Col` definite height; mobile footer inside the shell; header `paddingTop` still mirrors `Dims.headerHeight` / `Dims.mobileHeaderHeight` | §5.4 |
+| `src/app/ui/components/meeting/MeetingLiveBroadcast.tsx` | modified — one stage scroll owner wraps featured + remote grid; floating `Absolute` control cluster (`cardBackground`, `shd={3}`, no border); bar `z={2}` | `flow-meeting-broadcast.md` §6.3–§6.4 |
+| `src/app/ui/components/meeting/MeetingPageOverlay.tsx` | modified — outer Absolute `z={3}` (above floating bar) | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingInitPage.tsx` | modified — root `customScroll` + `ai_c` (no Flex `center` on scroll owner) | §5.5 |
+| `src/app/ui/components/meeting/pages/MeetingLivePage.tsx` | modified — same scroll contract as Init | §5.5 |
+| `lib/tsconfig.tsbuildinfo` | generated by `yarn type-check` | **excluded** (build cache, no behavior) |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | Change |
+|---|---|
+| `docs/platforms/website/organization-host-routing.md` | this section + §5.4 / §5.5 / §11 |
+| `docs/platforms/website/flow-meeting-broadcast.md` | §1 / §6.3 / §6.4 stage scroll + floating controls |
+| `.cursor/rules/website-meeting-shell.mdc` | viewport lock; overlay above bar; Init/Live scroll owners |
+| `.cursor/rules/website-meeting-livekit-broadcast.mdc` | stage scroll + floating bar stacking |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | locked shell + exclusive-page scroll |
+| `.cursor/skills/website-meeting-broadcast/SKILL.md` | featured-in-scroll + floating controls |
+| `website` gitlink | submodule pointer only — no root behavior |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
 - Diff `backend/src/app/types/meeting.ts` against `website/src/types/meeting.ts` (must stay identical).
 - Apex host: `/` boots through `API.CUSTOM.START`; `/meeting/...` renders `Error` `404`.
-- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); READY content column is `FlexContainer` (aligns with header/footer `Container`); drawer Meeting info returns to `"init"`; drawer `live` disabled until `can.enterLive` (corner ping while `STARTED`); drawer `agenda` pulses while any item is `DISCUSSING`; Meeting room shows waiting + chair start when not started; while `STARTED`, persistent `MeetingLiveBroadcast` with other pages in frosted `MeetingPageOverlay` (`pageOverlayBackground` + blur 4px; page bodies `@transparent`; `ph=page.padY` matches page `pv`); LiveKit token fetch requires `can.enterLive` then `STARTED`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); `agenda` mounts the live agenda page (chair status chips when `can.setAgendaItemStatus`); chair `talkQueue` mounts the queue admin page (non-chair bounce to `"init"`); `decisionsAndVote` mounts the ballots page for every type; `/customer/...` renders `Error` `404`.
+- Organization host: boot calls `org/start` and hydrates `organizationHost`; `/meeting/...` mounts `MEETING` layout (`MeetingLiveProvider` → `MeetingLiveSessionProvider` → `MeetingPageProvider`) + linking gate; after READY, branded shell with header identity (`MeetingHeaderMe` from session `me`) + `MeetingInitPage` lobby (attend CTA + `attendRequiresForRoom` caption when `can.attend`; remaining-duration copy before the open window; Meeting room requires check-in); READY shell is viewport-locked (desktop `100vh` / mobile `100dvh`, `overflow: hidden`) with content column `FlexContainer` (aligns with header/footer `Container`); drawer Meeting info returns to `"init"`; drawer `live` disabled until `can.enterLive` (corner ping while `STARTED`); drawer `agenda` pulses while any item is `DISCUSSING`; Meeting room shows waiting + chair start when not started; while `STARTED`, persistent `MeetingLiveBroadcast` (featured + grid share one scroll; floating control bar) with other pages in frosted `MeetingPageOverlay` (`z` above the bar; `pageOverlayBackground` + blur 4px; page bodies `@transparent`; `ph=page.padY` matches page `pv`); LiveKit token fetch requires `can.enterLive` then `STARTED`; chair `attendance` mounts the attendance log (non-chair bounce to `"init"`); `agenda` mounts the live agenda page (chair status chips when `can.setAgendaItemStatus`); chair `talkQueue` mounts the queue admin page (non-chair bounce to `"init"`); `decisionsAndVote` mounts the ballots page for every type; `/customer/...` renders `Error` `404`.
 - Agenda: discussing strip only when `DISCUSSING` rows exist; `otherSection` heading only when discussing strip is shown and other rows remain; status write updates live map only (SQL unchanged until reflect step).
 - Talk queue (chair + one member, two browsers): member raises → chair drawer `talkQueue` tile pulses and the row appears as place `1`; a second raise lands at place `2` and never reorders; Give floor is offered on the head row only, moves that member to the floor panel, clears their queue row, and lights their broadcast tile badge; End floor clears the floor without promoting place `1`; Remove clears one row and leaves the floor untouched; the member's hand control returns to `handLowered` when their turn is cleared from either side.
 - Decisions (chair + one member, two browsers, before start): pre-start rows are open for both without check-in; the member's Attend button is replaced by the pre-start prompt until every pre-start ballot has their cast, then Attend appears; a cast is one-way (the pair turns read-only). In-meeting rows appear only after `STARTED`: opening a ballot moves it into the Current vote panel, pulses the drawer tile on both sides, and hides Start on every other in-meeting row; Adopt is disabled on a tie and otherwise names the majority side; Revote clears the tally and reopens casting; Cancel closes the ballot.
@@ -1389,4 +1420,4 @@ Live-map-only ballots: pre-start voting before check-in, chair-run in-meeting vo
 - `.cursor/skills/website-meeting-broadcast/SKILL.md`
 - `.cursor/skills/website-meeting-decisions-vote/SKILL.md`
 
-Change-set inventories: §10a–§10p (latest decisions + voting = §10p; live map + durable enums = §10n → `meeting-live-state.md` §9; LiveKit broadcast = §10m).
+Change-set inventories: §10a–§10q (latest viewport shell + floating broadcast chrome = §10q; decisions + voting = §10p; live map + durable enums = §10n → `meeting-live-state.md` §9; LiveKit broadcast = §10m).

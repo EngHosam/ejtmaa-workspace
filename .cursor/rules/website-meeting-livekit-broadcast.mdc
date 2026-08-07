@@ -46,7 +46,8 @@ Workflow: `.cursor/skills/website-meeting-broadcast/SKILL.md`.
 - Exclusive states only: media stack (`connected`) **or** `Loadable` (`connecting` / `idle`) **or** `LaneFailed` (`error`). No spinner or error card layered over live tiles.
 - Failure copy goes through shared `LaneFailed` with `title` / `description`; pass `onRetry` only when a real retry path exists.
 - Tiles keep `asp={16 / 9}` with the avatar placeholder when there is no track; identity (name / avatar) prefers the session roster, LiveKit `name` is the fallback only.
-- Controls: label states the current state (`Sound is on`), accessible name is the control noun (`Sound`), `aria-pressed` carries state, label hides at `SW.max_sm`.
+- **One scroll owner** wraps featured chair + remote grid (`flx_1` / `minH={0}` / `overflowY: auto` + `customScroll` on org `iconSecondary`). The featured tile scrolls with the roster — do not park it outside the scroll column (`flexShrink: 0` strip or sticky featured).
+- Controls float over the stage: `Absolute` (`b`, full width, `z={2}`, `pointerEvents: none`) + compact inner `Row` (`cardBackground`, `card.radius`, `shd={3}`, **no** border, `pointerEvents: auto`). Label states the current state (`Sound is on`), accessible name is the control noun (`Sound`), `aria-pressed` carries state, label hides at `SW.max_sm`. `MeetingPageOverlay` must stay above the bar (`z={3}`).
 - Colors come from `useOrganization().colors` (`organization?.colors ?? defaultOrganizationColors()`), never `semanticColor` directly in this surface.
 
 ## Talk queue on the stage

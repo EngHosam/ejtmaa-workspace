@@ -11,6 +11,7 @@ Organization-host live A/V surface inside the Meeting shell. Shell / session con
 - `useMeetingLiveKitToken` is a discriminated union — `ready` guarantees both `token` and `url`; every other status has both `null`.
 - New central room hook `useMeetingLiveKitRoom` — one `Room` per ready `(token, url)`, connection status, local/remote peer projection, camera/mic publish toggles, local sound (playback) toggle, cooperative mute-all over the LiveKit data channel.
 - `MeetingLiveBroadcast` replaced its temporary token probe with the real stage: featured chair tile + remote grid, per-track `<video>` / `<audio>` attach components, avatar placeholders, three control switches (camera / mic / sound), chair mute-all group.
+- Stage chrome (viewport-locked Meeting shell): featured + remote grid share **one** vertical scroll owner; media controls float over the stage (`Absolute`) in a compact elevated cluster; `MeetingPageOverlay` stacks above that bar.
 - Session capability `can.muteAllMedia` (chair + `STARTED`) gates the mute-all group.
 - `LaneFailed` accepts optional `title` / `description`; broadcast failure and `MeetingLinkingScreen` FAILED both use it instead of hand-rolled icon + message chrome.
 - i18n `ui.layouts.meetingLayout.broadcast.*` (ar + en) and `meetingLayout.linking.failedHint`.
@@ -216,7 +217,11 @@ The stage is one `relative` column carrying `aria-busy` (and a `connecting` acce
 
 `LaneFailed` and `Loadable` replace the media stack; they are not overlays on live tiles.
 
-Media stack geometry: a `Flex` that is a column by default and a row from `lg`, with `direction: "ltr"` on the default breakpoint so tile order stays visual, not logical. The featured column is full width under `lg` and `50%` (`flex: 0 0 50%`) from `lg`. The remote grid is `Grid cols { default: 3, max_md: 2, max_sm: 1 }`.
+**Scroll owner.** When `connected`, the media stack sits in one `Col` (`flx_1`, `minH={0}`, `overflowY: auto` + `customScroll` on org `iconSecondary`). That column is the **only** stage scroll owner — the page / shell must not grow with roster size.
+
+Media stack geometry (inside the scroll owner): a `Flex` that is a column by default and a row from `lg`, with `direction: "ltr"` on the default breakpoint so tile order stays visual, not logical. Bottom pad on the `Flex` (`pb={5}`) clears the floating action bar so the last grid row is reachable. The featured column is full width under `lg` and `50%` (`flex: 0 0 50%`) from `lg` (`alignItems: flex-start` on the row so the featured tile does not stretch to grid height). The remote grid is `Grid cols { default: 3, max_md: 2, max_sm: 1 }`.
+
+**Featured tile scrolls with the roster.** The chair tile is a sibling of the grid **inside** the same scroll owner — not a sticky / flex-shrink-0 strip outside it. Scrolling the stage moves featured and remotes together.
 
 Featured tile = the chairperson: `chairId` comes from the session roster (`participants` where `type === "CHAIRPERSON"`), then the peer is looked up in `local` (chair viewing their own stage) or `remotes[chairId]`. Name and avatar prefer roster values (`chair?.name`, `chair?.avatarUrl`) and fall back to the LiveKit peer name — LiveKit is a media plane, not an identity source. Grid peers = every remote except the chair, plus the local peer when the viewer is not the chair.
 
@@ -235,7 +240,16 @@ One `BroadcastMicAttach` is rendered per remote peer. Local audio is never playe
 
 ### 6.4 Controls
 
-A wrapping, centered row of three `BroadcastStatusSwitch` buttons — camera, mic, sound — each with:
+Controls are **not** an in-flow sibling that reserves stage height. They float over the stage:
+
+| Piece | Role |
+|---|---|
+| Outer `Absolute` | `b={0.75}`, full width, `z={2}`; `pointerEvents: "none"` so clicks pass through to tiles around the bar |
+| Inner `Row` | Compact centered cluster: `cardBackground`, `card.radius`, `shd={3}`, **no** border; `pointerEvents: "auto"` restores hits on the buttons |
+
+`MeetingPageOverlay` mounts at `z={3}` (sibling under `MeetingContent`) so exclusive floating pages cover the bar. Do not lower the overlay below the bar without isolating the broadcast stacking context.
+
+Inside the cluster: three `BroadcastStatusSwitch` buttons — camera, mic, sound — each with:
 
 - label from state (`videoOn` / `videoOff`, `micOn` / `micOff`, `soundOn` / `soundOff`) so an active control never reads as its own inverse action,
 - a fixed accessible name naming the control (`videoAria` / `micAria` / `soundAria`) because `aria-pressed` already carries the state,
@@ -244,7 +258,7 @@ A wrapping, centered row of three `BroadcastStatusSwitch` buttons — camera, mi
 
 The chair mute-all pair sits in its own grouped well (`sectionAccentBackground` + `subtleDivider`) so it reads as moderation, not as a personal control, and renders only when `can.muteAllMedia` (§7).
 
-**Raise-hand control (`BroadcastHandButton`).** Sits after the sound switch in the same action row and renders only when `can.raiseHand || can.lowerHand` — i.e. never for the chair, who administers the queue on the `talkQueue` page instead (`organization-host-routing.md` §5.5). `raised` is `can.lowerHand`, so the button state is derived from the live map, not from local state.
+**Raise-hand control (`BroadcastHandButton`).** Sits after the sound switch in the same floating cluster and renders only when `can.raiseHand || can.lowerHand` — i.e. never for the chair, who administers the queue on the `talkQueue` page instead (`organization-host-routing.md` §5.5). `raised` is `can.lowerHand`, so the button state is derived from the live map, not from local state.
 
 | Trait | Shipped behavior |
 |---|---|

@@ -286,7 +286,7 @@ Current-state reflection of the customer-home change set. The source behavior is
 
 ## Change set traceability — organization host routing
 
-Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest live-map inventory: [`../backend/contracts/meeting-live-state.md`](../backend/contracts/meeting-live-state.md) §9 (durable agenda/decision enums + live SQL seed); shell/broadcast inventories under §10l–§10m.
+Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest live-map inventory: [`../backend/contracts/meeting-live-state.md`](../backend/contracts/meeting-live-state.md) §9 (durable agenda/decision enums + live SQL seed); shell/broadcast inventories under §10l–§10m; viewport-locked shell + floating broadcast chrome = §10q.
 
 | Concern | Documented where |
 |---|---|
@@ -300,12 +300,12 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | Nested `MPagesRoutes.params` contract | `route-registry-contract.md` §3.1 |
 | `POST /website/custom/org/start` + `org_host` middleware | `../backend/contracts/client-portal-http-website.md` |
 | LiveKit join-token HTTP (`{ token, url }`) + `useMeetingLiveKitToken` | `../backend/contracts/livekit-media-plane.md` §6; `flow-meeting-broadcast.md` §4 |
-| Broadcast A/V client (`useMeetingLiveKitRoom` + `MeetingLiveBroadcast`, camera/mic/sound, cooperative mute-all, raise-hand control + tile queue badges, media ceilings) | `flow-meeting-broadcast.md`; `organization-host-routing.md` §5.5, §8, §10m |
+| Broadcast A/V client (`useMeetingLiveKitRoom` + `MeetingLiveBroadcast`, camera/mic/sound, cooperative mute-all, raise-hand control + tile queue badges, stage scroll + floating controls, media ceilings) | `flow-meeting-broadcast.md`; `organization-host-routing.md` §5.5, §8, §10m, §10q |
 | Talk queue (live-map only: non-chair raise/lower hand, chair floor + FIFO queue admin, drawer pulse; no `TalkRecord` sync) | `organization-host-routing.md` §5.3, §5.5, §10o; `flow-meeting-broadcast.md` §6.4; `../backend/contracts/talk-record-domain.md` §1 |
 | Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
 | Decisions & voting (live-map only: pre-start ballots gate check-in, chair-run in-meeting ballots, drawer pulse; no `Decision` / `Vote` sync) | `organization-host-routing.md` §5.3, §5.5, §10p; `../backend/contracts/meeting-live-state.md` §1.2 |
 | Known limits (`org_host` on LiveKit token; client-only chair gates incl. agenda status, talk-queue administration, and ballot rules; client-allocated `talkTurn`; LiveKit token also gated by `can.enterLive`) | `organization-host-routing.md` §8 |
-| Meeting shell branding + Meeting info after `live` / selected chrome + STARTED broadcast stack + solid overlay + in-shell `MeetingPage` | `organization-host-routing.md` §5.4, §5.5, §10l; `.cursor/rules/website-meeting-shell.mdc` |
+| Meeting shell branding + Meeting info after `live` / selected chrome + STARTED broadcast stack + solid overlay + in-shell `MeetingPage` + viewport-locked READY shell | `organization-host-routing.md` §5.4, §5.5, §10l, §10q; `.cursor/rules/website-meeting-shell.mdc` |
 | `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` / `website-meeting-live-session.mdc` / `website-meeting-shell.mdc` | Host-mode gating + Meeting transport + session surface + READY shell IA |
 
 ## Change set traceability — MicroBand footer credit spelling
