@@ -286,7 +286,7 @@ Current-state reflection of the customer-home change set. The source behavior is
 
 ## Change set traceability — organization host routing
 
-Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest live-map inventory: [`../backend/contracts/meeting-live-state.md`](../backend/contracts/meeting-live-state.md) §9 (durable agenda/decision enums + live SQL seed); shell/broadcast inventories under §10l–§10m; viewport-locked shell + floating broadcast chrome = §10q.
+Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest live-map inventory: [`../backend/contracts/meeting-live-state.md`](../backend/contracts/meeting-live-state.md) §9 (durable agenda/decision enums + live SQL seed); shell/broadcast inventories under §10l–§10m; viewport-locked shell + floating broadcast chrome = §10q; live start/complete = §10r; Init end-meeting CTA = §10s.
 
 | Concern | Documented where |
 |---|---|
@@ -305,7 +305,7 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
 | Decisions & voting (live-map only: pre-start ballots gate check-in, chair-run in-meeting ballots, drawer pulse; no `Decision` / `Vote` sync) | `organization-host-routing.md` §5.3, §5.5, §10p; `../backend/contracts/meeting-live-state.md` §1.2 |
 | Known limits (`org_host` on LiveKit token; client-only chair gates incl. agenda status, talk-queue administration, and ballot rules; client-allocated `talkTurn`; LiveKit token also gated by `can.enterLive`) | `organization-host-routing.md` §8 |
-| Meeting shell branding + Meeting info after `live` / selected chrome + STARTED broadcast stack + solid overlay + in-shell `MeetingPage` + viewport-locked READY shell | `organization-host-routing.md` §5.4, §5.5, §10l, §10q; `.cursor/rules/website-meeting-shell.mdc` |
+| Meeting shell branding + Meeting info after `live` / selected chrome + STARTED broadcast stack + solid overlay + in-shell `MeetingPage` + viewport-locked READY shell + Init end-meeting CTA (`confirm` → `actions.endMeeting`) | `organization-host-routing.md` §5.4, §5.5, §10l, §10q, §10s; `.cursor/rules/website-meeting-shell.mdc` |
 | `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` / `website-meeting-live-session.mdc` / `website-meeting-shell.mdc` | Host-mode gating + Meeting transport + session surface + READY shell IA |
 
 ## Change set traceability — MicroBand footer credit spelling

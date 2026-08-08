@@ -65,13 +65,14 @@ Exclusive scroll owners (Init, Live waiting, and any future exclusive page under
 - Attend: `can.attend` → `MeetingPrimaryButton` → `actions.attend` + caption `attendRequiresForRoom` under the button (no direct proxy / `batch` writes).
 - Before the open window (`!attendWindow.windowOpen`): remaining-duration `attendAvailableIn` + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false, show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button.
 - Attended: confirmation strip + first-person relative `attendedAt` + quieter `roomUnlockedHint` (`textTertiary`). Left: `leftTitle`.
+- End meeting UI: colocated `InitEndMeetingSection` in the same file. `can.endMeeting` → `MeetingPrimaryButton` → `await confirm(..., "danger")` → `actions.endMeeting()` (no direct emit / `batch`). Do not put an end-meeting CTA on broadcast or Meeting room waiting UI.
 - Colors only from `OrganizationColors` / `defaultOrganizationColors()`.
 - Drawer `DrawerGridItem` optional accessible override prop is named `ariaLabel` (repo convention — not `a11yLabel`).
 
 ## Placement (shared vs page-local)
 
 - **Shared under `meeting/`** when chrome is reusable across shell pages (e.g. `MeetingPrimaryButton`, `MeetingMetaChip`, `MeetingLiveBroadcast`, `MeetingPageOverlay`).
-- **Colocated in the page file** when the UI is owned by one in-shell page only (e.g. `InitAttendSection`). Use a named component, not an inline `renderFoo()` helper.
+- **Colocated in the page file** when the UI is owned by one in-shell page only (e.g. `InitAttendSection`, `InitEndMeetingSection`). Use a named component, not an inline `renderFoo()` helper.
 - Do not invent a second shared file for page-only sections.
 
 ## Meeting room (`"live"`)

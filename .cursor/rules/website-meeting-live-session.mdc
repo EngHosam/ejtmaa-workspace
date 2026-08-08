@@ -69,6 +69,7 @@ When `linking !== "READY"`: every `can.*` is false. Session value still includes
 
 - Sync; no-op when `!can.*` (and `attend`/`left`/`raiseHand`/`lowerHand` require `me`).
 - Lifecycle emits come from `useMeetingLive()` (`emitLiveStart` / `emitLiveComplete`); session must not invent a second socket. No `meeting.live.completed` listener for status.
+- Product UI for `endMeeting`: Meeting info (`init`) only, behind `confirm(..., "danger")`. Do not add a second end surface on broadcast.
 - `can.enterLive` is a **navigation + LiveKit token gate** (no matching action write): true when `attendedAt` set and `leftAt` unset. `useMeetingLiveKitToken` requires `can.enterLive` **before** `STARTED` / route ids.
 - `can.muteAllMedia` is a **UI gate only** for the chair mute-all controls in `MeetingLiveBroadcast` (chair + `STARTED`); the commands travel on the LiveKit data channel, not `actions`.
 - `can.setAgendaItemStatus` is chair + meeting live (`WAITING_TO_START` \| `STARTED`). Live-map `status` only until complete reflect. Active line = `DISCUSSING` (no root pointer).

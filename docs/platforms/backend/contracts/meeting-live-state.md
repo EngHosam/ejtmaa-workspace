@@ -349,7 +349,7 @@ Until complete, GraphQL readers still see requester SQL values for collaborative
 
 ## 11) Change set inventory (live start + complete SQL reflect)
 
-**Current ship.** Dedicated `/meeting` lifecycle events `meeting.live.start` / `meeting.live.complete` (chair-only). Immediate SQL `STARTED` on start; full durable reflect + `live_state = null` + registry destroy on complete (`completeMeetingLiveToSql`). Website `startMeeting` / `endMeeting` emit those events and batch live status. B25 amended for this narrow lifecycle path. Behavior: §§2–3, §6; transport: `meeting-realtime-socket.md` §3.4–§3.5; website: `organization-host-routing.md` §5.3.
+**Current ship.** Dedicated `/meeting` lifecycle events `meeting.live.start` / `meeting.live.complete` (chair-only). Immediate SQL `STARTED` on start; full durable reflect + `live_state = null` + registry destroy on complete (`completeMeetingLiveToSql`). Website `startMeeting` / `endMeeting` emit those events and batch live status. Init product CTA for end is documented in `organization-host-routing.md` §5.5 / §10s. B25 amended for this narrow lifecycle path. Behavior: §§2–3, §6; transport: `meeting-realtime-socket.md` §3.4–§3.5; website: `organization-host-routing.md` §5.3, §5.5.
 
 ### Backend (`backend/`)
 
@@ -378,7 +378,7 @@ Until complete, GraphQL readers still see requester SQL values for collaborative
 | `docs/invariants/backend.md` | B25 lifecycle amendment | B25 |
 | `docs/platforms/backend/contracts/meeting-live-state.md` | this page §6 shipped | — |
 | `docs/platforms/backend/contracts/meeting-realtime-socket.md` | start/complete events | socket contract |
-| `docs/platforms/website/organization-host-routing.md` | §5.3 actions | website |
+| `docs/platforms/website/organization-host-routing.md` | §5.3 actions; §5.5 / §10s Init end CTA | website |
 | `.cursor/rules/meeting-live-state.mdc` | reflect + lifecycle exception | governance |
 | `.cursor/rules/meeting-realtime-socket.mdc` | events + chair bind | governance |
 | `.cursor/rules/website-meeting-live-session.mdc` | start/end emit | governance |
