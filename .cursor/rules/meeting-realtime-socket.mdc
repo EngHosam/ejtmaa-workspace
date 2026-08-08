@@ -46,35 +46,41 @@ Dotted names under `/meeting`. Shipped set:
 |---|---|---|
 | `meeting.live.sync` | both | in `{ stateVector? }`, out `{ update, stateVector }` |
 | `meeting.live.update` | both | `{ update }` |
-| `meeting.live.error` | out | `{ code: "NOT_VALID" \| "MEETING_NOT_LIVE" }` |
+| `meeting.live.start` | in | none (chair lifecycle SQL `STARTED`) |
+| `meeting.live.complete` | in | none (chair durable reflect) |
+| `meeting.live.error` | out | `{ code: "NOT_VALID" \| "MEETING_NOT_LIVE" \| "NOT_CHAIR" }` |
 
-A new meeting event is added in three places at once: `io.ts` (`controllers` + `/meeting` `routes`), the `MEETING_BOUND_EVENTS` tuple in `MeetingIOControllerBase`, and the instance hook's listener set.
+A new meeting event is added in three places at once: `io.ts` (`controllers` + `/meeting` `routes`), the `MEETING_BOUND_EVENTS` composition in `MeetingIOControllerBase`, and the instance hook (listeners and/or emit helpers). Do **not** add outbound `meeting.live.completed`.
+
+`MEETING_CHAIR_ONLY_EVENTS` is the source list for start/complete; `MEETING_BOUND_EVENTS` spreads it — no duplicated string literals. Non-chair sockets omit chair-only events from the bound set.
 
 ## Backend contract
 
-1. The bound-event set lives in `MeetingIOControllerBase`; every handler returns `this.meetingBoundEvents()` because the handler-array return is absolute.
-2. Rejections go through `rejectLive(code)` — emit `meeting.live.error` and return the **unchanged** set. A refused write must never leave the socket inert.
+1. The bound-event set lives in `MeetingIOControllerBase`; every handler returns `this.meetingBoundEvents()` because the handler-array return is absolute. Chair detection uses `currentParticipant(this.socket)` — never raw `socket.data`.
+2. Rejections go through `rejectLive(code)` — emit `meeting.live.error` and return the role-appropriate set. A refused write must never leave the socket inert.
 3. Room join happens in the connection controller only.
-4. Writes are gated on `MEETING_LIVE_STATUSES` (`types/meeting.ts`); reads (`sync`) are not gated beyond the handshake.
+4. CRDT writes are gated on `MEETING_LIVE_STATUSES`; `getOrCreate` refuses non-live → map to `rejectLive("MEETING_NOT_LIVE")`. Lifecycle start/complete are chair-gated (`NOT_CHAIR`).
 5. Controllers read context via `currentOrganization` / `currentMeeting` / `currentMember` / `currentParticipant`.
 6. `meeting.live.*` is a namespace session protocol — never mirrored into frontend event registries.
+7. `meeting.live.update` must not write SQL. Start/complete own the B25 lifecycle SQL path; complete delegates to `completeMeetingLiveToSql`. No server Yjs rebroadcast on start/complete.
 
 ## Instance hook contract (`useMeetingLiveInstance`)
 
 `useMeetingLiveInstance({ memberId, memberToken, meetingId })` must:
 
 1. Gate on `useClientPreparing` / CSR readiness and require all three ids.
-2. Create its own session via `createSocketInstance(getMeetingSocketInstanceConfig(...))` — never `myInstance.getSocket`.
+2. Create its own session via `createSocketInstance(getMeetingSocketInstanceConfig(...))` — never `myInstance.getSocket`. Keep the socket in a `socketRef` so lifecycle emits work outside the effect.
 3. Build SyncedStore as `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }` with initializer `{ [MEETING_LIVE_MAP]: {} }` only (no nested `participants: {}`); expose `meeting` as `liveStore[MEETING_LIVE_MAP]`.
 4. Emit `meeting.live.sync` with the local state vector on every `connect`.
 5. Answer the server `stateVector` in the sync reply with the diff the server is missing.
 6. Register `meeting.live.sync` / `meeting.live.update` / `meeting.live.error` through `socket.registerListener`, and use native `socket.on` for `connect` / `connect_error` / `disconnect`.
 7. On `disconnect` reason `io server disconnect`, call `socket.connect()`.
-8. On `meeting.live.error`, expose the code and drop `synced`.
+8. On `meeting.live.error`, expose the code (incl. `NOT_CHAIR`) and drop `synced`.
 9. On `connect_error`:
    - `err.type === "TransportError"` → clear connected/synced only; leave `error` alone; keep Socket.IO reconnection.
    - otherwise (incl. handshake `NOT_VALID_CREDENTIAL`) → `error = "NOT_VALID"`, `socket.io.opts.reconnection = false`, `socket.disconnect()`.
-10. Cleanup: unregister listeners → `off` (including `connect_error`) → `disconnect` → clear state.
+10. Expose `emitLiveStart` / `emitLiveComplete` (thin emits; no product math).
+11. Cleanup: unregister listeners → `off` (including `connect_error`) → `disconnect` → clear `socketRef` / state.
 
 Credentials for the instance come from `MeetingLiveProvider` via `useCurrentParams({ ident: "Meeting", mapParams: p => p })`.
 
@@ -94,3 +100,5 @@ Handshake auth failures are **`connect_error`**, never `meeting.live.error`. Lin
 - Stopping Socket.IO reconnection on transport-only `connect_error` (`TransportError`).
 - Leaving auth handshake `connect_error` without setting session `error` (UI would stick on PENDING).
 - Encoding product linking / can / actions math inside `useMeetingLive` — that belongs in `useMeetingLiveSession`.
+- Duplicating start/complete event name strings in both bound and chair-only lists — compose one from the other.
+- Inventing outbound `meeting.live.completed`.

@@ -17,8 +17,10 @@ Meeting domain model: `docs/platforms/backend/contracts/meeting-domain.md`.
 - controller `"meeting_connection"` → `controllers/meeting/MeetingConnectionIOController`,
 - controller `"meeting_live_sync"` → `controllers/meeting/MeetingLiveSyncIOController`,
 - controller `"meeting_live_update"` → `controllers/meeting/MeetingLiveUpdateIOController`,
+- controller `"meeting_live_start"` → `controllers/meeting/MeetingLiveStartIOController`,
+- controller `"meeting_live_complete"` → `controllers/meeting/MeetingLiveCompleteIOController`,
 - controller `"meeting_disconnect"` → `controllers/meeting/MeetingDisconnectIOController`,
-- namespace `/meeting` with `globalMiddlewares: ["meeting_auth"]`, `connection: "meeting_connection"`, child routes `"meeting.live.sync": "meeting_live_sync"`, `"meeting.live.update": "meeting_live_update"`, and `disconnect: ["meeting_disconnect", {}, "once"]`.
+- namespace `/meeting` with `globalMiddlewares: ["meeting_auth"]`, `connection: "meeting_connection"`, child routes `"meeting.live.sync"`, `"meeting.live.update"`, `"meeting.live.start"`, `"meeting.live.complete"`, and `disconnect: ["meeting_disconnect", {}, "once"]`.
 
 Driver options are namespace-agnostic: `transports: ["websocket"]`, no `maxHttpBufferSize` override (§6.3).
 
@@ -43,21 +45,27 @@ Public organization identification (the HTTP `organizationId` header, the option
 
 ## 3) Controllers and events
 
-All three meeting controllers extend `backend/src/app/socket/controllers/meeting/MeetingIOControllerBase.ts`, which owns:
+All meeting controllers extend `backend/src/app/socket/controllers/meeting/MeetingIOControllerBase.ts`, which owns:
 
 - the `MeetingSocketData` socket typing (declared once instead of per controller),
-- `MEETING_BOUND_EVENTS = ["meeting.live.sync", "meeting.live.update", "disconnect"]` — the absolute listener set,
-- `meetingBoundEvents({ only? , except? })` — the set, optionally narrowed,
-- `rejectLive(code)` — emits `meeting.live.error` to the caller and returns the **unchanged** set, so a rejection never unbinds the session.
+- `MEETING_CHAIR_ONLY_EVENTS = ["meeting.live.start", "meeting.live.complete"]`,
+- `MEETING_BOUND_EVENTS` composed as `sync` + `update` + `...MEETING_CHAIR_ONLY_EVENTS` + `disconnect`,
+- `meetingBoundEvents({ only? , except? })` — chair sockets get the full set; non-chair omits chair-only events (`.some` membership, no string cast),
+- `MeetingLiveErrorCode = "NOT_VALID" | "MEETING_NOT_LIVE" | "NOT_CHAIR"`,
+- `rejectLive(code)` — emits `meeting.live.error` to the caller and returns the **role-appropriate** bound set, so a rejection never unbinds the session.
+
+Chair detection uses `currentParticipant(this.socket)` from the middleware helpers — never raw `socket.data.participant`.
 
 | Controller | Event | Behavior | Returns |
 |---|---|---|---|
 | `MeetingConnectionIOController` | connection | joins `Rooms.MEETING(meetingId)` via `currentMeeting(socket, true)` | `meetingBoundEvents()` |
-| `MeetingLiveSyncIOController` | `meeting.live.sync` | loads the registry document and answers the caller with the diff it is missing plus the server state vector | `meetingBoundEvents()` |
-| `MeetingLiveUpdateIOController` | `meeting.live.update` | validates, gates on status, applies to the document, broadcasts to the rest of the room | `meetingBoundEvents()` |
+| `MeetingLiveSyncIOController` | `meeting.live.sync` | loads the registry document and answers the caller with the diff it is missing plus the server state vector; maps `"MEETING_NOT_LIVE"` → `rejectLive` | `meetingBoundEvents()` |
+| `MeetingLiveUpdateIOController` | `meeting.live.update` | validates, gates on status, applies to the document, broadcasts to the rest of the room; no SQL column writes; maps `"MEETING_NOT_LIVE"` → `rejectLive` | `meetingBoundEvents()` |
+| `MeetingLiveStartIOController` | `meeting.live.start` | chair + `WAITING_TO_START` → SQL `STARTED`; bind socket meeting into registry entry when present; **no** Yjs mutate/rebroadcast | `meetingBoundEvents()` |
+| `MeetingLiveCompleteIOController` | `meeting.live.complete` | chair + reload `STARTED` → `readLiveFields` + `completeMeetingLiveToSql`; **no** `meeting.live.completed` emit | `meetingBoundEvents()` |
 | `MeetingDisconnectIOController` | `disconnect` (`once`) | Socket.IO native disconnect; temporary probe log of meeting/member/reason | `[]` (no listeners remain on a closed socket; post-handler sync is skipped when already disconnected) |
 
-Because the handler-array return is absolute, every live meeting handler returns the full set; nothing in this surface intentionally drops a listener while the socket is open. `MeetingDisconnectIOController` returns `[]` because the socket is closing.
+Because the handler-array return is absolute, every live meeting handler returns the full set for that socket's role; nothing in this surface intentionally drops a listener while the socket is open. `MeetingDisconnectIOController` returns `[]` because the socket is closing.
 
 Room joins happen in the connection controller only.
 
@@ -65,13 +73,13 @@ Room joins happen in the connection controller only.
 
 Inbound `{ stateVector?: string }` (base64 of `Y.encodeStateVector`, optional).
 
-1. `getOrCreateMeetingLiveDoc(meetingId)`.
+1. `getOrCreateMeetingLiveDoc(meetingId)`; on `"MEETING_NOT_LIVE"` → `rejectLive("MEETING_NOT_LIVE")`.
 2. `Y.encodeStateAsUpdateV2(doc, clientVector)`; an unreadable vector falls back to the full state rather than failing the session.
 3. Emits to the **caller only**: `{ update, stateVector }`, both base64.
 
 The reply carries the server vector so the client can push back whatever the server is missing (as a normal `meeting.live.update`). Without that second leg, edits made while disconnected would be dropped on reconnect.
 
-No status gate: reading the current state is allowed for any authenticated participant regardless of meeting status.
+Post-complete, sync is refused because `getOrCreate` will not re-seed a `COMPLETED` meeting.
 
 ### 3.2 `meeting.live.update` (write + fan-out)
 
@@ -81,26 +89,49 @@ Inbound `{ update: string }` (base64 of a **V2** update).
 |---|---|
 | `update` must be a non-empty string | `rejectLive("NOT_VALID")` |
 | `meeting.get("status")` must be in `MEETING_LIVE_STATUSES` | `rejectLive("MEETING_NOT_LIVE")` |
+| `getOrCreate` throws `"MEETING_NOT_LIVE"` | `rejectLive("MEETING_NOT_LIVE")` |
 | `Y.applyUpdateV2(doc, bytes)` | `rejectLive("NOT_VALID")` on malformed bytes |
 
-On success the payload is re-emitted verbatim to `socket.to(Rooms.MEETING(meetingId))` — the sender is excluded because its own document already holds the change. The document mutation schedules the BLOB persist (`meeting-live-state.md` §2).
+On success the payload is re-emitted verbatim to `socket.to(Rooms.MEETING(meetingId))` — the sender is excluded because its own document already holds the change. The document mutation schedules the BLOB persist (`meeting-live-state.md` §2). **Must not** write meeting SQL columns.
 
 ### 3.3 `meeting.live.error` (outbound rejection)
 
-`{ code: MeetingLiveErrorCode }` with `"NOT_VALID" | "MEETING_NOT_LIVE"`, emitted to the offending socket only.
+`{ code: MeetingLiveErrorCode }` with `"NOT_VALID" | "MEETING_NOT_LIVE" | "NOT_CHAIR"`, emitted to the offending socket only.
 
-This path is for **post-connect** rejects (bad update payload, status gate, apply failure). It is **not** how handshake auth failures surface.
+This path is for **post-connect** rejects (bad update payload, status gate, apply failure, non-chair lifecycle). It is **not** how handshake auth failures surface.
 
 Client contract (`useMeetingLiveInstance` via `MeetingLiveProvider`):
 
 | Failure source | Client effect |
 |---|---|
-| `meeting.live.error` | store the code, clear `synced` (listeners stay bound on the server) |
+| `meeting.live.error` | store the code (incl. `NOT_CHAIR`), clear `synced` (listeners stay bound on the server) |
 | Handshake refuse (`meeting_auth` → `NOT_VALID_CREDENTIAL`) | Socket.IO `connect_error` (no `meeting.live.error`). Website maps non-`TransportError` to session `error = "NOT_VALID"`, disables reconnection, and disconnects so UI linking becomes `FAILED`. Transport-only `connect_error` stays PENDING and keeps retrying. |
+
+`MeetingLiveErrorCode` lives next to transport (`MeetingIOControllerBase` / `useMeetingLive`) — **not** in the mirrored `types/meeting.ts` CRDT contract.
 
 Product UI reads linking via `useMeetingLiveSession().linking` under `MeetingLiveSessionProvider` (`organization-host-routing.md` §5.3).
 
-### 3.4 Mirroring
+### 3.4 `meeting.live.start` (chair lifecycle SQL)
+
+No inbound payload.
+
+1. `currentParticipant(...).get("type") === "CHAIRPERSON"` else `rejectLive("NOT_CHAIR")`.
+2. Handshake meeting `status === "WAITING_TO_START"` else `rejectLive("MEETING_NOT_LIVE")`.
+3. If a registry entry exists (`peekMeetingLiveDoc`), set `entry.meeting = meeting` (same instance as the socket row).
+4. `meeting.update({ status: "STARTED" })`.
+5. Do **not** mutate or broadcast the Yjs document — clients write live `status` through the existing `meeting.live.update` path.
+
+### 3.5 `meeting.live.complete` (chair durable reflect)
+
+No inbound payload. No outbound `meeting.live.completed`.
+
+1. Chair gate (`NOT_CHAIR` otherwise).
+2. `meeting.reload()` then `status === "STARTED"` else `rejectLive("MEETING_NOT_LIVE")`.
+3. `getOrCreateMeetingLiveDoc`; on `"MEETING_NOT_LIVE"` → `rejectLive`.
+4. `completeMeetingLiveToSql(meeting, readLiveFields(doc))` — owns `Meeting().transaction({transaction}, …)` + `afterCommit` destroy (`meeting-live-state.md` §6).
+5. Return `meetingBoundEvents()`.
+
+### 3.6 Mirroring
 
 `meeting.live.*` events are **session** events of the `/meeting` namespace, consumed by the meeting hook's own listeners. They are not `OnCustomerEvent` / `OnUserEvent` notify events and must **not** be added to `website/src/types/events.ts` or the socket event registries (`socket-event-mirroring.md`).
 
@@ -109,12 +140,13 @@ Product UI reads linking via `useMeetingLiveSession().linking` under `MeetingLiv
 | Layer | Enforced by | Effect |
 |---|---|---|
 | Connection | `meeting_auth` handshake (§2) | no member token / roster row / ACTIVE org → no session at all |
-| Read live state | none beyond the handshake | any participant may `meeting.live.sync` |
-| Write live state | `MEETING_LIVE_STATUSES` in the update controller | only `WAITING_TO_START` and `STARTED` accept writes |
+| Read live state | handshake + live-status gate on `getOrCreate` | any participant may `meeting.live.sync` while the meeting is live; post-complete → `MEETING_NOT_LIVE` |
+| Write live CRDT | `MEETING_LIVE_STATUSES` in the update controller | only `WAITING_TO_START` and `STARTED` accept CRDT writes |
+| Lifecycle SQL | chair `MeetingParticipant.type === "CHAIRPERSON"` on start/complete | non-chair → `NOT_CHAIR`; events omitted from non-chair bound set |
 
-**Not gated yet:** `MeetingParticipant.type` (chairperson / member / viewer) plays no role — a `VIEWER` on the roster can write while the meeting is live. The participant-type gate lands with the meeting page UI; `currentParticipant` is already available for it.
+**Still not gated on `meeting.live.update`:** participant type for ordinary CRDT field writes — a `VIEWER` on the roster can still push live updates while the meeting is live. Chair-only applies to **lifecycle** events only.
 
-The status read is the handshake snapshot (§2), not a fresh query — see §6.2.
+The update status read is the handshake snapshot (or rebound instance after start/complete on that socket) — see `meeting-live-state.md` §7.3.
 
 ## 5) Constants
 
@@ -147,10 +179,13 @@ Website: those refuses arrive as Socket.IO `connect_error` → linking `FAILED` 
 |---|---|
 | `meeting.live.update` with missing/empty `update` | `meeting.live.error` `NOT_VALID`; listeners stay bound |
 | `meeting.live.update` on a meeting outside `MEETING_LIVE_STATUSES` | `meeting.live.error` `MEETING_NOT_LIVE` |
+| `meeting.live.update` / `sync` / `complete` when `getOrCreate` throws `"MEETING_NOT_LIVE"` | `meeting.live.error` `MEETING_NOT_LIVE` |
 | `meeting.live.update` with bytes that are not a V2 update | `meeting.live.error` `NOT_VALID` |
 | `meeting.live.sync` with a corrupt `stateVector` | server silently answers with the full state (§3.1) |
+| Non-chair `meeting.live.start` / `complete` | `meeting.live.error` `NOT_CHAIR` |
+| Double complete / start when status wrong | `MEETING_NOT_LIVE` |
 | Meeting row deleted mid-session | registry load throws `"404"` through the errors funnel; no `meeting.live.error` is emitted |
-| Meeting status changed outside the live session | the gate keeps using the handshake snapshot until the socket reconnects (`meeting-live-state.md` §7.3) |
+| Meeting status changed outside the live session | update gate may keep using the handshake snapshot until reconnect (`meeting-live-state.md` §7.3) |
 
 ### 6.3 Transport
 
@@ -158,12 +193,12 @@ Payloads are base64, which inflates the binary by roughly one third. The effecti
 
 ## 7) Shipped limits (intentional)
 
-1. Only `subject`, `type`, `status`, and `participants` live in the document today. Presence mutation writers (who flips `connectionStatus`) and media stay out of this surface for now (media is LiveKit — `livekit-media-plane.md`).
-2. No participant-type authorization (§4).
+1. Collaborative map fields stay document-owned during the session; durable SQL reflect runs on complete (`meeting-live-state.md` §6). Presence mutation writers (who flips `connectionStatus`) and media stay out of this surface for now (media is LiveKit — `livekit-media-plane.md`).
+2. Ordinary CRDT updates still have no participant-type authorization (§4); lifecycle start/complete do.
 3. No application-level size cap or rate limit on live updates (§6.3).
 4. `Member.access_token` is the whole meeting credential: rotating it revokes socket access, exposing it grants it (`member-domain.md`).
 5. Single backend instance — the document registry is process memory (`meeting-live-state.md` §7.5).
-6. `meeting.leave` and other lifecycle events do not exist; disconnect is the only exit.
+6. `meeting.leave` and other lifecycle events beyond start/complete do not exist; disconnect is the only exit path besides complete.
 
 ## 8) Traceability
 
@@ -175,8 +210,11 @@ Payloads are base64, which inflates the binary by roughly one third. The effecti
 | `src/app/socket/controllers/meeting/MeetingIOControllerBase.ts` | shared socket typing, bound-event set, `rejectLive` |
 | `src/app/socket/controllers/meeting/MeetingConnectionIOController.ts` | room join + bound listener set |
 | `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | sync handshake, server state vector, full-state fallback |
-| `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | payload validation; write gate via `MEETING_LIVE_STATUSES`; apply; room broadcast |
+| `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | payload validation; write gate via `MEETING_LIVE_STATUSES`; apply; room broadcast; no SQL |
+| `src/app/socket/controllers/meeting/MeetingLiveStartIOController.ts` | chair SQL `STARTED`; registry meeting bind |
+| `src/app/socket/controllers/meeting/MeetingLiveCompleteIOController.ts` | chair complete → `completeMeetingLiveToSql` |
 | `src/app/socket/controllers/meeting/MeetingDisconnectIOController.ts` | Socket.IO `disconnect` (`once`); temporary probe log |
+| `src/app/helpers/MeetingLiveDocHelper.ts` | registry + `completeMeetingLiveToSql` (`meeting-live-state.md`) |
 | `src/app/types/meeting.ts` | `MEETING_LIVE_STATUSES` / `MeetingLiveMap` mirror (`meeting-live-state.md` §1.2) |
 | `src/app/helpers/MeetingLiveDocHelper.ts` | document registry behind both live controllers (`meeting-live-state.md` §1.3, §2) |
 | `src/resources/consts/NotificationsConsts.ts` | `MEETING` namespace / FCM topic / room |

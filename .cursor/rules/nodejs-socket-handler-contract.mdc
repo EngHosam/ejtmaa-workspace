@@ -15,8 +15,7 @@ stay bound to that socket. The driver diffs it against the currently bound liste
 aliases are unbound, new aliases are bound.
 
 - `[]` / `undefined` → unbind everything. `/customer` and `/supervisor` connection controllers return `[]`.
-- `/meeting` connection returns `["meeting.live.sync", "meeting.live.update"]` so both children stay
-  bound after connect.
+- `/meeting` connection returns `meetingBoundEvents()` from `MeetingIOControllerBase` (chair: sync + update + start + complete + disconnect; non-chair omits start/complete), so those children stay bound after connect.
 - The array is absolute, never additive. An event that must survive has to be re-returned by every
   handler that runs while it should stay bound — including child handlers, and including the paths
   that reject the payload. `/meeting` keeps the tuple in `MeetingIOControllerBase` so no handler can

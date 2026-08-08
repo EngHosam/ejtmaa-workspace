@@ -183,15 +183,15 @@ The bundle is held in a ref keyed by `meetingId` and rebuilt when that id change
 6. `meeting.live.update` → apply with origin `"remote"` so the change is not echoed back.
 7. `meeting.live.error` → store the code and clear `synced` (post-connect write/sync reject path; does **not** disable reconnection by itself).
 8. `disconnect` → clear `connected` and `synced`; on `io server disconnect` call `socket.connect()` (Socket.IO does not auto-reconnect after a server-forced drop).
-9. Cleanup on unmount / deps change: `doc.off`, unregister the three listeners, `off` native `connect` / `connect_error` / `disconnect`, `disconnect`, reset state.
+9. Cleanup on unmount / deps change: `doc.off`, unregister listeners, `off` native `connect` / `connect_error` / `disconnect`, `disconnect`, clear `socketRef`, reset state.
 
-Provider / public hook value: `{ connected, synced, error, meeting, batch }` (`MeetingLiveHookOp`). `meeting` is the reactive `Partial<MeetingLiveMap>` proxy; `batch(fn)` is `doc.transact(fn)` and is the transport write primitive. `MeetingLiveMap` (including `participants`, `currentTalkMemberId`, `agendaItems`, `decisions` with nested `votes`) lives in the mirrored pair `website/src/types/meeting.ts` ↔ `backend/src/app/types/meeting.ts` with **no** GQL imports — see `.cursor/rules/meeting-live-map-mirror.mdc`.
+Provider / public hook value: `{ connected, synced, error, meeting, batch, emitLiveStart, emitLiveComplete }` (`MeetingLiveHookOp`). `meeting` is the reactive `Partial<MeetingLiveMap>` proxy; `batch(fn)` is `doc.transact(fn)`. `emitLiveStart` / `emitLiveComplete` emit `meeting.live.start` / `meeting.live.complete` on the current socket (`socketRef` — the socket lives inside the effect; emits are called from session actions outside it). `MeetingLiveErrorCode` is `"NOT_VALID" | "MEETING_NOT_LIVE" | "NOT_CHAIR"` on the transport module — **not** in mirrored `types/meeting.ts`. `MeetingLiveMap` lives in the mirrored pair `website/src/types/meeting.ts` ↔ `backend/src/app/types/meeting.ts` with **no** GQL imports — see `.cursor/rules/meeting-live-map-mirror.mdc`.
 
-Product UI should prefer `useMeetingLiveSession()` (§5.3) for `linking` / `can` / `actions` and for **reading** `meeting` / `me`. Keep `useMeetingLive()` for raw transport flags (`connected` / `synced` / `error`) and for `batch` **only when implementing a new session action**. Product screens and shell UI must not call `batch` or assign live fields directly.
+Product UI should prefer `useMeetingLiveSession()` (§5.3) for `linking` / `can` / `actions` and for **reading** `meeting` / `me`. Keep `useMeetingLive()` for raw transport flags, lifecycle emits, and for `batch` **only when implementing a new session action**. Product screens and shell UI must not call `batch` / emits or assign live fields directly.
 
 Base64 helpers (`toBase64` / `fromBase64`) are local to the module because the payloads travel as base64 strings on the socket.
 
-Backend pairing (`docs/platforms/backend/contracts/meeting-realtime-socket.md`): `meeting_auth` proves the handshake (refusal → Socket.IO `connect_error`, **not** `meeting.live.error`), the connection controller joins `Rooms.MEETING(meetingId)` and keeps both live events bound, and a rejected write answers `meeting.live.error` without unbinding anything.
+Backend pairing (`docs/platforms/backend/contracts/meeting-realtime-socket.md`): `meeting_auth` proves the handshake (refusal → Socket.IO `connect_error`, **not** `meeting.live.error`), the connection controller joins `Rooms.MEETING(meetingId)` and keeps live events bound (chair also gets start/complete), and a rejected write answers `meeting.live.error` without unbinding anything.
 
 **Not mirrored:** `meeting.live.*` are session events of this namespace. Do not add them to `website/src/types/events.ts` / socket event registries.
 
@@ -249,8 +249,8 @@ Public product API for Meeting UI. Transport stays in §5.1 (`MeetingLiveProvide
 | Surface | Role |
 |---|---|
 | `meeting` / `me` on session | **Read** reactive truth. Product screens must not assign fields. |
-| `actions.*` | **Only** product write path (`can.*` then internal `batch`). |
-| `useMeetingLive().batch` | Transport/CRDT hook only — never re-exported from session; never called from Meeting page/shell UI. New writes = new `actions` + `can` entry. |
+| `actions.*` | **Only** product write path (`can.*` then internal `batch` and/or lifecycle emits). |
+| `useMeetingLive().batch` / `emitLiveStart` / `emitLiveComplete` | Transport primitives — never re-exported from session; never called from Meeting page/shell UI. New collaborative writes = new `actions` + `can` entry. |
 
 Proxies remain technically mutable; enforcement is this contract plus governance rules/skills.
 
@@ -293,7 +293,7 @@ Computed only when linking is READY. Inputs include live `status`, `meType`, `me
 
 Attend stays allowed after the window opens for the rest of a live session (`WAITING_TO_START` or `STARTED`). Missing / invalid `datetime` keeps `windowOpen` false → `can.attend` false.
 
-These are **client session gates**. They do **not** replace the backend write gate (`MEETING_LIVE_STATUSES` on `meeting.live.update`), do **not** validate `attendedAt` timestamps on the socket, and do **not** yet enforce participant type on the server (§8).
+These are **client session gates**. They do **not** replace the backend write gate (`MEETING_LIVE_STATUSES` on `meeting.live.update`). Chair **lifecycle** start/complete are also enforced on the server (`NOT_CHAIR` / status). Attend-window timestamps, ordinary CRDT participant-type writes, and ballot invariants are **not** fully socket-enforced yet (§8).
 
 **Clock refresh.** Session-owned `useMeetingAttendWindow` flips `windowOpen` with one `setTimeout` at the open instant (plus 30s ticks while waiting for Init remaining-duration copy). Background-tab throttling, effect cleanup on `datetime` changes, leaving the meeting route, and large forward clock jumps while a timeout is pending can delay or cancel that flip until the effect runs again.
 
@@ -301,10 +301,10 @@ These are **client session gates**. They do **not** replace the backend write ga
 
 Built only in `MeetingLiveSessionProvider` / `useMeetingLiveSessionInstance` (need `batch` + proxies). Each action no-ops when the matching `can.*` is false (and `attend` / `left` also require `me`):
 
-| Action | Write inside `batch` |
+| Action | Behavior when `can.*` |
 |---|---|
-| `startMeeting` | `meeting.status = "STARTED"` |
-| `endMeeting` | `meeting.status = "COMPLETED"` |
+| `startMeeting` | `emitLiveStart()` then `batch` → `meeting.status = "STARTED"` (SQL `STARTED` on server; live status fans out via Yjs) |
+| `endMeeting` | `batch` → `meeting.status = "COMPLETED"` then `emitLiveComplete()` (Yjs fan-out first; server durable reflect on complete — no separate `meeting.live.completed` listener) |
 | `attend` | `me.attendedAt = new Date().toISOString()` |
 | `left` | `me.leftAt = new Date().toISOString()` |
 | `setAgendaItemStatus(id, status)` | no-op when `!can.setAgendaItemStatus` or missing `meeting.agendaItems[id]`; else `item.status = status` (`MeetingLiveAgendaItemStatus`) |
@@ -675,9 +675,10 @@ What the website side depends on:
 
 - namespace `/meeting`, registered in `backend/src/resources/configs/socket/io.ts` with `globalMiddlewares: ["meeting_auth"]`,
 - `MeetingAuthenticationIOMiddleware` proves member token + meeting + roster row + `ACTIVE` organization before any controller runs, so a refused handshake surfaces as a connect error, not a partial session,
-- `MeetingConnectionIOController` joins `Rooms.MEETING(meetingId)` and binds `["meeting.live.sync", "meeting.live.update"]`,
+- `MeetingConnectionIOController` joins `Rooms.MEETING(meetingId)` and binds the role-appropriate set (`sync` / `update` / `disconnect`; chair also gets `start` / `complete`),
 - the live controllers keep that set bound on every reply, including rejections, so the client only has to re-run the sync handshake on `connect` (§5.1),
-- writes are refused unless the meeting status is `WAITING_TO_START` or `STARTED`, answered as `meeting.live.error` with code `MEETING_NOT_LIVE`.
+- CRDT writes are refused unless the meeting status is `WAITING_TO_START` or `STARTED`, answered as `meeting.live.error` with code `MEETING_NOT_LIVE`,
+- chair lifecycle: `meeting.live.start` / `meeting.live.complete` (server SQL / durable reflect — `meeting-realtime-socket.md` §3.4–§3.5).
 
 ## 7) Failure modes
 
@@ -699,12 +700,12 @@ What the website side depends on:
 
 1. **`org_host` is wired on LiveKit token fetch.** `POST /custom/org/livekit_token` uses per-route `middleware("org_host")`. `/custom/org/start` still resolves the organization from the body without `org_host`. The response now carries `{ token, url }`, and `useMeetingLiveKitToken` feeds `useMeetingLiveKitRoom` (no probe UI). Contract: `../backend/contracts/livekit-media-plane.md` §6.
 2. **Every drawer in-shell page now has product UI (§5.5).** `MeetingAttendancePage` (chair-only attendance log + quorum), `MeetingLivePage` (waiting + chair start), `MeetingAgendaPage` (live agenda + chair status chips), `MeetingTalkQueuePage` (chair-only floor + FIFO queue admin), `MeetingDecisionsAndVotePage` (pre-start + in-meeting ballots). `MeetingPageStub` stays in the tree for future ids but is no longer mounted by any of them. While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + frosted `MeetingPageOverlay` for other pages) and carries real LiveKit A/V. Durable side effects of a decision outcome (SQL `Decision.status`, `Vote` rows, minutes) are still deferred — the ballot lives in the CRDT only. The header carries no talk control (§5.4); non-chair raise-hand lives on the broadcast action row. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
-3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants` (incl. session-only `talkTurn` default `null`), `currentTalkMemberId` (seeded `null`; who is speaking; set after `participants`), `agendaItems` (SQL line mirror incl. durable `status`; session-only `isLiveCreated` default `false`; no live delete — cancel is `CANCELED`; active line is `DISCUSSING` — **no** root `currentAgendaItemId`), `decisions` (SQL decision mirror all phases, with `PRE_START` `NEW`/`UNDER_VOTING` normalized to `UNDER_VOTING` on seed + session-only `isLiveCreated` default `false` + nested `votes` from SQL `Vote` or empty; no per-non-voter slots; DURING active decision is `UNDER_VOTING` — **no** root `currentDecisionId`). **Shipped website live writers:** chair `actions.setAgendaItemStatus` (map `status` only), the talk-queue writers `raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` (`talkTurn` + `currentTalkMemberId` only), and the decisions writers `castVote` / `setDecisionStatus` / `clearDecisionVotes` (decision `status` / `votingType` / nested `votes` only). `isLiveCreated` writers are not shipped. Live values are **not** reflected back onto SQL columns yet — talk turns produce **no** `TalkRecord` rows and casts produce **no** `Vote` rows (`../backend/contracts/meeting-live-state.md` §6, `../backend/contracts/talk-record-domain.md` §1).
+3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants` (incl. session-only `talkTurn` default `null`), `currentTalkMemberId` (seeded `null`; who is speaking; set after `participants`), `agendaItems` (SQL line mirror incl. durable `status`; session-only `isLiveCreated` default `false`; no live delete — cancel is `CANCELED`; active line is `DISCUSSING` — **no** root `currentAgendaItemId`), `decisions` (SQL decision mirror all phases, with `PRE_START` `NEW`/`UNDER_VOTING` normalized to `UNDER_VOTING` on seed + session-only `isLiveCreated` default `false` + nested `votes` from SQL `Vote` or empty; no per-non-voter slots; DURING active decision is `UNDER_VOTING` — **no** root `currentDecisionId`). **Shipped website live writers:** chair `actions.setAgendaItemStatus` (map `status` only), the talk-queue writers, and the decisions writers (map only until complete). **Durable SQL reflect on chair complete** covers agenda / decisions+votes / participant attendance + meeting `COMPLETED` + `live_state = null` (`../backend/contracts/meeting-live-state.md` §6). Talk queue / `TalkRecord` stay session-only. `isLiveCreated` live writers are not shipped (complete create path is ready). Immediate SQL `STARTED` on `meeting.live.start`.
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
 5. **Handshake values travel primarily on the Socket.IO query** built in `meeting-socket.ts`. Header names are also read on the server (`headers.x || query.x`), but Node lowercases headers; do not rely on camelCase header-only delivery.
 6. **`meeting.live.*` is not mirrored** into frontend event registries — it is a namespace session protocol. Outbound meeting notify events, when added, still follow `socket-event-mirroring.md`.
 7. **Organization-host pages other than `Meeting` have no realtime channel.** A tenant-wide org socket is not part of the shipped surface.
-8. **Server still has no participant-type write gate.** Any authenticated roster member can push live updates while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.startMeeting` / `can.endMeeting` / `can.attend` / `can.enterLive` / `can.setAgendaItemStatus`, the talk-queue `can.raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor`, and the decisions `can.castPreStartVote` / `castDuringVote` / `managePreStartDecision` / `manageDuringDecision` are **client** gates on `useMeetingLiveSession`; the attend open window, Meeting-room attendance requirement, chair-only agenda status, chair-only floor administration, one-open-ballot exclusivity, vote finality (one cast per member), the majority rule on adopt, and the pre-start-ballots-before-check-in rule are **not** enforced by socket controllers or SQL writers yet.
+8. **Server participant-type gate is lifecycle-only.** Chair `meeting.live.start` / `complete` are enforced on the server (`NOT_CHAIR` + bound-set omit). Ordinary `meeting.live.update` CRDT writes still accept any authenticated roster member while status is live (`../backend/contracts/meeting-realtime-socket.md` §4). Website `can.*` remain client gates for attend-window, agenda status, talk queue, and decisions; those product invariants are **not** fully socket-enforced yet.
 9. **The meeting shell picks its READY tree in JavaScript**, so SSR always emits the mobile tree and a desktop client swaps after hydration. While linking is not READY, only the gate screen renders (no drawer SSR flicker for that path). `drawerOpen` is one state shared by both breakpoints and is re-seeded on every breakpoint crossing, so a manually collapsed desktop drawer reopens after a resize across `SW.min_lg`.
 10. **Non-transport `connect_error` maps to session code `"NOT_VALID"`** for UI purposes; the linking FAILED copy stays the generic `failedMessage` (no distinct credential string on screen yet).
 11. **Broadcast mute-all is cooperative, not enforced.** The chair button is gated by `can.muteAllMedia`, but the receiving hook applies any well-formed data-channel command from any peer, and a muted peer can re-enable immediately. There is no `roomAdmin` server mute and no participant-type publish grant. Accepted for now; full ceiling list in `flow-meeting-broadcast.md` §10.
@@ -766,7 +767,8 @@ Every path that implements this contract, with the section that describes it.
 | `src/app/ui/components/meeting/hooks/useMeetingPage.tsx` | `MeetingPage` type + `MeetingPageProvider` + `useMeetingPage` (`useState("init")`) | §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | `useMeetingLiveInstance` + `MeetingLiveProvider` + public `useMeetingLive`; SyncedStore root `{ [MEETING_LIVE_MAP]: {} }` as `Partial<MeetingLiveMap>`; `/meeting` session; `connect_error` linking branch | §5.1 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveMe.ts` | current-member `participants` proxy (no clone); used by session for `me` / `can` / `actions` | §5.2 |
-| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | session surface: resolve + provider; `can`/`actions` incl. `setAgendaItemStatus`, the five talk-queue writers, and the three decision writers; private `findQueueHead` / `nextTalkTurn` / decision helpers; exported `countDecisionVotes` / `decisionPhaseCan`; one `useMeetingAttendWindow` call; exposes `attendWindow` | §5.3, §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | session surface: resolve + provider; `can`/`actions` incl. start/end lifecycle emits + batch, `setAgendaItemStatus`, talk-queue + decision writers; private helpers; one `useMeetingAttendWindow`; exposes `attendWindow` | §5.3, §5.5 |
+| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | transport: sync/update/error + `emitLiveStart` / `emitLiveComplete` + `batch` | §5.1, §5.3 |
 | `src/app/ui/components/meeting/hooks/useMeetingAttendWindow.ts` | attend-window clock (mirror math private; open timeout + 30s ticks while waiting) | §5.3, §5.5 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts` | LiveKit join fetch — active when `can.enterLive && STARTED` + route ids; union `{ status, token, url }`; quiet network retry | `../backend/contracts/livekit-media-plane.md` §6.5; `flow-meeting-broadcast.md` §4 |
 | `src/app/ui/components/meeting/hooks/useMeetingLiveKitRoom.ts` | `Room.connect` owner: status projection, peer map, publish toggles, sound autoplay gate, cooperative mute-all, lifecycle | `flow-meeting-broadcast.md` §5 |
@@ -1372,6 +1374,44 @@ Shell no longer grows with content; broadcast stage scrolls as one unit (feature
 | `.cursor/skills/website-meeting-broadcast/SKILL.md` | featured-in-scroll + floating controls |
 | `website` gitlink | submodule pointer only — no root behavior |
 
+## 10r) Change set inventory (live start + complete SQL reflect)
+
+Chair lifecycle on `/meeting`: `meeting.live.start` / `meeting.live.complete`. Website session emits + batches status. Backend durable reflect on complete. Full path map: §5.1, §5.3, §6.3; backend `meeting-live-state.md` §6 / §11; `meeting-realtime-socket.md` §3.4–§3.5.
+
+### `backend/`
+
+| Path | State | Documented in |
+|---|---|---|
+| `src/app/helpers/MeetingLiveDocHelper.ts` | modified | `meeting-live-state.md` §6 |
+| `src/app/socket/controllers/meeting/MeetingLiveStartIOController.ts` | **added** | `meeting-realtime-socket.md` §3.4 |
+| `src/app/socket/controllers/meeting/MeetingLiveCompleteIOController.ts` | **added** | `meeting-realtime-socket.md` §3.5 |
+| `src/app/socket/controllers/meeting/MeetingIOControllerBase.ts` | modified | `meeting-realtime-socket.md` §3 |
+| `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | modified | `meeting-realtime-socket.md` §3.1 |
+| `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | modified | `meeting-realtime-socket.md` §3.2 |
+| `src/resources/configs/socket/io.ts` | modified | `meeting-realtime-socket.md` §1 |
+
+### `website/`
+
+| Path | State | Documented in |
+|---|---|---|
+| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | modified — emits + `socketRef` + `NOT_CHAIR` | §5.1, §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — start/end emit + batch | §5.3 |
+| `lib/tsconfig.tsbuildinfo` | generated cache | **excluded** |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Documented in |
+|---|---|---|
+| `docs/invariants/backend.md` | B25 amendment | B25 |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | §6 shipped + §11 inventory | backend |
+| `docs/platforms/backend/contracts/meeting-realtime-socket.md` | start/complete | backend |
+| `docs/platforms/website/organization-host-routing.md` | this §10r + §5.3 | — |
+| `.cursor/rules/meeting-live-state.mdc` | lifecycle SQL exception | governance |
+| `.cursor/rules/meeting-realtime-socket.mdc` | events + emits | governance |
+| `.cursor/rules/website-meeting-live-session.mdc` | start/end | governance |
+| `.cursor/skills/meeting-realtime-socket/SKILL.md` | lifecycle checklist | skill |
+| `.cursor/skills/website-meeting-live-session/SKILL.md` | start/end emit | skill |
+
 ## 11) Verification
 
 - `yarn type-check` in `website/` and in `backend/`.
@@ -1400,11 +1440,11 @@ Shell no longer grows with content; broadcast stage scrolls as one unit (feature
 - `docs/platforms/backend/contracts/meeting-realtime-socket.md` — `/meeting` namespace, handshake auth, rooms, `meeting.live.*`
 - `docs/platforms/website/flow-meeting-broadcast.md` — LiveKit client stage, room hook, media ceilings
 - `docs/platforms/backend/contracts/livekit-media-plane.md` — join-token HTTP + helper + participant JWT cache
-- `docs/platforms/backend/contracts/meeting-live-state.md` — CRDT document, `live_state` BLOB, deferred column apply
+- `docs/platforms/backend/contracts/meeting-live-state.md` — CRDT document, `live_state` BLOB, complete SQL reflect
 - `docs/platforms/backend/modules/runtime-integrations.md` §5 — socket namespaces, rooms, live events
 - `docs/platforms/backend/modules/nodejs-socket-library.md` §10 — `/meeting` child events
 - `docs/invariants/website.md` W58
-- `docs/invariants/backend.md` B24
+- `docs/invariants/backend.md` B24, B25
 - `.cursor/rules/organization-host-routing.mdc`
 - `.cursor/rules/meeting-realtime-socket.mdc`
 - `.cursor/rules/website-meeting-live-session.mdc`

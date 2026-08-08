@@ -118,7 +118,7 @@ Attendance is timestamp-only (`attendedAt` / `leftAt`); there is no separate boo
 
 File: `backend/src/app/helpers/MeetingLiveDocHelper.ts` (same module as the registry). Imports `MEETING_LIVE_MAP` / live types from the mirror (§1.2).
 
-Codec/seed helpers are **module-private**. Public surface of this file is the registry (§2) plus `readLiveFields` (deferred column apply, §6).
+Codec/seed helpers are **module-private**. Public surface of this file is the registry (§2), `readLiveFields`, and `completeMeetingLiveToSql` (§6).
 
 | Member | Role |
 |---|---|
@@ -128,7 +128,8 @@ Codec/seed helpers are **module-private**. Public surface of this file is the re
 | `buildLiveAgendaItems(meeting)` | Private. `meeting.getAgendaItems()` → `Record` keyed by agenda `id`; maps SQL `status`; seeds `isLiveCreated: false` |
 | `buildLiveDecisions(meeting)` | Private. `meeting.getDecisions({ include: [{ association: "votes" }] })` → `Record` keyed by decision `id` (all phases); maps SQL fields; seeds `isLiveCreated: false`; `votes` from SQL `Vote` by `member_id` (empty when none; no per-non-voter slots) |
 | `getLiveDoc(meeting)` | Private. Non-empty `live_state` → `decodeLiveDoc` (no backfill); else `createLiveDoc` with participants / talk / agenda / decisions seeds (`currentTalkMemberId: null`) |
-| `readLiveFields(doc)` | **Exported.** `doc.getMap(MEETING_LIVE_MAP).toJSON() as Partial<MeetingLiveMap>` — only sanctioned read-back |
+| `readLiveFields(doc)` | **Exported.** `doc.getMap(MEETING_LIVE_MAP).toJSON() as Partial<MeetingLiveMap>` — sanctioned read-back for complete reflect |
+| `completeMeetingLiveToSql(meeting, fields, transaction?)` | **Exported.** Full durable reflect on complete (§6) |
 
 Nested `Y.Map` for each participant, agenda item, decision, and per-decision `votes` map is required so collaborative field updates merge by identity. A plain object under those keys would not be a collaborative map. Seed must not store plain `{}` as the Yjs value of `votes` — use a nested `Y.Map` (logical seed input may be `votes: {}` or populated from SQL).
 
@@ -136,8 +137,7 @@ SQL column enums remain `MeetingType` / `MeetingStatus` from `G_Tr` keys; the CR
 
 **Encoding is V2 on every hop** — BLOB, sync response, and update broadcast. A V1 update applied with `applyUpdateV2` (or the reverse) throws; the website converts its V1 doc events with `Y.convertUpdateFormatV1ToV2` before emitting.
 
-`readLiveFields` has **no caller today**. It exists for the deferred column apply (§6).
-
+`readLiveFields` is called from `MeetingLiveCompleteIOController` before `completeMeetingLiveToSql`.
 ## 2) Registry and persistence
 
 File: `backend/src/app/helpers/MeetingLiveDocHelper.ts`.
@@ -146,24 +146,25 @@ Two module-level maps keyed by `meetingId`: `entries` (live documents) and `infl
 
 | Export | Behavior |
 |---|---|
-| `getOrCreateMeetingLiveDoc(meetingId)` | Returns the cached entry; otherwise loads it once. Concurrent callers await the same `inflight` promise, and a load that lost a race returns the entry that won |
-| `peekMeetingLiveDoc(meetingId)` | Cached entry or `undefined`; never loads |
+| `getOrCreateMeetingLiveDoc(meetingId)` | Returns the cached entry when present and live; otherwise loads once. Throws `"MEETING_NOT_LIVE"` when SQL/`entry.meeting` status is outside `MEETING_LIVE_STATUSES` (blocks post-complete re-seed). Concurrent callers await the same `inflight` promise |
+| `peekMeetingLiveDoc(meetingId)` | Returns the **registry entry reference** or `undefined`; never loads. Callers may rebind `entry.meeting` to the socket meeting instance |
 | `schedulePersistMeetingLiveDoc(meetingId)` | Restarts the debounce timer |
 | `flushPersistMeetingLiveDoc(meetingId)` | Clears the timer and awaits `meeting.update({ live_state: encodeLiveDoc(doc) })` |
 | `destroyMeetingLiveDoc(meetingId, { flush })` | Flushes (default) or cancels the timer, then `doc.destroy()` and drops the entry |
+| `completeMeetingLiveToSql(meeting, fields, transaction?)` | Durable complete reflect (§6) |
 
 Load path inside `getOrCreateMeetingLiveDoc`:
 
 1. `Meeting().findByPk(meetingId)`; a missing row throws `"404"`.
-2. Records whether the row already had a non-empty `live_state`.
-3. `getLiveDoc(meeting)` (§1.3) and stores `{ doc, meeting }` in `entries`.
-4. Subscribes `doc.on("update")` → `schedulePersistMeetingLiveDoc`.
-5. Schedules one persist when the row had **no** BLOB, so the seeded document reaches the column even if nobody edits.
+2. Status must be in `MEETING_LIVE_STATUSES`; otherwise throws `"MEETING_NOT_LIVE"`.
+3. Records whether the row already had a non-empty `live_state`.
+4. `getLiveDoc(meeting)` (§1.3) and stores `{ doc, meeting }` in `entries`.
+5. Subscribes `doc.on("update")` → `schedulePersistMeetingLiveDoc`.
+6. Schedules one persist when the row had **no** BLOB, so the seeded document reaches the column even if nobody edits.
 
 The timer callback is not awaited by anyone, so a failed write is caught and reported through `Log().unhandledError(err)` instead of becoming an unhandled rejection.
 
-The Sequelize row captured at load is the same instance the flush writes through. It is a **snapshot**: columns changed elsewhere afterwards are not reflected in it.
-
+The Sequelize row captured at load is the instance the flush writes through until a lifecycle controller rebinds `entry.meeting` to `socket.data.meeting` (start/complete). After rebind, one instance owns both the handshake row and the registry gate.
 ## 3) Lifecycle
 
 1. A meeting is created and edited through `MeetingRequester`; SQL columns are the only truth and `live_state` stays `null` (`meeting-domain.md` §9).
@@ -171,7 +172,7 @@ The Sequelize row captured at load is the same instance the flush writes through
 3. While the meeting is live, the document is the source of truth for those map fields. Every accepted update mutates the document, is broadcast to the room, and restarts the debounce.
 4. The BLOB trails the document by up to the debounce window (§7.1).
 5. Reconnect or a second participant replays the whole state through the sync handshake; nothing is read from the SQL columns again while the entry stays in memory.
-6. Applying the live fields back onto the SQL columns is **not shipped** (§6).
+6. Chair `meeting.live.start` writes SQL `status → STARTED` immediately (no Yjs mutate/rebroadcast from the server). Chair `meeting.live.complete` runs `completeMeetingLiveToSql` (§6), then destroys the registry entry after commit.
 
 ### 3.1 Requester-driven reset
 
@@ -214,49 +215,79 @@ static registerOrmAttrs = {
 | Two concurrent first loads of the same meeting | `inflight` dedupes; a racing loser reuses the cached entry instead of creating a second document |
 | Process restart | Everything since the last flush is lost; the next load replays the BLOB (§7.2) |
 
-## 6) Deferred: applying live fields to SQL columns
+## 6) Applying live fields to SQL columns (complete reflect)
 
-Product decision: meeting-row fields `subject`, `type`, and `status` are **not** written back from the live document while the session runs. The reflection happens once when the meeting is completed, and that step is not implemented yet.
+Product decision: while the session runs, collaborative map fields are **not** written back to SQL on every `meeting.live.update`. Durable reflect runs **once** on chair `meeting.live.complete` via `completeMeetingLiveToSql`.
 
-What it will own when it lands:
+**Immediate lifecycle SQL (outside complete):** `meeting.live.start` writes meeting `status → STARTED` only (B25 lifecycle exception). Live-map `status = "STARTED"` still fans out through the normal client `meeting.live.update` / Yjs path — the start controller must not encode or re-broadcast CRDT updates.
 
-- read the live values through `readLiveFields(doc)`,
-- write the meeting columns and the terminal `status` atomically with whatever else completion touches,
-- flush and evict the registry entry (`destroyMeetingLiveDoc`) so no writer keeps mutating a completed meeting,
-- close the stale-status window described in §7.3.
+### 6.1 `completeMeetingLiveToSql`
 
-`participants` in the live map is a collaborative roster mirror (display + connection/attendance timestamps). SQL attendance on `meeting_participants` remains a separate write path; this deferred step is not a blanked “apply entire `MeetingLiveMap` to Meeting columns.”
+Signature: `completeMeetingLiveToSql(meeting: MeetingModel, fields: MeetingLiveCompleteFields, transaction?)`.
 
-Until then the SQL meeting columns keep the values the requester write path left, and consumers that read a meeting through GraphQL see those, not the live edits.
+`MeetingLiveCompleteFields` accepts only:
+
+- `agendaItems`
+- `decisions` (incl. nested `votes`)
+- `participants` (attendance timestamps)
+
+**Not applied from live:** meeting `subject` / `type`. Talk queue (`talkTurn` / `currentTalkMemberId`) and connection presence stay session-only (no `TalkRecord` write).
+
+Transaction pattern (repo-native):
+
+```ts
+await Meeting().transaction({ transaction }, async transaction => {
+  // all writes use { transaction }
+});
+```
+
+Inside the transaction:
+
+1. Rebind registry `entry.meeting = meeting` when an entry exists (one instance with the socket row).
+2. `meeting.update({ status: "COMPLETED", live_state: null }, { transaction })`.
+3. **AgendaItem:** for each live id — `findByPk` → update `sort_order` / `subject` / `status` when `meeting_id` matches; if missing and `isLiveCreated` → `build` + `setDataValue("id", liveId)` + `save`.
+4. **Decision:** same pattern for `sort_order` / `subject` / `phase` / `status` / `voting_type`.
+5. **Vote:** per decision, make SQL match the live `votes` map exactly (destroy SQL votes absent from live; upsert present by composite PK).
+6. **MeetingParticipant:** for each live roster key, update `attended_at` / `left_at` (ISO → `Date` / null); skip unknown member ids.
+7. `transaction.afterCommit(() => destroyMeetingLiveDoc(meetingId, { flush: false }))`.
+
+### 6.2 After complete
+
+- Registry entry is gone; `getOrCreateMeetingLiveDoc` refuses non-live status (`"MEETING_NOT_LIVE"`).
+- Sync/update/complete map that throw to `rejectLive("MEETING_NOT_LIVE")`.
+- No outbound `meeting.live.completed` event — clients learn `COMPLETED` from the Yjs fan-out written by the chair before/with the complete emit.
+
+Until complete, GraphQL readers still see requester SQL values for collaborative fields (except `status` after start).
 
 ## 7) Shipped limits (intentional)
 
 1. **Debounce has no maximum wait.** Every document update restarts the 1500 ms timer, so a continuously edited meeting keeps deferring its BLOB write until the editing pauses.
 2. **No flush on shutdown.** Nothing hooks process exit; unflushed changes are lost on restart.
-3. **Stale status gate.** The update gate reads the meeting row captured at handshake time (`socket.data.meeting`), so a status change made outside the live session is not seen until the socket reconnects. Acceptable because completion runs through the live session itself (§6).
-4. **Eviction only on approve / demotion.** `destroyMeetingLiveDoc` is called from those two requester paths (§3.1); `peekMeetingLiveDoc` still has no caller. Nothing evicts an entry when a session simply ends, so memory still grows with the number of meetings touched until the process restarts.
+3. **Stale status gate on `meeting.live.update`.** The update gate still reads `socket.data.meeting` from the handshake (or the rebound instance after start/complete on that socket). Other sockets keep their handshake snapshot until reconnect; both `WAITING_TO_START` and `STARTED` remain in `MEETING_LIVE_STATUSES`, so peer updates still pass after start. Post-complete, `getOrCreate` refuses non-live SQL status even if a peer handshake snapshot is still live.
+4. **Eviction on approve / demotion / complete.** `destroyMeetingLiveDoc` runs from requester reset (§3.1) and from complete reflect `afterCommit` (§6). Nothing else evicts when a session merely disconnects.
 5. **Single instance.** The registry is process memory. Two backend processes would each hold an independent document for the same meeting and overwrite each other's BLOB; horizontal scaling needs a shared document plane first.
 6. **Seed write on first load.** A meeting whose BLOB is `null` gets one write on first sync even when nobody edits. Harmless because a session only opens for a live meeting, whose columns are no longer edited through the form.
-7. **No automatic BLOB schema migration.** A non-empty `live_state` is decoded as-is. Documents created before `participants` / `datetime` / `minMembersCount` / `agendaItems` / `talkTurn` / `currentTalkMemberId` / `decisions` / nested `votes` existed are not back-filled on load; a requester reset (§3.1) clears the BLOB so the next sync re-seeds from SQL.
-
+7. **No automatic BLOB schema migration.** A non-empty `live_state` is decoded as-is. Documents created before `participants` / `datetime` / `minMembersCount` / `agendaItems` / `talkTurn` / `currentTalkMemberId` / `decisions` / nested `votes` existed are not back-filled on load; a requester reset (§3.1) or complete (§6) clears the BLOB so the next eligible sync re-seeds from SQL.
 ## 8) Traceability
 
 | Path | Role | Section |
 |---|---|---|
 | `backend/src/app/orm/models/Meeting.ts` | `live_state` column only | §1.1 |
 | `backend/src/app/types/meeting.ts` | mirrored live map contract (`MeetingLiveMap`, participants, `MEETING_LIVE_*`) | §1.2; `.cursor/rules/meeting-live-map-mirror.mdc` |
-| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | private codec+seed + registry + exported `readLiveFields` | §1.3, §2 |
+| `backend/src/app/helpers/MeetingLiveDocHelper.ts` | private codec+seed + registry + `readLiveFields` + `completeMeetingLiveToSql` | §1.3, §2, §6 |
 | `backend/src/app/orm/models/Customer.ts` | Ability notify-template roster `include: ["member"]` | §1.3; `meeting-domain.md` §9.1 |
 | `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | `live_state = null` + `afterCommit` destroy on approve and on demotion to draft | §3.1 |
 | `backend/src/app/gql/bridges/customer/MeetingBridge.ts` | `registerOrmAttrs.expect: ["live_state"]` | §4 |
 | `backend/eng-hosam/@nodejs/gql/src/BridgeBase.ts` | `bootRegisteredAttrs()` exclusion semantics (library, not edited) | §4 |
 | `backend/package.json` | `yjs` dependency pin | Scope |
-| `backend/src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | reads the registry document | `meeting-realtime-socket.md` §3 |
-| `backend/src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | writes the registry document, enforces `MEETING_LIVE_STATUSES` | `meeting-realtime-socket.md` §3–§4 |
+| `backend/src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | reads the registry document; maps `"MEETING_NOT_LIVE"` | `meeting-realtime-socket.md` §3 |
+| `backend/src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | writes the registry document; enforces `MEETING_LIVE_STATUSES`; maps `"MEETING_NOT_LIVE"` | `meeting-realtime-socket.md` §3–§4 |
+| `backend/src/app/socket/controllers/meeting/MeetingLiveStartIOController.ts` | chair SQL `STARTED`; bind `entry.meeting` | `meeting-realtime-socket.md` §3.4 |
+| `backend/src/app/socket/controllers/meeting/MeetingLiveCompleteIOController.ts` | chair complete → `completeMeetingLiveToSql` | `meeting-realtime-socket.md` §3.5; §6 |
 
 ## 9) Change set inventory (durable agenda/decision enums + live SQL seed)
 
-**Current ship.** Durable `AgendaItem.status` (`agendaItemStatus`) and `decisionStatus.CANCELED`; customer GQL mirrors; first empty `live_state` seeds agenda `status` and decision `votes` from SQL. Session-only live fields: `isLiveCreated` (agenda/decision), `talkTurn`, `currentTalkMemberId`. Active agenda = `status: "DISCUSSING"`; active DURING decision = `status: "UNDER_VOTING"` — **no** root `currentAgendaItemId` / `currentDecisionId`. Live map contract + seed order: §§1.2–1.3. **Shipped website live writers:** chair `setAgendaItemStatus` (map `status` only), the talk-queue set `raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` (`talkTurn` + `currentTalkMemberId` only), and the decisions set `castVote` / `setDecisionStatus` / `clearDecisionVotes` (decision `status` / `votingType` / nested `votes` only) — none reflect to SQL, talk turns write no `TalkRecord` row, and casts write no `Vote` row. **Not shipped:** `isLiveCreated` live writers; SQL column reflect from live (§6).
+**Current ship.** Durable `AgendaItem.status` (`agendaItemStatus`) and `decisionStatus.CANCELED`; customer GQL mirrors; first empty `live_state` seeds agenda `status` and decision `votes` from SQL. Session-only live fields: `isLiveCreated` (agenda/decision), `talkTurn`, `currentTalkMemberId`. Active agenda = `status: "DISCUSSING"`; active DURING decision = `status: "UNDER_VOTING"` — **no** root `currentAgendaItemId` / `currentDecisionId`. Live map contract + seed order: §§1.2–1.3. **Shipped website live writers:** chair `setAgendaItemStatus` (map `status` only), the talk-queue set `raiseHand` / `lowerHand` / `giveTalkFloor` / `removeFromTalkQueue` / `endTalkFloor` (`talkTurn` + `currentTalkMemberId` only), and the decisions set `castVote` / `setDecisionStatus` / `clearDecisionVotes` (decision `status` / `votingType` / nested `votes` only) — none reflect to SQL, talk turns write no `TalkRecord` row, and casts write no `Vote` row. **Not shipped:** `isLiveCreated` live writers (create path ready on complete). Talk queue / TalkRecord still not reflected on complete.
 
 ### Backend
 
@@ -315,6 +346,44 @@ Until then the SQL meeting columns keep the values the requester write path left
 | `votes` empty after seed | No SQL `Vote` rows — expected |
 | Agenda GQL `status` missing | Client selection set omits `status` |
 | Expecting per-member empty vote slots | Rejected — keys only for existing SQL votes or later writers |
+
+## 11) Change set inventory (live start + complete SQL reflect)
+
+**Current ship.** Dedicated `/meeting` lifecycle events `meeting.live.start` / `meeting.live.complete` (chair-only). Immediate SQL `STARTED` on start; full durable reflect + `live_state = null` + registry destroy on complete (`completeMeetingLiveToSql`). Website `startMeeting` / `endMeeting` emit those events and batch live status. B25 amended for this narrow lifecycle path. Behavior: §§2–3, §6; transport: `meeting-realtime-socket.md` §3.4–§3.5; website: `organization-host-routing.md` §5.3.
+
+### Backend (`backend/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/helpers/MeetingLiveDocHelper.ts` | modified — `MeetingLiveCompleteFields`, `completeMeetingLiveToSql`, non-live `getOrCreate` gate, peek returns entry ref | §2, §6 |
+| `src/app/socket/controllers/meeting/MeetingLiveStartIOController.ts` | **added** | `meeting-realtime-socket.md` §3.4 |
+| `src/app/socket/controllers/meeting/MeetingLiveCompleteIOController.ts` | **added** | `meeting-realtime-socket.md` §3.5 |
+| `src/app/socket/controllers/meeting/MeetingIOControllerBase.ts` | modified — bound events + chair-only compose + `NOT_CHAIR` | `meeting-realtime-socket.md` §3 |
+| `src/app/socket/controllers/meeting/MeetingLiveSyncIOController.ts` | modified — map `"MEETING_NOT_LIVE"` | `meeting-realtime-socket.md` §3.1 |
+| `src/app/socket/controllers/meeting/MeetingLiveUpdateIOController.ts` | modified — map `"MEETING_NOT_LIVE"` (still no SQL) | `meeting-realtime-socket.md` §3.2 |
+| `src/resources/configs/socket/io.ts` | modified — register start/complete | `meeting-realtime-socket.md` §1 |
+
+### Website (`website/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `src/app/ui/components/meeting/hooks/useMeetingLive.tsx` | modified — `emitLiveStart` / `emitLiveComplete`, `socketRef`, `NOT_CHAIR` | `organization-host-routing.md` §5.1, §5.3 |
+| `src/app/ui/components/meeting/hooks/useMeetingLiveSession.tsx` | modified — start/end emit + batch | `organization-host-routing.md` §5.3 |
+| `lib/tsconfig.tsbuildinfo` | type-check cache | **excluded** (generated) |
+
+### Workspace root (`docs/` / `.cursor/`)
+
+| Path | State | Where described |
+|---|---|---|
+| `docs/invariants/backend.md` | B25 lifecycle amendment | B25 |
+| `docs/platforms/backend/contracts/meeting-live-state.md` | this page §6 shipped | — |
+| `docs/platforms/backend/contracts/meeting-realtime-socket.md` | start/complete events | socket contract |
+| `docs/platforms/website/organization-host-routing.md` | §5.3 actions | website |
+| `.cursor/rules/meeting-live-state.mdc` | reflect + lifecycle exception | governance |
+| `.cursor/rules/meeting-realtime-socket.mdc` | events + chair bind | governance |
+| `.cursor/rules/website-meeting-live-session.mdc` | start/end emit | governance |
+| `.cursor/skills/meeting-realtime-socket/SKILL.md` | lifecycle checklist | skill |
+| `.cursor/skills/website-meeting-live-session/SKILL.md` | start/end emit | skill |
 
 ## 10) Related
 

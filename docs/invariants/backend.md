@@ -146,11 +146,12 @@ A collaborative document persisted as a BLOB (`meetings.live_state`) is **intern
 Consequences:
 
 - the column must be excluded from the bridge's auto-registered attrs (`registerOrmAttrs = { expect: [...] }`); the same applies to every ORM column that must never leave through GraphQL,
-- while a session is live, the document owns its fields and the SQL columns are stale by design; readers of the columns must not be told otherwise,
-- reflecting document fields back onto columns happens in one explicit, transactional step — never as a side effect of a socket event,
+- while a session is live, the document owns collaborative map fields and most SQL meeting columns stay stale by design; readers of those columns must not be told otherwise,
+- reflecting durable fields from the live document onto SQL happens in **one explicit transactional helper** (`completeMeetingLiveToSql` in `MeetingLiveDocHelper`) on **`meeting.live.complete` only** — never as a side effect of `meeting.live.update`,
+- **Lifecycle SQL exception (narrow):** dedicated inbound events `meeting.live.start` and `meeting.live.complete` may write SQL. `start` writes meeting `status → STARTED` immediately (registry row bound to the same instance). `complete` runs the full durable reflect then clears `live_state` and destroys the in-memory doc after commit. `meeting.live.update` must not write SQL columns,
 - the document codec is fixed (Yjs V2 on the BLOB, on the wire, and on both ends); mixing V1 and V2 throws at runtime, so the `yjs` version stays pinned and equal in `backend/` and `website/`.
 
-Contracts: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/platforms/backend/contracts/meeting-realtime-socket.md` §3.
+Contracts: `docs/platforms/backend/contracts/meeting-live-state.md` §6, `docs/platforms/backend/contracts/meeting-realtime-socket.md` §3.
 
 ## B26. Time-Window Policy Is Model-Declared And Gate-Enforced
 

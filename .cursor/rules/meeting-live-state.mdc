@@ -1,5 +1,5 @@
 ---
-description: Meeting live CRDT state — Yjs V2 codec on every hop, live_state BLOB never in GraphQL, registry-owned document, columns reflected only in an explicit step
+description: Meeting live CRDT state — Yjs V2 codec on every hop, live_state BLOB never in GraphQL, registry-owned document, columns reflected on complete lifecycle only
 globs:
   - backend/src/app/helpers/MeetingLiveDocHelper.ts
   - backend/src/app/orm/models/Meeting.ts
@@ -21,32 +21,38 @@ Authority: `docs/platforms/backend/contracts/meeting-live-state.md`, `docs/invar
 2. **`yjs` stays pinned and identical** in `backend/package.json` and `website/package.json`; `@syncedstore/*` is pinned too.
 3. **`live_state` never reaches GraphQL.** `MeetingBridge` keeps `registerOrmAttrs = { expect: ["live_state"] }`. Any ORM column that must not be exposed goes in that exclusion list — auto-registration is the default.
 4. **Codec + seed live only in `MeetingLiveDocHelper`.** Private helpers (`createLiveDoc` / `encodeLiveDoc` / `decodeLiveDoc` / `buildLiveParticipants` / `buildLiveAgendaItems` / `buildLiveDecisions` / `getLiveDoc`). `Meeting` ORM owns the `live_state` column only — no `LIVE_*` statics or instance live helpers on the model.
-5. **The registry owns the document.** Read or create it through `getOrCreateMeetingLiveDoc(meetingId)`; never build a second `Y.Doc` for a meeting that may already be live, and never write `live_state` outside `MeetingLiveDocHelper`.
-6. **Persistence is a side effect of document updates**, debounced in the helper. Controllers do not call `update()` on the row.
-6b. **A lifecycle reset clears both copies.** When the requester invalidates the session state (approve, or demotion of an approved meeting back to draft), `live_state = null` goes in the transaction and `destroyMeetingLiveDoc(meetingId, { flush: false })` runs in `transaction.afterCommit` — never before the commit, and never with the default flush, which would rewrite the BLOB that was just cleared (`meeting-live-state.md` §3.1).
-7. **Columns are reflected in one explicit step.** Meeting-row `subject` / `type` / `status` are applied from the document to SQL only in the (still deferred) completion step, transactionally, and never as a side effect of a socket event.
-8. **`MEETING_LIVE_MAP` is one shared constant** (mirrored in `types/meeting.ts`). Backend `doc.getMap(MEETING_LIVE_MAP)` and website SyncedStore root key must use it.
-9. **SyncedStore root is empty `Partial`.** Shape `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }`; initializer `{ [MEETING_LIVE_MAP]: {} }` only. Do not nest `participants: {}` / `agendaItems: {}` / `decisions: {}` (or other nested maps) in the SyncedStore initializer — that throws. Consumers read `liveStore[MEETING_LIVE_MAP]`.
-10. **Live `participants`, `agendaItems`, `decisions`, and per-decision `votes` are nested `Y.Map`s.** Seed builds nested maps so collaborative field updates merge by identity. A plain object under those keys is not a collaborative map. Per-decision `votes` seeds from SQL `Vote` rows (empty `Y.Map` when none; no non-voter placeholders).
-11. **Live map shape is the mirrored `MeetingLiveMap`** in `backend/src/app/types/meeting.ts` ↔ `website/src/types/meeting.ts` (no GQL / ORM / translation imports). SQL and GraphQL keep using `MeetingType` / `MeetingStatus` / `_Meeting*Value`; the CRDT document uses `MeetingLiveMap` only. Changing one mirror without the other is forbidden — see `.cursor/rules/meeting-live-map-mirror.mdc`.
-12. **No automatic BLOB schema migration.** Non-empty `live_state` is decoded as-is; missing `participants` / `agendaItems` / `talkTurn` / `currentTalkMemberId` / `decisions` / nested `votes` is not back-filled on load. Requester reset (§3.1) clears the BLOB so the next sync re-seeds.
-13. **Agenda session fields:** durable SQL `status` is mirrored into the live map on seed; `isLiveCreated` is map-only. Active agenda line is `status: "DISCUSSING"`. Cancel is `status: "CANCELED"` (no live delete). Do **not** add root `currentAgendaItemId`. Durable agenda lines remain `AgendaItem`. Website chair may flip live `status` via session `setAgendaItemStatus` (no SQL reflect until §6).
-14. **Talk-queue session fields stay map-only.** Per-participant `talkTurn` (`null` = not queued) and root `currentTalkMemberId` (`null` = nobody speaking) are not SQL columns; they die with live-document reset. Durable talk history remains `TalkRecord`, and the shipped website talk queue writes **no** `TalkRecord` row. Set `currentTalkMemberId` **after** `participants` in `createLiveDoc`. Client write rules (FIFO, head-only grant, no auto-promote): `.cursor/rules/meeting-talk-queue.mdc`.
-15. **Decision session fields:** seed all SQL decisions; nest `votes` from SQL `Vote` (empty when none); `isLiveCreated` map-only; status may be `CANCELED`. DURING active decision is `status: "UNDER_VOTING"` (at most one). Do **not** add root `currentDecisionId`. Do not pre-book vote keys per participant. Durable decisions/votes remain SQL. **Seed normalization:** `buildLiveDecisions` seeds a `PRE_START` row whose SQL status is `NEW` or `UNDER_VOTING` as `UNDER_VOTING` (pre-start ballots have no "open the vote" step); every other row mirrors SQL as-is, and SQL is never written back. Client write rules (phase gates, one open DURING ballot, vote finality, majority settle): `.cursor/rules/meeting-decisions-vote.mdc`.
+5. **The registry owns the document.** Read or create it through `getOrCreateMeetingLiveDoc(meetingId)`; never build a second `Y.Doc` for a meeting that may already be live, and never write `live_state` outside `MeetingLiveDocHelper`. `peekMeetingLiveDoc` returns the **registry entry reference** (callers may rebind `entry.meeting`).
+6. **BLOB persistence is a side effect of document updates**, debounced in the helper. `meeting.live.update` must not call `update()` on meeting SQL columns.
+6b. **A lifecycle reset clears both copies.** Requester approve/demote and complete reflect: `live_state = null` in the transaction and `destroyMeetingLiveDoc(meetingId, { flush: false })` in `transaction.afterCommit` — never before the commit, and never with the default flush (`meeting-live-state.md` §3.1 / §6).
+7. **Durable reflect is `completeMeetingLiveToSql` only.** Input type `MeetingLiveCompleteFields` = `agendaItems` / `decisions` / `participants` only — **not** meeting `subject` / `type`, **not** talk queue. Use `Meeting().transaction({ transaction }, async transaction => { … })`. Bind `entry.meeting = meeting` before updating the socket meeting instance — do not `.set` fields across two instances.
+7b. **B25 lifecycle SQL exception (narrow):** `meeting.live.start` may write meeting `status → STARTED`; `meeting.live.complete` may run the full durable reflect. **`meeting.live.update` must not write SQL columns.** Start/complete must not encode or re-broadcast Yjs updates from the server.
+8. **`getOrCreate` refuses non-live status** (`"MEETING_NOT_LIVE"`). Callers map that to `rejectLive("MEETING_NOT_LIVE")`.
+9. **`MEETING_LIVE_MAP` is one shared constant** (mirrored in `types/meeting.ts`). Backend `doc.getMap(MEETING_LIVE_MAP)` and website SyncedStore root key must use it.
+10. **SyncedStore root is empty `Partial`.** Shape `{ [MEETING_LIVE_MAP]: Partial<MeetingLiveMap> }`; initializer `{ [MEETING_LIVE_MAP]: {} }` only. Do not nest `participants: {}` / `agendaItems: {}` / `decisions: {}` (or other nested maps) in the SyncedStore initializer — that throws. Consumers read `liveStore[MEETING_LIVE_MAP]`.
+11. **Live `participants`, `agendaItems`, `decisions`, and per-decision `votes` are nested `Y.Map`s.** Seed builds nested maps so collaborative field updates merge by identity. A plain object under those keys is not a collaborative map. Per-decision `votes` seeds from SQL `Vote` rows (empty `Y.Map` when none; no non-voter placeholders).
+12. **Live map shape is the mirrored `MeetingLiveMap`** in `backend/src/app/types/meeting.ts` ↔ `website/src/types/meeting.ts` (no GQL / ORM / translation imports). Socket error codes (`MeetingLiveErrorCode`) stay next to transport — **not** in the mirrored file. Changing one mirror without the other is forbidden — see `.cursor/rules/meeting-live-map-mirror.mdc`.
+13. **No automatic BLOB schema migration.** Non-empty `live_state` is decoded as-is; missing nested maps are not back-filled on load. Requester reset (§3.1) or complete (§6) clears the BLOB so the next eligible sync re-seeds.
+14. **Agenda session fields:** durable SQL `status` is mirrored into the live map on seed; `isLiveCreated` is map-only. Active agenda line is `status: "DISCUSSING"`. Cancel is `status: "CANCELED"` (no live delete). Do **not** add root `currentAgendaItemId`. Website chair may flip live `status` via session `setAgendaItemStatus`; SQL agenda reflect lands on complete (§6).
+15. **Talk-queue session fields stay map-only.** Per-participant `talkTurn` and root `currentTalkMemberId` are not SQL columns; they die with live-document reset. Durable talk history remains `TalkRecord`. Set `currentTalkMemberId` **after** `participants` in `createLiveDoc`. Client write rules: `.cursor/rules/meeting-talk-queue.mdc`.
+16. **Decision session fields:** seed all SQL decisions; nest `votes` from SQL `Vote`; `isLiveCreated` map-only; status may be `CANCELED`. DURING active decision is `status: "UNDER_VOTING"` (at most one). Do **not** add root `currentDecisionId`. SQL decision/vote reflect lands on complete (§6). Client write rules: `.cursor/rules/meeting-decisions-vote.mdc`.
 
 ## Known ceilings (do not "fix" silently)
 
-Debounce with no maximum wait, no flush on shutdown, eviction only on approve/demotion (nothing evicts when a session merely ends), single process, handshake-snapshot status gate, no presence writers yet. All are documented in `meeting-live-state.md` §7 — change them deliberately and update that section, do not patch around them locally.
+Debounce with no maximum wait, no flush on shutdown, single process, handshake-snapshot status gate on peers, no presence writers yet. Documented in `meeting-live-state.md` §7 — change them deliberately and update that section, do not patch around them locally.
 
 ## Forbidden
 
 - Exposing, logging, or returning the raw BLOB.
-- Writing meeting columns from a socket controller.
+- Writing meeting SQL columns from `meeting.live.update` (or any non-lifecycle socket path).
+- Server-side Yjs encode/rebroadcast from `meeting.live.start` / `meeting.live.complete`.
+- Inventing `Meeting().sequelize.transaction` — use `Meeting().transaction({ transaction }, …)`.
+- Syncing two meeting instances with `.set` instead of rebinding `entry.meeting`.
 - Applying a client update without the status gate, or trusting `status` from the document as the lifecycle truth.
 - Adding a second in-memory document store beside the helper registry.
 - Re-adding live codec/statics onto `Meeting` ORM.
+- Putting `MeetingLiveErrorCode` into the mirrored `types/meeting.ts` pair.
 - Live-deleting an agenda map entry for cancel, or adding `isDeleted` on `MeetingLiveAgendaItem` — use `status: "CANCELED"`.
-- Adding root `currentAgendaItemId` or `currentDecisionId` — active markers are status values (`DISCUSSING` / `UNDER_VOTING`).
-- Seeding `currentTalkMemberId` before `participants` in `createLiveDoc` (set it after the nested participants map).
+- Adding root `currentAgendaItemId` or `currentDecisionId`.
+- Seeding `currentTalkMemberId` before `participants` in `createLiveDoc`.
 - Storing plain `{}` as the Yjs value of `votes` under a decision — use an empty nested `Y.Map`.
 - Pre-seeding empty vote slots for every participant under `votes`.
