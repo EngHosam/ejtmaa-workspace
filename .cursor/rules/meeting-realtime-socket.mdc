@@ -25,7 +25,7 @@ Authority: `docs/platforms/backend/contracts/meeting-realtime-socket.md`, `docs/
 - Mount: `MeetingLiveProvider` wraps the Meeting tree once in `MeetingLayout.tsx`.
 - Meeting socket config: `website/src/resources/configs/meeting-socket.ts` (root configs sibling of `socket.ts`, not under `configs/socket/`).
 - Backend meeting controllers: `backend/src/app/socket/controllers/meeting/`, all extending `MeetingIOControllerBase`.
-- Meeting auth: `MeetingAuthenticationIOMiddleware` (`meeting_auth`) — not actor `auth`.
+- Meeting auth: `MeetingAuthenticationIOMiddleware` (`meeting_auth`) — not actor `auth`. After ACTIVE org proof, require the org customer’s `getCurrentSubscription` (else `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`). Same gate family as approve + LiveKit `org_host` (`flow-customer-subscription.md` §11).
 - Register only in `backend/src/resources/configs/socket/io.ts` under namespace `/meeting`.
 
 ## Naming (ThemeManager-shaped)

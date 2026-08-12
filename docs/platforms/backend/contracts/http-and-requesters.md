@@ -18,7 +18,7 @@ Client portals are SSR frontends on `/website` and `/cpanel`. Payment gateway ca
 - `external` — compression, json only (no granting / local / errors_funnel / query_values)
 - `cpanel` — CORS, compression, json, query_values, granting (visitor for login, supervisor for authed), local, errors_funnel
 
-`org_host` (`OrganizationHostMiddleware`) is registered in `backend/src/resources/configs/http/middlewares/index.ts`. It resolves an `ACTIVE` organization from the `organizationid` header. First wired route: `POST /website/custom/org/livekit_token` (per-route middleware). `/custom/org/start` does not use it.
+`org_host` (`OrganizationHostMiddleware`) is registered in `backend/src/resources/configs/http/middlewares/index.ts`. It resolves an `ACTIVE` organization from the `organizationid` header and requires that org customer’s active subscription (`MEETING_ACTIVE_SUBSCRIPTION_REQUIRED` when missing). First wired route: `POST /website/custom/org/livekit_token` (per-route middleware). `/custom/org/start` does not use it.
 
 ## Requester dispatch
 

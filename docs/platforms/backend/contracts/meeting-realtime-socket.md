@@ -34,8 +34,9 @@ Driver options are namespace-agnostic: `transports: ["websocket"]`, no `maxHttpB
 4. If `organizationId` is present, requires it to equal `meeting.organization_id` (defense-in-depth).
 5. Requires a `MeetingParticipant` roster row for `(meeting_id, member_id)`.
 6. Loads the `ACTIVE` `Organization` for `meeting.organization_id`.
-7. Stores plain keys on `socket.data`: `organization`, `meeting`, `member`, `participant` (`MeetingSocketData`).
-8. Controllers read context through the exported helpers `currentOrganization` / `currentMeeting` / `currentMember` / `currentParticipant` `(socket, sure?)` — same pattern as the HTTP auth helpers. Missing value with `sure` → `NOT_VALID_CREDENTIAL`.
+7. Loads the org `Customer` and requires `getCurrentSubscription` (else `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`).
+8. Stores plain keys on `socket.data`: `organization`, `meeting`, `member`, `participant` (`MeetingSocketData`).
+9. Controllers read context through the exported helpers `currentOrganization` / `currentMeeting` / `currentMember` / `currentParticipant` `(socket, sure?)` — same pattern as the HTTP auth helpers. Missing value with `sure` → `NOT_VALID_CREDENTIAL`.
 
 The `Meeting` row is loaded **once per connection** and reused by every event on that socket (§4, §6.2).
 
@@ -170,6 +171,7 @@ The update status read is the handshake snapshot (or rebound instance after star
 | Handshake `organizationId` disagrees with `meeting.organization_id` | `NOT_VALID_CREDENTIAL` |
 | No `MeetingParticipant` roster row for the pair | `NOT_VALID_CREDENTIAL` |
 | Organization not `ACTIVE` | `NOT_VALID_CREDENTIAL` |
+| Organization customer missing active subscription (`getCurrentSubscription`) | `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED` — connection refused |
 
 Website: those refuses arrive as Socket.IO `connect_error` → linking `FAILED` (`organization-host-routing.md` §5.1, §5.3 / §7). They never become `meeting.live.error`.
 

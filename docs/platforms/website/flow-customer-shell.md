@@ -6,9 +6,9 @@ Customer portal contract for the customer shell (see `overview.md`).
 
 Authed customer shell on `website/`: `CUSTOMER_MAIN` layout, identity-first header, credit footer, portaled quick-nav drawer (grid tiles), and customer `me` read boundary via `CUSTOMER_ME`.
 
-**Shipped in this shell:** layout wiring, `CustomerHome` command map, `CustomerMembers` + form, `CustomerMeetings` + create/details, `CustomerOrganization`, `CustomerMessageChannels` + form, `CustomerMessageTemplates` + form, header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
+**Shipped in this shell:** layout wiring, `CustomerHome` command map, `CustomerMembers` + form, `CustomerMeetings` + create/details, `CustomerOrganization`, `CustomerMessageChannels` + form, `CustomerMessageTemplates` + form, `CustomerSubscription` catalog + checkout + subscribe + paymentReturn (drawer unlocked), header, footer, drawer, `CustomerSubHeader` (breadcrumb bar), `useMe` / SSR hydrate.
 
-**Not shipped yet:** `CustomerBottomBar`, `BottomIcons`, `Dims.bottomBarHeight`, and remaining drawer targets without routes (`CustomerSubscription`, `CustomerSettings`, `CustomerSupport`, `CustomerHelpGuide`, notifications page if still gated).
+**Not shipped yet:** `CustomerBottomBar`, `BottomIcons`, `Dims.bottomBarHeight`, and remaining drawer targets without routes (`CustomerSettings`, `CustomerSupport`, `CustomerHelpGuide`, notifications page if still gated).
 
 ## 2) Layout wiring
 
@@ -161,7 +161,6 @@ Reuse craft in `customer/home/*`: eyebrow zones (`HomeZoneShell`), lifecycle rai
 ### Non-goals
 
 - LiveKit join / live session UI
-- Navigation to unshipped `CustomerSubscription`
 - Fake KPI / Impact sparklines
 - Approving from home (approve stays on details)
 

@@ -77,6 +77,9 @@ Do not point `CUSTOMER_ME` at visitor/global `DATA_ADAPTERS.GQL`. Hook: `website
 | `"customer-members"` (private id) | inherits `CUSTOMER_GQL` | Members directory — `useCustomerMembers` |
 | `"customer-meetings"` (private id) | inherits `CUSTOMER_GQL` | Meetings directory — `useCustomerMeetings` |
 | `"customer-message-channels"` (private id) | inherits `CUSTOMER_GQL` | Message channels directory — `useCustomerMessageChannels` |
+| `"customer-subscription-plans"` (private id) | inherits `CUSTOMER_GQL` | Plans catalog — `useCustomerSubscriptionPlans` (`_Plan` / `_Pagination`) |
+| `"customer-subscription-payment-methods"` (private id) | inherits `CUSTOMER_GQL` | MyFatoorah methods helper — `useCustomerSubscriptionPaymentMethods` (**not** `_Pagination`; no `total_count`; public `isLoading` includes `RELOADING`) |
+| `"customer-subscription-can-subscribe"` (private id) | inherits `CUSTOMER_GQL` | `me.canSubscribe(planId)` via `section.me` (not listable) — `useCustomerSubscriptionCanSubscribe` (`isLoading` includes `RELOADING`) |
 
 Members query uses `listable: "members"` and optional `filter: { search }` from route history key `members`. Full contract: `flow-customer-members.md`.
 
@@ -108,9 +111,12 @@ Rules:
 
 Shipped customer adapters in `initDataAdaptersProps`: `ADAPTER1`, `CUSTOMER_ME`, `CUSTOMER_GQL`. Governance: `.cursor/rules/website-list-adapter-enter-mode.mdc`, `.cursor/rules/website-customer-list-history-search.mdc`.
 
+Subscription checkout adapters + `Forms.CUSTOMER_SUBSCRIPTION`: `flow-customer-subscription.md` (§4.1 — do not invent pagination on `_PaymentMethod`).
+
 ## Related
 
 - `docs/platforms/website/flow-customer-members.md`
+- `docs/platforms/website/flow-customer-subscription.md`
 - `docs/platforms/website/flow-customer-meetings.md`
 - `docs/platforms/website/flow-customer-message-channels.md`
 - `docs/platforms/website/flow-customer-organization.md`

@@ -38,7 +38,7 @@ description: >-
 
 ## Instructions
 
-1. **Backend auth** stays on `MeetingAuthenticationIOMiddleware` (`meeting_auth`) for `/meeting`. Do not fold meeting proof into actor `AuthenticationIOMiddleware`. Controllers read via `current*` helpers and `MeetingSocketData`.
+1. **Backend auth** stays on `MeetingAuthenticationIOMiddleware` (`meeting_auth`) for `/meeting`. Do not fold meeting proof into actor `AuthenticationIOMiddleware`. Controllers read via `current*` helpers and `MeetingSocketData`. After ACTIVE org proof, require org customer `getCurrentSubscription` (else `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`) — same family as approve + LiveKit `org_host` (`flow-customer-subscription.md` §11).
 2. **Backend controllers** under `backend/src/app/socket/controllers/meeting/`, extending `MeetingIOControllerBase` — it owns the socket typing, the bound-event tuple, and `rejectLive`. Do not re-`declare` the socket per controller.
 3. **Register in `io.ts` only:** controller aliases + `/meeting` dotted route keys (`"meeting.live.sync": "meeting_live_sync"`). A new event is also added to `MEETING_BOUND_EVENTS` (compose chair-only into the bound list — do not duplicate string literals), otherwise the connection controller unbinds it.
 4. **Every handler returns `this.meetingBoundEvents()`**, including rejection paths. Reject with `rejectLive(code)` so the client gets `meeting.live.error` while the listeners stay bound. Use `currentParticipant` / `currentMeeting` helpers — never raw `socket.data`.

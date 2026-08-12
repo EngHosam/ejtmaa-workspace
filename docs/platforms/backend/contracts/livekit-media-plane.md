@@ -194,7 +194,8 @@ Consumed by `useMeetingLiveKitRoom` (the only caller), which owns the `Room` and
 | Missing body fields / bad member token / meeting not in org / member org mismatch / not on roster | `NOT_VALID_CREDENTIAL` |
 | No in-process live doc or live status ≠ `STARTED` | `MEETING_NOT_LIVE` (localized `ar`/`en` messages) |
 | Incomplete LiveKit env during mint | helper throw (propagates as server error) |
-| Missing / inactive organization header | `org_host` → `404` |
+| Missing / inactive organization header / org customer missing | `org_host` → `404` |
+| Organization customer has no active subscription | `org_host` → `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED` |
 
 Website: `NOT_VALID_CREDENTIAL` still hits the global errors funnel (existing axios behavior). Network failures with `skipNetworkToast` do not toast; hook retries while `STARTED`.
 

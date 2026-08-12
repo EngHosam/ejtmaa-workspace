@@ -14,7 +14,7 @@ Related runtime: `website/src/app/services/router.ts` (`publicRoutes`, `applyRou
 
 ## 1.1) Shipped state
 
-`routes.ts` currently ships **customer** identifies with `customerRouter` including `CustomerHome`, `CustomerMembers`, multi-path `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, `CustomerOrganization`, `CustomerMessageChannels`, and multi-path `CustomerMessageChannelForm` on `CUSTOMER_MAIN` (public → customer → base section split). Remaining `/customer/*` workspace routes are still planned (see §5.2).
+`routes.ts` currently ships **customer** identifies with `customerRouter` including `CustomerHome`, `CustomerMembers`, multi-path `CustomerMemberForm`, `CustomerMeetings`, `CustomerMeetingForm`, `CustomerMeetingDetails`, `CustomerOrganization`, `CustomerMessageChannels`, multi-path `CustomerMessageChannelForm`, `CustomerMessageTemplates`, multi-path `CustomerMessageTemplateForm`, and `CustomerSubscription` on `CUSTOMER_MAIN` (public → customer → base section split). Remaining `/customer/*` workspace routes are still planned (see §5.2).
 
 | Identify | Path | Layout |
 |---|---|---|
@@ -150,7 +150,7 @@ Shipped: `CustomerHome`, `CustomerMembers`, `CustomerMemberForm`, `CustomerMeeti
 | `CustomerMessageChannelForm` | `/customer/message-channels/form` (+ `/:id`) | shipped — multi-path create/update; parent `CustomerMessageChannels` — `flow-customer-message-channels.md` |
 | `CustomerMessageTemplates` | `/customer/message-templates` | shipped — `flow-customer-message-templates.md` |
 | `CustomerMessageTemplateForm` | `/customer/message-templates/form` (+ `/:id`) | shipped — multi-path form |
-| `CustomerSubscription` | `/customer/subscription` (target) | planned — drawer tile |
+| `CustomerSubscription` | `/customer/subscription` | shipped — drawer tile; catalog + checkout + subscribe; `breadcrumb: { parent: CustomerHome }`; query `paymentReturn` — `flow-customer-subscription.md` |
 | `CustomerSettings` | `/customer/settings` | planned — drawer tile + settings flow |
 | `CustomerSupport` | `/customer/support` (target) | planned — drawer tile (no GQL root yet) |
 | `CustomerHelpGuide` | `/customer/help-guide` | planned — drawer tile + static info |

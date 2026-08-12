@@ -30,7 +30,7 @@ description: >-
 
 ## Instructions
 
-1. **Route** stays on `OrgCustomRouter` with **per-route** `middleware("org_host")`. Do not put `org_host` on `/custom/org/start`. Do not mint tokens from GraphQL.
+1. **Route** stays on `OrgCustomRouter` with **per-route** `middleware("org_host")`. Do not put `org_host` on `/custom/org/start`. Do not mint tokens from GraphQL. `org_host` requires the org customer’s active subscription (`getCurrentSubscription` → `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`) before the controller runs — see `flow-customer-subscription.md` §11.
 2. **Controller name** is `MeetingLiveKitTokenController` (meeting domain). Do not rename to `OrgLiveKitTokenController` just because the path is under `/org`.
 3. **Authz order** matches the controller steps: body credentials → member `id`+`access_token` → meeting under `currentOrganization` + member org match → roster row → `peekMeetingLiveDoc` + `readLiveFields` `STARTED` (never `getOrCreate` / never create for this gate).
 4. **Reuse-or-mint:** reuse when `livekit_token_expires_at` ≥ now+6h; else `LiveKitHelper.createAccessToken` with `identity` = member id string; persist token + expiry `now+12h` aligned with `LiveKitHelper.DEFAULT_ACCESS_TOKEN_TTL`. One JWT per roster member — never share across members.

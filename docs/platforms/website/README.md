@@ -34,6 +34,7 @@
 | Customer organization | [`flow-customer-organization.md`](flow-customer-organization.md) | Org settings form (read + upsert) |
 | Customer message channels | [`flow-customer-message-channels.md`](flow-customer-message-channels.md) | Org delivery-channel directory + form |
 | Customer message templates | [`flow-customer-message-templates.md`](flow-customer-message-templates.md) | Org message-template directory + form |
+| Customer subscription | [`flow-customer-subscription.md`](flow-customer-subscription.md) | Plan catalog + Subscription checkout + paymentReturn |
 | Meeting broadcast | [`flow-meeting-broadcast.md`](flow-meeting-broadcast.md) | Organization-host LiveKit A/V stage (room hook + controls + ceilings) |
 
 ## Invariants
@@ -284,6 +285,23 @@ Current-state reflection of the customer-home change set. The source behavior is
 | `docs/platforms/website/README.md` | This traceability section and flow index. |
 | `website` (root nested-repository status) | Nested repository contains the source paths above; no root-repository behavior is implemented by the gitlink itself. |
 
+## Change set traceability — customer subscription checkout + subscription gates
+
+Full path map and behavior contract: [`flow-customer-subscription.md`](flow-customer-subscription.md) (§12 inventory). Meeting details schedule-note alignment: [`flow-customer-meetings.md`](flow-customer-meetings.md) §6.5. Backend approve / handshake / `org_host`: [`../backend/contracts/meeting-domain.md`](../backend/contracts/meeting-domain.md) §9.1b, [`../backend/contracts/meeting-realtime-socket.md`](../backend/contracts/meeting-realtime-socket.md), [`../backend/contracts/livekit-media-plane.md`](../backend/contracts/livekit-media-plane.md) §7.2, [`../backend/contracts/client-portal-http-website.md`](../backend/contracts/client-portal-http-website.md).
+
+| Concern | Documented where |
+|---|---|
+| Route + drawer unlock + `paymentReturn` query | `flow-customer-subscription.md` §2; `route-registry-contract.md` |
+| Catalog / checkout / inline Pay / form `subscribe` | `flow-customer-subscription.md` §3–§5 |
+| Payment methods non-paginated + `isLoading` incl. `RELOADING` | `flow-customer-subscription.md` §4.1–§4.2; `data-flow-and-gql.md` |
+| Finalize 302 → `/customer/subscription` | `flow-customer-subscription.md` §6; myfatoorah + external-http contracts |
+| `SarMark` / `SarAmount` | `flow-customer-subscription.md` §7; `.cursor/rules/website-customer-utils-composed-marks.mdc` |
+| Meeting draft schedule notes (not readiness) | `flow-customer-meetings.md` §6.5 |
+| Approve + Meeting handshake + LiveKit `org_host` subscription gates | `flow-customer-subscription.md` §11; `meeting-domain.md` §9.1b–§9.1c |
+| Skill / rules | `.cursor/skills/website-customer-subscription/SKILL.md`; meeting-lifecycle / meeting-realtime / livekit / organization-host rules |
+
+Generated only: `website/lib/tsconfig.tsbuildinfo` — not narrated.
+
 ## Change set traceability — organization host routing
 
 Full path map (both repositories, every changed path): [`organization-host-routing.md`](organization-host-routing.md) §10. Latest live-map inventory: [`../backend/contracts/meeting-live-state.md`](../backend/contracts/meeting-live-state.md) §9 (durable agenda/decision enums + live SQL seed); shell/broadcast inventories under §10l–§10m; viewport-locked shell + floating broadcast chrome = §10q; live start/complete = §10r; Init end-meeting CTA = §10s.
@@ -304,7 +322,7 @@ Full path map (both repositories, every changed path): [`organization-host-routi
 | Talk queue (live-map only: non-chair raise/lower hand, chair floor + FIFO queue admin, drawer pulse; no `TalkRecord` sync) | `organization-host-routing.md` §5.3, §5.5, §10o; `flow-meeting-broadcast.md` §6.4; `../backend/contracts/talk-record-domain.md` §1 |
 | Socket `/meeting` + `meeting_auth` + `Rooms.MEETING` + `meeting.live.*` | `../backend/contracts/meeting-realtime-socket.md`; `../backend/modules/runtime-integrations.md` §5 |
 | Decisions & voting (live-map only: pre-start ballots gate check-in, chair-run in-meeting ballots, drawer pulse; no `Decision` / `Vote` sync) | `organization-host-routing.md` §5.3, §5.5, §10p; `../backend/contracts/meeting-live-state.md` §1.2 |
-| Known limits (`org_host` on LiveKit token; client-only chair gates incl. agenda status, talk-queue administration, and ballot rules; client-allocated `talkTurn`; LiveKit token also gated by `can.enterLive`) | `organization-host-routing.md` §8 |
+| Known limits (`org_host` on LiveKit token + active-subscription gate; Meeting handshake subscription gate; client-only chair gates incl. agenda status, talk-queue administration, and ballot rules; client-allocated `talkTurn`; LiveKit token also gated by `can.enterLive`) | `organization-host-routing.md` §8; `flow-customer-subscription.md` §11 |
 | Meeting shell branding + Meeting info after `live` / selected chrome + STARTED broadcast stack + solid overlay + in-shell `MeetingPage` + viewport-locked READY shell + Init end-meeting CTA (`confirm` → `actions.endMeeting`) | `organization-host-routing.md` §5.4, §5.5, §10l, §10q, §10s; `.cursor/rules/website-meeting-shell.mdc` |
 | `.cursor/rules/organization-host-routing.mdc` / `meeting-realtime-socket.mdc` / `website-meeting-live-session.mdc` / `website-meeting-shell.mdc` | Host-mode gating + Meeting transport + session surface + READY shell IA |
 
@@ -339,4 +357,5 @@ Current-state reflection of the footer-credit brand spelling correction in the n
 - `.cursor/skills/website-customer-message-channels/SKILL.md`
 - `.cursor/skills/website-customer-message-templates/SKILL.md`
 - `.cursor/skills/website-customer-meeting-form/SKILL.md`
+- `.cursor/skills/website-customer-subscription/SKILL.md`
 - `.cursor/skills/website-entity-picker/SKILL.md`

@@ -3,6 +3,8 @@ description: Shared Utils-composed brand marks (e.g. DrawerMenuIcon) live under 
 globs:
   - website/src/app/ui/components/DrawerMenuIcon.tsx
   - website/src/app/ui/components/HomeMark.tsx
+  - website/src/app/ui/components/SarMark.tsx
+  - website/src/app/ui/components/SarAmount.tsx
   - website/src/app/ui/components/Breadcrumb.tsx
   - website/src/app/ui/components/customer/**/*.tsx
   - website/src/app/ui/components/LandingHeader.tsx
@@ -26,6 +28,7 @@ Applies when authoring or replacing **custom dual-tone / brand marks** shared ac
 
 - `DrawerMenuIcon` (`website/src/app/ui/components/DrawerMenuIcon.tsx`): accent rail + two ink bars, default `size={1.2}`. Used by `CustomerHeader` and `LandingHeader` (replacing `FiMenu` on landing). Optional `accentClr` — `MeetingHeader` passes `semanticColor.iconPrimary` for a monochrome mark.
 - `HomeMark` (`website/src/app/ui/components/HomeMark.tsx`): portal frame + accent floor rail; `tone="ink"` (breadcrumb) / `tone="onPrimary"` (customer drawer home). Meeting drawer Home: `frameClr` + `accentClr` = org `actionIconOnFill` (white on fill).
+- `SarMark` / `SarAmount` (`website/src/app/ui/components/SarMark.tsx`, `SarAmount.tsx`): official Saudi Riyal SAMA glyph (Unicode U+20C1 paths). Use for money UI — do **not** render the legacy abbreviation `ر.س` / plain `SAR` text for SAR amounts.
 
 ## Why
 

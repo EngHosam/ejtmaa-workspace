@@ -1,6 +1,6 @@
 ---
 description: LiveKit media plane — helper, join-token HTTP, participant token cache (not a LiveKit ORM/room table)
-globs: backend/src/app/helpers/LiveKitHelper.ts,backend/src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/.env.example,backend/package.json,website/src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts,website/src/resources/configs/axios/api.ts,website/src/types/extends/global.ts
+globs: backend/src/app/helpers/LiveKitHelper.ts,backend/src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts,backend/src/app/http/middlewares/OrganizationHostMiddleware.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/.env.example,backend/package.json,website/src/app/ui/components/meeting/hooks/useMeetingLiveKitToken.ts,website/src/resources/configs/axios/api.ts,website/src/types/extends/global.ts
 alwaysApply: false
 ---
 
@@ -31,6 +31,7 @@ Workflow skill: `.cursor/skills/meeting-livekit-token/SKILL.md`.
 - Publish grants are LiveKit defaults for every roster member; do not claim participant-type media policy exists until `canPublish` is mapped from `MeetingParticipant.type`.
 - Controller file name is **`MeetingLiveKitTokenController`** (not `OrgLiveKitTokenController`) even though the route lives under `OrgCustomRouter` `/custom/org/...`.
 - Join-token HTTP: `POST /website/custom/org/livekit_token` with per-route `org_host`; `STARTED` via `peekMeetingLiveDoc` + `readLiveFields` (**no create**). Peek is in-process only.
+- `org_host` (`OrganizationHostMiddleware`) requires the org customer’s active subscription (`getCurrentSubscription` → else `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`) before any controller runs — including token mint/reuse. `/custom/org/start` must not use `org_host`.
 - Persist reused JWTs on `MeetingParticipant.livekit_token` / `livekit_token_expires_at` only — never on GQL.
 - One JWT per member; never reuse one token across members.
 - Response is `{ token, url }`. `url` is recomputed from env via `clientUrl()` on every response — never persisted beside the cached JWT.

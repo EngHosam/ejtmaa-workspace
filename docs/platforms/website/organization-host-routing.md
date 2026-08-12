@@ -663,6 +663,7 @@ No auth, customer, or permission data is returned; the website consumes it as st
 
 - reads the `organizationid` request header (Express lowercases header names, so the website's `organizationId` header arrives here),
 - loads the `ACTIVE` organization by id, throwing `404` when the header is missing or the organization does not resolve,
+- requires the org customer’s active subscription (`getCurrentSubscription`) else `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED` (blocks LiveKit join-token mint on this middleware),
 - attaches `req.organizationHostMiddleware = { organization }`,
 - exports `currentOrganization(req, sure?)` for controllers.
 
@@ -675,7 +676,7 @@ Full backend contract: `docs/platforms/backend/contracts/meeting-realtime-socket
 What the website side depends on:
 
 - namespace `/meeting`, registered in `backend/src/resources/configs/socket/io.ts` with `globalMiddlewares: ["meeting_auth"]`,
-- `MeetingAuthenticationIOMiddleware` proves member token + meeting + roster row + `ACTIVE` organization before any controller runs, so a refused handshake surfaces as a connect error, not a partial session,
+- `MeetingAuthenticationIOMiddleware` proves member token + meeting + roster row + `ACTIVE` organization + org customer active subscription before any controller runs, so a refused handshake surfaces as a connect error, not a partial session,
 - `MeetingConnectionIOController` joins `Rooms.MEETING(meetingId)` and binds the role-appropriate set (`sync` / `update` / `disconnect`; chair also gets `start` / `complete`),
 - the live controllers keep that set bound on every reply, including rejections, so the client only has to re-run the sync handshake on `connect` (§5.1),
 - CRDT writes are refused unless the meeting status is `WAITING_TO_START` or `STARTED`, answered as `meeting.live.error` with code `MEETING_NOT_LIVE`,
@@ -692,6 +693,7 @@ What the website side depends on:
 | Apex request to `/meeting/...` | route gate → `Error` `404` |
 | Organization-host request to any non-`orgHostOnly` route (`/`, `/login`, `/customer/*`) | route gate → `Error` `404` |
 | Socket `/meeting` handshake missing ids, bad token, org mismatch, or no roster row | Server throws `NOT_VALID_CREDENTIAL` → Socket.IO `connect_error` (not `meeting.live.error`) → client sets `error = "NOT_VALID"`, stops reconnection → `linking === "FAILED"` (§5.1, §5.3) |
+| Socket `/meeting` handshake with no active org subscription | Server throws `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED` → same `connect_error` → linking `FAILED` path (website maps non-transport connect errors to `NOT_VALID` today) |
 | Network / websocket transport failure before connect | `connect_error` with `type === "TransportError"` → stay PENDING; Socket.IO keeps retrying (§5.1) |
 | Live write on a meeting that is not `WAITING_TO_START` / `STARTED` | `meeting.live.error` `MEETING_NOT_LIVE` → client `error` is set and `synced` clears → linking FAILED until a later successful sync clears `error` (§5.1) |
 | Malformed live payload | `meeting.live.error` `NOT_VALID` → same linking FAILED path |
@@ -699,7 +701,7 @@ What the website side depends on:
 
 ## 8) Known limits (shipped state, intentional)
 
-1. **`org_host` is wired on LiveKit token fetch.** `POST /custom/org/livekit_token` uses per-route `middleware("org_host")`. `/custom/org/start` still resolves the organization from the body without `org_host`. The response now carries `{ token, url }`, and `useMeetingLiveKitToken` feeds `useMeetingLiveKitRoom` (no probe UI). Contract: `../backend/contracts/livekit-media-plane.md` §6.
+1. **`org_host` is wired on LiveKit token fetch** and requires the org customer’s active subscription (`getCurrentSubscription` → else `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`). `POST /custom/org/livekit_token` uses per-route `middleware("org_host")`. `/custom/org/start` still resolves the organization from the body without `org_host`. The response carries `{ token, url }`, and `useMeetingLiveKitToken` feeds `useMeetingLiveKitRoom` (no probe UI). Contract: `../backend/contracts/livekit-media-plane.md` §6–§7.2; `flow-customer-subscription.md` §11.
 2. **Every drawer in-shell page now has product UI (§5.5).** `MeetingAttendancePage` (chair-only attendance log + quorum), `MeetingLivePage` (waiting + chair start), `MeetingAgendaPage` (live agenda + chair status chips), `MeetingTalkQueuePage` (chair-only floor + FIFO queue admin), `MeetingDecisionsAndVotePage` (pre-start + in-meeting ballots). `MeetingPageStub` stays in the tree for future ids but is no longer mounted by any of them. While `STARTED`, broadcast is owned by `Meeting.tsx` (`MeetingLiveBroadcast` + frosted `MeetingPageOverlay` for other pages) and carries real LiveKit A/V. Durable side effects of a decision outcome (SQL `Decision.status`, `Vote` rows, minutes) are still deferred — the ballot lives in the CRDT only. The header carries no talk control (§5.4); non-chair raise-hand lives on the broadcast action row. Header identity (`MeetingHeaderMe`) is shipped and live from session `me`.
 3. **Collaborative live map fields** — `subject`, `type`, `status`, `datetime` (seeded scheduled start; not a collaborative edit target), `minMembersCount` (seeded quorum denominator on first empty BLOB only; not a collaborative edit target; missing on older BLOBs → clients hide quorum UI), `participants` (incl. session-only `talkTurn` default `null`), `currentTalkMemberId` (seeded `null`; who is speaking; set after `participants`), `agendaItems` (SQL line mirror incl. durable `status`; session-only `isLiveCreated` default `false`; no live delete — cancel is `CANCELED`; active line is `DISCUSSING` — **no** root `currentAgendaItemId`), `decisions` (SQL decision mirror all phases, with `PRE_START` `NEW`/`UNDER_VOTING` normalized to `UNDER_VOTING` on seed + session-only `isLiveCreated` default `false` + nested `votes` from SQL `Vote` or empty; no per-non-voter slots; DURING active decision is `UNDER_VOTING` — **no** root `currentDecisionId`). **Shipped website live writers:** chair `actions.setAgendaItemStatus` (map `status` only), the talk-queue writers, and the decisions writers (map only until complete). **Durable SQL reflect on chair complete** covers agenda / decisions+votes / participant attendance + meeting `COMPLETED` + `live_state = null` (`../backend/contracts/meeting-live-state.md` §6). Talk queue / `TalkRecord` stay session-only. `isLiveCreated` live writers are not shipped (complete create path is ready). Immediate SQL `STARTED` on `meeting.live.start`.
 4. **Non-production organization resolution ignores the request body** and always uses `TEST_ORGANIZATION_ID`, so local runs exercise a single organization.
@@ -832,7 +834,7 @@ Workspace docs/rules for the same surface: `docs/platforms/website/organization-
 | `src/app/http/controllers/website/custom/MeetingLiveKitTokenController.ts` | LiveKit join-token (`org_host` + peek `STARTED` + reuse-or-mint); returns `{ token, url }` | `../backend/contracts/livekit-media-plane.md` §6 |
 | `src/app/http/routes/website.ts` | `OrgCustomRouter` + `POST /custom/org/start` + `POST /custom/org/livekit_token` | §6.1; `../backend/contracts/livekit-media-plane.md` §6.1 |
 | `src/app/orm/models/MeetingParticipant.ts` | roster join + optional `livekit_token` / `livekit_token_expires_at` | `../backend/contracts/meeting-participant-domain.md`; `livekit-media-plane.md` §6 |
-| `src/resources/trans/ar/messages.ts`, `src/resources/trans/en/messages.ts` | `MEETING_NOT_LIVE` | `../backend/contracts/livekit-media-plane.md` §7.2 |
+| `src/resources/trans/ar/messages.ts`, `src/resources/trans/en/messages.ts` | `MEETING_NOT_LIVE`; `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED` (handshake / `org_host`) | `../backend/contracts/livekit-media-plane.md` §7.2; `flow-customer-subscription.md` §11 |
 | `src/app/http/middlewares/OrganizationHostMiddleware.ts` | header-based org resolve + `currentOrganization` | §6.2, §8 |
 | `src/resources/configs/http/middlewares/index.ts` | `org_host` registration | §6.2 |
 | `src/app/socket/middlewares/AuthenticationIOMiddleware.ts` | actor handshake `token` + `SocketData` for `/customer`, `/supervisor` | `../backend/contracts/meeting-realtime-socket.md` §2 |

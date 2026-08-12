@@ -74,8 +74,8 @@ After finalize for `platform: "website"`:
 
 | Behavior | Detail |
 |---|---|
-| Success path | HTTP **302** to `{WEBSITE_URL}/customer?paymentReturn=success` |
-| Error path | HTTP **302** with `paymentReturn=error` |
+| Success path | HTTP **302** to `{WEBSITE_URL}/customer/subscription?paymentReturn=success` |
+| Error path | HTTP **302** to `{WEBSITE_URL}/customer/subscription?paymentReturn=error` |
 | Missing env | If `process.env.WEBSITE_URL` is missing/empty, controller responds `500 "WEBSITE_URL"` |
 
 Post-return client handling is owned by the website (not shipped in the payment backend package).

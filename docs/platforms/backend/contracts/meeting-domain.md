@@ -296,7 +296,7 @@ MEETING: {
 | `read` | org-owned meeting |
 | `update` | org-owned + `DRAFT` + `notify_status === NOT_STARTED` — covers basics, templates, roster, agenda, decisions (no separate `updateTemplates` Ability sub) |
 | `delete` | org-owned + `DRAFT` + `NOT_STARTED` |
-| `approve` | org-owned + `DRAFT` + `NOT_STARTED` + invite start still ahead (§9.1a) + completeness (§9.1b) |
+| `approve` | org-owned + **active subscription** (`Customer.getCurrentSubscription`) + `DRAFT` + `NOT_STARTED` + invite start still ahead (§9.1a) + completeness (§9.1b) |
 | `cancel` | org-owned + status is `DRAFT` or `WAITING_TO_START` (never after the session started) |
 
 GQL UI exposure (`visualMode`):
@@ -328,6 +328,7 @@ Approval is final. Once `approve` moves a meeting to `WAITING_TO_START`, every c
 
 ### 9.1b Approve completeness
 
+0. **Active subscription** — `Customer.getCurrentSubscription` (ACTIVE + not ended scope). Missing → `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`. Create/update draft remains allowed without a subscription.
 1. `notify_start_at ≥ now` (§9.1a) — the invite window has not been missed.
 2. **Voting** roster count ≥ `min_members_count` — `countParticipants` filters `type IN (CHAIRPERSON, MEMBER)`; `VIEWER` rows never count toward quorum.
 3. ≥1 agenda item.
@@ -345,6 +346,17 @@ Approval is final. Once `approve` moves a meeting to `WAITING_TO_START`, every c
 WhatsApp FK types: `ADWHATS` \| `ADWHATS_PRO`. Email FK types: `EJTMAA_EMAIL` \| `CUSTOM_EMAIL`.
 
 Approve writes `status = WAITING_TO_START` and clears `live_state`, registering `afterCommit` → `destroyMeetingLiveDoc(meetingId, { flush: false })`. It keeps the client-chosen `notify_start_at` and does **not** change `notify_status` — the notify pipeline is still out of scope (§1).
+
+### 9.1c Active subscription outside approve (live entry)
+
+The same helper and denial key also gate **live entry**, not as approve-completeness steps:
+
+| Surface | Where | Effect |
+|---|---|---|
+| Meeting socket handshake | `MeetingAuthenticationIOMiddleware` | Refuse connect (`MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`) |
+| LiveKit join token | `OrganizationHostMiddleware` (`org_host`) | Refuse before mint/reuse; `/custom/org/start` does not use `org_host` |
+
+Website checkout / schedule-note UX: `docs/platforms/website/flow-customer-subscription.md` §11. Socket: `meeting-realtime-socket.md` §2 / §6.1. Token: `livekit-media-plane.md` §7.2.
 
 ### 9.2 Joi
 
@@ -382,7 +394,9 @@ Website UI: `docs/platforms/website/flow-customer-meetings.md` §5–§6.
 | `backend/requesters.website.ts` | `customer.meeting` union of all subs above |
 | website mirror | Same (W18) |
 
-### 9.5 Failure modes (write)
+### 9.5 Failure modes
+
+Write-path Ability/Joi denials, plus live-entry subscription refuses (§9.1c):
 
 | Condition | Result |
 |---|---|
@@ -391,6 +405,8 @@ Website UI: `docs/platforms/website/flow-customer-meetings.md` §5–§6.
 | `datetime` under 10-minute lead on create/update | Joi `datetime.tooSoon` (field error) |
 | `notify_start_at` in the past | Joi `notify_start_at.past` (field error) |
 | `notify_start_at` within 5 minutes of `datetime` | Joi `notify_start_at.tooLate` (field error) |
+| No active subscription on approve | `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED` |
+| No active subscription on Meeting handshake / LiveKit `org_host` | `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED` (§9.1c) |
 | Invite start already passed on approve | `MEETING_NOTIFY_TIME_PASSED` |
 | Update/approve/delete not draft | `MEETING_NOT_DRAFT` |
 | Cancel after the session started | `MEETING_ALREADY_STARTED` |
@@ -405,7 +421,9 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 | Path | Role | Section |
 |---|---|---|
 | `backend/src/app/gql/bridges/customer/MeBridge.ts` | `canCreateMeeting` visualMode extra | §9.1 |
-| `backend/src/app/orm/models/Customer.ts` | `Ability.MEETING`; org scope, draft-only editing, cancel window, approve invite-window + completeness; roster include `["member"]` for notify-template mode | §9.1–§9.1b |
+| `backend/src/app/orm/models/Customer.ts` | `Ability.MEETING`; org scope, draft-only editing, cancel window, approve invite-window + completeness + active subscription; roster include `["member"]` for notify-template mode | §9.1–§9.1b |
+| `backend/src/app/socket/middlewares/MeetingAuthenticationIOMiddleware.ts` | Meeting handshake active-subscription gate | §9.1c |
+| `backend/src/app/http/middlewares/OrganizationHostMiddleware.ts` | `org_host` active-subscription gate (LiveKit token) | §9.1c |
 | `backend/src/app/helpers/meetingNotifyTemplateMode.ts` | Contact-mode resolver, template satisfiability, denial keys, executable matrix self-check | §9.1b |
 | `backend/src/app/validation/joi_rules.ts` | Customer-owned Meeting, agenda, decision, member, and template hydration; `isMeetingDatetime` lead rule; `isMeetingNotifyStartAt` invite-window rule | §9.2 |
 | `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | Basics, templates, approve, cancel, delete, participant, agenda, and decision requester subs; client-owned `notify_start_at`; live-doc destroy on approve/cancel | §9.1a, §9.3 |
@@ -422,7 +440,7 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 | `backend/src/app/orm/models/TalkRecord.ts` | Talk queue (detail contract) | `talk-record-domain.md` |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany Meeting` + mixins | §3.5 |
 | `backend/src/resources/trans/ar/general.ts` / `en/general.ts` | Meeting, decision, notify, and message-template enum labels; `joi.datetime.tooSoon`, `joi.notify_start_at.past` / `.tooLate` | §3.3, §9.1a, §9.1b |
-| `backend/src/resources/trans/ar/messages.ts` / `en/messages.ts` | Ability denial messages for meeting completeness, notify lock, draft-only edit (`MEETING_NOT_DRAFT`), cancel window (`MEETING_ALREADY_STARTED`), missed invite window (`MEETING_NOTIFY_TIME_PASSED`), voting-quorum copy | §9.1a, §9.1b |
+| `backend/src/resources/trans/ar/messages.ts` / `en/messages.ts` | Ability denial messages for meeting completeness, active subscription (`MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`), notify lock, draft-only edit (`MEETING_NOT_DRAFT`), cancel window (`MEETING_ALREADY_STARTED`), missed invite window (`MEETING_NOTIFY_TIME_PASSED`), voting-quorum copy | §9.1a, §9.1b |
 | `backend/src/resources/trans/ar/validation.ts` / `eng-hosam/@nodejs/validation/src/trans/ar/validation.ts` | Arabic email validation labels | localization-only |
 | `backend/src/app/gql/definitions/base.graphql` | meeting GQL enum wrappers | §4 |
 | `backend/src/app/gql/definitions/customer.graphql` | `_Meeting` + `_MeetingFilter` + roots + nested relations | §4 |

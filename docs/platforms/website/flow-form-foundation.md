@@ -27,6 +27,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `Forms.CUSTOMER_MESSAGE_TEMPLATE` — `API.FORMS.CUSTOMER.R("messageTemplate")` (shipped template create/edit).
   - `Forms.CUSTOMER_ORGANIZATION` — `API.FORMS.CUSTOMER.R("organization")` (shipped org settings upsert).
   - `Forms.CUSTOMER_MEETING` — `API.FORMS.CUSTOMER.R("meeting")` (create form + details roadmap writes).
+  - `Forms.CUSTOMER_SUBSCRIPTION` — `API.FORMS.CUSTOMER.R("subscription")` (subscribe → MyFatoorah payment URL).
 - **Form hooks (web-core)** — same ownership split as cpanel:
   - `useForm` reads an already-existing form entry,
   - `useShallowForm` injects a form reducer entry on mount (route/modal/scoped forms),
@@ -42,6 +43,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - message-template form: `/customer/message-templates/form` (+ `/:id`) — `Forms.CUSTOMER_MESSAGE_TEMPLATE`; see `flow-customer-message-templates.md`,
   - meeting form: `/customer/meetings/form` — `Forms.CUSTOMER_MEETING` create-only path; details roadmap uses the same form identity for modal/page writes — see `flow-customer-meetings.md`,
   - organization settings: `/customer/organization` — `Forms.CUSTOMER_ORGANIZATION`; see `flow-customer-organization.md`,
+  - subscription checkout: `/customer/subscription` — `Forms.CUSTOMER_SUBSCRIPTION` (`subscribe`); see `flow-customer-subscription.md`,
   - account settings: `/customer/settings` — planned (`Forms.CUSTOMER_SETTINGS` not registered yet); see `flow-settings.md`,
   - notification delete-all — see `flow-notifications.md`.
 - **Shared form field surfaces** under `src/app/ui/components/form/`:
@@ -294,7 +296,7 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 
 | Path | Role |
 |---|---|
-| `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MEMBER`, `CUSTOMER_ORGANIZATION`, `CUSTOMER_MEETING`, `CUSTOMER_MESSAGE_CHANNEL`, `CUSTOMER_MESSAGE_TEMPLATE` |
+| `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MEMBER`, `CUSTOMER_ORGANIZATION`, `CUSTOMER_MEETING`, `CUSTOMER_MESSAGE_CHANNEL`, `CUSTOMER_MESSAGE_TEMPLATE`, `CUSTOMER_SUBSCRIPTION` |
 | `website/src/resources/configs/customer/formRoute.ts` | `buildCustomerMemberFormHref`, `buildCustomerMeetingFormHref`, `buildCustomerMessageChannelFormHref`, `buildCustomerMessageTemplateFormHref` |
 | `website/src/types/requesters/requesters.website.ts` | `customer.member`, `customer.messageChannel`, `customer.messageTemplate`, `customer.organization`, `customer.meeting` |
 | `website/src/app/ui/components/form/FormInputWrapper.tsx` | `headerArea`, `bareField`, field shorthands |

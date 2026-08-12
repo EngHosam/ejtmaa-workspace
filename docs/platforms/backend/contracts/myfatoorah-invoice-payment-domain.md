@@ -186,8 +186,8 @@ When status was not already `COMPLETED` and `related_data.pay_for === "SUBSCRIPT
 
 | Outcome | HTTP |
 |---|---|
-| Success path | 302 `{WEBSITE_URL}/customer?paymentReturn=success` |
-| Error / exception on website platform | 302 `…?paymentReturn=error` |
+| Success path | 302 `{WEBSITE_URL}/customer/subscription?paymentReturn=success` |
+| Error / exception on website platform | 302 `…/customer/subscription?paymentReturn=error` |
 | Missing `WEBSITE_URL` | 500 `"WEBSITE_URL"` |
 
 Non-website platform (path currently only allows `website`): 200 JSON `{ finalizedTo, invoiceId }` or plain 404/500 string.

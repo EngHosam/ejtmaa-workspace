@@ -40,7 +40,7 @@ Website contract: `docs/platforms/website/organization-host-routing.md`.
 
 ## `org_host` middleware
 
-`backend/src/app/http/middlewares/OrganizationHostMiddleware.ts` is registered as `"org_host"` in `backend/src/resources/configs/http/middlewares/index.ts`. It reads the `organizationid` request header (the website sends `organizationId`; Express lowercases header names), loads the `ACTIVE` organization by id, throws `404` when missing or unresolved, and exposes `currentOrganization(req, sure?)`.
+`backend/src/app/http/middlewares/OrganizationHostMiddleware.ts` is registered as `"org_host"` in `backend/src/resources/configs/http/middlewares/index.ts`. It reads the `organizationid` request header (the website sends `organizationId`; Express lowercases header names), loads the `ACTIVE` organization by id, throws `404` when missing or unresolved, requires the org customer’s active subscription (`Customer.getCurrentSubscription` → else `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`), and exposes `currentOrganization(req, sure?)`.
 
 `/custom/org/start` intentionally does **not** use it (organization resolved from body). First wired consumer: `POST /custom/org/livekit_token` via per-route `middleware("org_host")` — see `livekit-media-plane.md` §6.
 
@@ -53,7 +53,7 @@ Website contract: `docs/platforms/website/organization-host-routing.md`.
 - Body: `{ memberId, token, meetingId }` (`token` = `Member.access_token`).
 - Response: `{ token, url }` — LiveKit JWT + client connect URL (`LiveKitHelper.clientUrl()`, `ws`/`wss`; recomputed from env, never persisted).
 - Authz: member + meeting org + roster + in-process live-doc `STARTED` (`peekMeetingLiveDoc`); reuse-or-mint on `MeetingParticipant.livekit_*`.
-- Errors: `NOT_VALID_CREDENTIAL`, `MEETING_NOT_LIVE`, `org_host` `404`.
+- Errors: `NOT_VALID_CREDENTIAL`, `MEETING_NOT_LIVE`, `org_host` `404`, `org_host` `MEETING_ACTIVE_SUBSCRIPTION_REQUIRED`.
 - Website: `API.CUSTOM.ORG_LIVEKIT_TOKEN` + `useMeetingLiveKitToken` (union — `ready` carries `token` **and** `url`) → `useMeetingLiveKitRoom` connects the room for `MeetingLiveBroadcast`.
 
 Full contract: `livekit-media-plane.md` §6. Website client: `../../website/flow-meeting-broadcast.md`.
