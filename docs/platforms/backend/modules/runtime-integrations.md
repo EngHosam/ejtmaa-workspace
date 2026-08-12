@@ -126,10 +126,80 @@ Changing the mailbox, password, or from identity means editing that file (or res
 
 ### Classes and templates
 
-- Active email class: `MainEmail` (`backend/src/app/mailer/emails/MainEmail.ts`)
+- Active email class: `MainEmail` (`backend/src/app/mailer/emails/MainEmail.ts`) — `htmlView()` returns `"main"`; `data()` passes `MainEmailRefs` through; `emailOptions()` sets `priority: "high"`, optional `cc`, and `attachments` **only** from `refs.attachments` (buffer + fileName). The logo is **not** an attachment.
 - Driver: `NodeMailerDriver`; render engine: `TwigEngine`
-- Email templates: `backend/src/resources/emails/*.twig` (`templatesPath` from `RESOURCES_PATH` + `emails`)
-- Rendered page templates: `backend/src/resources/views/*.twig`
+- Email templates: `backend/src/resources/emails/*.twig` (`templatesPath` from `RESOURCES_PATH` + `emails`). Runtime path is `RESOURCES_PATH` (`backend/.env.example`: `./lib/resources`), so `yarn serve` / `build:js --copy-files` must copy the Twig file into `lib/` before send.
+- Rendered **HTTP page** templates: `backend/src/resources/views/*.twig` — including `views/main.twig`, used by `VerifyEmailController` (`this.res.render("main", …)`). That file is **not** the mailer template. Do not edit `views/main.twig` expecting outbound mail to change.
+
+### `emails/main.twig` chrome
+
+Table-based RTL HTML (`lang="ar"` `dir="rtl"`), inline styles, 600px card.
+
+| Region | Fact |
+|---|---|
+| Page | background `#F0F4FA` |
+| Card | white, 12px radius |
+| Header | navy `#0B2057`; **image only** — `https://ejtmaa.live/images/light_logo.png` (website `public/images/light_logo.png`, on-dark mark), height 52, linked to `https://ejtmaa.live`. No typed wordmark (no اجتماع / EJTMAA text). No CID (`cid:`), no inline logo attachment. |
+| Accent | 4px bar `#EC6901` |
+| Body type | Tahoma, Arial, sans-serif; description + content `white-space:pre-line` |
+| CTA | always `#EC6901` on white text. `link.color` / `link.fontSize` in refs are **ignored**. |
+| Footer line | exact `pages.home.hero.title` from `website/src/resources/translations/ar.ts` (منصة حوكمة اجتماعات للجمعيات والمجالس واللجان). Do not invent slogans. Then link `ejtmaa.live`. |
+
+Preheader (hidden): `description`.
+
+### `MainEmailRefs` vs what the Twig renders
+
+| Ref | In Twig? | Notes |
+|---|---|---|
+| `to` | no | `recipients()` |
+| `cc` | no | `emailOptions()` |
+| `subject` | `<title>` only | SMTP subject from `subject()` |
+| `description` | yes | heading + preheader |
+| `content` | if set | body paragraph |
+| `contents` | if set | extra paragraphs |
+| `link.title` / `link.href` | if `link` | CTA |
+| `tableContent[].label` / `.value` | if set | two-column details table |
+| `attachments` | no | SMTP only, when provided |
+| `descriptionFontSize`, `descriptionColor`, `contentFontSize`, `contentColor`, `link.color`, `link.fontSize`, `tableContent[].fontSize`, `tableContent[].color` | **no** | still on the TypeScript type; chrome is fixed brand tokens |
+
+### Callers
+
+| Caller | Send style | When |
+|---|---|---|
+| `AuthRequester` register | fire-and-forget `sendEmail(…).catch(() => null)` | only if `EMAIL_VERIFY_ENABLED` (currently `false` in that file) |
+| `AuthRequester` password reset | same swallow | still sends; `content` is the temporary password |
+| `EjtmaaConsole.sendTestEmail` | **await** `sendEmail` | interactive; empty recipient returns without send; throw is not swallowed |
+
+Product copy for auth mails stays in `AuthRequester.ts`. Console sample body stays in `EjtmaaConsole.ts` (not mirrored here). Console path: `docs/platforms/backend/patterns/scheduler-console-seed-db.md` §2.
+
+### Ops / failure
+
+- SMTP identity and host: this section above. Do not copy `pass` into docs.
+- Logo is a **remote** URL. If production website does not serve `/images/light_logo.png`, the header image 404s. Clients may hide remote images until the recipient allows them.
+- There is no `logo.png` on the website public images directory (files are `dark_logo.png` / `light_logo.png`).
+- Console empty `to` → silent return (no success line).
+- Auth mailer errors are swallowed; console test errors surface.
+
+### Traceability (this mailer slice)
+
+| Path | Role |
+|---|---|
+| `backend/src/resources/emails/main.twig` | Mail HTML (this section) |
+| `backend/src/console/EjtmaaConsole.ts` | `send test email` — `scheduler-console-seed-db.md` §2 |
+| `backend/src/app/mailer/emails/MainEmail.ts` | Unchanged class/refs; slot table above |
+| `backend/src/resources/configs/mailer.ts` | Unchanged SMTP + `MainEmail` registry; §6 host/account |
+| `backend/src/app/orchestrator/requesters/AuthRequester.ts` | Unchanged callers; table above |
+| `backend/src/console/Console.ts` | Unchanged; `@consoleSub("ejtmaa console")` |
+| `backend/src/resources/views/main.twig` | Unchanged HTTP page; not mail |
+| `website/public/images/light_logo.png` | Unchanged asset; header `src` |
+| `website/src/resources/translations/ar.ts` | Unchanged `pages.home.hero.title`; footer line |
+| `docs/platforms/backend/modules/runtime-integrations.md` | This page |
+| `docs/platforms/backend/patterns/scheduler-console-seed-db.md` | Console sub |
+| `docs/platforms/backend/README.md` | Index pointer to this module |
+| `docs/platforms/website/brand-identity-alignment.md` | Logo asset + mail URL |
+| `docs/platforms/website/README.md` | Logo binary row pointer |
+| `.cursor/rules/backend-platform-email-template.mdc` | Repeatable chrome constraints |
+| workspace `backend` gitlink | Nested-repo pointer only; do not narrate |
 
 ## 7) Payment and Invoice Helpers
 
@@ -198,5 +268,5 @@ Smart worker:
 ## 10) Operational Notes
 
 - `CONSOLE_ENABLED=true` starts interactive console commands at app boot.
-- Console root: `backend/src/console/Console.ts`.
+- Console root: `backend/src/console/Console.ts`. Platform mail smoke test: `ejtmaa console` → `send test email` (`scheduler-console-seed-db.md` §2).
 - Keep external side effects behind explicit provider usage and post-commit boundaries in requester flows.

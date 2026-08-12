@@ -45,7 +45,7 @@ Guarantees:
 
 ## Logo
 
-`website/src/app/ui/components/Logo.tsx` renders the brand mark as a bare `Image` and swaps the source by color scheme: `dark_logo.png` on light scheme, `light_logo.png` on dark scheme. Assets live at `website/public/images/{dark,light}_logo.png`.
+`website/src/app/ui/components/Logo.tsx` renders the brand mark as a bare `Image` and swaps the source by color scheme: `dark_logo.png` on light scheme, `light_logo.png` on dark scheme. Assets live at `website/public/images/{dark,light}_logo.png`. There is no `logo.png`. Platform mail (`backend/src/resources/emails/main.twig`) uses the production URL of the on-dark mark: `https://ejtmaa.live/images/light_logo.png` (see `docs/platforms/backend/modules/runtime-integrations.md` §6).
 
 Size contract is the `preset` prop — the only way to size the logo. `LOGO_SIZES` sets **height only**; width is never hardcoded and is derived from the image's intrinsic ~3.4:1 aspect ratio (`width: auto`). No call-site width/height overrides.
 

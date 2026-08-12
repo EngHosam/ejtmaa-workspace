@@ -20,8 +20,20 @@ Registry: `backend/src/console/Console.ts`
 
 Sub consoles:
 - `DatabaseConsole` — init, alter, update
-- `EjtmaaConsole` — settings summary, clear notifications
+- `EjtmaaConsole` — settings summary, clear notifications, send test email
 - `UtilsConsole` — utilities
+
+Boot: `CONSOLE_ENABLED=true` (`backend/.env.example`) starts the interactive console at app boot (`runtime-integrations.md` §10). Root menu: `ejtmaa console` → `EjtmaaConsole`.
+
+### EjtmaaConsole flows
+
+File: `backend/src/console/EjtmaaConsole.ts`.
+
+- `settings summary` — lists `SystemSetting` keys ordered by `key`.
+- `clear notifications` — confirm prompt (default false); on confirm, `Notification().destroy({ where: {}, force: true })`.
+- `send test email` — prompt `to email`; `trim` + `toLowerCase`; empty string returns without send. Then **awaits** `sendEmail<MainEmailRefs>("MainEmail", …)` (description, content, `tableContent`, `link` to `https://ejtmaa.live`). Sample strings stay in that method; do not copy them into docs. On success: `this.success`. Unlike `AuthRequester`, failures are not `.catch(() => null)`.
+
+Template and SMTP contract: `docs/platforms/backend/modules/runtime-integrations.md` §6. Rebuild so `lib/resources/emails/main.twig` matches source (`RESOURCES_PATH=./lib/resources`).
 
 ### DatabaseConsole flows
 
@@ -73,6 +85,7 @@ Subscription: no seed rows; expire task contract in `subscription-domain.md` §5
 
 ## Related
 
+- `docs/platforms/backend/modules/runtime-integrations.md` §6 (platform mailer + `emails/main.twig`)
 - `docs/platforms/backend/playbooks/add-update-fix.md`
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/member-domain.md`

@@ -129,7 +129,7 @@ Governance: `.cursor/rules/website-auth-flow.mdc`
 | `src/app/ui/components/Drawer.tsx` (logo no-frame) | `shared-ui-and-shell.md` § 4; `brand-identity-alignment.md` § Logo; `website-logo-no-frame.mdc` |
 | `src/app/ui/pages/Error.tsx` (full page) | `page-error.md` (full composition + brand treatment); `brand-identity-alignment.md` § Canonical consumer pairings |
 | `src/resources/translations/ar.ts` (`error.title` key) | `page-error.md` § Translation contract; `page-error.md` § Page title |
-| `public/images/{dark,light}_logo.png` (binary brand assets) | `brand-identity-alignment.md` § Logo (asset paths + scheme swap). Binary; not narrated line-by-line. |
+| `public/images/{dark,light}_logo.png` (binary brand assets) | `brand-identity-alignment.md` § Logo (asset paths + scheme swap; platform mail uses production `light_logo.png` URL). Binary; not narrated line-by-line. |
 | `lib/tsconfig.tsbuildinfo` | Generated build artifact from `yarn type-check`; not narrated. |
 
 `ar.ts` also carries a brand-rename pass (`??????` ? `??????` in `app.title`, `footerTitle`, and `brand` strings), made outside this agent session; reflected as the current app title value, not narrated key-by-key.

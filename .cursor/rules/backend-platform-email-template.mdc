@@ -1,0 +1,38 @@
+---
+description: Platform MainEmail chrome — hosted light logo URL, no CID, no invented slogans, brand CTA; distinguish emails/main.twig from views/main.twig
+globs:
+  - backend/src/resources/emails/**/*.twig
+  - backend/src/app/mailer/emails/MainEmail.ts
+  - backend/src/console/EjtmaaConsole.ts
+  - docs/platforms/backend/modules/runtime-integrations.md
+alwaysApply: false
+---
+
+# Platform email template
+
+Authoritative contract: `docs/platforms/backend/modules/runtime-integrations.md` §6.
+
+## Files
+
+- Mail HTML: `backend/src/resources/emails/main.twig` (`MainEmail.htmlView()` → `"main"`).
+- HTTP verify page: `backend/src/resources/views/main.twig` — **not** outbound mail. `VerifyEmailController` renders that file.
+
+## Header
+
+- Identity is the hosted on-dark mark: `https://ejtmaa.live/images/light_logo.png` (`website/public/images/light_logo.png`).
+- Do **not** type اجتماع / EJTMAA in the header (the mark already is the wordmark).
+- Do **not** CID-embed or attach the logo in `MainEmail.emailOptions()`. Attachments stay `refs.attachments` only.
+- Do **not** use `/images/logo.png` (that file does not exist).
+
+## Copy
+
+- Footer positioning line must match `website/src/resources/translations/ar.ts` `pages.home.hero.title`. Do not invent slogans.
+
+## Chrome tokens
+
+- Navy `#0B2057`, orange `#EC6901`, page `#F0F4FA`.
+- CTA background is always brand orange. Ignore `link.color` / `*FontSize` / `*Color` refs in the Twig.
+
+## Test send
+
+- One console sub: `EjtmaaConsole` `@consoleSub("send test email")`. Await `sendEmail`. Do not add a second console tree.
