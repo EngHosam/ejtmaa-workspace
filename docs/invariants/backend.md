@@ -159,9 +159,9 @@ A business time window (minimum lead before an event, a freeze before a side eff
 
 Consequences:
 
-- the window is a **static on the owning model** (`MeetingModel.MIN_LEAD_MS`, `MeetingModel.TWO_HOURS_MS`); Joi rules, `can(...)`, and requesters read that static instead of re-declaring the arithmetic,
+- the window is a **static on the owning model** (`MeetingModel.MIN_LEAD_MS`, `MeetingModel.NOTIFY_MIN_GAP_MS`); Joi rules, `can(...)`, and requesters read that static instead of re-declaring the arithmetic,
 - every write path that can violate the window checks it — including transitions that accept **no** input for the guarded field (approve re-checks the lead because it never receives a `datetime`),
-- a derived timestamp column (`notify_start_at`) is written by the server on every path that changes its input, and readers must tolerate `null` on rows written before the derivation existed,
+- a timestamp column validated against another (`notify_start_at` vs `datetime`) is checked on every write path, and readers must tolerate `null` on rows written before the column existed,
 - when a transition invalidates cached or collaborative state, the reset is part of the same transaction and the memory eviction runs in `transaction.afterCommit` — never before the commit, and never with a flush that would rewrite what the transaction cleared.
 
 Contracts: `docs/platforms/backend/contracts/meeting-domain.md` §3.2b, §9.1a; `docs/platforms/backend/contracts/meeting-live-state.md` §3.1.

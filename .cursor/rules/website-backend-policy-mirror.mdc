@@ -13,10 +13,12 @@ The website may re-state a backend rule to build copy, disable a control, or pre
 - One module per rule family, next to its consumers. Pure mirrors export constants + predicates together when callers are non-hook code. Shipped: `customer/meetings/meetingScheduleLead.ts`, `customer/meetings/meetingNotifyTemplateMode.ts` (when present). Attend window: `components/meeting/hooks/useMeetingAttendWindow.ts` — session calls it **once** and exposes `attendWindow`; screens read from session (do not call the hook again). Mirror math stays private.
 - Every mirrored constant names its backend source in a one-line comment (`Mirror of backend MeetingModel.MIN_LEAD_MS — keep in sync.` / `MeetingModel.ATTEND_OPEN_BEFORE_MS`).
 - Derived predicates live in the mirror module too, so a rule change is one edit: `countVotingParticipants` is used by the details roster **and** `useCustomerHome`, not re-filtered per screen. Attend-window consumers must not re-copy the 30-minute math.
+- Mirror a constant only when code computes with it. A number that lives only inside a sentence stays in the translation string (the 10-minute lead in `datetimeMinLeadError`, the 5-minute invite gap in `notifyStartAtSubtitle`); a mirrored export with no consumer is dead code.
+- Enum families that a backend rule owns (`WHATSAPP_TEMPLATE_TYPES` / `EMAIL_TEMPLATE_TYPES`) are exports of the domain mirror module, typed through the generated GQL enum, and imported by every picker filter that needs them.
 - The server keeps the enforcing gate (Joi rule, Ability, requester) for write-path schedule rules. Live attend-window / `enterLive` are **client session gates** today — copy must still match `windowOpen` / `can.enterLive`, and must not claim socket enforcement that is not shipped.
 
 ## Forbidden
 
 - A magic number or inline enum filter copied into a screen, hook, or modal when a mirror module exists.
-- Copy that promises a rule the server does not enforce, or that stays silent about one it does — every note the UI renders must map to a real gate, and the condition that shows it must match the condition the server checks (same statuses, same window).
+- Copy that promises a rule the server does not enforce, or that stays silent about one it does — every note the UI renders must map to a real gate, and the condition that shows it must match the condition the server checks (same statuses, same window). This covers readiness checklists and confirm text, not just notes: an approval checklist must not render for a status that can no longer be approved, and a confirm must not promise a consequence the action does not have.
 - Treating a mirror as authority: never skip the request, invent a client-side approval, or suppress a server denial because the mirror agreed.

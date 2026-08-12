@@ -181,14 +181,14 @@ The Sequelize row captured at load is the instance the flush writes through unti
 | Trigger | SQL in the transaction | After commit |
 |---|---|---|
 | `approve` (`DRAFT` → `WAITING_TO_START`) | `live_state = null` | `destroyMeetingLiveDoc(meetingId, { flush: false })` |
-| `demoteApprovedMeetingToDraft` (any content write on a `WAITING_TO_START` meeting) | `status = DRAFT`, `live_state = null` | same call |
+| `cancel` (`DRAFT` \| `WAITING_TO_START` → `CANCELED`) | `live_state = null` | same call |
 
 Two properties are load-bearing:
 
 - **`flush: false`** — the default (`true`) would encode the in-memory document back into the BLOB the transaction just cleared, resurrecting the state the reset removed.
 - **`transaction.afterCommit`** — the registry is process memory and cannot be rolled back, so eviction must not run for a transaction that later fails.
 
-A `DRAFT` meeting is outside `MEETING_LIVE_STATUSES`, so no session can be open at approve time; the call exists to evict an entry left behind by an earlier approve → demote → approve cycle.
+A `DRAFT` meeting is outside `MEETING_LIVE_STATUSES`, so no session can be open at approve time; the call exists to evict a stale registry entry. `cancel` can run on a `WAITING_TO_START` meeting whose lobby document is live, so the eviction there is load-bearing.
 
 ## 4) GraphQL exposure
 
@@ -342,7 +342,7 @@ Until complete, GraphQL readers still see requester SQL values for collaborative
 
 | Symptom | Likely cause |
 |---|---|
-| Client missing `decisions` / nested `votes` / agenda `status` after sync | Non-empty pre-change `live_state` BLOB (no backfill). Reset via approve/demote (§3.1) |
+| Client missing `decisions` / nested `votes` / agenda `status` after sync | Non-empty pre-change `live_state` BLOB (no backfill). Reset via approve/cancel (§3.1) |
 | `votes` empty after seed | No SQL `Vote` rows — expected |
 | Agenda GQL `status` missing | Client selection set omits `status` |
 | Expecting per-member empty vote slots | Rejected — keys only for existing SQL votes or later writers |

@@ -15,7 +15,7 @@ This rule is a self-contained Ejtmaa requester contract. Do not mention, cite, c
 - Every callable public requester method must have `@sub(platforms, actors)`.
 - Requester controllers route with `requesterHandle(platform, actor)` and must not manually register requester classes.
 - Method signatures must accept `FormBody<Props>` and `SimpleJsonBuilder<FormResult<...>>`, return `Promise<SJsonResult>`, and never return raw data.
-- Requester-local helpers live **inside** the namespace, under the file's `private` banner comment after `export class Requester`, never as module-level functions after the namespace closes. Shared behavior repeated by several subs (example: `demoteApprovedMeetingToDraft` in `MeetingRequester`) is one such helper, called from each sub — not copied per sub.
+- Requester-local helpers live **inside** the namespace, under the file's `private` banner comment after `export class Requester`, never as module-level functions after the namespace closes. Shared behavior repeated by several subs is one such helper, called from each sub — not copied per sub.
 
 ## Required Method Order
 
@@ -38,6 +38,7 @@ This rule is a self-contained Ejtmaa requester contract. Do not mention, cite, c
 - Chained helper `.external(...)` handlers must start with `if (optional && !value) return;` before business checks.
 - Repeated actor facts, model reference resolution, ownership checks, and access validation belong in `backend/src/app/validation/joi_rules.ts`.
 - `joi_rules.ts` helpers use `smartHelpers.set(...)` for resolved values and `smartHelpers.get(...)` for previously resolved context.
+- A cross-field rule reads its sibling by the sibling's own field name (`get<Date>("datetime")`), which works because externals run after the whole payload is coerced. Do not publish a private alias key for it: that leaks an undeclared key into `outProps` and makes the schema order-dependent for no gain.
 - Use `danger("NOT_PERMIT")` and `danger("404")` for authorization/domain validation failures; use `error("field.code")` for field-specific validation failures.
 - `withJoiFirewall` already validates with `presence: "required"`; do not add `.required()` to normal requester fields. Use Joi `.optional()` / `.allow(null)` only for plain Joi fields. Opt-backed model references must use the helper/`Model.Opt` `optional` flag instead.
 - Type requester Joi helper parameters as `JoiFirewallRoot`; do not leave helper signatures as untyped `(joi)`.

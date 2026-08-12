@@ -29,6 +29,7 @@ description: >-
 - `MeetingBasicsModal.tsx` / `openMeetingBasics`
 - `MeetingParticipantAddModal.tsx` / `openMeetingParticipantAdd`
 - `MeetingSubjectModal.tsx` / `openMeetingSubject`
+- `MeetingTemplatesModal.tsx` / `openMeetingTemplates`
 - Chrome: `components/modals/FormModal.tsx`
 - Sibling shared pattern: `ConfirmModal` / `confirm()`
 - Flow: `docs/platforms/website/flow-customer-meetings.md` §6.3–§6.4

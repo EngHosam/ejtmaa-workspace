@@ -1,28 +1,31 @@
 ---
-description: Meeting approve completeness, schedule lead/freeze gates, contact-aware notify templates, and edit lock on notify_status
+description: Meeting approve completeness, schedule lead and invite-gap gates, contact-aware notify templates, draft-only edit lock, and cancel
 globs: backend/src/app/orm/models/Customer.ts,backend/src/app/orm/models/Meeting.ts,backend/src/app/helpers/meetingNotifyTemplateMode.ts,backend/src/app/orchestrator/requesters/MeetingRequester.ts,backend/src/app/validation/joi_rules.ts,backend/src/app/gql/bridges/**/MeetingBridge.ts,website/src/app/ui/components/customer/meetings/**,website/src/app/ui/components/customer/hooks/useCustomerMeetingDetails.ts
 alwaysApply: false
 ---
 
-# Meeting lifecycle — approve + notify lock
+# Meeting lifecycle — approve, draft-only edit, cancel
 
 Authoritative contract: `docs/platforms/backend/contracts/meeting-domain.md` §9. Website: `docs/platforms/website/flow-customer-meetings.md` §6.
 
 ## Ability (Customer)
 
-- `MEETING` subs: `create` | `read` | `update` | `delete` | `approve` with optional `meeting` target.
-- `update` (and child writes): require `notify_status === NOT_STARTED` **and** `notify_start_at >= now + TWO_HOURS_MS` (`MEETING_NOTIFY_TOO_SOON`), falling back to `datetime - TWO_HOURS_MS` when the column is null. The freeze is status-independent — drafts included.
-- `delete`: `DRAFT` + `NOT_STARTED` only (no freeze gate).
-- `approve`: `DRAFT` + `NOT_STARTED` + `datetime >= now + MIN_LEAD_MS` (`MEETING_DATETIME_TOO_SOON`) + quorum + ≥1 agenda + ≥1 PRE_START decision + template mode rules.
+- `MEETING` subs: `create` | `read` | `update` | `delete` | `approve` | `cancel` with optional `meeting` target. The requester's `updateTemplates` sub reuses the `update` Ability — do not add a template Ability sub.
+- `update` (and every child write — roster, agenda, decisions): `DRAFT` + `notify_status === NOT_STARTED`. Approval closes editing for good (`MEETING_NOT_DRAFT`); nothing demotes a meeting back to `DRAFT`.
+- `delete`: `DRAFT` + `NOT_STARTED` only.
+- `approve`: `DRAFT` + `NOT_STARTED` + `notify_start_at >= now` (`MEETING_NOTIFY_TIME_PASSED`) + quorum + ≥1 agenda + ≥1 PRE_START decision + template mode rules.
+- `cancel`: status `DRAFT` or `WAITING_TO_START` only (`MEETING_ALREADY_STARTED`). This is the only escape hatch for a wrongly approved meeting.
 - Quorum counts **voting** rows only: `countParticipants({ where: { type: IN (CHAIRPERSON, MEMBER) } })`. `VIEWER` never counts.
 - Meeting stays non-actor. GQL extras on `_Meeting` only (not on unbounded list).
 
 ## Schedule policy
 
-- The two windows are `MeetingModel.MIN_LEAD_MS` (12h) and `MeetingModel.TWO_HOURS_MS` (2h). Declare them once on the model; Joi, Ability, and the requester read the statics. No literal `12 * 60 * 60 * 1000` elsewhere in backend code.
-- `datetime` on `create` / `update` validates through `isMeetingDatetime(joi)` (`datetime.tooSoon`). Approve re-checks the same lead, because approve accepts no `datetime` input.
-- `notify_start_at` is derived (`datetime - TWO_HOURS_MS`) on create, update, and approve. No client sets it.
-- Any content write on a `WAITING_TO_START` meeting runs `demoteApprovedMeetingToDraft` first: `status = DRAFT`, `live_state = null`, and `transaction.afterCommit` → `destroyMeetingLiveDoc(meetingId, { flush: false })`. Approve performs the same reset. `flush: true` here is a bug — it rewrites the BLOB that was just cleared.
+- The two windows are `MeetingModel.MIN_LEAD_MS` (10 min, how soon `datetime` may be) and `MeetingModel.NOTIFY_MIN_GAP_MS` (5 min, how close `notify_start_at` may sit to `datetime`). Declare them once on the model; Joi, Ability, and the requester read the statics. No window literal elsewhere in backend code.
+- Keep `NOTIFY_MIN_GAP_MS` below `MIN_LEAD_MS`, otherwise a meeting created at the minimum lead has no valid invite start. `Meeting.ts` ends with a self-check that throws on that drift.
+- A write that does not change the schedule must not carry it. Template FKs have their own `updateTemplates` sub for exactly that reason; do not fold a schedule-free write back into the full `update` payload.
+- `datetime` on `create` / `update` validates through `isMeetingDatetime(joi)` (`datetime.tooSoon`); `notify_start_at` through `isMeetingNotifyStartAt(joi)` (`notify_start_at.past`, `notify_start_at.tooLate`), which reads its sibling through `smartHelpers.get("datetime")`, so both fields must live in the same payload.
+- `notify_start_at` is **client-chosen** on create and update and persisted verbatim. Approve neither derives nor rewrites it.
+- `approve` and `cancel` both clear `live_state` in the transaction and register `transaction.afterCommit` → `destroyMeetingLiveDoc(meetingId, { flush: false })`. `flush: true` here is a bug — it rewrites the BLOB that was just cleared.
 
 ## Template mode
 
@@ -33,10 +36,11 @@ WhatsApp slot types: `ADWHATS` | `ADWHATS_PRO`. Email slot: `EJTMAA_EMAIL` | `CU
 ## Forbidden
 
 - Approving without Ability completeness.
-- Mutating meeting content after notify leaves `NOT_STARTED`, or inside the 2-hour freeze.
+- Mutating meeting content after approval, or after notify leaves `NOT_STARTED`.
+- Reintroducing demote-on-edit instead of `cancel`.
 - Counting `VIEWER` rows toward quorum on either side.
-- Re-declaring the lead/freeze windows instead of reading the model statics.
+- Re-declaring the schedule windows instead of reading the model statics.
 - Starting notify pipeline inside `approve`.
-- Attaching `canApprove` to root-many `meetings` list.
+- Attaching `canApprove` / `canCancel` to root-many `meetings` list.
 - UI copy that states a schedule rule the Ability/Joi layer does not enforce (or that hides one it does).
 ---

@@ -48,8 +48,8 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, `FormInputWrapper`, `FormProvider`,
   - template helpers: `FormTemplateVariableInsert`, `FormMessageTemplateVariablesField` (see §3.2c; consumer `flow-customer-message-templates.md`),
   - Compose from `Utils` + semantic theme tokens.
-  - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`), `CONFIRM` (`confirm`), plus registered meeting form modals (`MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT`) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
-  - **Meeting form modals are real forms** — each registered modal owns `useShallowForm` + `FormProvider` + shared `Form*` fields + `d.send({ sub })` exactly like route screens. Do **not** share the parent page form context, raw `<input>` state, or inject JSX via a generic `render` callback. Presentational `FormModal` supplies title/subtitle/chrome only. Canonical: `MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal`.
+  - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`), `CONFIRM` (`confirm`), plus registered meeting form modals (`MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT`, `MEETING_TEMPLATES`) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
+  - **Meeting form modals are real forms** — each registered modal owns `useShallowForm` + `FormProvider` + shared `Form*` fields + `d.send({ sub })` exactly like route screens. Do **not** share the parent page form context, raw `<input>` state, or inject JSX via a generic `render` callback. Presentational `FormModal` supplies title/subtitle/chrome only. Canonical: `MeetingBasicsModal`, `MeetingParticipantAddModal`, `MeetingSubjectModal`, `MeetingTemplatesModal`.
 
 ## 3) Field surface contracts (shipped)
 
@@ -147,6 +147,7 @@ Canonical consumers: `CustomerMeetingFormScreen` type field; `CustomerMessageCha
 | Multi store | `EntityPickerSelection[]` |
 | Read hydrate | Backend `read` should return `{ value, label }` via related `model.forSelect(lang)` — `docs/platforms/backend/patterns/requester-read-select-hydrate.md` |
 | Chrome | Chips with `IdentityAvatar` + label; empty uses `emptyLabel`; pick action button |
+| Clear | `clearLabel` (optional fields only) renders a destructive text action in `FormInputWrapper.actionArea` while a value is selected; caller owns the label like every other label on this field; writes `""` (single) / `[]` (multi) |
 | Read-only | When `!setValue` |
 
 #### Modal
@@ -194,9 +195,9 @@ Two distinct errors because a floor is not always "the past": the meeting `datet
 |---|---|
 | Calendar | `react-datepicker` **inline**; class `ejt-datepicker` (+ `--rtl` for `ar`) |
 | Layout | Calendar **full width** of modal (flex weeks/days); not compact centered inline-block |
-| Time | 15-minute chip grid; scroll Col `minH={0}` + `maxH` + `customScroll` |
+| Time | 5-minute chip grid (step must stay under `MEETING_MIN_LEAD_MS` so a near-term slot is selectable); scroll Col `minH={0}` + `maxH` + `customScroll` |
 | Theme | `getColor(semanticColor…)` → `datepickerTheme({…})` on calendar wrapper `cssStyle` |
-| Initial draft | `initValue` is shown **as stored**, even when it is below `minDate` or in the past; only the empty case falls back to the next valid 15-minute slot at or after `max(now, minDate)` |
+| Initial draft | `initValue` is shown **as stored**, even when it is below `minDate` or in the past; only the empty case falls back to the next valid 5-minute slot at or after `max(now, minDate)` |
 | Invalid draft | Confirm is `disabled` while the draft is `<= now` or `< minDate`; disabled slots stay visibly disabled |
 | Confirm | Returns ISO via `onSelect`; cancel / Escape closes |
 | Light selected day | `primaryActionBackground` / `primaryActionText` |
@@ -310,7 +311,7 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card (`members.tsx`, `messageChannels.tsx`, …) |
 | `website/src/app/ui/components/modals/entity-picker/configs/index.ts` | registry of idents |
 | `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`, `searchable?`) |
-| `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM`, `MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT` (no generic `FORM`) |
+| `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM`, `MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT`, `MEETING_TEMPLATES` (no generic `FORM`) |
 | `website/src/app/ui/components/form/FormDateTimeField.tsx` | datetime field → `DATETIME_PICKER` modal |
 | `website/src/app/ui/components/modals/DateTimePickerModal.tsx` | datetime modal shell |
 | `website/src/app/ui/components/modals/ConfirmModal.tsx` | `CONFIRM` shell + `confirm()` helper |
@@ -318,6 +319,7 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/app/ui/components/customer/modals/MeetingBasicsModal.tsx` | `MEETING_BASICS` + `openMeetingBasics` |
 | `website/src/app/ui/components/customer/modals/MeetingParticipantAddModal.tsx` | `MEETING_PARTICIPANT_ADD` + `openMeetingParticipantAdd` |
 | `website/src/app/ui/components/customer/modals/MeetingSubjectModal.tsx` | `MEETING_SUBJECT` + `openMeetingSubject` |
+| `website/src/app/ui/components/customer/modals/MeetingTemplatesModal.tsx` | `MEETING_TEMPLATES` + `openMeetingTemplates` |
 | `.cursor/rules/website-customer-form-modal-placement.mdc` | Placement + no Redux JSX-body factory |
 | `.cursor/skills/website-customer-form-modal/SKILL.md` | Repeatable customer form-modal workflow |
 | `website/src/resources/emotion/styles/datepicker.ts` | `datepickerTheme` (`.ejt-datepicker`) |
