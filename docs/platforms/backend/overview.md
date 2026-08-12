@@ -34,8 +34,8 @@ ORM models (`backend/src/app/orm/models/`):
 - `Customer` — customer actor profile; `hasOne Organization` via `customer_id`; `hasMany Subscription` + scoped `hasOne` `currentSubscription`; `hasMany MyFatoorahInvoice`; Ability `SUBSCRIPTION.subscribe`
 - `Organization` — tenant entity owned by a customer (`customer_id`, one-to-one); `hasMany Member`, `hasMany MessageChannel`, `hasMany MessageTemplate`, `hasMany Meeting`
 - `Member` — non-actor org person (UUID `id` + `access_token`); belongs to Organization; ORM `hasMany` MeetingParticipant (no Member→meetings GQL yet)
-- `MessageChannel` — non-actor org delivery credentials (`CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; status `ACTIVE`|`DISABLED`); belongs to Organization
-- `MessageTemplate` — non-actor org message library (`EJTMAA_EMAIL` | `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; optional `message_channel_id`); belongs to Organization (+ MessageChannel when linked)
+- `MessageChannel` — non-actor org delivery credentials (`CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; status `ACTIVE`|`DISABLED` via `testConnection()`); `adwhats_account_id` / `adwhats_account_label`; belongs to Organization
+- `MessageTemplate` — non-actor org message library (`EJTMAA_EMAIL` | `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; optional `message_channel_id`; Pro `meta_template_id` / `meta_template_label`; `body` nullable); belongs to Organization (+ MessageChannel when linked)
 - `Meeting` — non-actor org session (UUID PK; chairperson Member; optional template FKs; LiveKit media via `LiveKitHelper`); `hasMany` participants + agendaItems + decisions + talkRecords
 - `MeetingParticipant` — non-actor roster join (composite PK `(meeting_id, member_id)`; type `CHAIRPERSON` | `MEMBER` | `VIEWER`)
 - `AgendaItem` — non-actor agenda line under Meeting (`modelName: "agendaItem"`; durable SQL)
@@ -83,6 +83,7 @@ Provider config: `backend/src/resources/configs/gql/index.ts`
 - Schemas: `customer`, `supervisor`
 - SDL: `backend/src/app/gql/definitions/customer.graphql`, `backend/src/app/gql/definitions/supervisor.graphql`, `backend/src/app/gql/definitions/base.graphql`
 - Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageChannelBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge`, `VoteBridge`, `TalkRecordBridge`, `PlanBridge`, `SubscriptionBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant/agenda/decision/vote/talkRecord bridges are nested-only; `PlanBridge` is public catalog `STATIC`; `SubscriptionBridge` is customer-owned `{ me: true }` and also serves `_Me.currentSubscription` via ORM association auto-relations)
+- Customer helper roots (no Bridge): `subscriptionPaymentMethods`, `adwhatsAccounts`, `adwhatsProAccounts`, `adwhatsProApprovedTemplates` — thin `CustomerSchema` resolvers; Ad Whats types live in `customer.graphql`
 - Supervisor bridges: `MeBridge`, `NotificationBridge`, `CustomerBridge`, `CustomerStatsBridge`, `OrganizationBridge` under `backend/src/app/gql/bridges/supervisor/`
 
 ### Socket
@@ -100,6 +101,7 @@ Config: `backend/src/resources/configs/socket/io.ts`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/member-domain.md`
+- `docs/platforms/backend/contracts/message-channel-domain.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/meeting-domain.md`
 - `docs/platforms/backend/contracts/plan-domain.md`

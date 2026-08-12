@@ -24,7 +24,7 @@ description: >-
 2. Also keep `.cursor/rules/requester-read-no-entity-id-echo.mdc` — identity stays in form `initProps`, not `read` values.
 3. Inventory `read` fields that bind to choice tiles or entity pickers.
 4. **Enums:** use `await this.toEnumForSelect(row.get("…"), "enumKey")` where `enumKey` exists under `general.enums` (ar/en). Type `ReadResult` as `SelectOption`.
-5. **Entity refs:** if missing, add `forSelect(_lang: string): SelectOption` on the related model (`value` = id, `label` = display). Call `model?.forSelect(this.context.lang()) ?? null` from `read`.
+5. **Entity refs:** if missing, add `forSelect(_lang: string): SelectOption` on the related model (`value` = id, `label` = display). Call `model?.forSelect(this.context.lang()) ?? null` from `read`. Remote picker snapshots (Ad Whats account / Pro approved template) have no ORM row — rebuild `{ value, label }` from id+label columns; do not invent `forSelect` on a helper DTO.
 6. Do not hand-build SelectOption in the requester when the helper/method exists.
 7. Leave write path on `joi.select({ validValues })` / Opt helpers — do not narrow writes to SelectOption-only.
 8. Confirm website consumers are `FormChoiceField` / `FormEntityPickerField` (already SelectOption-tolerant) — see `docs/platforms/website/flow-form-foundation.md` §3.5–3.6.
@@ -34,7 +34,8 @@ description: >-
 
 - `MessageChannelModel.forSelect`
 - `MessageChannelRequester.read` → `type` via `toEnumForSelect(..., "messageChannelType")`
-- `MessageTemplateRequester.read` → `type` via `toEnumForSelect(..., "messageTemplateType")` + `messageChannel` via `forSelect`
+- `MessageTemplateRequester.read` → `type` via `toEnumForSelect(..., "messageTemplateType")` + `messageChannel` via `forSelect` + `meta_template` from id+label
+- `MessageChannelRequester.read` → `adwhats_account` from id+label
 
 ## Related
 

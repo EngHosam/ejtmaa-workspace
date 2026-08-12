@@ -364,7 +364,7 @@ Website checkout / schedule-note UX: `docs/platforms/website/flow-customer-subsc
 - `isMeetingDatetime(joi)` — `joi.date()` plus an `external` that rejects a non-date, an invalid date, or `datetime < now + MeetingModel.MIN_LEAD_MS` with the `datetime.tooSoon` Joi key (localized in `trans/{ar,en}/general.ts` under `joi`). Used by `create` and `update`; presence stays the field's own `required` semantics.
 - `isMeetingNotifyStartAt(joi)` — `joi.date()` plus an `external` that rejects an invalid or past value (`notify_start_at.past`) and a value later than `datetime − MeetingModel.NOTIFY_MIN_GAP_MS` (`notify_start_at.tooLate`). It reads `datetime` from the same payload.
 - Create/update basics: subject, type, datetime, notify_start_at, min_members_count, chairperson. Template FKs live in their own `updateTemplates` schema (meeting + two template refs) so a template change never re-validates the schedule. Everything stays mutable while the meeting is a `DRAFT`.
-- The two template refs are optional through the helper flag only — `isCustomerOwnedMessageTemplate(joi, path, true)` with no chained `.allow(null)`, since `Model.Opt` already returns `optional().allow(null)` for that flag. A cleared picker arrives as an empty value, `Model.Opt` passes it through as absent, and the requester writes the FK as `null`.
+- The two template refs are optional through the helper flag only — `isCustomerOwnedMessageTemplate(joi, path, true)` with no chained `.allow(null)`, since `Model.Opt` already returns `optional().allow(null)` for that flag. A cleared picker arrives as `null`, `Model.Opt` passes it through as absent, and the requester writes the FK as `null`.
 
 ### 9.3 Requester
 

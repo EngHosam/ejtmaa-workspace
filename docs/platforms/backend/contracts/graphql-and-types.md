@@ -33,6 +33,11 @@ Root queries (from `customer.graphql`):
 - `subscriptions` — current customer's subscription history (`{ me: true }`)
 - `subscription(id)` — single subscription owned by current customer
 - `subscriptionPaymentMethods(planId, billingPeriod)` — MyFatoorah methods for ACTIVE plan price (helper resolver; not a Bridge)
+- `adwhatsAccounts(filter: { token })` — Ad Whats classic ready accounts (helper resolver; not a Bridge; host hardcoded in `AdWhatsDevApi`)
+- `adwhatsProAccounts(filter: { token })` — Ad Whats Pro ready accounts (helper resolver; not a Bridge; host hardcoded in `AdWhatsProDevApi`)
+- `adwhatsProApprovedTemplates(filter: { messageChannelId })` — Ad Whats Pro approved templates for an org-owned `ADWHATS_PRO` channel (helper resolver; not a Bridge)
+
+Helper DTO types live in `customer.graphql` (not `base.graphql`, not supervisor): `_AdwhatsAccount` / `_AdwhatsProAccount` / `_AdwhatsProApprovedTemplate` plus matching filters. Keep three separate roots — do not merge classic and Pro behind a `type` discriminator. Detail: `message-channel-domain.md` §4, `message-template-domain.md` §4.
 
 Nested (cardinality-safe):
 - `_Me.organization: _Organization` (ORM `hasOne Organization`; auto via MeBridge relations → `OrganizationBridge`; null when no org row — **no** customer root `Query.organization`)

@@ -35,6 +35,8 @@ Main groups:
 - payment (`PAYMENT_MODE`, MyFatoorah keys)
 - LiveKit media (`LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`) — see `docs/platforms/backend/contracts/livekit-media-plane.md`
 
+Platform mailer account is **not** env-driven. There are no `MAILER_*` keys in the backend tree. See §6.
+
 ## 3) HTTP Integration Details
 
 Express driver is configured in `backend/src/resources/configs/http/express.ts`:
@@ -97,14 +99,37 @@ Organization-host contract (website boot, HTTP start, gating, Meeting socket): `
 
 ## 6) Mailer and Templates
 
-Mailer config:
-- `backend/src/resources/configs/mailer.ts`
-- SMTP host defaults to private email server
-- `MainEmail` is the active email class
+Config: `backend/src/resources/configs/mailer.ts`.
 
-Template sources:
-- email templates: `backend/src/resources/emails/*.twig`
-- rendered page templates: `backend/src/resources/views/*.twig`
+This is the **platform** mailer (`EJTMAA_EMAIL` templates use it). It is not `MessageChannel` `CUSTOM_EMAIL` (those credentials live on the channel row and are tested by `CustomEmailHelper.verifyCustomEmailConnection` — `message-channel-domain.md` §3.6).
+
+### SMTP host
+
+`hosts.default.connection`:
+
+- server `mail.privateemail.com`
+- port `465`
+- `secure: true`
+
+### Default account (literals in the config file)
+
+`hosts.default.accounts.default` is filled with string literals in `mailer.ts`. It does **not** read `process.env.MAILER_USER`, `MAILER_PASSWORD`, `MAILER_FROM_NAME`, or `MAILER_FROM_ADDRESS`.
+
+| Field | Source |
+|---|---|
+| `user` | literal in `mailer.ts` (platform no-reply mailbox) |
+| `pass` | literal in `mailer.ts` — **do not copy into docs** |
+| `from.name` | literal `"Ejtmaa"` |
+| `from.address` | literal, same mailbox as `user` |
+
+Changing the mailbox, password, or from identity means editing that file (or restoring env-based resolution). Do not commit a password into `docs/`.
+
+### Classes and templates
+
+- Active email class: `MainEmail` (`backend/src/app/mailer/emails/MainEmail.ts`)
+- Driver: `NodeMailerDriver`; render engine: `TwigEngine`
+- Email templates: `backend/src/resources/emails/*.twig` (`templatesPath` from `RESOURCES_PATH` + `emails`)
+- Rendered page templates: `backend/src/resources/views/*.twig`
 
 ## 7) Payment and Invoice Helpers
 

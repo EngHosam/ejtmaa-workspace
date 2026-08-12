@@ -18,8 +18,8 @@
 | [`supervisor-customers-and-stats.md`](contracts/supervisor-customers-and-stats.md) | Customer management and stats |
 | [`organization-domain.md`](contracts/organization-domain.md) | Organization tenant ORM + GQL + seed + website `read`/`upsert` requester |
 | [`member-domain.md`](contracts/member-domain.md) | Member ORM + customer GQL reads (`_MemberFilter.search`) |
-| [`message-channel-domain.md`](contracts/message-channel-domain.md) | MessageChannel ORM + customer GQL reads + website CRUD requester (delivery credentials) |
-| [`message-template-domain.md`](contracts/message-template-domain.md) | MessageTemplate ORM + customer GQL + write path (kinds, channel FK, `.strip()`, `meta_template_id`) |
+| [`message-channel-domain.md`](contracts/message-channel-domain.md) | MessageChannel ORM + customer GQL + helper roots + `testConnection` + website CRUD |
+| [`message-template-domain.md`](contracts/message-template-domain.md) | MessageTemplate ORM + customer GQL + write path (kinds, channel FK, `.strip()`, `meta_template` picker) |
 | [`meeting-domain.md`](contracts/meeting-domain.md) | Meeting ORM + customer GQL reads |
 | [`meeting-participant-domain.md`](contracts/meeting-participant-domain.md) | MeetingParticipant roster ORM + nested GQL |
 | [`agenda-item-domain.md`](contracts/agenda-item-domain.md) | AgendaItem ORM + nested GQL under Meeting; durable `status`; live-map session fields |

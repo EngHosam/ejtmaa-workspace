@@ -134,7 +134,7 @@ If partially blocked:
 
 Current Ejtmaa GQL surfaces:
 
-- Customer: `me` (+ nested `currentSubscription`, extras `canDeleteNotifications` / `canSubscribe(planId)`), `notifications`, `organization`, `members`, `member(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)` (+ nested `participants`, `agendaItems`, `decisions`, `talkRecords`), `plans`, `plan(id)`, `subscriptions`, `subscription(id)`, `subscriptionPaymentMethods(planId, billingPeriod)` (no Bridge — helper + thin resolver; `_PaymentMethod` in base). No invoice GQL roots.
+- Customer: `me` (+ nested `currentSubscription`, extras `canDeleteNotifications` / `canSubscribe(planId)`), `notifications`, `organization`, `members`, `member(id)`, `messageChannels`, `messageChannel(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)` (+ nested `participants`, `agendaItems`, `decisions`, `talkRecords`), `plans`, `plan(id)`, `subscriptions`, `subscription(id)`, `subscriptionPaymentMethods(planId, billingPeriod)` (no Bridge — helper + thin resolver; `_PaymentMethod` in base), `adwhatsAccounts` / `adwhatsProAccounts` / `adwhatsProApprovedTemplates` (no Bridge — helper + thin resolver; DTO types in `customer.graphql`; three separate roots, no shared `type` discriminator). No invoice GQL roots.
 - Supervisor: `me`, `notifications`, `customers`, `customer`, `customerStats`, `organizations`, `organization`
 
 Reference bridges:
@@ -143,6 +143,7 @@ Reference bridges:
 - `backend/src/app/gql/bridges/customer/NotificationBridge.ts`
 - `backend/src/app/gql/bridges/customer/OrganizationBridge.ts`
 - `backend/src/app/gql/bridges/customer/MemberBridge.ts`
+- `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts`
 - `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts`
 - `backend/src/app/gql/bridges/customer/MeetingBridge.ts`
 - `backend/src/app/gql/bridges/customer/MeetingParticipantBridge.ts`
@@ -174,6 +175,7 @@ Rules:
 - Customer `plans` / `plan(id)`: platform catalog (no owner FK). Parent `{ public: true }` → `STATIC`. `PlanBridge` extends `CustomerBridgeBase` (not org-owned). Root policy: `status = ACTIVE`, order `sort_order` then `id`. MultiLang `name`/`description` → localized `String`; dual prices `monthly_price` / `yearly_price` (no catalog `billing_period`). Base enum: `_PlanStatus` (`_PlanBillingPeriod` remains for subscription surfaces). `PlanBridge.GetOneParent` includes `SubscriptionModel` for `_Subscription.plan`. No supervisor Plan surface yet.
 - Customer `subscriptions` / `subscription(id)`: payer-owned (`{ me: true }` → Customer). `SubscriptionBridge` `ident = "subscription"` (matches ORM `modelName`). List order `starts_at` desc. Nested `_Subscription.plan`. `_Me.currentSubscription` is auto-wired from `Customer.hasOne(..., { as: "currentSubscription" })` via `MeBridge` `bootRelations` (association key → `SubscriptionBridge` by target `modelName`); do **not** add a second bridge class or redundant `MeBridge.static relations` when the Sequelize association exists. See `.cursor/rules/gql-association-auto-relations.mdc` and `subscription-domain.md`. `SubscriptionBridge.GetOneParent` includes `CustomerModel`. Base enum: `_SubscriptionStatus`. No supervisor Subscription surface yet.
 - Customer `subscriptionPaymentMethods(planId, billingPeriod)`: read-only gateway methods — `_PaymentMethod` in `base.graphql`; thin `CustomerSchema` resolver → `getCustomerSubscriptionPaymentMethods` (ACTIVE Plan + period price → `MyFatoorah.memoGetPaymentsMethods`). **No** Bridge. Empty list when plan missing/disabled/amount invalid. Contract: `myfatoorah-invoice-payment-domain.md`.
+- Customer `adwhatsAccounts` / `adwhatsProAccounts` / `adwhatsProApprovedTemplates`: remote picker lists — types + filters in `customer.graphql` (not `base`); thin `CustomerSchema` resolvers → `CustomerAdwhatsLists`. **No** Bridge. Ready-only accounts. Pro templates require org-owned `ADWHATS_PRO` channel. Empty token / mismatch / remote failure → `[]`. Keep three roots. Contract: `message-channel-domain.md` §4.
 - Customer `_Me.canSubscribe(planId: ID!)`: MeBridge extra → `Customer.can("SUBSCRIPTION", { sub: "subscribe", plan: planId, visualMode })`. Requester `subscription.subscribe` still enforces with `throwMode`. Do **not** add `_MyFatoorahInvoice` roots/bridges unless product asks.
 - Do **not** add `_Member.meetingParticipants` / `_Member.meetings` unless product requests member-history UX (B15 risk over time).
 - When adding nested SDL `belongsTo` (example `_Member.organization`), update the **target** bridge `GetOneParent` to include the **source** model (`OrganizationBridge`: `MemberModel | …`). Never skip this. See `gql-root-parent-payload-contract.mdc` §5 and `member-domain.md`.

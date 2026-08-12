@@ -12,9 +12,7 @@ Current Ejtmaa message-channel surface:
 
 Out of scope (not shipped):
 
-- Real SMTP / Ad Whats connectivity inside `testConnection()` (method exists; stub returns `false`; create/update **do** call it and set `ACTIVE` / `DISABLED` from the result),
 - send pipeline that flips `status` to `DISABLED` on token/connection failure after send,
-- linking `MessageTemplate` content rules to requesters (shipped — see `message-template-domain.md` §5b),
 - `EJTMAA_EMAIL` as a channel type (platform mailer templates intentionally have **no** channel row — product decision),
 - supervisor MessageChannel GraphQL,
 - cpanel mirrors/UI,
@@ -40,9 +38,9 @@ Authoritative on `MessageTemplate` now — see `message-template-domain.md`:
 | `EJTMAA_EMAIL` (platform mailer) | none (`message_channel_id` null) | `subject` + `body` required |
 | `CUSTOM_EMAIL` | required matching channel | `subject` + `body` required |
 | `ADWHATS` | required matching channel | `body` only |
-| `ADWHATS_PRO` | required matching channel | `meta_template_id` + provider variable map (`{{key}}` → `{{n}}`); no free subject/body |
+| `ADWHATS_PRO` | required matching channel | `meta_template_id` + `meta_template_label` + provider variable map (`{{key}}` → `{{n}}`); no free subject/body |
 
-Enum spelling: `ADWHATS` / `ADWHATS_PRO` (not `AD_WHATS`). Write-path enforcement is requester todo.
+Enum spelling: `ADWHATS` / `ADWHATS_PRO` (not `AD_WHATS`). Write-path Joi/requester enforces per-type credentials.
 
 ## 3) ORM model
 
@@ -78,6 +76,7 @@ Persistence names:
 | `from_address` | STRING(191) | yes | `CUSTOM_EMAIL` |
 | `adwhats_token` | TEXT | yes | `ADWHATS` / `ADWHATS_PRO` |
 | `adwhats_account_id` | STRING(191) | yes | `ADWHATS` / `ADWHATS_PRO` |
+| `adwhats_account_label` | STRING(191) | yes | display name snapshot for the selected account |
 
 Exported TS types:
 
@@ -103,7 +102,7 @@ ORM does **not** enforce per-type nullability (all credential columns nullable).
 - `hasMany(MessageChannel)` on `organization_id` (real FK)
 - mixins: `getMessageChannels` / `createMessageChannel` / … (association PK type `string`, like Member)
 
-No `hasMany(MessageTemplate)` on `MessageChannel` in this slice (template `belongsTo` channel only; avoids circular import).
+No `hasMany(MessageTemplate)` on `MessageChannel` (template `belongsTo` channel only; avoids circular import).
 
 ### 3.5 Localization
 
@@ -116,9 +115,21 @@ Enum keys under:
 
 `messageChannelStatus`: `ACTIVE`, `DISABLED`.
 
-### 3.6 Connectivity stub
+### 3.6 Connectivity
 
-`MessageChannelModel.testConnection(): Promise<boolean>` — stub returns `false` until SMTP / Ad Whats clients are implemented. Create/update requesters call it and set `ACTIVE` / `DISABLED` from the result.
+`MessageChannelModel.testConnection(): Promise<boolean>` — never throws (outer catch → `false`). Create/update requesters call it **after** writing credentials, **while the requester transaction is still open**, then set `ACTIVE` / `DISABLED` from the boolean. Status is not client-owned. Save still returns `SUCCESS_CREATE` / `SUCCESS_UPDATE` when the test fails (row lands `DISABLED`).
+
+| Type | Helper | Pass when |
+|---|---|---|
+| `CUSTOM_EMAIL` | `CustomEmailHelper.verifyCustomEmailConnection` | nodemailer `verify()` handshake (no mail sent); 8s `connectionTimeout` / `greetingTimeout` / `socketTimeout` |
+| `ADWHATS` | `AdWhatsDevApi.adwhatsAccountIsReady` | `GET https://api.adwhats.net/accounts` with header `token`; selected `adwhats_account_id` is in the **ready** list; Axios timeout 8s |
+| `ADWHATS_PRO` | `AdWhatsProDevApi.adwhatsProAccountIsReady` | same against `https://api.adwhats.com.sa/accounts` |
+
+`adwhatsAccountIsReady` / `adwhatsProAccountIsReady` reuse the corresponding `list*` helper (empty token/id, HTTP error, or missing ready row → `false`).
+
+Re-save an existing `DISABLED` row to re-test. `ADWHATS_PRO` rows that still have linked `MessageTemplate` rows **cannot** update (`Customer.can` → `CANNOT_UPDATE_USED`), so those must come up `ACTIVE` on create (or after templates are deleted).
+
+No env vars for Ad Whats hosts. No checked-in SQL migration for connectivity.
 
 ## 4) Customer GraphQL surface
 
@@ -146,7 +157,7 @@ Exposed fields:
 
 - info: `id`, `name`, `type`, `status`
 - `CUSTOM_EMAIL`: `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password`, `from_name`, `from_address`
-- Ad Whats: `adwhats_token`, `adwhats_account_id`
+- Ad Whats: `adwhats_token`, `adwhats_account_id`, `adwhats_account_label`
 - timestamps, `organization`, `total_count`
 
 ### Root queries
@@ -160,6 +171,20 @@ Resolvers (`CustomerSchema`):
 prepareManyGQLModels({ me: true })
 prepareOneGQLModel({ me: true, id })
 ```
+
+### Helper roots (Ad Whats pickers — not Bridges)
+
+SDL lives in `customer.graphql` only (not `base.graphql`, not supervisor). Hosts are hardcoded in helpers; no env. Precedent: `subscriptionPaymentMethods`. HTTP: website `CUSTOMER_GQL` adapter on `/website/data_adapters/customer/gql` (`Authed` `CUSTOMER`).
+
+| Root | Filter | Source | Rows |
+|---|---|---|---|
+| `adwhatsAccounts` | `{ token: String! }` | `listAdwhatsAccounts` | `ready === true` only |
+| `adwhatsProAccounts` | `{ token: String! }` | `listAdwhatsProAccounts` | `ready === true` only |
+| `adwhatsProApprovedTemplates` | `{ messageChannelId: ID! }` | `listAdwhatsProApprovedTemplates` | org-owned `ADWHATS_PRO` channel with non-empty token + `adwhats_account_id`; else `[]` |
+
+Mapping: `backend/src/app/helpers/CustomerAdwhatsLists.ts` (`withTotalCount`; `total_count` = returned list length). Thin resolvers in `CustomerSchema`. Empty token / missing channel / type mismatch / other-org id / remote failure → `[]`. Account-list resolvers do not re-check `context.customer` (session is the HTTP adapter). Pro template list **does** require `context.customer` and org ownership — detail in `message-template-domain.md` §4. No new Ability keys.
+
+Types: `_AdwhatsAccount` / `_AdwhatsProAccount` (`id`, `label`, `mobile`, `ready`, `total_count`); `_AdwhatsProApprovedTemplate` (`id`, `label`, `internal_name`, `category`, `language`, `whatsapp_account_id`, `total_count`). Three separate roots — do **not** merge classic and Pro behind a `type` discriminator.
 
 ### Bridge: `MessageChannelBridge`
 
@@ -186,22 +211,25 @@ File: `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts`
 - Ability on `Customer`: `MESSAGE_CHANNEL` with `sub: "create" | "read" | "update" | "delete"` and optional `messageChannel` target.
   - `create`: customer must have an organization (`ACTION_NOT_ALLOWED` otherwise).
   - `read` / `update` / `delete`: resolve channel; must belong to that organization (`404` missing, `NOT_PERMIT` other org).
+  - `update` / `delete` on `type === ADWHATS_PRO`: if any `MessageTemplate` has this `message_channel_id`, throw `CANNOT_UPDATE_USED` / `CANNOT_DELETE_USED`. Other channel types are not blocked by templates. `read` stays allowed.
+- Form field `adwhats_account` is a SelectOption (`joi.select({ raw: true })` when type is `ADWHATS` / `ADWHATS_PRO`). Write splits to `adwhats_account_id` (`${value}`) + `adwhats_account_label` (`label`). `read` rebuilds `{ value, label }` from those columns (no ORM `forSelect` — remote DTO). Empty picker is `null`.
 - Joi helper: `isCustomerOwnedMessageChannel` in `joi_rules.ts` (mirrors `isCustomerOwnedMember` shape).
 - Requester: `MessageChannelRequester` (`@requester("messageChannel")`) — `read` | `create` | `update` | `delete` for website/customer.
-- Website map: `customer.messageChannel` in `requesters.website.ts` (mirrored on website — W18).
+- Website map: `customer.messageChannel` in `requesters.website.ts` (mirrored on website).
 - **`read` values must not echo `messageChannel` id** — identity stays in form `initProps.values`; form merge preserves it (same rule as `MemberRequester.read`).
 - Update locks `type` to the existing row (client must echo the read value).
 - Credential columns required by `type` via Joi `when`; unused branches use `joi.any().optional().allow(null, "").strip()`. Write path persists stripped props with `?? null` (no per-type attrs helper).
 - `status` is **not** client-owned: create/update call `testConnection()` after credentials are written — `true` → `ACTIVE`, `false` → `DISABLED`.
+- Website form still shows Save / Delete on Pro rows. The used-channel lock is **ability-only** (`CANNOT_*_USED`); the UI does not hide those actions.
 
 ### 5.1 Requester subs (summary)
 
 | Sub | Behavior |
 |---|---|
-| `read` | Owned channel → values: name, `type` via `toEnumForSelect(..., "messageChannelType")`, credential columns (`smtp_secure` as `"true"`/`"false"` string for form choice) — **no** `messageChannel` id key |
+| `read` | Owned channel → values: name, `type` via `toEnumForSelect(..., "messageChannelType")`, credential columns (`smtp_secure` as `"true"`/`"false"`), `adwhats_account` SelectOption from id+label — **no** `messageChannel` id key |
 | `create` | Validate → `createMessageChannel` with `status: ACTIVE` → `testConnection` may flip to `DISABLED` → `SUCCESS_CREATE` |
-| `update` | Owned channel + locked type → update attrs → `testConnection` → `ACTIVE`/`DISABLED` → `SUCCESS_UPDATE` |
-| `delete` | Owned channel → `destroy({ force: true })` → `SUCCESS_DELETE` |
+| `update` | Owned channel + locked type; Pro+templates → `CANNOT_UPDATE_USED`; else update attrs → `testConnection` → `ACTIVE`/`DISABLED` → `SUCCESS_UPDATE` |
+| `delete` | Owned channel; Pro+templates → `CANNOT_DELETE_USED`; else hard `destroy` → `SUCCESS_DELETE` |
 
 Select hydrate pattern (enums / entity refs on `read`): [`../patterns/requester-read-select-hydrate.md`](../patterns/requester-read-select-hydrate.md).
 
@@ -223,7 +251,7 @@ Select hydrate pattern (enums / entity refs on `read`): [`../patterns/requester-
 
 ## 7) Seed
 
-No channel seed in this change set.
+No channel seed.
 
 ## 8) Frontend mirrors
 
@@ -245,35 +273,46 @@ Local registry (gitignored): `backend/.types/models.ts` must include `"MessageCh
 | `messageChannel(id)` | missing / other-org id | framework empty → `404` |
 | requester update | client `type` ≠ locked row type | `NOT_PERMIT` |
 | requester create/update | wrong-type / missing credential fields | Joi field errors (`when` + optional unused branches) |
-| requester create/update | `testConnection()` false (current stub) | row saved as `DISABLED` |
+| requester create/update | `testConnection()` false | row saved as `DISABLED` (success toast still fires) |
+| requester update | `ADWHATS_PRO` with ≥1 template | `CANNOT_UPDATE_USED` |
+| requester delete | `ADWHATS_PRO` with ≥1 template | `CANNOT_DELETE_USED` |
+| helper roots | empty token / bad channel / remote error | `[]` |
 
 ## 10) Traceability map
 
-| Path | Role | Section |
+| Path | Role | § |
 |---|---|---|
-| `backend/src/app/orm/models/MessageChannel.ts` | ORM + `testConnection` stub + `forSelect(lang)` | §3 / hydrate |
-| `backend/src/app/orm/models/Customer.ts` | `Ability.MESSAGE_CHANNEL` | §5 |
-| `backend/src/app/orchestrator/requesters/MessageChannelRequester.ts` | CRUD; credential `.strip()` + `?? null` | §5 |
+| `backend/src/app/orm/models/MessageChannel.ts` | ORM + `testConnection` + `forSelect(lang)` | §3 |
+| `backend/src/app/helpers/CustomEmailHelper.ts` | SMTP `verify()` for `CUSTOM_EMAIL` | §3.6 |
+| `backend/src/app/helpers/AdWhatsDevApi.ts` | Classic `GET /accounts` + `adwhatsAccountIsReady` | §3.6 / §4 |
+| `backend/src/app/helpers/AdWhatsProDevApi.ts` | Pro `GET /accounts` + `adwhatsProAccountIsReady` | §3.6 / §4 |
+| `backend/src/app/helpers/CustomerAdwhatsLists.ts` | GQL mapping + `total_count` + Pro org-owned channel gate | §4 |
+| `backend/src/app/orm/models/Customer.ts` | `Ability.MESSAGE_CHANNEL` + Pro used-channel lock | §5 |
+| `backend/src/app/orchestrator/requesters/MessageChannelRequester.ts` | CRUD; `adwhats_account` SelectOption split; `.strip()` + `?? null` | §5 |
 | `backend/src/app/validation/joi_rules.ts` | `isCustomerOwnedMessageChannel` | §5 |
 | `backend/requesters.website.ts` | `customer.messageChannel` map | §5 |
 | `backend/src/app/orm/models/Organization.ts` | `hasMany MessageChannel` + mixins | §3.4 |
 | `backend/src/resources/trans/ar/general.ts` | `messageChannelType` / `messageChannelStatus` AR | §3.5 |
 | `backend/src/resources/trans/en/general.ts` | EN mirrors | §3.5 |
 | `backend/src/app/gql/definitions/base.graphql` | type/status GQL enums | §4 |
-| `backend/src/app/gql/definitions/customer.graphql` | `_MessageChannel` + `_MessageChannelFilter` (`type`+`status`) | §4 |
+| `backend/src/app/gql/definitions/customer.graphql` | `_MessageChannel` + filter + helper roots + helper DTO types | §4 |
+| `backend/src/app/gql/gql-types/customer.ts` | Generated customer types | generated |
 | `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts` | filter map + nest parents | §4–§6 |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | `GetOneParent` includes `MessageChannelModel` | §4 |
-| `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + resolvers pass `filter` | §4 |
-| `website/` form + directory | portal UI | `flow-customer-message-channels.md` |
-| `.cursor/rules/message-channel-domain.mdc` | Channel invariants | governance |
-| `.cursor/rules/requester-type-conditional-strip.mdc` | Unused credential `.strip()` | §5 |
+| `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + thin helper resolvers | §4 |
+| Website form, directory, pickers | portal UI | `flow-customer-message-channels.md` |
+
+Pro approved-template helper + `MessageTemplate` columns: `message-template-domain.md` §10.
 
 ## Related
 
-- `docs/platforms/backend/contracts/message-template-domain.md` (template kinds + optional channel FK)
+- `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/organization-domain.md`
-- `docs/platforms/backend/contracts/meeting-domain.md` (optional template FKs on Meeting)
+- `docs/platforms/backend/contracts/meeting-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/website/flow-customer-message-channels.md`
+- `.cursor/skills/website-customer-message-channels/SKILL.md`
 - `.cursor/rules/organization-tenant-ownership.mdc`
 - `.cursor/rules/message-channel-domain.mdc`
+- `.cursor/rules/requester-type-conditional-strip.mdc`
+

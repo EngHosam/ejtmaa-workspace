@@ -12,7 +12,7 @@ Current Ejtmaa message-template surface:
 - website GQL mirrors for that customer surface (`base` + `customer` SDL + gql-types),
 - website write path via `MessageTemplateRequester` (`read` | `create` | `update` | `delete`) + `Customer.Ability.MESSAGE_TEMPLATE`.
 
-Out of scope (not shipped in this slice):
+Out of scope (not shipped):
 
 - supervisor MessageTemplate GraphQL,
 - cpanel mirrors/UI,
@@ -32,7 +32,7 @@ Related: `message-channel-domain.md` (delivery credentials). Meeting optional te
 | `EJTMAA_EMAIL` | null (platform mailer) | `subject` + `body` required on write |
 | `CUSTOM_EMAIL` | required, channel `type=CUSTOM_EMAIL` | `subject` + `body` required on write |
 | `ADWHATS` | required, channel `type=ADWHATS` | `body` only (`subject` null) |
-| `ADWHATS_PRO` | required, channel `type=ADWHATS_PRO` | `meta_template_id` + `variables` map (no free subject/body) |
+| `ADWHATS_PRO` | required, channel `type=ADWHATS_PRO` | `meta_template_id` + `meta_template_label` + `variables` map (no free subject/body) |
 
 - Tenant boundary is `organization_id` (not `customer_id` directly).
 - Templates are referenced by meetings via optional FKs; meetings do not store inline template text.
@@ -55,7 +55,7 @@ Resolved at send time with non-destructive substitution (unknown tokens left as-
 Website:
 
 - Free-text kinds: human-labeled insert chips **above** the subject/body field (`headerArea`), not beside the title.
-- `ADWHATS_PRO`: required `meta_template_id` + `FormMessageTemplateVariablesField` — human labels only (no `{{token}}` in UI); default variable numbers `1`–`4`; editable to match approved WhatsApp template order.
+- `ADWHATS_PRO`: required `meta_template` picker (`adwhatsProApprovedTemplates`, gated on channel id) + `FormMessageTemplateVariablesField` after a template is selected — human labels only (no `{{token}}` in UI); default variable numbers `1`–`4`.
 
 **Retired (do not reintroduce):** column/enum `channel` / `messageTemplateChannel` / values `WHATSAPP` | `EMAIL`; GQL `_MessageTemplateChannel*`.
 
@@ -73,7 +73,7 @@ Persistence names:
 ### 3.1 Attrs layout
 
 - `//relations` — `organization_id`, `message_channel_id`
-- `//info` — `name`, `type`, `subject`, `body`, `variables`, `meta_template_id`
+- `//info` — `name`, `type`, `subject`, `body`, `variables`, `meta_template_id`, `meta_template_label`
 
 ### 3.2 Columns
 
@@ -87,7 +87,8 @@ Persistence names:
 | `subject` | STRING(191) | yes | email kinds |
 | `body` | TEXT | yes | email / Ad Whats |
 | `variables` | JSONB | yes | Ad Whats Pro map; typed object |
-| `meta_template_id` | STRING(191) | yes | Ad Whats Pro only; approved Meta template identifier; write-required when `type=ADWHATS_PRO` |
+| `meta_template_id` | STRING(191) | yes | Ad Whats Pro only; approved template id; write-required when `type=ADWHATS_PRO` |
+| `meta_template_label` | STRING(191) | yes | display name snapshot for the selected template |
 
 Exported TS types:
 
@@ -112,7 +113,7 @@ Exported TS types:
 - `hasMany(MessageTemplate)` on `organization_id`
 - association mixins use PK type `string` (aligned with MessageChannel mixins)
 
-**No** `hasMany(MessageTemplate)` on `MessageChannel` in this slice:
+**No** `hasMany(MessageTemplate)` on `MessageChannel`:
 
 - avoids circular import (`MessageTemplate` already imports `MessageChannel`),
 - no GQL field `_MessageChannel.messageTemplates`,
@@ -145,7 +146,7 @@ SDL:
 
 Implements `_Timestamps` & `_Pagination`.
 
-Fields: `id`, `name`, `type`, `subject`, `body`, `variables` (`JSONObject`), `meta_template_id`, timestamps, `organization`, `messageChannel`, `total_count`.
+Fields: `id`, `name`, `type`, `subject`, `body`, `variables` (`JSONObject`), `meta_template_id`, `meta_template_label`, timestamps, `organization`, `messageChannel`, `total_count`.
 
 ### Root queries
 
@@ -155,6 +156,16 @@ Fields: `id`, `name`, `type`, `subject`, `body`, `variables` (`JSONObject`), `me
 Resolvers (`CustomerSchema`): `prepareManyGQLModels({ me: true, filter })` / `prepareOneGQLModel({ me: true, id })`. Bridge maps `filter.type` or `filter.types` (`Op.in`).
 
 `CustomerSchema.registeredBridges` includes `MessageTemplateBridge`.
+
+### Helper root (Ad Whats Pro approved templates — not a Bridge)
+
+`adwhatsProApprovedTemplates(filter: { messageChannelId })` in `customer.graphql`.
+
+Helper: `CustomerAdwhatsLists.getCustomerAdwhatsProApprovedTemplates` → `AdWhatsProDevApi.listAdwhatsProApprovedTemplates`.
+
+Requires an org-owned `MessageChannel` with `type === ADWHATS_PRO` and non-empty `adwhats_token` + `adwhats_account_id`; otherwise `[]`. Remote failure → `[]`. `total_count` = returned list length. No new Ability keys. `meta_template_id` stores the Pro draft id; `meta_template_label` stores the display name.
+
+HTTP: `GET https://api.adwhats.com.sa/templates?whatsapp_account_id=` with header `token`. That call currently has **no** Axios timeout (account lists in `AdWhatsProDevApi` do).
 
 ### Bridge: `MessageTemplateBridge`
 
@@ -180,7 +191,7 @@ On `{ me: true }`: require `context.customer`, load `getOrganization()`, return 
 | `_MessageTemplate.messageChannel` | `MessageChannelBridge` | `MessageTemplateModel` |
 | `_Meeting.whatsappTemplate` / `emailTemplate` | `MessageTemplateBridge` | `MeetingModel` |
 
-`MessageChannelBridge.GetOneParent` therefore includes `MessageTemplateModel` (shipped in this change set).
+`MessageChannelBridge.GetOneParent` therefore includes `MessageTemplateModel`.
 
 ## 5) Read flow (root)
 
@@ -205,31 +216,32 @@ On `{ me: true }`: require `context.customer`, load `getOrganization()`, return 
   - `read` / `update` / `delete`: resolve template; must belong to that organization (`404` missing, `NOT_PERMIT` other org).
 - Joi helper: `isCustomerOwnedMessageTemplate` in `joi_rules.ts`.
 - Requester: `MessageTemplateRequester` (`@requester("messageTemplate")`) — `read` | `create` | `update` | `delete` for website/customer.
-- Website map: `customer.messageTemplate` in `requesters.website.ts` (mirrored on website — W18).
+- Website map: `customer.messageTemplate` in `requesters.website.ts` (mirrored on website).
 - **`read` values must not echo `messageTemplate` id** — identity stays in form `initProps.values`.
 - Update **locks** `type` to the existing row (client must echo the read value).
 - Channel FK: null for `EJTMAA_EMAIL`; otherwise org-owned `MessageChannel` whose `type` matches template `type`.
 - Content columns required by `type` via Joi `when`; unused branches `joi.any().optional().allow(null, "").strip()`. Persist with one flat write (`props.field ?? null`) — **no** per-type `attrsForType` helper. See `.cursor/rules/requester-type-conditional-strip.mdc`.
 - Do **not** use `forbidden()` for leftover form content fields unless the client guarantees the key is absent; prefer `.strip()`.
 - Channel write for credentials uses the same strip + `?? null` pattern (`MessageChannelRequester`).
-- Template picker list filter: website always requests `status: ACTIVE` (connectivity stub may leave many rows `DISABLED`).
+- Form field `meta_template` is a SelectOption (`joi.select({ raw: true })` when `ADWHATS_PRO`). Write splits to `meta_template_id` (`${value}`) + `meta_template_label` (`label`). Empty picker is `null`. Pro writes `body: null`.
+- Template picker list filter: website always requests `status: ACTIVE`. Failed `testConnection()` leaves the channel `DISABLED`, so the picker can look empty until the channel is re-saved successfully.
 
 ### 5b.1 Requester subs (summary)
 
 | Sub | Behavior |
 |---|---|
-| `read` | Owned template → values: name, `type` via `toEnumForSelect(..., "messageTemplateType")`, `messageChannel` via `MessageChannel.forSelect(lang)` (or null), subject, body, variables, `meta_template_id` — **no** `messageTemplate` id key |
+| `read` | Owned template → values: name, `type` via `toEnumForSelect(..., "messageTemplateType")`, `messageChannel` via `MessageChannel.forSelect(lang)` (or null), subject, body, variables, form field `meta_template` as `{ value, label }` rebuilt from `meta_template_id` + `meta_template_label` — **no** `messageTemplate` id key |
 | `create` | Validate by kind → `createMessageTemplate` → `SUCCESS_CREATE` |
 | `update` | Owned template + locked type → update attrs → `SUCCESS_UPDATE` |
 | `delete` | Owned template; blocked if Meeting still links it (`CANNOT_DELETE_USED`) → else hard `destroy` → `SUCCESS_DELETE` |
 
 Select hydrate pattern (enums / entity refs on `read`): [`../patterns/requester-read-select-hydrate.md`](../patterns/requester-read-select-hydrate.md).
 
-## 6) Seed / migration note
+## 6) Seed / ops
 
-No template seed in this change set.
+No template seed.
 
-Applying the new columns against DBs that still have legacy `channel` / `WHATSAPP`|`EMAIL` requires schema sync and a data migration — **not** automated here. Ops must plan before promote.
+`body` is nullable in the Sequelize model. Existing Postgres tables created when body was required still have `NOT NULL`; `ADWHATS_PRO` create writes `body: null` and will fail until `ALTER TABLE message_templates ALTER COLUMN body DROP NOT NULL` (or a normal DatabaseConsole alter).
 
 ## 7) Frontend mirrors
 
@@ -245,68 +257,40 @@ Verification scripts (existing):
 
 Generated codegen also refreshes `backend/src/app/gql/gql-types/supervisor.ts` (shared base enum types) even though supervisor has no template roots.
 
-## 8) Failure modes (read path)
+## 8) Failure modes
 
 | Surface | Condition | Behavior |
 |---|---|---|
 | `messageTemplates` / `messageTemplate` | no `context.customer` | `NOT_PERMIT` |
 | `messageTemplates` / `messageTemplate` | customer has no organization | `404` |
 | `messageTemplate(id)` | missing / other-org id | framework empty → `404` |
+| requester create/update | `ADWHATS_PRO` without `meta_template` / `variables` | Joi field errors |
+| requester create | `ADWHATS_PRO` when DB `body` is still `NOT NULL` | Postgres `23502` until `ALTER … DROP NOT NULL` |
+| requester delete | Meeting still links the template | `CANNOT_DELETE_USED` |
+| `adwhatsProApprovedTemplates` | missing customer / other-org / non-Pro / empty token or account / remote error | `[]` |
 
-## 9) Traceability map (change-set inventory — this slice)
-
-### Backend (`backend/` repo)
-
-| Path | Status | Role | § |
-|---|---|---|---|
-| `src/app/orm/models/MessageTemplate.ts` | M | `meta_template_id` + content attrs | §3 |
-| `src/app/orm/models/MessageChannel.ts` | M | `forSelect(lang)` | hydrate |
-| `src/app/orm/models/Customer.ts` | M | `Ability.MESSAGE_TEMPLATE` + `can` | §5b |
-| `src/app/validation/joi_rules.ts` | M | `isCustomerOwnedMessageTemplate` | §5b |
-| `src/app/orchestrator/requesters/MessageTemplateRequester.ts` | A | CRUD; `.strip()` unused; write `?? null` | §5b |
-| `src/app/orchestrator/requesters/MessageChannelRequester.ts` | M | same strip write pattern for credentials | channel domain |
-| `requesters.website.ts` | M | `customer.messageTemplate` | §5b |
-| `src/app/gql/bridges/customer/MessageChannelBridge.ts` | M | `filter.type` + `filter.status`; `GetOneParent` += template | §4 / channel |
-| `src/app/gql/schemas/CustomerSchema.ts` | M | pass `filter` into `messageChannels` | channel |
-| `src/app/gql/definitions/customer.graphql` | M | `meta_template_id`; `_MessageChannelFilter.status` | §4 |
-| `src/app/gql/gql-types/customer.ts` | M | Generated | §7 |
-| `src/resources/trans/ar/general.ts` | M | enum labels as needed | §3.5 |
-
-### Backend — supporting (may pre-exist; required)
+## 9) Traceability map
 
 | Path | Role | § |
 |---|---|---|
-| `src/app/gql/bridges/customer/MessageTemplateBridge.ts` | Thin bridge | §4 |
-| `src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | `me` → Organization | §4–§5 |
-| `src/app/gql/bridges/customer/OrganizationBridge.ts` | nest parents | §4 |
-| `src/app/gql/definitions/base.graphql` | `_MessageTemplateType*` | §4 |
-| `src/resources/trans/en/general.ts` | EN enum mirror | §3.5 |
+| `backend/src/app/orm/models/MessageTemplate.ts` | nullable `body`; `meta_template_id` + `meta_template_label` | §3 |
+| `backend/src/app/orchestrator/requesters/MessageTemplateRequester.ts` | form `meta_template`; split write; `body ?? null` | §5b |
+| `backend/src/app/orm/models/Customer.ts` | `Ability.MESSAGE_TEMPLATE` | §5b |
+| `backend/src/app/validation/joi_rules.ts` | `isCustomerOwnedMessageTemplate` | §5b |
+| `backend/requesters.website.ts` | `customer.messageTemplate` | §5b |
+| `backend/src/app/gql/definitions/base.graphql` | `_MessageTemplateType*` | §4 |
+| `backend/src/app/gql/definitions/customer.graphql` | `_MessageTemplate` + `adwhatsProApprovedTemplates` | §4 |
+| `backend/src/app/gql/gql-types/customer.ts` | Generated | generated |
+| `backend/src/app/gql/bridges/customer/MessageTemplateBridge.ts` | Thin bridge | §4 |
+| `backend/src/app/gql/bridges/customer/CustomerOrganizationOwnedBridgeBase.ts` | `me` → Organization | §4–§5 |
+| `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | nest parents | §4 |
+| `backend/src/app/gql/schemas/CustomerSchema.ts` | Pro template helper resolver | §4 |
+| `backend/src/app/helpers/AdWhatsProDevApi.ts` | `listAdwhatsProApprovedTemplates` (`GET /templates`, no timeout) | §4 |
+| `backend/src/app/helpers/CustomerAdwhatsLists.ts` | org-owned Pro channel gate | §4 |
+| `backend/src/resources/trans/ar/general.ts` / `en/general.ts` | `messageTemplateType` | §3.5 |
+| Website form, directory, pickers | portal UI | `flow-customer-message-templates.md` |
 
-### Website — see `docs/platforms/website/flow-customer-message-templates.md` §7
-
-### Workspace root — docs / governance
-
-| Path | Role |
-|---|---|
-| `docs/platforms/backend/contracts/message-template-domain.md` | This contract |
-| `docs/platforms/backend/contracts/message-channel-domain.md` | Filter + strip credentials |
-| `docs/platforms/backend/patterns/requester-read-select-hydrate.md` | Select hydrate |
-| `docs/platforms/website/flow-customer-message-templates.md` | Website flow + inventory |
-| `docs/platforms/website/flow-customer-message-channels.md` | Channel UI sibling |
-| `docs/platforms/website/flow-customer-shell.md` | Drawer shipped list |
-| `docs/platforms/website/flow-form-foundation.md` | Wrapper / picker |
-| `docs/platforms/website/route-registry-contract.md` | Routes index |
-| `docs/platforms/website/README.md` | Flow index |
-| `docs/platforms/backend/README.md` | Contracts index |
-| `.cursor/rules/message-template-domain.mdc` | Template invariants |
-| `.cursor/rules/message-channel-domain.mdc` | Channel invariants |
-| `.cursor/rules/requester-read-select-hydrate.mdc` | Read SelectOption |
-| `.cursor/rules/requester-type-conditional-strip.mdc` | Joi unused `.strip()` |
-| `.cursor/rules/website-message-template-form-ux.mdc` | Website form UX locks |
-| `.cursor/skills/website-customer-message-templates/SKILL.md` | Website workflow |
-| `.cursor/skills/website-entity-picker/SKILL.md` | Picker workflow |
-| `.cursor/skills/backend-requester-read-select-hydrate/SKILL.md` | Hydrate workflow |
-| `backend` / `website` | Nested git pointers (submodule-style) |
+Channel credentials, account helper roots, and Pro used-channel lock: `message-channel-domain.md` §10.
 
 ## Related
 

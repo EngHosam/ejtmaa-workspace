@@ -22,8 +22,8 @@ description: >-
 3. List `CustomerMessageTemplates` on `CUSTOMER_MAIN`; form multi-path after list identify — `.cursor/rules/website-multi-path-form-routes.mdc`.
 4. Drawer: identify `CustomerMessageTemplates`, glyph **`FiMessageSquare`** — same on card.
 5. Register `Forms.CUSTOMER_MESSAGE_TEMPLATE` → `API.FORMS.CUSTOMER.R("messageTemplate")`. Href: `buildCustomerMessageTemplateFormHref`.
-6. Adapter: `"customer-message-templates"` inherit `CUSTOMER_GQL`, `listable: "messageTemplates"`. No history search until `_MessageTemplateFilter` exists.
-7. Form kinds: `EJTMAA_EMAIL` (subject+body); `CUSTOM_EMAIL`/`ADWHATS`/`ADWHATS_PRO` (+ channel); Pro requires `meta_template_id` + `FormMessageTemplateVariablesField`. Insert chips via `headerArea` (human labels). Placeholders config: `messageTemplatePlaceholders.ts`. Type `readOnly` on update. Clear channel when create type changes.
+6. Adapter: `"customer-message-templates"` inherit `CUSTOMER_GQL`, `listable: "messageTemplates"`. Directory has no search UI. `_MessageTemplateFilter` (`type` / `types`) exists on GQL; do not document it as absent.
+7. Form kinds: `EJTMAA_EMAIL` (subject+body); `CUSTOM_EMAIL`/`ADWHATS`/`ADWHATS_PRO` (+ channel); Pro requires `meta_template` picker (`adwhatsProApprovedTemplates`, gated on channel id) + `FormMessageTemplateVariablesField`. Insert chips via `headerArea` (human labels). Placeholders config: `messageTemplatePlaceholders.ts`. Type `readOnly` on update. Clear channel when create type changes; clear `meta_template` when channel changes.
 8. Channel picker: `messageChannels.tsx` — `searchable: false`; always `status: ACTIVE` + `type`; **pass `selected` into `CustomerMessageChannelCard`** (same as members).
 9. Delete: `confirm(…, "danger")`. Loading: `saving` / `deleting` from `currentSub`.
 10. Create: stable `formIdentify` + `d.reset()` on success. No `messageTemplate` id echo from `read`. Hydrate via select pattern.

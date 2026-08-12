@@ -139,17 +139,20 @@ Canonical consumers: `CustomerMeetingFormScreen` type field; `CustomerMessageCha
 - Registry: `modals/entity-picker/configs/index.ts` + one file per `ident`
 - Shipped config: `configs/members.tsx` (`listable: "members"`, GQL `EntityPickerMembers`, `CustomerMemberCard` + **`selected`**)
 - Shipped config: `configs/messageChannels.tsx` (`listable: "messageChannels"`, `searchable: false`, filter `status: ACTIVE` + optional `type`, `CustomerMessageChannelCard` + **`selected`** — same selection chrome as members)
+- Shipped config: `configs/adwhatsAccounts.tsx` (`listable: "adwhatsAccounts"`, `searchable: false`, filter `{ token }`)
+- Shipped config: `configs/adwhatsProAccounts.tsx` (`listable: "adwhatsProAccounts"`, `searchable: false`, filter `{ token }`)
+- Shipped config: `configs/adwhatsProApprovedTemplates.tsx` (`listable: "adwhatsProApprovedTemplates"`, `searchable: false`, filter `{ messageChannelId }`)
 
 #### Field
 
 | Concern | Contract |
 |---|---|
 | Open | `openEntityPicker({ ident, title, multi?, initValue, filter?, … })` |
-| Single store | `{ value, label, avatarUrl? }` or `""` when cleared |
+| Single store | `{ value, label, avatarUrl? }` or `null` when cleared |
 | Multi store | `EntityPickerSelection[]` |
 | Read hydrate | Backend `read` should return `{ value, label }` via related `model.forSelect(lang)` — `docs/platforms/backend/patterns/requester-read-select-hydrate.md` |
 | Chrome | Chips with `IdentityAvatar` + label; empty uses `emptyLabel`; pick action button |
-| Clear | `clearLabel` (optional fields only) renders a destructive text action in `FormInputWrapper.actionArea` while a value is selected; caller owns the label like every other label on this field; writes `""` (single) / `[]` (multi) |
+| Clear | `clearLabel` (optional fields only) renders a destructive text action in `FormInputWrapper.actionArea` while a value is selected; caller owns the label like every other label on this field; writes `null` (single) / `[]` (multi) |
 | Read-only | When `!setValue` |
 
 #### Modal
@@ -168,7 +171,7 @@ Canonical consumers: `CustomerMeetingFormScreen` type field; `CustomerMessageCha
 
 Skill: `.cursor/skills/website-entity-picker/SKILL.md`. Scroll: `.cursor/rules/website-custom-scroll-contract.mdc`.
 
-Canonical consumers: meeting chairperson (`ident="members"`); template channel (`ident="messageChannels"`).
+Canonical consumers: meeting chairperson (`ident="members"`); template channel (`ident="messageChannels"`); channel Ad Whats account (`ident="adwhatsAccounts"` / `adwhatsProAccounts`); Pro meta template (`ident="adwhatsProApprovedTemplates"`).
 
 ### 3.7 `FormDateTimeField` + `DATETIME_PICKER`
 
@@ -310,7 +313,7 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/app/ui/components/form/FormEntityPickerField.tsx` | entity picker field → modal |
 | `website/src/app/ui/components/modals/EntityPickerModal.tsx` | `ENTITY_PICKER` shell (search + customScroll + loadMore) |
 | `website/src/app/ui/components/modals/SelectableEntityCard.tsx` | selectable wrapper around page cards |
-| `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card (`members.tsx`, `messageChannels.tsx`, …) |
+| `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card (`members.tsx`, `messageChannels.tsx`, `adwhatsAccounts.tsx`, `adwhatsProAccounts.tsx`, `adwhatsProApprovedTemplates.tsx`) |
 | `website/src/app/ui/components/modals/entity-picker/configs/index.ts` | registry of idents |
 | `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`, `searchable?`) |
 | `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM`, `MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT`, `MEETING_TEMPLATES` (no generic `FORM`) |

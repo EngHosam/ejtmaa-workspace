@@ -3,8 +3,9 @@ name: website-customer-message-channels
 description: >-
   Ships or extends the website customer message-channels directory and form
   (CustomerMessageChannels, CustomerMessageChannelForm, ResultLane, FiSend
-  drawer tile before Settings). Use when changing channel list/form UI,
-  drawer placement, or channel card chrome.
+  drawer tile before Settings, token-gated Ad Whats account picker). Use when
+  changing channel list/form UI, drawer placement, channel card chrome, or
+  adwhatsAccounts / adwhatsProAccounts pickers.
 ---
 
 # Website customer message channels
@@ -24,7 +25,9 @@ description: >-
 5. Register `Forms.CUSTOMER_MESSAGE_CHANNEL` → `API.FORMS.CUSTOMER.R("messageChannel")`. Href via `buildCustomerMessageChannelFormHref`.
 6. Adapter: mount-private `"customer-message-channels"` inheriting `DATA_ADAPTERS.CUSTOMER_GQL`. List may stay unfiltered; picker consumers use `_MessageChannelFilter` (`type` + `status: ACTIVE`).
 7. Card is presentational (W42): screen passes labels + optional `editLabel`/`onEdit`. When used inside entity picker, **forward `selected`** (same chrome as members).
-8. Form: `formType = id ? "update" : "create"`; `FormChoiceField` for `type` (create editable, update `readOnly`); credentials by `choiceFieldValue(type)`; status not on UI. Do not call `testConnection` from UI. Unused credential keys: backend `.strip()` — no frontend clear required.
+8. Form: `formType = id ? "update" : "create"`; `FormChoiceField` for `type` (create editable, update `readOnly`); credentials by `choiceFieldValue(type)`; status not on UI. Do not call `testConnection` from UI. Unused credential keys: backend `.strip()`.
+   Ad Whats / Pro: inner `AdwhatsTokenAndAccount` after load (`isInitialLoading` gate). Token-gated picker (`adwhatsAccounts` / `adwhatsProAccounts`, `filter: { token }`). Create type change and later token change clear **account only**. Empty picker = `null`. List/card detail prefers `adwhats_account_label` then id.
+   Pro channel with linked templates: keep Save/Delete visible; backend `can()` throws `CANNOT_UPDATE_USED` / `CANNOT_DELETE_USED`.
 9. Delete: `await confirm(…, "danger")` — `.cursor/skills/website-confirm-modal/SKILL.md`. Loading: `saving` / `deleting` from `currentSub` (`flow-form-foundation.md` §3.10).
 10. Create: stable `formIdentify` + `d.reset()` on create success before `nav.back()`. Do not echo `messageChannel` id from requester `read`. Hydrate `type` via select pattern.
 11. Section subtitle/empty copy may say **WhatsApp**; card type labels come from backend enum.

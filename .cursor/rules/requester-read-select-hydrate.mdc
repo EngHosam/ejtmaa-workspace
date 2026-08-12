@@ -21,6 +21,7 @@ When `read` values hydrate website `FormChoiceField` or `FormEntityPickerField`:
 |---|---|
 | Domain enum | `await this.toEnumForSelect(value, enumKey)` |
 | Related entity | `related?.forSelect(this.context.lang()) ?? null` |
+| Remote picker snapshot (no ORM row) | rebuild `{ value, label }` from stored id+label columns |
 
 `ReadResult` types those fields as `SelectOption` (or `Nullable<SelectOption>`).
 
@@ -33,6 +34,7 @@ When `read` values hydrate website `FormChoiceField` or `FormEntityPickerField`:
 
 - Bare enum string or bare FK id for choice/picker-bound `read` fields.
 - Hand-built `{ value, label }` in the requester when `toEnumForSelect` / `forSelect` already covers it.
+- Inventing `forSelect` on a remote helper DTO (Ad Whats account / Pro approved template).
 - Echoing the edited entity id in `read` values (see `requester-read-no-entity-id-echo.mdc`).
 
 ## Write path unchanged

@@ -11,8 +11,12 @@ Authenticated customer org delivery-channel directory + multi-path form on `CUST
 - Drawer tile `itemMessageChannels` / `CustomerMessageChannels` / **`FiSend`**, after Subscription / before Settings.
 - Card glyph **`FiSend`** (section identity consistency); presentational card with optional `editLabel` / `onEdit`; optional **`selected`** (accent fill/border) for entity-picker parity with members.
 - Type chooser on create; update uses the same `FormChoiceField` with `readOnly` (value kept in form from `read` / `toEnumForSelect`).
-- Status **not** on the form: create/update set `ACTIVE` / `DISABLED` via requester `testConnection()` (model stub currently returns `false` → saves land as `DISABLED` until real connectivity ships).
-- Conditional fields by `type`: `CUSTOM_EMAIL` SMTP block vs `ADWHATS` / `ADWHATS_PRO` token + account id (type-dependent Ad Whats labels).
+- Status **not** on the form: create/update set `ACTIVE` / `DISABLED` via requester `testConnection()`.
+- Conditional credentials: `CUSTOM_EMAIL` SMTP block vs `ADWHATS` / `ADWHATS_PRO` token (type-dependent labels) plus a token-gated account picker (`adwhatsAccounts` / `adwhatsProAccounts`), not a free-text id.
+- Inner `AdwhatsTokenAndAccount` mounts only after `isInitialLoading` so the token-change effect does not wipe a hydrated account.
+- Create type change clears **account only** (not token). Token change (create and update) clears **account only**.
+- Empty single picker value is `null`.
+- Pro channel with linked templates: Save/Delete still render; backend `can()` throws `CANNOT_UPDATE_USED` / `CANNOT_DELETE_USED`.
 - Delete: `await confirm(…, "danger")` → `sub: "delete"` → `nav.back()`.
 - Per-sub button loading: `saving` for `create`/`update`, `deleting` for `delete` (from `currentSub`), not a blanket spinner on Save during delete.
 - User-facing section copy may say **WhatsApp**; card type labels come from backend enum (أد واتس / Ad Whats).
@@ -33,7 +37,8 @@ Authenticated customer org delivery-channel directory + multi-path form on `CUST
 | List page | `website/src/app/ui/pages/customer/CustomerMessageChannels.tsx` |
 | Form page | `website/src/app/ui/pages/customer/CustomerMessageChannelForm.tsx` (thin `MyPage`) |
 | List screen | `…/message-channels/CustomerMessageChannelsScreen.tsx` |
-| Form screen | `…/message-channels/CustomerMessageChannelFormScreen.tsx` |
+| Form screen | `…/message-channels/CustomerMessageChannelFormScreen.tsx` (`AdwhatsTokenAndAccount`) |
+| Account pickers | `entity-picker/configs/adwhatsAccounts.tsx`, `adwhatsProAccounts.tsx` |
 | Card | `…/message-channels/CustomerMessageChannelCard.tsx` |
 | Skeleton | `…/message-channels/MessageChannelCardSkeleton.tsx` |
 | Hook | `…/hooks/useCustomerMessageChannels.ts` |
@@ -64,19 +69,20 @@ List + form: `layout: "CUSTOMER_MAIN"`, `mustAuthedAs: ["CUSTOMER"]`. List bread
 | `name` | yes | yes | |
 | `type` | `FormChoiceField` | same + `readOnly` | Update must still submit echoed `type` from `read` (backend locks). Branch credentials via `choiceFieldValue(values.type)` |
 | `smtp_*` / `from_*` | when `CUSTOM_EMAIL` | same | `smtp_secure` as `"true"` / `"false"` choice tiles |
-| `adwhats_token` / `adwhats_account_id` | when `ADWHATS` \| `ADWHATS_PRO` | same | Labels switch for Pro |
+| `adwhats_token` | when `ADWHATS` \| `ADWHATS_PRO` | same | Labels switch for Pro |
+| `adwhats_account` | when token is non-empty | same | `FormEntityPickerField`; ident `adwhatsAccounts` or `adwhatsProAccounts`; `filter: { token }`. Create type change or later token change clears account only. Write splits to `adwhats_account_id` + `adwhats_account_label` |
 | `status` | not on UI | not on UI | Server-owned |
 
 ## 4) Directory data adapter
 
-Mount-private `"customer-message-channels"` inheriting `DATA_ADAPTERS.CUSTOMER_GQL`, `listable: "messageChannels"`. List selection: name / type / status / `from_address` | `adwhats_account_id` (no secrets required for the card). Add → `buildCustomerMessageChannelFormHref("create")`; Edit → `…("update", id)`.
+Mount-private `"customer-message-channels"` inheriting `DATA_ADAPTERS.CUSTOMER_GQL`, `listable: "messageChannels"`. List selection: name / type / status / `from_address` | `adwhats_account_label` | `adwhats_account_id` (no secrets required for the card). Add → `buildCustomerMessageChannelFormHref("create")`; Edit → `…("update", id)`.
 
 ## 5) i18n
 
 | Key path | Purpose |
 |---|---|
 | `ui.pages.customer.messageChannels.*` | list title, subtitle, add, edit, empty, load-more |
-| `ui.pages.customer.messageChannelForm.*` | create/edit titles, field labels, type options, Ad Whats labels, delete confirm, buttons |
+| `ui.pages.customer.messageChannelForm.*` | create/edit titles, field labels, type options, Ad Whats labels, `adwhatsAccount*` picker copy, delete confirm, buttons |
 | `ui.modals.confirm.*` | shared confirm title / confirm / cancel |
 | `ui.components.mainHeader.back` | form back control |
 
@@ -90,32 +96,31 @@ ar/en mirrors required.
 | List empty | ResultLane empty title/subtitle |
 | List error | ResultLane retry |
 | Delete cancel | `confirm` resolves `false` — no send |
-| Validation / ability | Form middleware / toast — server-owned |
+| Validation / ability | Form middleware / toast — server-owned (`CANNOT_UPDATE_USED` / `CANNOT_DELETE_USED` on Pro+templates) |
 
-## 7) Traceability map (this change set)
+## 7) Traceability map
 
 | Path | Role | Section |
 |---|---|---|
 | `website/…/CustomerMessageChannelForm.tsx` | Thin page | §2 |
-| `website/…/CustomerMessageChannelFormScreen.tsx` | Form screen | §3 |
+| `website/…/CustomerMessageChannelFormScreen.tsx` | Form; inner `AdwhatsTokenAndAccount` | §3 |
+| `website/…/modals/entity-picker/configs/adwhatsAccounts.tsx` | Classic account picker + `AdwhatsAccountPickerCard` | §3 |
+| `website/…/modals/entity-picker/configs/adwhatsProAccounts.tsx` | Pro accounts; reuses classic card/label | §3 |
+| `website/…/modals/entity-picker/configs/index.ts` | Register account idents | §3 |
+| `website/…/modals/entity-picker/configs/messageChannels.tsx` | Picker card detail prefers `adwhats_account_label` | §4 |
+| `website/…/hooks/useCustomerMessageChannels.ts` | List GQL includes account label | §4 |
 | `website/…/CustomerMessageChannelsScreen.tsx` | List Add/Edit wiring | §4 |
-| `website/…/CustomerMessageChannelCard.tsx` | Presentational card + edit + **`selected`** for picker | §1, §4 |
-| `website/…/MessageChannelCardSkeleton.tsx` | Lane skeleton (unchanged pattern) | §4 |
-| `website/…/modals/ConfirmModal.tsx` | Shared confirm | §3, `flow-form-foundation.md` §3.8 |
-| `website/…/form/FormActionButton.tsx` | `tone="danger"` | `flow-form-foundation.md` |
-| `website/…/members/CustomerMemberFormScreen.tsx` | Same confirm + loading pattern | `flow-customer-members.md` |
-| `website/…/meetings/CustomerMeetingFormScreen.tsx` | `d.reset()` on create success | `flow-customer-meetings.md` |
+| `website/…/CustomerMessageChannelCard.tsx` | Presentational card + edit + `selected` | §1, §4 |
+| `website/…/MessageChannelCardSkeleton.tsx` | Lane skeleton | §4 |
 | `website/src/resources/configs/routes.ts` | Multi-path form route | §2 |
 | `website/src/resources/configs/customer/formRoute.ts` | Href builder | §2 |
 | `website/src/resources/configs/store/forms.ts` | `CUSTOMER_MESSAGE_CHANNEL` | §2 |
-| `website/src/resources/configs/store/modals.ts` | `CONFIRM` | §3 |
-| `website/src/resources/translations/ar.ts` / `en.ts` | i18n | §5 |
-| `website/src/types/gql/definitions/customer.graphql` | Credential fields on `_MessageChannel` | backend §4 + mirror |
+| `website/src/resources/translations/ar.ts` / `en.ts` | i18n including `adwhatsAccount*` | §5 |
+| `website/src/types/gql/definitions/customer.graphql` | Mirror SDL | backend §4 |
 | `website/src/types/gql/gql-types/customer.ts` | Generated types | generated |
-| `website/src/types/requesters/requesters.website.ts` | `customer.messageChannel` | W18 |
-| `website/lib/tsconfig.tsbuildinfo` | Build cache | **exclude from narrative** (generated noise) |
+| `website/src/types/requesters/requesters.website.ts` | `customer.messageChannel` | backend §5 |
 
-Backend paths for the same slice: `message-channel-domain.md` §10.
+Backend: `message-channel-domain.md` §10.
 
 ## 8) Related
 

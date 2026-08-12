@@ -15,6 +15,8 @@ Applies when a requester `read` returns values that the website form will bind t
 | Domain enum (`type`, status choice, …) | `FormChoiceField` | `toEnumForSelect(value, enumKey)` → `{ value, label, … }` |
 | Related entity ref (channel, member, …) | `FormEntityPickerField` | `model.forSelect(lang)` → `{ value, label }` (or `null` when optional/absent) |
 
+Remote picker snapshots (no ORM row, e.g. Ad Whats account / Pro approved template): rebuild `{ value, label }` from the stored id+label columns. Do **not** invent `forSelect` on a helper DTO.
+
 Does **not** replace:
 
 - Write-path Joi: still `joi.select({ validValues })` (input may be string or SelectOption).
@@ -93,7 +95,7 @@ Do **not** invent a shared `Model.forSelect` base unless product explicitly asks
 Website fields already tolerate select hydrate:
 
 - `FormChoiceField` — selection compares / stores via option `value`; mapState may hold string or `{ value }`.
-- `FormEntityPickerField` — store is `{ value, label, avatarUrl? }` (or `""` when cleared).
+- `FormEntityPickerField` — store is `{ value, label, avatarUrl? }` (or `null` when cleared).
 
 Authority for field chrome: `docs/platforms/website/flow-form-foundation.md` §3.5–3.6.
 
@@ -107,6 +109,7 @@ No website adapter is required for this pattern when those fields are used as-is
 | Model | `MessageChannelModel.forSelect` |
 | Enum read | `MessageChannelRequester.read` (`type`) |
 | Enum + ref read | `MessageTemplateRequester.read` (`type`, `messageChannel`) |
+| Remote snapshot read | `MessageChannelRequester.read` (`adwhats_account` from id+label); `MessageTemplateRequester.read` (`meta_template` from id+label) |
 | Domain contracts | `message-channel-domain.md`, `message-template-domain.md` |
 
 ## 7) Checklist (new or updated `read`)
@@ -114,9 +117,10 @@ No website adapter is required for this pattern when those fields are used as-is
 1. List every `read` value bound to `FormChoiceField` or `FormEntityPickerField`.
 2. Enums → `toEnumForSelect` + matching `general.enums` key; `ReadResult` uses `SelectOption`.
 3. Entity refs → ensure `forSelect(lang)` on the related model; call it from `read`.
-4. Keep identity out of `read` values (initProps only).
-5. Write path stays `joi.select` / Opt helpers — do not change write contracts to require SelectOption-only input.
-6. Verify: backend `yarn type-check`.
+4. Remote picker snapshots (no ORM) → rebuild `{ value, label }` from id+label columns; do not invent `forSelect`.
+5. Keep identity out of `read` values (initProps only).
+6. Write path stays `joi.select` / Opt helpers — do not change write contracts to require SelectOption-only input.
+7. Verify: backend `yarn type-check`.
 
 ## 8) Governance pointers
 

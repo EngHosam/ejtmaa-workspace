@@ -1,6 +1,6 @@
 ---
-description: MessageChannel ORM/GQL/requester invariants — credentials vs templates, enum spelling, status, connectivity stub
-globs: backend/src/app/orm/models/MessageChannel.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orchestrator/requesters/MessageChannelRequester.ts,backend/src/app/validation/joi_rules.ts,backend/src/app/gql/bridges/**/MessageChannelBridge.ts,backend/src/app/gql/definitions/**/*.graphql,backend/src/resources/trans/**/general.ts,website/src/types/gql/definitions/**/*.graphql
+description: MessageChannel ORM/GQL/requester invariants — credentials vs templates, enum spelling, status, testConnection helpers, Pro used lock
+globs: backend/src/app/orm/models/MessageChannel.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/orchestrator/requesters/MessageChannelRequester.ts,backend/src/app/validation/joi_rules.ts,backend/src/app/gql/bridges/**/MessageChannelBridge.ts,backend/src/app/gql/definitions/**/*.graphql,backend/src/app/gql/schemas/CustomerSchema.ts,backend/src/app/helpers/AdWhatsDevApi.ts,backend/src/app/helpers/AdWhatsProDevApi.ts,backend/src/app/helpers/CustomEmailHelper.ts,backend/src/app/helpers/CustomerAdwhatsLists.ts,backend/src/resources/trans/**/general.ts,website/src/types/gql/definitions/**/*.graphql
 alwaysApply: false
 ---
 
@@ -12,6 +12,8 @@ Authoritative contract: `docs/platforms/backend/contracts/message-channel-domain
 
 - `MessageChannel` stores **delivery credentials** only (SMTP / Ad Whats), not message subject/body/variable maps.
 - Do **not** add `EJTMAA_EMAIL` to `messageChannelType`. Platform-mailer templates use **no** channel row (template FK null).
+- Keep `AdWhatsDevApi.ts` and `AdWhatsProDevApi.ts` as **separate** helpers even when account mapping looks duplicated.
+- Email connectivity helper file name is `CustomEmailHelper.ts` (not `SmtpConnection`).
 
 ## Naming
 
@@ -19,27 +21,34 @@ Authoritative contract: `docs/platforms/backend/contracts/message-channel-domain
 - Never spell Ad Whats as `AD_WHATS` / `AD_WHATS_PRO`.
 - Discriminator field on the model is `type` (repo-native with `Meeting.type`).
 - Do not confuse `_MessageChannelType` with `_MessageTemplateType` (template kinds include `EJTMAA_EMAIL`).
+- Form field `adwhats_account` (SelectOption). Persist `adwhats_account_id` + `adwhats_account_label` (STRING 191). Do **not** store SelectOption JSONB.
 
 ## Status and connectivity
 
 - `messageChannelStatus`: `ACTIVE` | `DISABLED`, default **`ACTIVE`**.
-- `MessageChannelModel.testConnection(): Promise<boolean>` is the connectivity hook (stub until SMTP/Ad Whats clients ship).
-- Create/update call `testConnection()` after writing credentials: `true` → `ACTIVE`, `false` → `DISABLED`. Status is not client-owned.
+- `MessageChannelModel.testConnection(): Promise<boolean>` — `CUSTOM_EMAIL` / `ADWHATS` / `ADWHATS_PRO` helpers; catch → `false`.
+- Create/update call `testConnection()` after writing credentials: `true` → `ACTIVE`, `false` → `DISABLED`. Status is not client-owned. Save still returns `SUCCESS_*` when the test fails.
+- Do not add a UI check/verify button. Do not call `testConnection` from website.
+- No env vars for Ad Whats hosts (hardcoded in helpers).
 
 ## Write path
 
 - Customer ability: `MESSAGE_CHANNEL` (`create` | `read` | `update` | `delete`) on `Customer` with org ownership.
+- `ADWHATS_PRO` only: if any `MessageTemplate` has this `message_channel_id`, `update` throws `CANNOT_UPDATE_USED` and `delete` throws `CANNOT_DELETE_USED`. `read` stays allowed. Classic Ad Whats and custom email are **not** locked by templates.
 - Requester `@requester("messageChannel")` — website map `customer.messageChannel`.
 - Joi requires credential columns by `type`; unused branches `joi.any().optional().allow(null, "").strip()` then flat `?? null` writes (see `requester-type-conditional-strip.mdc`).
+- `adwhats_account` write: `joi.select({ raw: true })` then split to id (`${value}`) + label.
 - List filter `_MessageChannelFilter`: optional `type` + `status`. Template channel picker always sends `status: ACTIVE`.
 - Update **locks** `type` to the existing row.
 - `read` values must **not** echo `messageChannel` id (same as member `read` / `member` id).
-- `read` `type` uses `toEnumForSelect(..., "messageChannelType")` — see `docs/platforms/backend/patterns/requester-read-select-hydrate.md`.
+- `read` `type` uses `toEnumForSelect(..., "messageChannelType")`. `read` `adwhats_account` rebuilds `{ value, label }` from id+label columns (no ORM `forSelect`).
 - GQL SDL may expose credential columns including `smtp_password` / `adwhats_token` (product choice: no special secret omission).
 
 ## GQL / ORM wiring
 
 - Customer roots: `messageChannels` / `messageChannel(id)` via `MessageChannelBridge` + `CustomerOrganizationOwnedBridgeBase`.
+- Helper roots (not Bridges; types in `customer.graphql` only): `adwhatsAccounts` / `adwhatsProAccounts` / `adwhatsProApprovedTemplates`. Three separate roots — do **not** merge classic and Pro behind a `type` discriminator. Precedent: `subscriptionPaymentMethods`.
+- Accounts lists: `ready === true` only. Empty token / remote failure → `[]`.
 - `OrganizationBridge.GetOneParent` must include `MessageChannelModel` for `_MessageChannel.organization`.
 - Local registry `backend/.types/models.ts` must include `"MessageChannel"`.
 - After SDL changes: backend `yarn generate-types`, then mirror `base`/`customer` SDL + generated types into `website/` per `gql-schemas-bridges-general.mdc`.
