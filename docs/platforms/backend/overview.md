@@ -35,9 +35,9 @@ ORM models (`backend/src/app/orm/models/`):
 - `Organization` — tenant entity owned by a customer (`customer_id`, one-to-one); `hasMany Member`, `hasMany MessageChannel`, `hasMany MessageTemplate`, `hasMany Meeting`
 - `Member` — non-actor org person (UUID `id` + `access_token`); belongs to Organization; ORM `hasMany` MeetingParticipant (no Member→meetings GQL yet)
 - `MessageChannel` — non-actor org delivery credentials (`CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; status `ACTIVE`|`DISABLED` via `testConnection()`); `adwhats_account_id` / `adwhats_account_label`; belongs to Organization
-- `MessageTemplate` — non-actor org message library (`EJTMAA_EMAIL` | `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; optional `message_channel_id`; Pro `meta_template_id` / `meta_template_label`; `body` nullable); belongs to Organization (+ MessageChannel when linked)
-- `Meeting` — non-actor org session (UUID PK; chairperson Member; optional template FKs; LiveKit media via `LiveKitHelper`); `hasMany` participants + agendaItems + decisions + talkRecords
-- `MeetingParticipant` — non-actor roster join (composite PK `(meeting_id, member_id)`; type `CHAIRPERSON` | `MEMBER` | `VIEWER`)
+- `MessageTemplate` — non-actor org message library (`EJTMAA_EMAIL` | `CUSTOM_EMAIL` | `ADWHATS` | `ADWHATS_PRO`; `lang` `AR`\|`EN`; optional `message_channel_id`; Pro `meta_template_id` / `meta_template_label` / `meta_template_internal_name`; `body` nullable); belongs to Organization (+ MessageChannel when linked)
+- `Meeting` — non-actor org session (UUID PK; chairperson Member; optional template FKs; LiveKit media via `LiveKitHelper`); invite send is `InviteNotifyTask` (`meeting-invite-notify.md`); `hasMany` participants + agendaItems + decisions + talkRecords
+- `MeetingParticipant` — non-actor roster join (composite PK `(meeting_id, member_id)`; type `CHAIRPERSON` | `MEMBER` | `VIEWER`; `delivery_status` + `delivered_channels` / `failed_channels`)
 - `AgendaItem` — non-actor agenda line under Meeting (`modelName: "agendaItem"`; durable SQL)
 - `Decision` — non-actor decision under Meeting (`modelName: "decision"`; phase PRE_START|DURING; durable SQL); `hasMany` votes
 - `Vote` — durable ballot under Decision (composite PK `(decision_id, member_id)`; `YES`|`NO`)
@@ -49,7 +49,7 @@ ORM models (`backend/src/app/orm/models/`):
 - `User` — shared user identity
 - `Token` — auth tokens
 - `Notification` — in-app notifications
-- `SystemSetting` — platform settings
+- `SystemSetting` — platform settings (includes global invite pace cursor `ejtmaa_email_invite_next_at`)
 
 ## 4) Interface Layers
 

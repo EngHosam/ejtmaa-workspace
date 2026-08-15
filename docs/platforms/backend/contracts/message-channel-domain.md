@@ -56,7 +56,7 @@ Persistence names:
 ### 3.1 Attrs layout
 
 - `//relations` — `organization_id`
-- `//info` — `name`, `type`, `status`, SMTP fields, Ad Whats fields
+- `//info` — `name`, `type`, `status`, SMTP fields, Ad Whats fields, `invite_next_at`
 
 ### 3.2 Columns
 
@@ -77,6 +77,7 @@ Persistence names:
 | `adwhats_token` | TEXT | yes | `ADWHATS` / `ADWHATS_PRO` |
 | `adwhats_account_id` | STRING(191) | yes | `ADWHATS` / `ADWHATS_PRO` |
 | `adwhats_account_label` | STRING(191) | yes | display name snapshot for the selected account |
+| `invite_next_at` | DATE | yes | scheduler pace cursor; **not** on GQL (`MessageChannelBridge` `expect`) |
 
 Exported TS types:
 
@@ -160,6 +161,8 @@ Exposed fields:
 - Ad Whats: `adwhats_token`, `adwhats_account_id`, `adwhats_account_label`
 - timestamps, `organization`, `total_count`
 
+`invite_next_at` is omitted (`registerOrmAttrs.expect`).
+
 ### Root queries
 
 - `messageChannels(filter: _MessageChannelFilter): [_MessageChannel]`
@@ -211,7 +214,7 @@ File: `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts`
 - Ability on `Customer`: `MESSAGE_CHANNEL` with `sub: "create" | "read" | "update" | "delete"` and optional `messageChannel` target.
   - `create`: customer must have an organization (`ACTION_NOT_ALLOWED` otherwise).
   - `read` / `update` / `delete`: resolve channel; must belong to that organization (`404` missing, `NOT_PERMIT` other org).
-  - `update` / `delete` on `type === ADWHATS_PRO`: if any `MessageTemplate` has this `message_channel_id`, throw `CANNOT_UPDATE_USED` / `CANNOT_DELETE_USED`. Other channel types are not blocked by templates. `read` stays allowed.
+  - `delete`: if any `MessageTemplate` has this `message_channel_id`, throw `CANNOT_DELETE_USED` (every channel type). `update` on `type === ADWHATS_PRO` with linked templates throws `CANNOT_UPDATE_USED`. Classic Ad Whats and custom email may still update. `read` stays allowed.
 - Form field `adwhats_account` is a SelectOption (`joi.select({ raw: true })` when type is `ADWHATS` / `ADWHATS_PRO`). Write splits to `adwhats_account_id` (`${value}`) + `adwhats_account_label` (`label`). `read` rebuilds `{ value, label }` from those columns (no ORM `forSelect` — remote DTO). Empty picker is `null`.
 - Joi helper: `isCustomerOwnedMessageChannel` in `joi_rules.ts` (mirrors `isCustomerOwnedMember` shape).
 - Requester: `MessageChannelRequester` (`@requester("messageChannel")`) — `read` | `create` | `update` | `delete` for website/customer.
@@ -220,7 +223,7 @@ File: `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts`
 - Update locks `type` to the existing row (client must echo the read value).
 - Credential columns required by `type` via Joi `when`; unused branches use `joi.any().optional().allow(null, "").strip()`. Write path persists stripped props with `?? null` (no per-type attrs helper).
 - `status` is **not** client-owned: create/update call `testConnection()` after credentials are written — `true` → `ACTIVE`, `false` → `DISABLED`.
-- Website form still shows Save / Delete on Pro rows. The used-channel lock is **ability-only** (`CANNOT_*_USED`); the UI does not hide those actions.
+- Website form still shows Save / Delete on used rows. Locks are **ability-only** (`CANNOT_DELETE_USED` any used type; `CANNOT_UPDATE_USED` Pro+templates). The UI does not hide those actions.
 
 ### 5.1 Requester subs (summary)
 
@@ -229,7 +232,7 @@ File: `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts`
 | `read` | Owned channel → values: name, `type` via `toEnumForSelect(..., "messageChannelType")`, credential columns (`smtp_secure` as `"true"`/`"false"`), `adwhats_account` SelectOption from id+label — **no** `messageChannel` id key |
 | `create` | Validate → `createMessageChannel` with `status: ACTIVE` → `testConnection` may flip to `DISABLED` → `SUCCESS_CREATE` |
 | `update` | Owned channel + locked type; Pro+templates → `CANNOT_UPDATE_USED`; else update attrs → `testConnection` → `ACTIVE`/`DISABLED` → `SUCCESS_UPDATE` |
-| `delete` | Owned channel; Pro+templates → `CANNOT_DELETE_USED`; else hard `destroy` → `SUCCESS_DELETE` |
+| `delete` | Owned channel; any type with ≥1 template → `CANNOT_DELETE_USED`; else hard `destroy` → `SUCCESS_DELETE` |
 
 Select hydrate pattern (enums / entity refs on `read`): [`../patterns/requester-read-select-hydrate.md`](../patterns/requester-read-select-hydrate.md).
 
@@ -275,7 +278,8 @@ Local registry (gitignored): `backend/.types/models.ts` must include `"MessageCh
 | requester create/update | wrong-type / missing credential fields | Joi field errors (`when` + optional unused branches) |
 | requester create/update | `testConnection()` false | row saved as `DISABLED` (success toast still fires) |
 | requester update | `ADWHATS_PRO` with ≥1 template | `CANNOT_UPDATE_USED` |
-| requester delete | `ADWHATS_PRO` with ≥1 template | `CANNOT_DELETE_USED` |
+| requester delete | any type with ≥1 template | `CANNOT_DELETE_USED` |
+| `InviteNotifyTask` | channel `DISABLED` | leftover axis on that queue → `failed_channels`; see `meeting-invite-notify.md` |
 | helper roots | empty token / bad channel / remote error | `[]` |
 
 ## 10) Traceability map
@@ -283,11 +287,11 @@ Local registry (gitignored): `backend/.types/models.ts` must include `"MessageCh
 | Path | Role | § |
 |---|---|---|
 | `backend/src/app/orm/models/MessageChannel.ts` | ORM + `testConnection` + `forSelect(lang)` | §3 |
-| `backend/src/app/helpers/CustomEmailHelper.ts` | SMTP `verify()` for `CUSTOM_EMAIL` | §3.6 |
+| `backend/src/app/helpers/CustomEmailHelper.ts` | SMTP `verify()`; invite send via `MainEmail` refs | §3.6; `meeting-invite-notify.md` |
 | `backend/src/app/helpers/AdWhatsDevApi.ts` | Classic `GET /accounts` + `adwhatsAccountIsReady` | §3.6 / §4 |
 | `backend/src/app/helpers/AdWhatsProDevApi.ts` | Pro `GET /accounts` + `adwhatsProAccountIsReady` | §3.6 / §4 |
 | `backend/src/app/helpers/CustomerAdwhatsLists.ts` | GQL mapping + `total_count` + Pro org-owned channel gate | §4 |
-| `backend/src/app/orm/models/Customer.ts` | `Ability.MESSAGE_CHANNEL` + Pro used-channel lock | §5 |
+| `backend/src/app/orm/models/Customer.ts` | `Ability.MESSAGE_CHANNEL` (delete any used type; update lock Pro only) | §5 |
 | `backend/src/app/orchestrator/requesters/MessageChannelRequester.ts` | CRUD; `adwhats_account` SelectOption split; `.strip()` + `?? null` | §5 |
 | `backend/src/app/validation/joi_rules.ts` | `isCustomerOwnedMessageChannel` | §5 |
 | `backend/requesters.website.ts` | `customer.messageChannel` map | §5 |
@@ -297,7 +301,7 @@ Local registry (gitignored): `backend/.types/models.ts` must include `"MessageCh
 | `backend/src/app/gql/definitions/base.graphql` | type/status GQL enums | §4 |
 | `backend/src/app/gql/definitions/customer.graphql` | `_MessageChannel` + filter + helper roots + helper DTO types | §4 |
 | `backend/src/app/gql/gql-types/customer.ts` | Generated customer types | generated |
-| `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts` | filter map + nest parents | §4–§6 |
+| `backend/src/app/gql/bridges/customer/MessageChannelBridge.ts` | filter map + nest parents; `expect: ["invite_next_at"]` | §4–§6 |
 | `backend/src/app/gql/bridges/customer/OrganizationBridge.ts` | `GetOneParent` includes `MessageChannelModel` | §4 |
 | `backend/src/app/gql/schemas/CustomerSchema.ts` | Register + thin helper resolvers | §4 |
 | Website form, directory, pickers | portal UI | `flow-customer-message-channels.md` |
@@ -309,6 +313,7 @@ Pro approved-template helper + `MessageTemplate` columns: `message-template-doma
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `docs/platforms/backend/contracts/meeting-domain.md`
+- `docs/platforms/backend/contracts/meeting-invite-notify.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/website/flow-customer-message-channels.md`
 - `.cursor/skills/website-customer-message-channels/SKILL.md`

@@ -16,6 +16,7 @@ Authoritative flow: `docs/platforms/website/flow-customer-message-templates.md` 
 - `ADWHATS_PRO` requires `meta_template` picker (`adwhatsProApprovedTemplates`, gated on channel id). Changing channel clears `meta_template` (`null`). Variables table only after a meta template is selected.
 - Channel picker `messageChannels`: `searchable: false`; always filter `status: ACTIVE` + matching `type`; forward `selected` into `CustomerMessageChannelCard`.
 - Kind content unused on other types: backend Joi `.strip()` — do not require frontend to clear unused keys as the primary contract.
+- Language is `FormChoiceField` `name="lang"` (`AR` / `EN`). Create default `AR`. Pro `readOnly` from picker `language`. Forbidden: `LanguageSwitch`, `FormTextField` for language.
 
 ## Forbidden
 

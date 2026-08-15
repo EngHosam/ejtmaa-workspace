@@ -21,6 +21,7 @@
 | [`message-channel-domain.md`](contracts/message-channel-domain.md) | MessageChannel ORM + customer GQL + helper roots + `testConnection` + website CRUD |
 | [`message-template-domain.md`](contracts/message-template-domain.md) | MessageTemplate ORM + customer GQL + write path (kinds, channel FK, `.strip()`, `meta_template` picker) |
 | [`meeting-domain.md`](contracts/meeting-domain.md) | Meeting ORM + customer GQL reads |
+| [`meeting-invite-notify.md`](contracts/meeting-invite-notify.md) | Scheduled invite send: claim, queues, pace, delivery arrays, finalize |
 | [`meeting-participant-domain.md`](contracts/meeting-participant-domain.md) | MeetingParticipant roster ORM + nested GQL |
 | [`agenda-item-domain.md`](contracts/agenda-item-domain.md) | AgendaItem ORM + nested GQL under Meeting; durable `status`; live-map session fields |
 | [`decision-domain.md`](contracts/decision-domain.md) | Decision ORM + nested GQL; live `decisions` / nested `votes` from SQL |

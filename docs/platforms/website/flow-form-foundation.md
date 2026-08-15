@@ -126,7 +126,7 @@ List these under shared form surfaces in §1 when adding more template helpers.
 | Value normalize | `choiceFieldValue(value)` — string or SelectOption `{ value }` → string (shared with conditional form branching) |
 | Read hydrate | Backend `read` should return SelectOption via `toEnumForSelect` for enum-backed choices — `docs/platforms/backend/patterns/requester-read-select-hydrate.md` |
 
-Canonical consumers: `CustomerMeetingFormScreen` type field; `CustomerMessageChannelFormScreen` / `CustomerMessageTemplateFormScreen` type (create editable / update `readOnly`).
+Canonical consumers: `CustomerMeetingFormScreen` type field; `CustomerMessageChannelFormScreen` / `CustomerMessageTemplateFormScreen` type (create editable / update `readOnly`); `CustomerMessageTemplateFormScreen` `lang` (`AR` / `EN`; create default `AR`; Pro `readOnly`, value from picker `language`).
 
 ### 3.6 `FormEntityPickerField` + `ENTITY_PICKER`
 
@@ -141,14 +141,14 @@ Canonical consumers: `CustomerMeetingFormScreen` type field; `CustomerMessageCha
 - Shipped config: `configs/messageChannels.tsx` (`listable: "messageChannels"`, `searchable: false`, filter `status: ACTIVE` + optional `type`, `CustomerMessageChannelCard` + **`selected`** — same selection chrome as members)
 - Shipped config: `configs/adwhatsAccounts.tsx` (`listable: "adwhatsAccounts"`, `searchable: false`, filter `{ token }`)
 - Shipped config: `configs/adwhatsProAccounts.tsx` (`listable: "adwhatsProAccounts"`, `searchable: false`, filter `{ token }`)
-- Shipped config: `configs/adwhatsProApprovedTemplates.tsx` (`listable: "adwhatsProApprovedTemplates"`, `searchable: false`, filter `{ messageChannelId }`)
+- Shipped config: `configs/adwhatsProApprovedTemplates.tsx` (`listable: "adwhatsProApprovedTemplates"`, `searchable: false`, filter `{ messageChannelId }`, `getLanguage`)
 
 #### Field
 
 | Concern | Contract |
 |---|---|
 | Open | `openEntityPicker({ ident, title, multi?, initValue, filter?, … })` |
-| Single store | `{ value, label, avatarUrl? }` or `null` when cleared |
+| Single store | `{ value, label, avatarUrl?, language? }` or `null` when cleared |
 | Multi store | `EntityPickerSelection[]` |
 | Read hydrate | Backend `read` should return `{ value, label }` via related `model.forSelect(lang)` — `docs/platforms/backend/patterns/requester-read-select-hydrate.md` |
 | Chrome | Chips with `IdentityAvatar` + label; empty uses `emptyLabel`; pick action button |
@@ -165,7 +165,7 @@ Canonical consumers: `CustomerMeetingFormScreen` type field; `CustomerMessageCha
 | List scroll | `Col` `minH` when empty/busy + `maxH` cap + `customScroll` (not `ovr_y`) so `Empty` overlay has height |
 | Pagination | Map `thereMoreRecords`; `LoadMoreButton`; `mLoad({ query })` without reload |
 | Selection | Single replaces; multi toggles; `SelectableEntityCard` + config `Card` |
-| Confirm | Passes full selection meta including `avatarUrl` |
+| Confirm | Passes full selection meta including `avatarUrl` and `language` |
 | Escape / route change | Closes modal |
 | i18n | `ui.modals.entityPicker.*` |
 
@@ -315,7 +315,7 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/app/ui/components/modals/SelectableEntityCard.tsx` | selectable wrapper around page cards |
 | `website/src/app/ui/components/modals/entity-picker/configs/` | per-entity gql + Card (`members.tsx`, `messageChannels.tsx`, `adwhatsAccounts.tsx`, `adwhatsProAccounts.tsx`, `adwhatsProApprovedTemplates.tsx`) |
 | `website/src/app/ui/components/modals/entity-picker/configs/index.ts` | registry of idents |
-| `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`, `searchable?`) |
+| `website/src/app/ui/components/modals/entity-picker/types.ts` | selection shape (`avatarUrl`, `language`, `searchable?`) |
 | `website/src/resources/configs/store/modals.ts` | `ENTITY_PICKER`, `DATETIME_PICKER`, `CONFIRM`, `MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT`, `MEETING_TEMPLATES` (no generic `FORM`) |
 | `website/src/app/ui/components/form/FormDateTimeField.tsx` | datetime field → `DATETIME_PICKER` modal |
 | `website/src/app/ui/components/modals/DateTimePickerModal.tsx` | datetime modal shell |

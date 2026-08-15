@@ -10,6 +10,7 @@ Authenticated customer org message-template directory + multi-path form on `CUST
 - Multi-path form `CustomerMessageTemplateForm` (create/update/delete) via `Forms.CUSTOMER_MESSAGE_TEMPLATE` → `messageTemplate` requester.
 - Drawer tile `itemMessageTemplates` / `CustomerMessageTemplates` / **`FiMessageSquare`** (same glyph on list card).
 - Type chooser: create editable / update `readOnly` (`FormChoiceField` + `choiceFieldValue`).
+- Language: `FormChoiceField` `name="lang"` (`AR` / `EN`). Create default `AR`. Free-text kinds editable. Pro `readOnly`; value from approved-template picker `language` (`ar` → `AR`, `en` → `EN`). Not `LanguageSwitch`, not `FormTextField`.
 - Fields by kind:
 
 | Kind | Channel | Content UI |
@@ -30,13 +31,13 @@ Authenticated customer org message-template directory + multi-path form on `CUST
 ### Not shipped
 
 - Template directory search/filter UI (`_MessageTemplateFilter` with `type` / `types` exists on GQL; the list adapter does not pass it).
-- Seed templates; Meta language field; real send pipeline.
+- Seed templates.
 - cpanel / supervisor template UI.
 
 ### Product risks (ops / UX)
 
 - Channel `testConnection()` false → `DISABLED` → ACTIVE-only template picker may look empty.
-- Deploy must sync DB columns `message_templates.meta_template_id` and `meta_template_label`, and `body` must be nullable (`ADWHATS_PRO` persists `body` as null).
+- Deploy must sync `message_templates.lang` (default `AR`), `meta_template_id` / `meta_template_label` / `meta_template_internal_name`, and nullable `body` (`ADWHATS_PRO` persists `body` as null).
 
 ## 2) Entry points
 
@@ -116,7 +117,7 @@ Mount-private `"customer-message-templates"` inheriting `DATA_ADAPTERS.CUSTOMER_
 | `src/resources/configs/routes.ts` | Routes + `MPagesRoutes` | §2 |
 | `src/app/ui/components/customer/CustomerDrawer.tsx` | Drawer tile `FiMessageSquare` | §1 / shell |
 | `src/resources/configs/store/forms.ts` | `CUSTOMER_MESSAGE_TEMPLATE` | §2 |
-| `src/resources/translations/ar.ts` / `en.ts` | List/form copy including `metaTemplate*` | §5 |
+| `src/resources/translations/ar.ts` / `en.ts` | List/form copy including `lang*` / `metaTemplate*` | §5 |
 | `src/types/gql/definitions/customer.graphql` | Mirror SDL | backend §4 |
 | `src/types/gql/gql-types/customer.ts` | Generated mirror | generated |
 | `src/types/requesters/requesters.website.ts` | `messageTemplate` subs | backend §5b |
@@ -127,6 +128,7 @@ Shared form chrome (`FormInputWrapper`, `FormChoiceField`, `FormEntityPickerFiel
 
 - `flow-customer-message-channels.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
+- `docs/platforms/backend/contracts/meeting-invite-notify.md`
 - `docs/platforms/backend/patterns/requester-read-select-hydrate.md`
 - `.cursor/skills/website-customer-message-templates/SKILL.md`
 - `.cursor/skills/website-entity-picker/SKILL.md`

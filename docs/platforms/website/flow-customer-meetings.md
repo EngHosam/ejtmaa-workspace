@@ -1,6 +1,6 @@
 # Website Flow — Customer Meetings (Directory + Create + Details Roadmap)
 
-Authenticated customer org-meeting directory, create form, and details readiness roadmap on `CUSTOMER_MAIN`. Shell/breadcrumb contract: `flow-customer-shell.md` §7.1. Backend: `docs/platforms/backend/contracts/meeting-domain.md` (§4–§5 list filter, §9 write/approve). Chairperson roster: `meeting-participant-domain.md`. Form foundation: `flow-form-foundation.md` (§3.5–§3.8 + FORM modal).
+Authenticated customer org-meeting directory, create form, and details readiness roadmap on `CUSTOMER_MAIN`. Shell/breadcrumb contract: `flow-customer-shell.md` §7.1. Backend: `docs/platforms/backend/contracts/meeting-domain.md` (§4–§5 list filter, §9 write/approve). Invite send: `meeting-invite-notify.md`. Chairperson roster: `meeting-participant-domain.md`. Form foundation: `flow-form-foundation.md` (§3.5–§3.8 + FORM modal).
 
 ## 1) Scope
 
@@ -162,6 +162,8 @@ Shared presentational component for the three meeting axes, used by `CustomerMee
 | notify | `NOT_STARTED` | `FiBellOff` | neutral |
 | notify | `WAITING_TO_NOTIFY` | `FiSend` | warning |
 | notify | `NOTIFIED` | `FiBell` | success |
+| notify | `PARTIALLY_NOTIFIED` | `FiAlertCircle` | warning |
+| notify | `FAILED` | `FiXOctagon` | danger |
 
 **Tone → tokens (light / dark auto via `ThemeMap`):**
 
@@ -626,9 +628,10 @@ Unchanged on purpose: SDL and generated GQL types — `_Meeting.notify_start_at`
 
 Replaces the derived `notify_start_at` + edit-freeze + demote-on-edit model from §12.5. New policy: `MIN_LEAD_MS` 10 minutes, customer-chosen `notify_start_at` at least `NOTIFY_MIN_GAP_MS` (5 minutes) before `datetime`, editing allowed only while `DRAFT`, and a `cancel` sub as the escape hatch after approval. Template FKs moved to their own `updateTemplates` sub and their own registered modal. Behavior: `meeting-domain.md` §3.2b / §9.1a, `meeting-live-state.md` §3.1, §6.5 above.
 
-Two open product decisions this slice deliberately did **not** take, recorded so the next change does not assume they were handled:
+Closed by the invite-send pipeline: `cancel` leftover `PENDING` → `CANCELED` and finalizes `notify_status` in the same transaction. An in-flight send after cancel may still arrive; that race is accepted (`meeting-invite-notify.md` §4 / §8).
 
-- `cancel` leaves `notify_status` untouched. Harmless today because no notify pipeline exists in `backend/src`; a future scheduler must filter on `status` as well.
+Still open from this slice:
+
 - With `MIN_LEAD_MS` at 10 minutes, `ATTEND_OPEN_BEFORE_MS` (30 minutes) is structurally always open for a meeting created at the minimum lead — self-check-in effectively opens as soon as the meeting is approved.
 
 #### Backend (`backend/` repo)

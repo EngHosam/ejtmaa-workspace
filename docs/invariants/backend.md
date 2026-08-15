@@ -85,7 +85,7 @@ Add relations only when expected count is `<= 100`. Clarify ambiguous cases befo
 - Cardinality-safe inverses (`belongsTo` / expected count 1) may be nested (examples: `_Member.organization`, `_MessageTemplate.organization`, `_MessageTemplate.messageChannel` (optional), `_Meeting.organization` / `chairperson` / template refs).
 - When adding any nested SDL relation, update the preparing bridge's `GetOneParent` / `GetManyParent` (see `.cursor/rules/gql-root-parent-payload-contract.mdc` §5).
 - Customer org-owned children that resolve `{ me: true }` to the customer's Organization must extend `CustomerOrganizationOwnedBridgeBase` — do not re-copy that `getRootOrmParent` per entity bridge.
-- Meeting invite timing is `notify_start_at` (independent of lifecycle `status`); invite progress is `notify_status`. Do not derive notify start from status transitions alone.
+- Meeting invite timing is `notify_start_at` (independent of lifecycle `status`). Do not derive notify start from status transitions alone. Send rules: B27.
 
 ## B16. GraphQL Type Block Layout Invariant
 
@@ -165,3 +165,16 @@ Consequences:
 - when a transition invalidates cached or collaborative state, the reset is part of the same transaction and the memory eviction runs in `transaction.afterCommit` — never before the commit, and never with a flush that would rewrite what the transaction cleared.
 
 Contracts: `docs/platforms/backend/contracts/meeting-domain.md` §3.2b, §9.1a; `docs/platforms/backend/contracts/meeting-live-state.md` §3.1.
+
+## B27. Meeting Invite Notify Invariant
+
+Invite send is a scheduled job, not an approve side effect.
+
+- Claim is a conditional `UPDATE` `NOT_STARTED` → `WAITING_TO_NOTIFY` for `WAITING_TO_START` or `STARTED` when `notify_start_at <= now`.
+- One queue per `MessageChannel` row; `EJTMAA_EMAIL` uses one **global** `SystemSetting` cursor `ejtmaa_email_invite_next_at` (not per org).
+- Skip an axis already on `delivered_channels` or `failed_channels`. No retry.
+- `DISABLED` channel fails leftover recipients on that axis, then finalizes.
+- Platform mailer SMTP is shared; do not add a per-org mail queue.
+- `invite_next_at` must not leak on GQL (`registerOrmAttrs.expect`).
+
+Contract: `docs/platforms/backend/contracts/meeting-invite-notify.md`.

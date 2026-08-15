@@ -6,7 +6,7 @@ Current Ejtmaa meeting-roster surface:
 
 - ORM join row: who is invited/participating in a given `Meeting`,
 - participant `type` (not a free-form permissions JSONB column),
-- invite delivery tracking (`notified`, `delivery_status`),
+- invite delivery tracking (`notified`, `delivery_status`, `delivered_channels`, `failed_channels`),
 - self check-in attendance (`attended_at`, optional `left_at`),
 - customer GraphQL **nested** read under `_Meeting.participants`,
 - website GQL mirrors for that nested surface,
@@ -55,7 +55,7 @@ Persistence names:
 ### 3.1 Attrs layout
 
 - `//relations` — `meeting_id`, `member_id`
-- `//info` — `type`, `notified`, `delivery_status`, `attended_at`, `left_at`, `livekit_token`, `livekit_token_expires_at`
+- `//info` — `type`, `notified`, `delivery_status`, `delivered_channels`, `failed_channels`, `attended_at`, `left_at`, `livekit_token`, `livekit_token_expires_at`
 
 ### 3.2 Columns
 
@@ -66,12 +66,16 @@ Persistence names:
 | `type` | STRING(191) | no | enum `meetingParticipantType` |
 | `notified` | BOOLEAN | no | default `false` |
 | `delivery_status` | STRING(191) | no | enum `meetingParticipantDeliveryStatus`; default `PENDING` |
+| `delivered_channels` | ARRAY(STRING) | yes | many-enum `meetingParticipantDeliveredChannel` (`EMAIL` \| `WHATSAPP`); success only |
+| `failed_channels` | ARRAY(STRING) | yes | same enum; failure only; no retry |
 | `attended_at` | DATE | yes | self check-in time; null = not present; default `null` |
 | `left_at` | DATE | yes | self leave / session leave; default `null` |
 | `livekit_token` | TEXT | yes | cached LiveKit JWT for this roster row; default `null`; **not** on GQL |
 | `livekit_token_expires_at` | DATE | yes | mint expiry for reuse gate (≥6h remaining); default `null`; **not** on GQL |
 
-Exported TS types: `MeetingParticipantType`, `MeetingParticipantDeliveryStatus` from `G_Tr` enum keys.
+Exported TS types: `MeetingParticipantType`, `MeetingParticipantDeliveryStatus`, `MeetingParticipantDeliveredChannel` from `G_Tr` enum keys.
+
+Send writer: `meeting-invite-notify.md`. `SENT` if any axis succeeded; `FAILED` only when every intended axis failed; `CANCELED` is cancel leftover only.
 
 No surrogate `id` column (product decision: composite key is sufficient for this join).
 
@@ -82,7 +86,8 @@ Under `backend/src/resources/trans/ar/general.ts` and `en/general.ts`:
 | Enum key | Values |
 |---|---|
 | `meetingParticipantType` | `CHAIRPERSON`, `MEMBER`, `VIEWER` |
-| `meetingParticipantDeliveryStatus` | `PENDING`, `SENT`, `FAILED` |
+| `meetingParticipantDeliveryStatus` | `PENDING`, `SENT`, `FAILED`, `CANCELED` |
+| `meetingParticipantDeliveredChannel` | `EMAIL`, `WHATSAPP` |
 
 ### 3.4 Indexes
 
@@ -146,14 +151,14 @@ Writer: `MeetingLiveKitTokenController` (`livekit-media-plane.md` §6). **Never*
 
 SDL:
 
-- `backend/src/app/gql/definitions/base.graphql` — `_MeetingParticipantType`, `_MeetingParticipantDeliveryStatus` (+ Value enums)
+- `backend/src/app/gql/definitions/base.graphql` — `_MeetingParticipantType`, `_MeetingParticipantDeliveryStatus`, `_MeetingParticipantDeliveredChannel` (+ Value enums)
 - `backend/src/app/gql/definitions/customer.graphql` — `_MeetingParticipant` + `_Meeting.participants`
 
 ### Type `_MeetingParticipant`
 
 Implements `_Timestamps` & `_Pagination`.
 
-Info: `type`, `notified`, `delivery_status`, `attended_at`, `left_at`.
+Info: `type`, `notified`, `delivery_status`, `delivered_channels`, `failed_channels`, `attended_at`, `left_at`.
 
 Timestamps: `created_at`, `updated_at`.
 
@@ -315,6 +320,7 @@ No separate root participant failure modes (no root queries).
 ## Related
 
 - `docs/platforms/backend/contracts/meeting-domain.md`
+- `docs/platforms/backend/contracts/meeting-invite-notify.md`
 - `docs/platforms/backend/contracts/member-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/invariants/backend.md` (B15)

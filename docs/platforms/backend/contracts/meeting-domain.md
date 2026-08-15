@@ -24,7 +24,7 @@ Out of scope (not shipped):
 
 - LiveKit client `Room.connect` / A/V UI (join-token HTTP + participant token cache shipped — see `livekit-media-plane.md` §6),
 - reflecting the live session fields back onto the SQL columns (`meeting-live-state.md` §6),
-- notify send pipeline / `notify_status` transitions from UI,
+- starting notify inside `approve` (scheduler owns claim — `meeting-invite-notify.md`),
 - supervisor Meeting GraphQL,
 - cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
 - seed rows for meetings,
@@ -39,7 +39,7 @@ Out of scope (not shipped):
 - Media is **LiveKit** at runtime — room/token helper shipped (`livekit-media-plane.md`); not modeled as Zoom/Teams `platform` / external `url` columns.
 - Invite copy comes from optional template FKs, not duplicated body/subject fields on the meeting.
 - Invite **start time** is `notify_start_at` (independent of `status`). The customer picks it on create and on basics update; Joi requires it to be in the future and at least `MeetingModel.NOTIFY_MIN_GAP_MS` before `datetime`. Approve does not re-derive it.
-- Invite **progress** is `notify_status` (`NOT_STARTED` | `WAITING_TO_NOTIFY` | `NOTIFIED`).
+- Invite **progress** is `notify_status` (`NOT_STARTED` | `WAITING_TO_NOTIFY` | `NOTIFIED` | `PARTIALLY_NOTIFIED` | `FAILED`). Send pipeline: `meeting-invite-notify.md`.
 - Lifecycle is `status` (`DRAFT` | `WAITING_TO_START` | `STARTED` | `COMPLETED` | `CANCELED`).
 
 Tenant boundary: `organization_id`.
@@ -101,7 +101,7 @@ Under `backend/src/resources/trans/ar/general.ts` and `en/general.ts`:
 |---|---|
 | `meetingType` | `PERIODIC`, `EMERGENCY` |
 | `meetingStatus` | `DRAFT`, `WAITING_TO_START`, `STARTED`, `COMPLETED`, `CANCELED` |
-| `meetingNotifyStatus` | `NOT_STARTED`, `WAITING_TO_NOTIFY`, `NOTIFIED` |
+| `meetingNotifyStatus` | `NOT_STARTED`, `WAITING_TO_NOTIFY`, `NOTIFIED`, `PARTIALLY_NOTIFIED`, `FAILED` |
 
 ### 3.4 Indexes
 
@@ -345,7 +345,7 @@ Approval is final. Once `approve` moves a meeting to `WAITING_TO_START`, every c
 
 WhatsApp FK types: `ADWHATS` \| `ADWHATS_PRO`. Email FK types: `EJTMAA_EMAIL` \| `CUSTOM_EMAIL`.
 
-Approve writes `status = WAITING_TO_START` and clears `live_state`, registering `afterCommit` → `destroyMeetingLiveDoc(meetingId, { flush: false })`. It keeps the client-chosen `notify_start_at` and does **not** change `notify_status` — the notify pipeline is still out of scope (§1).
+Approve writes `status = WAITING_TO_START` and clears `live_state`, registering `afterCommit` → `destroyMeetingLiveDoc(meetingId, { flush: false })`. It keeps the client-chosen `notify_start_at` and does **not** change `notify_status`. Claim and send are `InviteNotifyTask` (`meeting-invite-notify.md`).
 
 ### 9.1c Active subscription outside approve (live entry)
 
@@ -378,7 +378,7 @@ File: `backend/src/app/orchestrator/requesters/MeetingRequester.ts` (`@requester
 | `updateTemplates` | template FKs only (`whatsappTemplate` \| `emailTemplate`, both nullable, kind-checked); gated by the `update` Ability |
 | `delete` | destroy children then meeting (`force`) |
 | `approve` | `DRAFT` → `WAITING_TO_START` + `live_state = null` + live-doc destroy (§9.1b) |
-| `cancel` | `DRAFT` \| `WAITING_TO_START` → `CANCELED` + `live_state = null` + live-doc destroy |
+| `cancel` | `DRAFT` \| `WAITING_TO_START` → `CANCELED` + leftover `PENDING` → `CANCELED` + `notify_status = finalizeNotifyStatus` + `live_state = null` + live-doc destroy |
 | `addParticipant` / `removeParticipant` | MEMBER\|VIEWER; cannot remove chairperson |
 | `createAgendaItem` / `updateAgendaItem` / `deleteAgendaItem` | subject; `sort_order = max+1` on create |
 | `createDecision` / `updateDecision` / `deleteDecision` | create: client `phase` PRE_START\|DURING, status NEW, `voting_type null`; update/delete phase-agnostic under prepare Ability (`notify_status === NOT_STARTED`) |
@@ -426,10 +426,11 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 | `backend/src/app/http/middlewares/OrganizationHostMiddleware.ts` | `org_host` active-subscription gate (LiveKit token) | §9.1c |
 | `backend/src/app/helpers/meetingNotifyTemplateMode.ts` | Contact-mode resolver, template satisfiability, denial keys, executable matrix self-check | §9.1b |
 | `backend/src/app/validation/joi_rules.ts` | Customer-owned Meeting, agenda, decision, member, and template hydration; `isMeetingDatetime` lead rule; `isMeetingNotifyStartAt` invite-window rule | §9.2 |
-| `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | Basics, templates, approve, cancel, delete, participant, agenda, and decision requester subs; client-owned `notify_start_at`; live-doc destroy on approve/cancel | §9.1a, §9.3 |
+| `backend/src/app/orchestrator/requesters/MeetingRequester.ts` | Basics, templates, approve, cancel, delete, participant, agenda, and decision requester subs; client-owned `notify_start_at`; cancel leftover + `finalizeNotifyStatus`; live-doc destroy on approve/cancel | §9.1a, §9.3; `meeting-invite-notify.md` |
 | `backend/requesters.website.ts` | Backend customer `meeting` sub map | §9.4 |
 | `website/src/types/requesters/requesters.website.ts` | Exact website customer `meeting` sub-map mirror | §9.4 |
 | `backend/src/app/orm/models/Meeting.ts` | ORM source of truth; `NOTIFY_MIN_GAP_MS` / `MIN_LEAD_MS` / `ATTEND_OPEN_BEFORE_MS` statics + window self-check; `live_state` column | §3, §3.2b, §3.6 |
+| `backend/src/app/scheduler/tasks/InviteNotifyTask.ts` | Invite claim + paced send | `meeting-invite-notify.md` |
 | `backend/src/app/helpers/MeetingLiveDocHelper.ts` | Live document registry and BLOB persistence; `destroyMeetingLiveDoc` consumed by approve/cancel | `meeting-live-state.md` §2–§3 |
 | `backend/src/app/socket/controllers/meeting/*` | `/meeting` connection and `meeting.live.*` controllers | `meeting-realtime-socket.md` §3 |
 | `backend/src/app/orm/models/Member.ts` | `forSelect(lang)` used to hydrate chairperson and roster entity references | §9.2–§9.3 |
@@ -474,10 +475,11 @@ Verify: `yarn generate-types`, `yarn type-check` in `backend/`.
 - `docs/platforms/backend/contracts/livekit-media-plane.md`
 - `docs/platforms/backend/contracts/meeting-realtime-socket.md`
 - `docs/platforms/backend/contracts/meeting-live-state.md`
+- `docs/platforms/backend/contracts/meeting-invite-notify.md`
 - `docs/platforms/backend/contracts/message-template-domain.md`
 - `docs/platforms/backend/contracts/graphql-and-types.md`
 - `docs/platforms/website/flow-customer-meetings.md`
 - `docs/platforms/backend/patterns/gql-role-bridge-base-contract.md`
-- `docs/invariants/backend.md` (B15)
+- `docs/invariants/backend.md` (B15, B27)
 - `.cursor/rules/gql-root-parent-payload-contract.mdc`
 - `.cursor/rules/organization-tenant-ownership.mdc`

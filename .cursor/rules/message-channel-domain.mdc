@@ -34,7 +34,7 @@ Authoritative contract: `docs/platforms/backend/contracts/message-channel-domain
 ## Write path
 
 - Customer ability: `MESSAGE_CHANNEL` (`create` | `read` | `update` | `delete`) on `Customer` with org ownership.
-- `ADWHATS_PRO` only: if any `MessageTemplate` has this `message_channel_id`, `update` throws `CANNOT_UPDATE_USED` and `delete` throws `CANNOT_DELETE_USED`. `read` stays allowed. Classic Ad Whats and custom email are **not** locked by templates.
+- If any `MessageTemplate` has this `message_channel_id`, `delete` throws `CANNOT_DELETE_USED` for every channel type. `update` throws `CANNOT_UPDATE_USED` only when `type === ADWHATS_PRO`. `read` stays allowed. Classic Ad Whats and custom email may still update while templates exist.
 - Requester `@requester("messageChannel")` — website map `customer.messageChannel`.
 - Joi requires credential columns by `type`; unused branches `joi.any().optional().allow(null, "").strip()` then flat `?? null` writes (see `requester-type-conditional-strip.mdc`).
 - `adwhats_account` write: `joi.select({ raw: true })` then split to id (`${value}`) + label.

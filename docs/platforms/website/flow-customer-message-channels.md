@@ -16,7 +16,7 @@ Authenticated customer org delivery-channel directory + multi-path form on `CUST
 - Inner `AdwhatsTokenAndAccount` mounts only after `isInitialLoading` so the token-change effect does not wipe a hydrated account.
 - Create type change clears **account only** (not token). Token change (create and update) clears **account only**.
 - Empty single picker value is `null`.
-- Pro channel with linked templates: Save/Delete still render; backend `can()` throws `CANNOT_UPDATE_USED` / `CANNOT_DELETE_USED`.
+- Channel with linked templates: Save/Delete still render; backend `can()` throws `CANNOT_DELETE_USED` on any type, and `CANNOT_UPDATE_USED` on Pro only.
 - Delete: `await confirm(…, "danger")` → `sub: "delete"` → `nav.back()`.
 - Per-sub button loading: `saving` for `create`/`update`, `deleting` for `delete` (from `currentSub`), not a blanket spinner on Save during delete.
 - User-facing section copy may say **WhatsApp**; card type labels come from backend enum (أد واتس / Ad Whats).
@@ -96,7 +96,7 @@ ar/en mirrors required.
 | List empty | ResultLane empty title/subtitle |
 | List error | ResultLane retry |
 | Delete cancel | `confirm` resolves `false` — no send |
-| Validation / ability | Form middleware / toast — server-owned (`CANNOT_UPDATE_USED` / `CANNOT_DELETE_USED` on Pro+templates) |
+| Validation / ability | Form middleware / toast — server-owned (`CANNOT_DELETE_USED` if any template; `CANNOT_UPDATE_USED` on Pro+templates) |
 
 ## 7) Traceability map
 

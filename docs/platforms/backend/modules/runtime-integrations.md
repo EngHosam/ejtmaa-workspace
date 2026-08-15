@@ -103,6 +103,8 @@ Config: `backend/src/resources/configs/mailer.ts`.
 
 This is the **platform** mailer (`EJTMAA_EMAIL` templates use it). It is not `MessageChannel` `CUSTOM_EMAIL` (those credentials live on the channel row and are tested by `CustomEmailHelper.verifyCustomEmailConnection` — `message-channel-domain.md` §3.6).
 
+`MainEmail` accepts optional `refs.host` / `refs.senderAccount`. When omitted, EmailBase uses `"default"` (platform SMTP). `sendCustomEmail` passes the channel SMTP as those refs so custom-email invites still render `main.twig` without a second email class. Platform invite send in `InviteNotifyTask` uses `sendEmail("MainEmail")` with default host. One global pace cursor: `SystemSetting.ejtmaa_email_invite_next_at` (`meeting-invite-notify.md`).
+
 ### SMTP host
 
 `hosts.default.connection`:

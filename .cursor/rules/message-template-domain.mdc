@@ -28,7 +28,8 @@ Authoritative contract: `docs/platforms/backend/contracts/message-template-domai
 - ORM: `MessageTemplate.belongsTo(MessageChannel)` only. Do **not** add `MessageChannel.hasMany(MessageTemplate)` unless product/GQL also needs `_MessageChannel.messageTemplates` (circular import risk).
 - Requester: `@requester("messageTemplate")` — website map `customer.messageTemplate`. Ability `MESSAGE_TEMPLATE` on `Customer`.
 - Content by kind enforced in Joi with unused `.strip()`; persist flat `?? null` — **no** `attrsForType` (see `requester-type-conditional-strip.mdc`).
-- `ADWHATS_PRO` requires form field `meta_template` (`joi.select({ raw: true })`) then persist `meta_template_id` + `meta_template_label` + `variables` JSONB map. Do **not** store SelectOption JSONB. Pro writes `body: null` (column must be nullable in Postgres).
+- `lang` is `AR` | `EN` (`messageTemplateLang`), `allowNull: false`, default `AR`. Write via `joi.select`. Pro write re-reads the approved list and overwrites `lang` (`ar`/`en` only) plus `meta_template_internal_name`. Do not trust client `lang` for Pro.
+- `ADWHATS_PRO` requires form field `meta_template` (`joi.select({ raw: true })`) then persist `meta_template_id` + `meta_template_label` + `meta_template_internal_name` + `variables` JSONB map. Do **not** store SelectOption JSONB. Pro writes `body: null` (column must be nullable in Postgres). Approved-list helper keeps only `language === "ar"` or `"en"`.
 - `read` must **not** echo `messageTemplate` id. Update locks `type`.
 - `read` hydrate for choice/picker fields follows `requester-read-select-hydrate.md` (`toEnumForSelect` + `MessageChannel.forSelect` + `meta_template` rebuilt from id+label).
 - `delete` blocked when a Meeting still references the template (`whatsapp_template_id` / `email_template_id`) via `CANNOT_DELETE_USED`.
@@ -43,7 +44,7 @@ Authoritative contract: `docs/platforms/backend/contracts/message-template-domai
 
 ## GQL
 
-- `_MessageTemplate` exposes `type`, `messageChannel`, `subject`, `body`, `variables` (`JSONObject`), `meta_template_id`, `meta_template_label`.
+- `_MessageTemplate` exposes `type`, `lang`, `messageChannel`, `subject`, `body`, `variables` (`JSONObject`), `meta_template_id`, `meta_template_label`, `meta_template_internal_name`.
 - Helper root `adwhatsProApprovedTemplates(filter: { messageChannelId })` is not a Bridge. Org-owned `ADWHATS_PRO` channel with token + `adwhats_account_id` required; else `[]`.
 - `_MessageChannelFilter` supports `type` + `status` (picker: `ACTIVE` + matching type).
 - `MessageChannelBridge.GetOneParent` must include `MessageTemplateModel` for nested `messageChannel`.

@@ -7,7 +7,7 @@ Config: `backend/src/resources/configs/scheduler/index.ts`, `backend/src/resourc
 Current state:
 - Example task `TestTask` registered in `cron.ts` for framework wiring
 - `ExpireSubscriptionsTask` — every hour; sets `Subscription.status` from `ACTIVE` → `EXPIRED` when `ends_at <= now` (idempotent bulk update)
-- Further production domain scheduler jobs land as modules are added
+- `InviteNotifyTask` — every 5 seconds (`*/5 * * * * *`); claim + paced invite send. Contract: `docs/platforms/backend/contracts/meeting-invite-notify.md`
 
 Adding a task:
 1. Create class under `backend/src/app/scheduler/tasks/` extending `TaskBase`

@@ -239,7 +239,7 @@ Full path map: [`flow-customer-members.md`](flow-customer-members.md) §11. Back
 
 ## Change set traceability — customer meetings
 
-Full path map: [`flow-customer-meetings.md`](flow-customer-meetings.md) §12. Backend create/filter: [`../backend/contracts/meeting-domain.md`](../backend/contracts/meeting-domain.md) §4–§5, §9. Chairperson roster: [`../backend/contracts/meeting-participant-domain.md`](../backend/contracts/meeting-participant-domain.md). Shared fields/modals: [`flow-form-foundation.md`](flow-form-foundation.md) §3.5–§3.7.
+Full path map: [`flow-customer-meetings.md`](flow-customer-meetings.md) §12. Backend create/filter: [`../backend/contracts/meeting-domain.md`](../backend/contracts/meeting-domain.md) §4–§5, §9. Invite send: [`../backend/contracts/meeting-invite-notify.md`](../backend/contracts/meeting-invite-notify.md). Chairperson roster: [`../backend/contracts/meeting-participant-domain.md`](../backend/contracts/meeting-participant-domain.md). Shared fields/modals: [`flow-form-foundation.md`](flow-form-foundation.md) §3.5–§3.7.
 
 | Concern | Documented where |
 |---|---|

@@ -73,6 +73,8 @@ Event emitters:
   - `faqs`, `videos`, `socials`
 - Invoice/platform keys:
   - `is_vat_enabled`, `vat_percent`, `seller_name`, `vat_register_number`
+- Scheduler cursor (not on VAT / website-settings forms):
+  - `ejtmaa_email_invite_next_at` (ISO string; global platform-mail invite pace)
 
 Access methods:
 - `setSetting`

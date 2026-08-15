@@ -1,0 +1,36 @@
+---
+description: Meeting invite send pipeline — claim, queues, pace, DISABLED leftover fail, GQL cursor opt-out
+globs: backend/src/app/scheduler/tasks/InviteNotifyTask.ts,backend/src/resources/configs/scheduler/cron.ts,backend/src/app/helpers/MeetingInviteHelper.ts,backend/src/app/helpers/AdWhatsDevApi.ts,backend/src/app/helpers/AdWhatsProDevApi.ts,backend/src/app/helpers/CustomEmailHelper.ts,backend/src/app/orm/models/SystemSetting.ts,backend/src/app/orm/models/MeetingParticipant.ts,backend/src/app/orm/models/MessageChannel.ts,backend/src/app/gql/bridges/customer/MessageChannelBridge.ts,backend/src/app/orchestrator/requesters/MeetingRequester.ts
+alwaysApply: false
+---
+
+# Meeting Invite Notify
+
+Authoritative contract: `docs/platforms/backend/contracts/meeting-invite-notify.md`.
+
+## Trigger
+
+- Do **not** send or flip `notify_status` in `approve`.
+- Claim is a conditional `UPDATE` `NOT_STARTED` → `WAITING_TO_NOTIFY` when `status` is `WAITING_TO_START` or `STARTED` and `notify_start_at <= now`.
+- Load the same two statuses while `notify_status === WAITING_TO_NOTIFY`. `CANCELED` / `COMPLETED` stay out.
+
+## Queues
+
+- One queue per `MessageChannel` row. `EJTMAA_EMAIL` has **no** channel row.
+- Platform mail pace is **one global** `SystemSetting` key `ejtmaa_email_invite_next_at` (ISO). Not per organization. Not on VAT / website-settings forms.
+- Channel pace column `invite_next_at` must stay off GQL (`MessageChannelBridge.registerOrmAttrs.expect`).
+- After a send/death attempt: Ad Whats 10–15s jitter, Pro 5s, both email kinds 20s.
+- Cron is 6-field `*/5 * * * * *`. Do not call `.seconds()` on `cron-time-generator`.
+
+## Delivery
+
+- Axes from meeting template FKs only (`EMAIL` / `WHATSAPP`). Many-enum arrays — no combined `EMAIL_WHATSAPP` value.
+- Skip an axis already on `delivered_channels` or `failed_channels`. No retry.
+- `DISABLED` (save verify or provider death) fails leftover recipients on that axis, then `finalizeNotifyStatus`.
+- `MeetingInviteHelper` resolves link/tokens/datetime only. Send stays in Ad Whats helpers, `sendCustomEmail`, or `sendEmail("MainEmail")` inside the task.
+- Result is `{ kind: "ok" | "death" | "recipient" }`. Death = not ready or HTTP 401/403.
+
+## Cancel
+
+- Same transaction: leftover `PENDING` → `CANCELED`, then finalize. Keep `live_state: null` + `afterCommit` `destroyMeetingLiveDoc(..., { flush: false })`.
+- In-flight send after cancel may arrive unrecorded. Do not invent a second write-back unless product reopens that race.
