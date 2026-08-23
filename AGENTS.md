@@ -8,6 +8,8 @@ Use this root file only for concise project-wide agent guidance.
 - Task-specific agent workflows live in `.cursor/skills/<skill-name>/SKILL.md`.
 - General project and architecture documentation lives in `docs/`.
 
+Sibling SSR frontends: `website/` (customer, mount `/website`) and `cpanel/` (supervisor, mount `/cpanel`). Details live in `docs/` and `.cursor/rules/`.
+
 ## Working Rule
 
 - Do not duplicate detailed skill contracts in this file.

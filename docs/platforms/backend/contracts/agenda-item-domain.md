@@ -14,7 +14,7 @@ Out of scope (not shipped):
 - GraphQL inverse `_AgendaItem.meeting`,
 - root agenda write requesters (writes ship as `MeetingRequester` agenda subs — see `meeting-domain.md` §9),
 - supervisor AgendaItem GraphQL,
-- cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
+- cpanel mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume this domain,
 - seed rows for agenda items,
 - LiveKit ownership of agenda,
 - live-map writers for `isLiveCreated`,

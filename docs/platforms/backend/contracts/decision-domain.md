@@ -17,7 +17,7 @@ Out of scope (not shipped):
 - nested talk records under `_Decision` (model not shipped yet),
 - root decision write requesters (writes ship as `MeetingRequester` decision subs — see `meeting-domain.md` §9),
 - supervisor Decision GraphQL,
-- cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
+- cpanel mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume this domain,
 - seed rows for decisions,
 - Yjs as sole durable source of truth (SQL remains durable authoring; live map seeds `decisions` and nested `votes` from SQL on first empty `live_state` — see `meeting-live-state.md` §1.2 / §9),
 - SQL write-back of a live status transition: the website session settles ballots in the CRDT only, and a `PRE_START` row seeds as `UNDER_VOTING` in the map when SQL holds `NEW` or `UNDER_VOTING` (`meeting-live-state.md` §1.2).

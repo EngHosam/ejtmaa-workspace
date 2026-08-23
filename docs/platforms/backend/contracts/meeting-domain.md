@@ -26,7 +26,7 @@ Out of scope (not shipped):
 - reflecting the live session fields back onto the SQL columns (`meeting-live-state.md` §6),
 - starting notify inside `approve` (scheduler owns claim — `meeting-invite-notify.md`),
 - supervisor Meeting GraphQL,
-- cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
+- cpanel mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume this domain,
 - seed rows for meetings,
 - nested `_Organization.meetings` (B15 — root list only),
 - `report_snapshot` / report materialization column,

@@ -35,7 +35,7 @@ Detail:
 ### CPanel
 
 `cpanel/` is the Supervisor SSR frontend contract on mount `/cpanel`.
-See `docs/platforms/cpanel/overview.md` for repository layout and module catalog.
+See `docs/platforms/cpanel/overview.md` for repository layout and the implemented bootstrap routes.
 
 Detail:
 - `docs/platforms/cpanel/README.md`

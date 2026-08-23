@@ -75,7 +75,7 @@ Enum-like business fields follow the project enum contract across model, request
 
 Shared enums in `base.graphql` only. Mirror sync to frontends is command-based copy when the target platform checkout exists:
 - `website/src/types/gql/**` (active)
-- `cpanel/src/types/gql/**` (deferred while `cpanel/` checkout is temporarily absent — do not sync)
+- `cpanel/src/types/gql/**` (active `base` + `supervisor` mirrors; bootstrap UI does not yet consume list queries)
 
 ## B15. GraphQL Relation Cardinality Gate Invariant
 

@@ -2,7 +2,7 @@
 
 ## Current workspace status
 
-The `cpanel/` platform checkout is **temporarily removed** from this workspace. Do **not** create or sync GraphQL mirrors under `cpanel/src/types/gql/**` until the platform folder is restored. Backend supervisor SDL (including organization reads) remains authoritative in `backend/`; consumption/mirroring resumes with the platform.
+`cpanel/` is present in the workspace. Supervisor SDL is mirrored under `cpanel/src/types/gql/**`. Backend supervisor SDL remains the source of truth; refresh mirrors by command copy, not by hand-editing copied files. The bootstrap frontend does not yet run customer-list GQL operations.
 
 ## Purpose
 
@@ -82,11 +82,9 @@ This keeps cpanel aligned with the existing workspace GraphQL mirror discipline 
 
 ## 5) Supervisor GQL operations in cpanel
 
-Customer module adapters use mirrored supervisor operations:
+SDL and generated types for `customers`, `customer`, and `customerStats` are mirrored so a later module can consume them.
 
-- `customers.graphql` -- paginated customer list
-- `customer.graphql` -- single customer read
-- `customerStats.graphql` — `customerStats.total_count` on `HomeStatCard` and list header
+The bootstrap frontend has **no** `customers.graphql` UI operations, `HomeStatCard`, or customer list adapters.
 
 Mirror SDL and gql-types under `cpanel/src/types/gql/` stay command-synced from backend; UI subtrees host local `graphql.config.yml` helpers only.
 

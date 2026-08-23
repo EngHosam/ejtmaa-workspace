@@ -14,7 +14,7 @@ Out of scope (not shipped):
 - plan write requesters / mutations / supervisor CRUD GQL,
 - SKU `code` column (explicitly rejected — identity is `id` + MultiLang `name`),
 - naming the model `Package` (language-sensitive; use `Plan`),
-- cpanel mirrors/UI (`cpanel/` checkout temporarily absent).
+- cpanel mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume this domain.
 
 Related shipped surfaces (separate contracts):
 

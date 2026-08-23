@@ -4,9 +4,11 @@
 
 `cpanel/` is the Ejtmaa supervisor SSR frontend, served on backend mount `/cpanel`.
 
-Platform docs describe the supervisor cpanel contract; the checked-in repository implements that contract.
+The checked-in frontend is an **intentionally minimal bootstrap**: supervisor login, an empty authenticated Home, framework Error, and the `UiMockup` engineering review route. It shares the Website project's engineering DNA (`@my-ssr/web-core`, `@typescript/sys-core`, adapters, forms, Utils, GQL mirrors) without the Website customer/public product surface.
 
 Typed authed actor: **SUPERVISOR**. Visitor requester scope applies to login forms only.
+
+Backend supervisor contracts (customer list/detail/stats, account settings, and related GQL) already exist. They are **not** implemented as CPanel frontend modules in this bootstrap.
 
 ## 2) Workspace relationship
 
@@ -27,65 +29,57 @@ Both frontends use `@my-ssr/web-core` + `@typescript/sys-core` with the same fol
 | `src/resources/configs/routes.ts` | Route registry |
 | `src/app/services/*` | Auth, router, boot, socket |
 | `src/app/ui/base/*` | Framework infrastructure (`MyApp`, `MyPage`, hooks) |
-| `src/app/ui/components/*` | Shared product UI (shell, tables, auth) |
+| `src/app/ui/components/*` | Shared reusable UI (shell, tables, auth, forms) |
 | `src/app/ui/layouts/*` | `BasicLayout`, `MainLayout` |
 | `src/app/ui/pages/*` | Route entry pages |
 | `src/types/gql/**` | Local `base` + `supervisor` GQL mirrors |
 
 ## 4) Boot and auth
 
-- Server boot calls `/cpanel/custom/start` and hydrates via `global.setServerStartData(...)`.
+- Server boot calls `GET /cpanel/custom/start` and hydrates via `global.setServerStartData(...)`.
 - Unauthenticated navigation redirects to `Login`.
-- Authenticated users on `Login` redirect to `Home`.
-- `UiMockup` is public for shell review.
+- Authenticated supervisors on `Login` redirect to `Home`.
+- `Home` renders the MAIN shell with **no dashboard widgets**.
+- `UiMockup` is a technical review route (`mustAuthedAs: ["SUPERVISOR"]`).
 - `Error` bypasses auth middleware once matched.
 
-## 5) Route catalog
-
-See `docs/platforms/cpanel/supervisor-admin-modules.md` for the authoritative module list.
+## 5) Implemented route catalog
 
 | Identify | Path | Layout |
 |---|---|---|
 | `Login` | `/login` | `BASIC` |
 | `Home` | `/` | `MAIN` |
-| `Customers` | `/customers` | `MAIN` |
-| `Customer` | `/customer/:formType(show)/:id` | `MAIN` |
-| `AccountSettings` | `/account-settings` | `MAIN` |
 | `UiMockup` | `/ui-mockup` | `MAIN` |
-| `Error` | `/:error(404|500|403)` | `BASIC` |
+| `Error` | `/:error(404\|500\|403)` | `BASIC` |
+
+There are no `Customers`, `Customer`, or `AccountSettings` routes in the current frontend.
 
 ## 6) Backend coupling
 
-Supervisor GQL (`supervisor.graphql`):
+Supervisor GQL (`supervisor.graphql`) is mirrored under `cpanel/src/types/gql/` for future reads. Current pages do not query customer list/stats.
 
-- `me`, `notifications`
-- `customers`, `customer(id)`
-- `customerStats` (`total_count` for `HomeStatCard` on supervisor home)
-- `organizations`, `organization(id)` and nested `_Customer.organization` exist on backend supervisor SDL; cpanel mirror/UI deferred while `cpanel/` checkout is absent
+Requesters on the cpanel platform (backend): `auth` (visitor `supervisorLogin`), plus supervisor `customer`, `platform_settings`, `supervisor`, `website_settings` read|update. The bootstrap login uses visitor `auth/supervisorLogin` only.
 
-Requesters on cpanel platform:
+Reads: `DATA_ADAPTERS.GQL` with supervisor schema (foundation; unused by current pages).
+Writes: `FORMS.SUPERVISOR.R` (foundation; login uses visitor auth form).
 
-- `auth`, `supervisor`, `customer`, `website_settings`, `platform_settings`
-
-Reads: `DATA_ADAPTERS.GQL` with supervisor schema.
-Writes: `FORMS.SUPERVISOR.R`.
-
-Socket namespace: `/supervisor`. Event: `OnUserEvent`.
+Socket namespace: `supervisor`. Event: `OnUserEvent` with `type: "NEW_CUSTOMER" | "NEW_VENDOR"`.
 
 ## 7) UI foundation
 
 Mandatory foundation:
 
 - `ui/base/components/Utils.tsx`
-- `resources/configs/theme.ts` (when present in cpanel checkout; navy `#0B2057`, orange `#EC6901`)
+- `resources/configs/theme.ts`
 - `resources/configs/utils.ts`
 
-See `docs/platforms/cpanel/ui-foundation.md`.
+Arabic-only locale wiring (`locales: ["ar"]`). `en.ts` is retained unused. `LanguageSwitch` is kept as a reusable component and is not mounted in chrome.
+
+Local dev port: **3095**.
 
 ## 8) Related
 
-- `docs/platforms/cpanel/README.md` -- full doc index
-- `docs/platforms/cpanel/supervisor-admin-modules.md` -- module catalog
-- `docs/platforms/cpanel/customer-management.md` -- customer list/detail
-- `docs/invariants/cpanel.md` -- invariants
-- `.cursor/rules/cpanel-platform-governance.mdc` -- governance rule
+- `docs/platforms/cpanel/README.md` — doc index
+- `docs/platforms/cpanel/supervisor-admin-modules.md` — implemented vs deferred
+- `docs/invariants/cpanel.md` — invariants
+- `.cursor/rules/cpanel-platform-governance.mdc` — governance rule

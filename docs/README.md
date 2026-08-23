@@ -57,7 +57,7 @@ Patterns are grounded in:
 - `docs/platforms/cpanel/ui-foundation.md` — Utils + theme.ts UI contract.
 - `docs/platforms/cpanel/supervisor-admin-modules.md` — Route catalog.
 - `docs/platforms/cpanel/data-flow-and-gql.md` — Adapters, requesters, GQL.
-- `docs/platforms/cpanel/customer-management.md` — Customer list and detail.
+- `docs/platforms/cpanel/customer-management.md` — Deferred customer module (backend contract only).
 - `docs/invariants/cpanel.md` — Cpanel invariants.
 
 ### Website (Customer)

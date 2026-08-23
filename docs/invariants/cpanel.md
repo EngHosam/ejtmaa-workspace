@@ -269,6 +269,8 @@ Rationale:
 
 ## C18. Customer Stats KPI Invariant
 
-Home `HomeStatCard` and list header `CustomerStatsSection` bind to root `customerStats.total_count`.
-List pagination window counts come from `_Customer.total_count` on the `customers` query.
-KPI surfaces use `customerStats.total_count` only.
+The current CPanel Home body is empty. There is no `HomeStatCard` or `CustomerStatsSection` in the checkout.
+
+When a later task adds Home KPIs or a customers-list header stat, those surfaces must bind to root `customerStats.total_count`.
+List pagination window counts must come from `_Customer.total_count` on the `customers` query.
+KPI surfaces must use `customerStats.total_count` only. Do not invent a second stats field.

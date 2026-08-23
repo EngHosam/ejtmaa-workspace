@@ -23,7 +23,7 @@ Out of scope for this contract (not shipped):
 - message template domain (see `message-template-domain.md` — shipped separately),
 - meeting domain (see `meeting-domain.md` — shipped separately),
 - supervisor organization stats aggregate,
-- cpanel GraphQL mirrors / UI (cpanel platform checkout is temporarily absent; do not sync supervisor mirrors until restored).
+- cpanel GraphQL mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume organization admin screens.
 
 ## 2) Domain purpose
 
@@ -275,7 +275,7 @@ Referenced from seed rows as `logo_file` paths under `__seed/images/`.
 | Platform | Mirrored artifacts | Current status |
 |---|---|---|
 | `website/` | `definitions/base.graphql`, `definitions/customer.graphql`, `gql-types/base.ts`, `gql-types/customer.ts` | Active — sync after backend `yarn generate-types` |
-| `cpanel/` | Would be `base` + `shared` + `supervisor` SDL/types under `src/types/gql/**` | **Deferred** — `cpanel/` checkout temporarily removed; **do not** create or sync supervisor GQL mirrors until the platform folder returns |
+| `cpanel/` | `base` + `supervisor` SDL/types under `src/types/gql/**` | Active — organization nested fields exist on supervisor SDL; CPanel UI does not consume them in this bootstrap |
 
 Do not hand-edit website mirrors.
 
@@ -397,7 +397,7 @@ Note: the **form** `read` sub does **not** 404 when no org exists — it returns
 | `website/src/types/gql/gql-types/base.ts` | Customer mirror | §8 |
 | `website/src/types/gql/gql-types/customer.ts` | Customer mirror | §8 |
 | `website/lib/tsconfig.tsbuildinfo` | Build cache noise | excluded from narrative |
-| `cpanel/src/types/gql/**` | Supervisor mirrors | deferred — platform folder temporarily absent; not synced |
+| `cpanel/src/types/gql/**` | Supervisor mirrors | active SDL/types copy; bootstrap UI unused |
 | `backend/.types/models.ts` | Generated model registry (gitignored; regenerated at boot) | excluded from narrative |
 
 ## Related

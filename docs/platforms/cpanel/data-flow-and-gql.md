@@ -271,12 +271,12 @@ This mirrors the strongest lesson from `website/`:
 
 Route-level evidence:
 
-- `Login` — form/requester boundary for supervisor login,
-- `Customers` — route-state-backed GQL reads through shallow adapters,
-- `Customer` — route-scoped form reads/writes,
-- `Home` — `HomeStatCard` from `customerStats.total_count`,
-- `AccountSettings` — supervisor password change,
+- `Login` — form/requester boundary for supervisor login (`sub: "supervisorLogin"`),
+- `Home` — MAIN shell with an empty page body,
+- `UiMockup` — shared-component review route,
 - `Error` — route-owned presentational fallback.
+
+Customers, Customer, HomeStatCard, and AccountSettings are not present in this checkout.
 
 ## 10) Shared usability expectations from `website/`
 
@@ -290,7 +290,7 @@ Although cpanel is a web platform, the same interaction quality should be preser
 - route-owned screens do not mutate unseen shared state accidentally,
 - one mutation refreshes only the affected read boundaries.
 
-These expectations apply to supervisor routes: paginated/filterable tables, home stat surfaces (`customerStats.total_count`), settings forms, and role/permission-dependent pages.
+These expectations apply to future supervisor routes (paginated tables, optional home stats bound to `customerStats.total_count`, settings forms). They do not imply those screens exist today.
 
 ## 12) Final rule
 

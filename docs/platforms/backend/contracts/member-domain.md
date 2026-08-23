@@ -18,7 +18,7 @@ Also shipped:
 Out of scope (not shipped):
 
 - supervisor Member GraphQL,
-- cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
+- cpanel mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume this domain,
 - GraphQL `can*` ability fields on `_Me` / `_Member` for UI gating,
 - soft-delete / cascade delete of roster or chairperson rows,
 - role / permissions fields on Member (session permissions live on `MeetingParticipant.type` — see `meeting-participant-domain.md` §8),

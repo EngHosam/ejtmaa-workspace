@@ -185,5 +185,5 @@ Rules:
 - Org-owned customer children (`Member`, `MessageTemplate`, `Meeting`, …): extend `CustomerOrganizationOwnedBridgeBase` (`me` → customer's Organization). Do not copy that `getRootOrmParent` into each entity bridge.
 - Keep resolvers thin; ORM policy lives in bridges.
 - Sync mirrors after SDL changes: `website/` (`customer`) always when present.
-- `cpanel/` (`supervisor`) sync only when the `cpanel/` platform checkout exists; currently deferred (folder temporarily removed) — do not invent `cpanel/src/types/gql/**` mirrors.
+- `cpanel/` (`supervisor`) mirrors live under `cpanel/src/types/gql/**`; do not invent a second mirror tree. Bootstrap UI does not yet consume supervisor list queries.
 - Organization contract detail: `docs/platforms/backend/contracts/organization-domain.md`.

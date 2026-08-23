@@ -4,3 +4,6 @@
 [submodule "website"]
 	path = website
 	url = git@github.com:EngHosam/ejtmaa-website.git
+[submodule "cpanel"]
+	path = cpanel
+	url = git@github.com:EngHosam/ejtmaa-cpanel.git

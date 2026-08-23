@@ -28,22 +28,19 @@ Current cpanel constraints:
 - Extend cpanel-specific `@my-ssr/web-core` route metadata only through `src/types/extends/global.ts`; do not invent route/layout fields in ad-hoc local typings.
 - Do not place cpanel auth-routing middleware in `web-core.router.beforePageLoading`; keep router middleware invocation in the page lifecycle layer (`src/app/ui/base/core/MyPage.tsx`) because the earlier hook can run before `services.boot.server(...)` finishes `/custom/start` hydration during SSR prepare flow.
 - For nested translation objects, bind `useTranslator` at the nested object node and read direct keys from that bound translator; do not fall back to dotted runtime key strings or mixed nested access styles.
-- For list-launched single-record pages, prefer the adopted route pattern `/:formType(show)/:id` when the feature follows the existing cpanel form-page flow.
-- For return navigation from those pages, prefer `useNav().back()` over reconstructing list query state inside the detail page unless a proven requirement says otherwise.
 - Keep route pages orchestration-first: extract only truly reusable UI into `ui/components/`, and do not create feature-specific wrapper components when shared primitives are the real reusable layer.
-- For auth-like routes that use `ui/components/auth/AuthPageShell.tsx`, keep width/max-width/responsive padding ownership in that shared shell and avoid page-local wrappers unless they add proven behavior.
+- Auth routes compose `ui/components/auth/AuthPageShell.tsx` the same way `website/` does: split brand panel + form card. Do not replace that shell with a generic admin card/`Container` width contract. Login keeps the native `<form>` submit wrapper from Website DNA (`Box As={"form"}` + `FormActionButton`).
 - For larger route-owned surfaces, prefer section-level extraction over both extremes:
   - do extract route-shared or module-shared sections into `ui/components/`,
   - but do not split one route/module into file-per-private-helper when those helpers are only used inside a single section.
-- Prefer requester/form-boundary submission with shared action components; do not add HTML-form wrapper semantics on cpanel route pages unless an existing page pattern truly requires native form submission behavior.
-- For route-scoped cpanel forms, prefer returning UI-ready flags like `isLoading` / `saving` from `mapState(...)` instead of exposing raw internal form sub-state such as `currentSub` to the page body, unless the page truly needs the raw value.
+- Prefer requester/form-boundary submission with shared action components.
 - Reuse the mature organizational lessons from `website/` where concepts overlap (shared UI foundation, adapters for reads, forms for writes, thin route pages, predictable usability). Use the SSR web bootstrap (`MyPage` + `web-core`).
 - Backend integration must stay aligned with the backend `/cpanel` surface and the cpanel requester typing/config files.
 - Future backend-owned reads should center on adapters and the GQL path; backend-owned writes should center on forms/requesters.
 - Backend GraphQL SDL and generated type mirrors consumed by `cpanel/` belong under `src/types/gql/**`, with backend remaining the source of truth and sync happening by command-based copy rather than hand-editing copied mirrors.
 - `supervisor` GraphQL mirrors are a cpanel concern; do not sync `supervisor` SDL/types into `website/` unless that client explicitly starts consuming supervisor role contracts.
 - Local `graphql.config.yml` helper files belong only in UI subtrees that actually host GraphQL-aware code (currently `src/app/ui/pages/` and `src/app/ui/components/`), and they must point at the mirrored cpanel schema under `src/types/gql/`.
-- Supervisor modules: `Home`, `Customers`, `Customer`, `AccountSettings` — extend by documented patterns in `supervisor-admin-modules.md`.
+- Implemented supervisor routes: `Login`, empty `Home`, `UiMockup`, `Error`. Do not invent Customers/AccountSettings/dashboard widgets unless a later product task asks for them. When a later list/detail module lands, follow this repository's Website form/list DNA and the backend `/cpanel` contract; do not import a parallel admin route taxonomy from another project family.
 - Starter shared registries (`FORM1`, `ADAPTER1`) are foundation placeholders for future features.
 
 Interpretation rule:

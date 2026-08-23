@@ -1,19 +1,20 @@
-# Cpanel Repository Inventory
+# CPanel Repository Inventory
 
 ## Purpose
 
-Inventory of project-owned paths under `cpanel/` for supervisor administration.
+Inventory of project-owned paths under `cpanel/` for the current supervisor bootstrap.
 
-Platform docs describe the supervisor cpanel contract. Paths below are the contract inventory for the checked-in `cpanel/` repository.
+This is the live checkout inventory, not a future product catalog.
 
 ## Runtime entry
 
 | Path | Role |
 |---|---|
-| `src/client/index.ts` | Browser bootstrap |
-| `src/server/index.ts` | SSR bootstrap |
+| `src/client/index.ts`, `src/client/worker.ts` | Browser bootstrap |
+| `src/server/index.ts`, `src/server/worker.ts` | SSR bootstrap |
 | `src/resources/configs/web-core.ts` | Runtime configuration authority |
 | `src/resources/configs/routes.ts` | Route registry |
+| `src/resources/configs/urls.ts` | `ME_URL` / `BASE_URL` / `SOCKET_URL` (port 3095, mount `/cpanel`) |
 
 ## Services
 
@@ -28,8 +29,8 @@ Platform docs describe the supervisor cpanel contract. Paths below are the contr
 | Path | Role |
 |---|---|
 | `src/app/ui/base/components/Utils.tsx` | Layout/styling primitives |
-| `src/resources/configs/theme.ts` | Brand tokens (when present in cpanel checkout) |
-| `src/app/ui/base/core/MyApp.tsx` | Layout resolution |
+| `src/resources/configs/theme.ts` | Brand tokens |
+| `src/app/ui/base/core/MyApp.tsx` | Layout resolution (`BASIC` / `MAIN`) |
 | `src/app/ui/base/core/MyHtml.tsx` | Document shell |
 | `src/app/ui/base/core/MyPage.tsx` | Route lifecycle |
 
@@ -39,38 +40,27 @@ Platform docs describe the supervisor cpanel contract. Paths below are the contr
 |---|---|
 | `src/app/ui/layouts/BasicLayout.tsx` | Auth/error wrapper |
 | `src/app/ui/layouts/MainLayout.tsx` | Authed shell (header, drawer, footer) |
+| `src/app/ui/layouts/main-layout/drawer.ts` | Drawer sections: dashboard + logout |
 | `src/app/ui/components/Header.tsx` | Shell header |
 | `src/app/ui/components/Drawer.tsx` | Navigation drawer |
 | `src/app/ui/components/Footer.tsx` | Shell footer |
-| `src/app/ui/components/DataTable.tsx` | List table primitive |
+| `src/app/ui/components/DataTable.tsx` | List table primitive (reusable; unused by current pages except UiMockup) |
+| `src/app/ui/components/IdentityAvatar.tsx` | Remapped reusable avatar (from Website `components/customer/`) |
+| `src/app/ui/components/auth/*` | Login shell DNA |
+| `src/app/ui/components/form/*` | Form field DNA |
+| `src/app/ui/components/modals/*` | Entity / datetime / confirm modals |
+| `src/app/ui/components/LanguageSwitch.tsx` | Locale switcher component (unmounted; Arabic-only wiring) |
 
 ## Route pages
 
 | Path | Route |
 |---|---|
 | `src/app/ui/pages/Login.tsx` | `/login` |
-| `src/app/ui/pages/Home.tsx` | `/` |
-| `src/app/ui/pages/Customers.tsx` | `/customers` |
-| `src/app/ui/pages/Customer.tsx` | `/customer/:formType(show)/:id` |
-| `src/app/ui/pages/AccountSettings.tsx` | `/account-settings` |
+| `src/app/ui/pages/Home.tsx` | `/` (empty `Main()`) |
 | `src/app/ui/pages/UiMockup.tsx` | `/ui-mockup` |
-| `src/app/ui/pages/Error.tsx` | `/:error(404|500|403)` |
+| `src/app/ui/pages/Error.tsx` | `/:error(404\|500\|403)` |
 
-## Home module
-
-| Path | Role |
-|---|---|
-| `src/app/ui/components/home/HomeStatCard.tsx` | Home KPI from `customerStats.total_count` |
-| `src/app/ui/components/home/hooks/useCustomerStats.ts` | `customerStats.graphql` shallow adapter |
-| `src/app/ui/components/home/graphql/customerStats.graphql` | Supervisor stats operation |
-
-## Customer module
-
-| Path | Role |
-|---|---|
-| `src/app/ui/components/customer/CustomerStatsSection.tsx` | List header stat from `customerStats.total_count` |
-| `src/app/ui/components/customer/graphql/customers.graphql` | Customer list operation |
-| `src/app/ui/components/customer/graphql/customer.graphql` | Single customer operation |
+There are no `Customers.tsx`, `Customer.tsx`, `AccountSettings.tsx`, or `home/` KPI components in this checkout.
 
 ## Types and GQL mirrors
 
@@ -79,18 +69,14 @@ Platform docs describe the supervisor cpanel contract. Paths below are the contr
 | `src/types/requesters/requesters.cpanel.ts` | Supervisor requester map |
 | `src/types/gql/definitions/base.graphql` | Mirrored base SDL |
 | `src/types/gql/definitions/supervisor.graphql` | Mirrored supervisor SDL |
-| `src/types/gql/gql-types/` | Generated types |
-| `graphql.config.yml` | Local GQL tooling scope |
+| `src/types/gql/gql-types/base.ts` | Generated base types |
+| `src/types/gql/gql-types/supervisor.ts` | Generated supervisor types |
+| `src/types/socket/events.ts` | `OnUserEvent` / `NEW_CUSTOMER` \| `NEW_VENDOR` |
 
-## Generated and bundled areas (not source of truth)
+## Identity
 
-| Path | Role |
+| Item | Value |
 |---|---|
-| `lib/` | TypeScript build output |
-| `server/` | Generated SSR bundle |
-| `eng-hosam/` | Bundled enterprise libraries |
-
-## Related
-
-- `docs/platforms/cpanel/supervisor-admin-modules.md`
-- `docs/platforms/cpanel/component-structure.md`
+| Package name | `ejtmaa-cpanel` |
+| Dev port | `3095` |
+| Nested git | `cpanel/` is its own repository |

@@ -17,7 +17,7 @@ Out of scope (not shipped):
 - `decision_id` / any Decision link (product: queue is meeting-scoped only),
 - talk-record write requesters / mutations,
 - supervisor TalkRecord GraphQL,
-- cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
+- cpanel mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume this domain,
 - seed rows for talk records,
 - LiveKit A/V coupling (media is separate; this model is durable SQL queue/history only),
 - any sync between the shipped website live talk queue and this model (see below).

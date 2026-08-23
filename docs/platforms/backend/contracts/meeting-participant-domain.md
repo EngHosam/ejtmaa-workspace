@@ -25,7 +25,7 @@ Out of scope (not shipped):
 - `first_online_at`, `joined_at`, or `attended` boolean (removed / declined — see §3.6),
 - chair-marked attendance override without self check-in (not in product rule for this surface),
 - supervisor MeetingParticipant GraphQL,
-- cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
+- cpanel mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume this domain,
 - seed rows for participants,
 - LiveKit client `Room.connect` / A/V UI (join-token HTTP + participant cache columns shipped — see `livekit-media-plane.md`),
 - Yjs session planes.

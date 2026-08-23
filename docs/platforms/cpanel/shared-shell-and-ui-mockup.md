@@ -43,11 +43,10 @@ Contract outcomes:
 |---|---|---|
 | `Login` | `/login` | `BASIC` |
 | `Home` | `/` | `MAIN` |
-| `Customers` | `/customers` | `MAIN` |
-| `Customer` | `/customer/:formType(show)/:id` | `MAIN` |
-| `AccountSettings` | `/account-settings` | `MAIN` |
 | `UiMockup` | `/ui-mockup` | `MAIN` |
 | `Error` | `/:error(404\|500\|403)` | `BASIC` |
+
+Customers / Customer / AccountSettings are **not** registered. Drawer items are dashboard + logout only.
 
 `UiMockup` remains a lazily loaded review route.
 

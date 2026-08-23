@@ -28,7 +28,7 @@ Use `theme.ts` tokens — do not hardcode hex when a semantic path exists.
 
 ## Supervisor context
 
-Cpanel serves Supervisor actor on `/cpanel`. Theme usage follows the same token map; layout patterns differ (admin shell, data tables, customer management).
+Cpanel serves the Supervisor actor on `/cpanel`. Theme usage follows the same token map. Current layout is the MAIN admin shell plus login/error BASIC pages. Customer-management screens are not part of this bootstrap.
 
 ## Related
 

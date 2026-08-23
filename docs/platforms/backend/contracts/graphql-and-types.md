@@ -117,7 +117,7 @@ Codegen output under `backend/src/app/gql/gql-types/`:
 | Frontend | Mirrors | Config | Current status |
 |---|---|---|---|
 | `website/` | `base` + `customer` | `website/graphql.config.yml` | Active |
-| `cpanel/` | `base` + `supervisor` | `cpanel/graphql.config.yml` | **Deferred** — `cpanel/` checkout temporarily removed; do not sync supervisor mirrors until restored |
+| `cpanel/` | `base` + `supervisor` | `cpanel/graphql.config.yml` | Active — mirrors live under `cpanel/src/types/gql/**`. Bootstrap pages do not yet consume customer-list queries. |
 
 Sync (when the target platform exists) is command-based copy from backend SDL/types. Do not hand-edit mirrored files.
 

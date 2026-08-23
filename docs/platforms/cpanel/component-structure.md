@@ -177,15 +177,16 @@ Examples:
 | `components/Loadable.tsx` | Project-visible loading surface with inline/overlay Lottie behavior. |
 | `components/GlobalLoadable.tsx` | App-level loading overlay tied to global busy state. |
 | `components/Toast.tsx` | Shared cpanel toast rendering surface. |
-| `components/auth/*` | Shared auth-page product UI (`AuthPageShell`, `AuthTextField`) built on the shared form primitives, with `AuthPageShell` owning auth-card width/max-width behavior instead of the route page. |
+| `components/auth/*` | Shared auth-page product UI (`AuthPageShell`, `AuthTextField`) built on the shared form primitives. `AuthPageShell` owns the split brand panel + form card (Website DNA), not a generic admin max-width card. |
 | `components/ThemeModeSwitch.tsx` | Shared theme-mode toggle for shell/layout review and future reuse. |
 | `components/Header.tsx` / `Drawer.tsx` / `Footer.tsx` | Shared shell composition components that belong to product UI, not `base/`. |
 | `components/Logo.tsx` | Shared light/dark logo switcher for shell branding surfaces. |
 | `components/StatusBadge.tsx` | Shared reusable compact state badge for status-like labels across modules. |
 | `components/DataTable.tsx` | Shared product table surface with toolbar/pagination review contract. |
 | `components/form/*` | Shared project form primitives (`FormInputWrapper`, `FormTextField`, `FormActionButton`). |
-| `components/customer/*` | Customer-module shared UI (`CustomersTable`, `CustomerStatsSection`, `CustomerIdentityCell`) reused across supervisor customer routes. |
-| `components/home/*` | `HomeStatCard` for the `Home` route (`customerStats.total_count`). |
+| `components/IdentityAvatar.tsx` | Remapped reusable identity avatar (originally under Website `components/customer/`). |
+
+There is no `components/customer/*` or `components/home/*` in this bootstrap.
 
 Rule:
 - if a component is part of the **project UI language** rather than framework plumbing, it belongs here,
@@ -213,13 +214,12 @@ Rule:
 
 `pages/` owns page entry components bound directly to route identifiers.
 Supervisor pages:
-- `Login` ? requester-backed shallow form and shared auth components.
-- `Home` ? `HomeStatCard` bound to `customerStats.total_count`.
-- `Customers` ? customer list with route-state-backed table.
-- `Customer` ? single-record form (`customer.read` / `customer.update`).
-- `AccountSettings` ? supervisor password change.
-- `UiMockup` ? visual review page on the real layout.
-- `Error` ? branded fallback page.
+- `Login` — requester-backed shallow form and shared auth components.
+- `Home` — MAIN shell with an empty body.
+- `UiMockup` — visual review page on the real layout.
+- `Error` — branded fallback page.
+
+Customers, Customer, AccountSettings, and HomeStatCard are not in this checkout.
 
 Rule:
 - pages orchestrate route-level behavior and compose shared UI,

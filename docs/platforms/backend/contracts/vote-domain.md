@@ -17,7 +17,7 @@ Out of scope (not shipped):
 - surrogate vote `id` (composite PK kept),
 - vote write requesters / mutations,
 - supervisor Vote GraphQL,
-- cpanel mirrors/UI (`cpanel/` checkout temporarily absent),
+- cpanel mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume this domain,
 - seed rows for votes (demo/fixtures),
 - durable persistence of a **live** cast: the website session writes `decisions[*].votes[memberId]` in the CRDT only (`meeting-live-state.md` §1.2 shipped writers, `../../website/organization-host-routing.md` §5.3) and writes **no** `Vote` row; first empty `live_state` does seed existing SQL votes into the map, and durable casts remain this model.
 
