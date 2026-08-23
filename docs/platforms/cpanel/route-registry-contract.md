@@ -19,9 +19,11 @@ Related runtime: `cpanel/src/app/services/router.ts` (`publicRoutes`, `applyRout
 | `Login` | `/login` | `BASIC` | public (`publicRoutes`) |
 | `Home` | `/` | `BASIC` | registered occupancy only; **not** in `publicRoutes` |
 | `SupervisorHome` | `/supervisor` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
+| `SupervisorCustomers` | `/supervisor/customers` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
+| `SupervisorCustomer` | `/supervisor/customers/:id` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
 | `Error` | `/:error(404\|500\|403)` | `BASIC` | middleware early-return |
 
-`MPagesRoutes` mirrors the same identifies (`Error.error: number`). Layouts shipped: `BasicLayout` (`BASIC`), `SupervisorMainLayout` (`SUPERVISOR_MAIN`). There is no `MAIN`, `LANDING`, or `UiMockup` route.
+`MPagesRoutes` mirrors the same identifies (`SupervisorCustomer.params.id`, `Error.error: number`). Layouts shipped: `BasicLayout` (`BASIC`), `SupervisorMainLayout` (`SUPERVISOR_MAIN`). There is no `MAIN`, `LANDING`, or `UiMockup` route.
 
 `publicRoutes = ["Login"]`. `getMyHomeIdentify` always returns `"SupervisorHome"`.
 
@@ -36,7 +38,7 @@ const supervisorRouter = (path: string) => `/supervisor${path}`;
 | Helper | Use |
 |--------|-----|
 | `supervisorRouter("")` | Supervisor role home → `/supervisor` |
-| `supervisorRouter("/…")` | Later supervisor feature paths |
+| `supervisorRouter("/…")` | Supervisor feature paths (`/customers`, `/customers/:id`, …) |
 
 **Rules:**
 
@@ -82,6 +84,8 @@ SSR boot (`cpanel/src/app/services/index.ts`): `GET /custom/start` → `setRoute
 | `cpanel/src/app/ui/pages/Home.tsx` | Empty occupancy page | §4 |
 | `cpanel/src/app/ui/pages/Login.tsx` | Login (unchanged page class this slice) | `login-runtime-and-feedback.md` |
 | `cpanel/src/app/ui/pages/supervisor/SupervisorHome.tsx` | Authed home page | `flow-supervisor-shell.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorCustomers.tsx` | Customers list | `customer-management.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorCustomer.tsx` | Customer detail | `customer-management.md` |
 | `cpanel/src/app/ui/pages/Error.tsx` | Error CTA → `SupervisorHome` | `error-route-and-guard.md` |
 
 ## Related

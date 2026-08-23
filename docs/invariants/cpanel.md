@@ -269,11 +269,13 @@ Rationale:
 
 ## C18. Customer Stats KPI Invariant
 
-`SupervisorHome` (`/supervisor`) has an empty page body (Helmet title only). Occupancy `Home` (`/`) renders `null`. There is no `HomeStatCard` or `CustomerStatsSection` in the checkout.
+`SupervisorHome` (`/supervisor`) has an empty page body (Helmet title only). Occupancy `Home` (`/`) renders `null`. There is no home KPI grid.
 
-When a later task adds workspace KPIs or a customers-list header stat, those surfaces must bind to root `customerStats.total_count`.
-List pagination window counts must come from `_Customer.total_count` on the `customers` query.
-KPI surfaces must use `customerStats.total_count` only. Do not invent a second stats field.
+The customers **list** header uses shared `Stats` bound to root `customerStats` extras (`total_count`, `created_today_count`) from the same `customers` query (`section`). Do not invent a client-side count from loaded list rows.
+
+List pagination window counts must come from `_Customer.total_count` on the `customers` query (not the header tiles).
+
+Future home or other KPI surfaces must use those same `customerStats` extras only.
 
 ## C19. Supervisor Route Namespace Invariant
 

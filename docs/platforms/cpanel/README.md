@@ -17,7 +17,7 @@ Authoritative notes for the Ejtmaa supervisor control panel under `cpanel/`.
 | [route-registry-contract.md](./route-registry-contract.md) | `supervisorRouter`, `Home` occupancy, `publicRoutes` |
 | [login-runtime-and-feedback.md](./login-runtime-and-feedback.md) | Supervisor login flow |
 | [error-route-and-guard.md](./error-route-and-guard.md) | `Error` route and guard bypass |
-| [customer-management.md](./customer-management.md) | Deferred customer module (backend contract only) |
+| [customer-management.md](./customer-management.md) | Shipped read-only customers list/detail |
 | [../../invariants/cpanel.md](../../invariants/cpanel.md) | Cpanel invariants |
 
 ## Implementation baseline (bootstrap)
@@ -25,16 +25,16 @@ Authoritative notes for the Ejtmaa supervisor control panel under `cpanel/`.
 Checked-in `cpanel/` is a sibling of `website/`, copied from that project and stripped of Website product surface.
 
 - Runtime: SSR web app with `web-core` configuration ownership.
-- Implemented routes: `Login`, `Home` (empty page at `/`), empty `SupervisorHome` (`/supervisor`), `Error`.
+- Implemented routes: `Login`, `Home` (empty page at `/`), empty `SupervisorHome` (`/supervisor`), `SupervisorCustomers` / `SupervisorCustomer` (read-only), `Error`.
 - Layouts: `BASIC` (auth/error), `SUPERVISOR_MAIN` (authed supervisor shell).
 - Actor: `SUPERVISOR` after login; visitor scope for `auth.supervisorLogin`.
 - GQL mirrors: `base` + `supervisor` under `src/types/gql/`.
-- Reads: `GET /cpanel/data_adapters/supervisor/gql` (`SUPERVISOR_ME` for `me`; `SUPERVISOR_GQL` for later lists). Writes: supervisor requester forms (foundation).
+- Reads: `GET /cpanel/data_adapters/supervisor/gql` (`SUPERVISOR_ME` for `me`; `SUPERVISOR_GQL` inherited by mount-private customers adapters). Writes: supervisor requester forms (foundation; customers UI is read-only).
 - Localization: Arabic-only wiring (`locales: ["ar"]`).
 - Package: `ejtmaa-cpanel`. Dev port: `3095`.
 - Quality scripts: `yarn type-check`, `yarn package`, `yarn start`. There is no lint or test script.
 
-Do not treat deferred supervisor modules (customers, account settings, home KPIs) as implemented.
+Do not treat deferred supervisor modules (account settings, home KPIs, customer writes) as implemented. Customers list/detail is shipped — `customer-management.md`.
 
 ## Related
 

@@ -161,7 +161,7 @@ Reference bridges:
 
 Rules:
 
-- `CustomerStatsBridge.loadExtra` serves `total_count`.
+- `CustomerStatsBridge.loadExtra` serves `total_count` and `created_today_count`.
 - `CustomerBridge` owns supervisor list/detail filter mapping.
 - Customer `organization` root-one: `prepareOneGQLModel({ me: true })` when bridge `ident` matches `Customer.hasOne` association key; do not invent `as` / `getRootOrmParent` overrides.
 - Customer `members` / `member(id)`: `{ me: true }` resolves root parent to the customer's Organization (Member belongs to Organization, not Customer); no supervisor Member surface yet.

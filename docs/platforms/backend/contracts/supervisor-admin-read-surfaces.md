@@ -29,7 +29,7 @@ SDL: `backend/src/app/gql/definitions/supervisor.graphql`
 ## Frontend mirror boundary
 
 - Customer GQL mirrors live in `website/` (`base` + `customer`) — active
-- `cpanel/` would consume supervisor GQL for admin reads — **not in this CPanel bootstrap UI**; mirrors exist under `cpanel/src/types/gql/**`
+- `cpanel/` consumes supervisor GQL for `me` and customers list/detail — active; mirrors under `cpanel/src/types/gql/**`
 
 When `cpanel/` returns, sync by command copy from backend SDL/types per `.cursor/rules/gql-schemas-bridges-general.mdc`.
 

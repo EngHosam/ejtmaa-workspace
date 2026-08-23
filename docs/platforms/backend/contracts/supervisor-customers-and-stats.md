@@ -56,10 +56,14 @@ Root query:
 `_CustomerStats` fields:
 
 - `total_count: Int!`
+- `created_today_count: Int!` — customers whose `created_at` is on the current calendar day (`Customer.countOfCreatedToday`, same `TODAY_START` window as other ORM today-counts)
 
-Loaded through `CustomerStatsBridge.loadExtra(...)` from `Customer().count()`.
+Loaded through `CustomerStatsBridge.loadExtra(...)`:
 
-Dashboard KPI cards use `customerStats.total_count`.
+- `total_count` from `Customer().count()`
+- `created_today_count` from `Customer().countOfCreatedToday()`
+
+Dashboard KPI cards use those `customerStats` extras only. Do not invent a third stats source or client-count loaded list rows.
 
 ## 4) Bridge and resolver ownership
 
@@ -68,7 +72,7 @@ Dashboard KPI cards use `customerStats.total_count`.
 - root `many`: listable pagination, search across `name` / `email` / `mobile`, filter narrowing, deterministic sort, secondary order by `id`,
 - root `one`: lookup by `id`.
 
-`CustomerStatsBridge` owns `customerStats.total_count`.
+`CustomerStatsBridge` owns `customerStats.total_count` and `customerStats.created_today_count`.
 
 `SupervisorSchema` registers both bridges and forwards:
 
@@ -84,7 +88,7 @@ Dashboard KPI cards use `customerStats.total_count`.
 |------|------|
 | `backend/src/app/gql/definitions/supervisor.graphql` | SDL source of truth |
 | `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts` | List/detail ORM query construction |
-| `backend/src/app/gql/bridges/supervisor/CustomerStatsBridge.ts` | `total_count` aggregate |
+| `backend/src/app/gql/bridges/supervisor/CustomerStatsBridge.ts` | `total_count` and `created_today_count` aggregates |
 | `backend/src/app/gql/bridges/supervisor/MeBridge.ts` | Supervisor profile |
 | `backend/src/app/gql/bridges/supervisor/OrganizationBridge.ts` | Nested `_Customer.organization` (org list/detail owned by organization-domain) |
 | `backend/src/app/gql/schemas/SupervisorSchema.ts` | Thin resolver wiring |

@@ -14,7 +14,7 @@ Composition order (same as Website customer shell):
 1. `SupervisorDrawer` (`open` / `onClose`) — layout sibling
 2. `SupervisorHeader` (`onMenuClick` toggles drawer)
 3. Optional fixed `SupervisorSubHeader` when `routes[identify]?.breadcrumb` is set
-4. Page content (`minH 100vh` with header / sub-header offset)
+4. Page content (`Col` `minH 100vh` with header / sub-header offset so children can `flx_1`)
 5. `SupervisorFooter`
 
 There is no `MainLayout`, `UiMockup`, or card-style `Header` / `Drawer` / `Footer` in this checkout.
@@ -26,6 +26,8 @@ There is no `MainLayout`, `UiMockup`, or card-style `Header` / `Drawer` / `Foote
 | `Login` | `/login` | `BASIC` |
 | `Home` | `/` | `BASIC` (empty page; occupies `/`) |
 | `SupervisorHome` | `/supervisor` | `SUPERVISOR_MAIN` |
+| `SupervisorCustomers` | `/supervisor/customers` | `SUPERVISOR_MAIN` |
+| `SupervisorCustomer` | `/supervisor/customers/:id` | `SUPERVISOR_MAIN` |
 | `Error` | `/:error(404\|500\|403)` | `BASIC` |
 
 `mustAuthedAs: ["SUPERVISOR"]` paths go through `supervisorRouter` in `routes.ts` (`supervisorRouter("")` → `/supervisor`). `Login`, `Home`, and `Error` stay absolute. `publicRoutes` is `Login` only.
@@ -50,25 +52,27 @@ There is no `MainLayout`, `UiMockup`, or card-style `Header` / `Drawer` / `Foote
 
 ## 4) Drawer
 
-Portaled grid (Website customer drawer DNA). Shipped tile: Home only (`alwaysAvailable`). No invented Customers / Settings tiles. Utility: theme switch (no language switch; Arabic-only) + logout.
+Portaled grid (Website customer drawer DNA). Tiles: Home (`HomeMark` `tone="onPrimary"`, `alwaysAvailable`) then Customers (`FiUser`, `alwaysAvailable`, identify `SupervisorCustomers`). No Settings / org tiles. Utility: theme switch (no language switch; Arabic-only) + logout.
 
 ## 5) Sub-header
 
-`SupervisorSubHeader` + `useBreadcrumbs({ rootIdentify: "SupervisorHome" })`. No breadcrumb routes ship yet; the bar stays ready for later subpages.
+`SupervisorSubHeader` + `useBreadcrumbs({ rootIdentify: "SupervisorHome" })`. Customers list/detail register `breadcrumb` in `routes.ts`, so the bar is visible on those identifies.
 
 ## 6) i18n
 
-`ui.layouts.supervisorMainLayout` and `ui.pages.supervisor.home` in `cpanel/src/resources/translations/ar.ts`. There is no `en.ts` (Arabic-only `locales: ["ar"]`).
+`ui.layouts.supervisorMainLayout` and `ui.pages.supervisor` (`home`, `customers`, `customer`) in `cpanel/src/resources/translations/ar.ts`. There is no `en.ts` (Arabic-only `locales: ["ar"]`).
 
 ## 7) Change-set inventory (cpanel sources)
 
 | Path | Role | Documented |
 |---|---|---|
-| `src/app/ui/layouts/SupervisorMainLayout.tsx` | Authed shell tree | §1 |
+| `src/app/ui/layouts/SupervisorMainLayout.tsx` | Authed shell tree; content `Col` for flex fill | §1 |
 | `src/app/ui/components/supervisor/SupervisorHeader.tsx` | Fixed header | §3 |
-| `src/app/ui/components/supervisor/SupervisorDrawer.tsx` | Portaled drawer | §4 |
+| `src/app/ui/components/supervisor/SupervisorDrawer.tsx` | Portaled drawer (Home + Customers) | §4 |
 | `src/app/ui/components/supervisor/SupervisorFooter.tsx` | Footer + MicrobandCredit | §1 |
-| `src/app/ui/components/supervisor/SupervisorSubHeader.tsx` | Breadcrumb bar (ready; no shipped breadcrumb routes) | §5 |
+| `src/app/ui/components/supervisor/SupervisorSubHeader.tsx` | Breadcrumb bar | §5 |
+| `src/app/ui/pages/supervisor/SupervisorCustomers.tsx` | Customers list page | `customer-management.md` |
+| `src/app/ui/pages/supervisor/SupervisorCustomer.tsx` | Customer detail page | `customer-management.md` |
 | `src/app/ui/components/supervisor/home/SupervisorHomeScreen.tsx` | Helmet title only | §2 |
 | `src/app/ui/components/supervisor/hooks/useMe.tsx` | GQL `me` adapter hook | §3.1 |
 | `src/app/ui/components/supervisor/graphql.config.yml` | Editor schema `base` + `supervisor` | `graphql-mirror-and-tooling.md` |
@@ -83,7 +87,7 @@ Portaled grid (Website customer drawer DNA). Shipped tile: Home only (`alwaysAva
 | `src/types/extends/global.ts` | `Layout = "BASIC" \| "SUPERVISOR_MAIN"` | this platform |
 | `src/resources/configs/routes.ts` | Registry | `route-registry-contract.md` |
 | `src/resources/configs/store/data-adapters.ts` | `SUPERVISOR_ME` | §3.1 |
-| `src/resources/translations/ar.ts` | Shell + home + login copy | §6 |
+| `src/resources/translations/ar.ts` | Shell + home + customers + login copy | §6 |
 | `src/app/services/auth.ts` | `loadCurrentSupervisor` | §3.1 |
 | `src/app/services/index.ts` | Boot hydrate `me` | §3.1 |
 | `src/app/services/router.ts` | Guards | `route-registry-contract.md` |
@@ -94,4 +98,5 @@ Generated `cpanel/lib/tsconfig.tsbuildinfo` is a `tsc` artifact, not a product c
 ## Related
 
 - `docs/platforms/cpanel/route-registry-contract.md`
+- `docs/platforms/cpanel/customer-management.md`
 - `docs/platforms/cpanel/overview.md`

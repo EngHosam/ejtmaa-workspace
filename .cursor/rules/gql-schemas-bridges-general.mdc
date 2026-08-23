@@ -60,7 +60,7 @@ Reference bridges:
 
 Rules:
 
-- `CustomerStatsBridge.loadExtra` serves `total_count` on root `customerStats`.
+- `CustomerStatsBridge.loadExtra` serves `total_count` and `created_today_count` on root `customerStats`.
 - `CustomerBridge` owns list/detail filter mapping for supervisor customer reads.
 - Role bridge bases: `CustomerBridgeBase`, `SupervisorBridgeBase`.
 - Keep resolvers thin; ORM query policy lives in bridges.

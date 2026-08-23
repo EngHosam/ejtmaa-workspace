@@ -211,11 +211,12 @@ That means:
 **Shipped in the frontend:**
 
 - supervisor profile (`me { id name email }`) via `DATA_ADAPTERS.SUPERVISOR_ME` (`useMe` / `LoadCurrentSupervisor`)
+- customer list (`customers` + `customerStats`) via mount-private `"supervisor-customers"` inheriting `DATA_ADAPTERS.SUPERVISOR_GQL`
+- customer detail (`customer(id)`) via `useShallowAdapter` inheriting `DATA_ADAPTERS.SUPERVISOR_GQL` (generated identify)
 
 **Mirrored SDL only (no CPanel UI adapters yet):**
 
-- customer list and detail (`customers`, `customer`)
-- home stat KPI (`customerStats.total_count`)
+- organizations (`organizations`, `organization`)
 - notifications (`notifications`)
 
 Mirrored SDL and types live under `cpanel/src/types/gql/**` (`base` + `supervisor`).
@@ -278,9 +279,10 @@ Route-level evidence:
 - `Login` — form/requester boundary for supervisor login (`sub: "supervisorLogin"`),
 - `Home` — empty `MyPage` at `/` so the mount root is not unmatched,
 - `SupervisorHome` — `SUPERVISOR_MAIN` at `/supervisor` with an empty page body,
+- `SupervisorCustomers` / `SupervisorCustomer` — read-only GQL directory (`customer-management.md`),
 - `Error` — route-owned presentational fallback.
 
-Customers, Customer, HomeStatCard, and AccountSettings are not present in this checkout.
+AccountSettings is not present in this checkout.
 
 ## 10) Shared usability expectations from `website/`
 
@@ -294,7 +296,7 @@ Although cpanel is a web platform, the same interaction quality should be preser
 - route-owned screens do not mutate unseen shared state accidentally,
 - one mutation refreshes only the affected read boundaries.
 
-These expectations apply to future supervisor routes (paginated tables, optional home stats bound to `customerStats.total_count`, settings forms). They do not imply those screens exist today.
+These expectations apply to supervisor routes (ResultLane directories, optional stats bound to `customerStats` extras, settings forms). Home still has no KPI grid.
 
 ## 12) Final rule
 

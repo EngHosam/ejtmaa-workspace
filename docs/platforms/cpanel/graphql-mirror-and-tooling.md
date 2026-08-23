@@ -2,7 +2,7 @@
 
 ## Current workspace status
 
-`cpanel/` is present in the workspace. Supervisor SDL is mirrored under `cpanel/src/types/gql/**`. Backend supervisor SDL remains the source of truth; refresh mirrors by command copy, not by hand-editing copied files. The bootstrap frontend does not yet run customer-list GQL operations.
+`cpanel/` is present in the workspace. Supervisor SDL is mirrored under `cpanel/src/types/gql/**`. Backend supervisor SDL remains the source of truth; refresh mirrors by command copy, not by hand-editing copied files. Shipped UI operations: `me`, list `customers` + `customerStats`, detail `customer(id)` (embedded in hooks).
 
 ## Purpose
 
@@ -85,9 +85,9 @@ This keeps cpanel aligned with the existing workspace GraphQL mirror discipline 
 
 ## 5) Supervisor GQL operations in cpanel
 
-SDL and generated types for `me`, `customers`, `customer`, and `customerStats` are mirrored. The shipped frontend loads `me { id name email }` through `DATA_ADAPTERS.SUPERVISOR_ME` (`cpanel/src/app/ui/components/supervisor/hooks/useMe.tsx`).
+SDL and generated types for `me`, `customers`, `customer`, and `customerStats` (`total_count`, `created_today_count`) are mirrored. The shipped frontend loads `me { id name email }` through `DATA_ADAPTERS.SUPERVISOR_ME`. Customers list/detail inherit `DATA_ADAPTERS.SUPERVISOR_GQL` from hooks under `components/supervisor/customers/` — see `customer-management.md`.
 
-There are still **no** `customers.graphql` UI operations, `HomeStatCard`, or customer list adapters.
+There is no home `HomeStatCard`. Operations are embedded `#graphql` strings, not `customers.graphql` files.
 
 Mirror SDL and gql-types under `cpanel/src/types/gql/` stay command-synced from backend; UI subtrees host local `graphql.config.yml` helpers only.
 
@@ -113,12 +113,15 @@ No new verification tooling was introduced.
 | `cpanel/src/app/ui/pages/supervisor/graphql.config.yml` | Local helper scoped to supervisor pages (`base` + `supervisor`) | §3 |
 | `cpanel/src/app/ui/components/supervisor/graphql.config.yml` | Local helper scoped to supervisor components (`base` + `supervisor`) | §3 |
 | `cpanel/src/app/ui/components/supervisor/hooks/useMe.tsx` | Shipped `me` core query + `LoadCurrentSupervisor` | §5 |
+| `cpanel/src/app/ui/components/supervisor/customers/useSupervisorCustomers.ts` | List `customers` + `customerStats` | §5; `customer-management.md` |
+| `cpanel/src/app/ui/components/supervisor/customers/useSupervisorCustomer.ts` | Detail `customer(id)` | §5; `customer-management.md` |
 | `cpanel/src/resources/configs/store/data-adapters.ts` | `SUPERVISOR_ME` + `SUPERVISOR_GQL` → `API.DATA_ADAPTERS.SUPERVISOR.GQL` | §5 |
 | `cpanel/lib/tsconfig.tsbuildinfo` | Type-check verification artifact | §6 |
 
 ## Related
 
 - `docs/platforms/cpanel/overview.md`
+- `docs/platforms/cpanel/customer-management.md`
 - `docs/platforms/cpanel/repository-inventory.md`
 - `docs/platforms/cpanel/component-structure.md`
 - `docs/platforms/cpanel/data-flow-and-gql.md`

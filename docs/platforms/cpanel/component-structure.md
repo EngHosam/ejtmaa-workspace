@@ -179,14 +179,16 @@ Examples:
 | `components/Toast.tsx` | Shared cpanel toast rendering surface. |
 | `components/auth/*` | Shared auth-page product UI (`AuthPageShell`, `AuthTextField`) built on the shared form primitives. `AuthPageShell` owns the split brand panel + form card (Website DNA), not a generic admin max-width card. |
 | `components/ThemeModeSwitch.tsx` | Shared theme-mode toggle for shell/layout review and future reuse. |
-| `components/supervisor/*` | Supervisor workspace chrome (`SupervisorHeader`, `SupervisorDrawer`, `SupervisorFooter`, `SupervisorSubHeader`, empty home screen, `hooks/useMe`). |
+| `components/Stats.tsx` | Shared multi-item KPI grid (`customerStats` extras on the customers list). |
+| `components/PageStateLane.tsx` | Detail overlay host (`Loadable` / `Empty` / `LaneFailed`) with content padding + flex fill. |
+| `components/supervisor/*` | Supervisor workspace chrome (`SupervisorHeader`, `SupervisorDrawer`, `SupervisorFooter`, `SupervisorSubHeader`, home screen, `hooks/useMe`, `customers/*`). |
 | `components/Logo.tsx` | Shared light/dark logo switcher for shell branding surfaces. |
 | `components/StatusBadge.tsx` | Shared reusable compact state badge for status-like labels across modules. |
 | `components/DataTable.tsx` | Shared product table surface with toolbar/pagination review contract. |
 | `components/form/*` | Shared project form primitives (`FormInputWrapper`, `FormTextField`, `FormActionButton`). |
 | `components/IdentityAvatar.tsx` | Remapped reusable identity avatar (originally under Website `components/customer/`). |
 
-There is no `components/customer/*` or `components/home/*` in this bootstrap.
+There is no `components/customer/*` or home KPI folder. Customers product UI is `components/supervisor/customers/`.
 
 Rule:
 - if a component is part of the **project UI language** rather than framework plumbing, it belongs here,
@@ -216,9 +218,10 @@ Supervisor pages:
 - `Login` — requester-backed shallow form and shared auth components.
 - `Home` — empty `MyPage` at `/` so the mount root is not unmatched.
 - `SupervisorHome` — `SUPERVISOR_MAIN` at `/supervisor` with an empty home screen.
+- `SupervisorCustomers` / `SupervisorCustomer` — thin pages; screens under `components/supervisor/customers/`.
 - `Error` — branded fallback page.
 
-Customers, Customer, AccountSettings, and HomeStatCard are not in this checkout.
+AccountSettings and HomeStatCard are not in this checkout.
 
 Rule:
 - pages orchestrate route-level behavior and compose shared UI,

@@ -71,7 +71,7 @@ Do not collapse these layers back into page-local or bootstrap-local code.
 - Treat forms/requesters as the reserved write boundary.
 - Use `useShallowAdapter` / `useShallowForm` for route-scoped state with deterministic identities.
 - Add shared `DATA_ADAPTERS` or `Forms` identifiers only for real shared boundaries.
-- Treat GQL as the reserved read architecture. Shipped: `DATA_ADAPTERS.SUPERVISOR_ME` for `Query.me`. List/detail modules use `DATA_ADAPTERS.SUPERVISOR_GQL`. Both use `API.DATA_ADAPTERS.SUPERVISOR.GQL`.
+- Treat GQL as the reserved read architecture. Shipped: `DATA_ADAPTERS.SUPERVISOR_ME` for `Query.me`. Customers list/detail inherit `DATA_ADAPTERS.SUPERVISOR_GQL` (mount-private slots). Both use `API.DATA_ADAPTERS.SUPERVISOR.GQL`. Repeat list/detail: `.cursor/skills/cpanel-supervisor-read-directory/SKILL.md`.
 
 ### Review Checklist
 

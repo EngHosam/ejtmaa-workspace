@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Inventory of project-owned paths under `cpanel/` for the current supervisor bootstrap.
+Inventory of project-owned paths under `cpanel/` for the current supervisor checkout (bootstrap + read-only customers).
 
 This is the live checkout inventory, not a future product catalog.
 
@@ -41,8 +41,10 @@ This is the live checkout inventory, not a future product catalog.
 |---|---|
 | `src/app/ui/layouts/BasicLayout.tsx` | Auth/error wrapper |
 | `src/app/ui/layouts/SupervisorMainLayout.tsx` | Authed supervisor shell |
-| `src/app/ui/components/supervisor/*` | Header, drawer, footer, sub-header, empty home screen, `hooks/useMe` |
-| `src/app/ui/components/DataTable.tsx` | List table primitive (reusable; unused by current pages) |
+| `src/app/ui/components/supervisor/*` | Header, drawer, footer, sub-header, home screen, `hooks/useMe`, `customers/*` |
+| `src/app/ui/components/Stats.tsx` | Shared KPI tile grid |
+| `src/app/ui/components/PageStateLane.tsx` | Detail load / empty / fail host |
+| `src/app/ui/components/DataTable.tsx` | List table primitive (reusable; unused by customers — ResultLane) |
 | `src/app/ui/components/IdentityAvatar.tsx` | Remapped reusable avatar (from Website `components/customer/`) |
 | `src/app/ui/components/auth/*` | Login shell DNA |
 | `src/app/ui/components/form/*` | Form field DNA |
@@ -56,9 +58,11 @@ This is the live checkout inventory, not a future product catalog.
 | `src/app/ui/pages/Login.tsx` | `/login` |
 | `src/app/ui/pages/Home.tsx` | `/` (empty `MyPage`) |
 | `src/app/ui/pages/supervisor/SupervisorHome.tsx` | `/supervisor` (empty home screen) |
+| `src/app/ui/pages/supervisor/SupervisorCustomers.tsx` | `/supervisor/customers` |
+| `src/app/ui/pages/supervisor/SupervisorCustomer.tsx` | `/supervisor/customers/:id` |
 | `src/app/ui/pages/Error.tsx` | `/:error(404\|500\|403)` |
 
-There are no `Customers.tsx`, `Customer.tsx`, `AccountSettings.tsx`, or `home/` KPI components in this checkout.
+There is no `AccountSettings.tsx` or home KPI component. Customers UI lives under `components/supervisor/customers/`.
 
 ## Types and GQL mirrors
 
