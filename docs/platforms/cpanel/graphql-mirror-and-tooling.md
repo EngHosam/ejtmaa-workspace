@@ -56,15 +56,18 @@ The root cpanel schema project remains declared in:
 
 - `cpanel/graphql.config.yml`
 
-Local subtree helper configs exist in the two approved GraphQL-owning UI subtrees:
+Local subtree helper configs (Website layering: generic UI folders see `base` only; the supervisor actor folders see `base` + `supervisor`):
 
-- `cpanel/src/app/ui/pages/graphql.config.yml`
-- `cpanel/src/app/ui/components/graphql.config.yml`
+- `cpanel/src/app/ui/pages/graphql.config.yml` — `base.graphql` only
+- `cpanel/src/app/ui/components/graphql.config.yml` — `base.graphql` only
+- `cpanel/src/app/ui/pages/supervisor/graphql.config.yml` — `base` + `supervisor`
+- `cpanel/src/app/ui/components/supervisor/graphql.config.yml` — `base` + `supervisor`
 
 Role of those helper files:
 
 - scope editor/tooling schema awareness to the local subtree,
-- point UI-facing GraphQL work at the mirrored `base` + `supervisor` schema pair,
+- keep generic `pages/` / `components/` on the shared `base` mirror,
+- point supervisor-folder GraphQL work at the mirrored `base` + `supervisor` schema pair,
 - and avoid scattering helper configs across unrelated UI folders.
 
 They do **not** declare independent schemas and they do **not** replace the central mirror under `src/types/gql/`.
@@ -82,9 +85,9 @@ This keeps cpanel aligned with the existing workspace GraphQL mirror discipline 
 
 ## 5) Supervisor GQL operations in cpanel
 
-SDL and generated types for `customers`, `customer`, and `customerStats` are mirrored so a later module can consume them.
+SDL and generated types for `me`, `customers`, `customer`, and `customerStats` are mirrored. The shipped frontend loads `me { id name email }` through `DATA_ADAPTERS.SUPERVISOR_ME` (`cpanel/src/app/ui/components/supervisor/hooks/useMe.tsx`).
 
-The bootstrap frontend has **no** `customers.graphql` UI operations, `HomeStatCard`, or customer list adapters.
+There are still **no** `customers.graphql` UI operations, `HomeStatCard`, or customer list adapters.
 
 Mirror SDL and gql-types under `cpanel/src/types/gql/` stay command-synced from backend; UI subtrees host local `graphql.config.yml` helpers only.
 
@@ -105,8 +108,12 @@ No new verification tooling was introduced.
 | `cpanel/src/types/gql/definitions/supervisor.graphql` | Copied SDL mirror from backend | §2.1 |
 | `cpanel/src/types/gql/gql-types/base.ts` | Copied/generated type mirror from backend | §2.2 |
 | `cpanel/src/types/gql/gql-types/supervisor.ts` | Copied/generated type mirror from backend | §2.2 |
-| `cpanel/src/app/ui/pages/graphql.config.yml` | Local GraphQL tooling helper scoped to `pages/` | §3 |
-| `cpanel/src/app/ui/components/graphql.config.yml` | Local GraphQL tooling helper scoped to `components/` | §3 |
+| `cpanel/src/app/ui/pages/graphql.config.yml` | Local helper scoped to `pages/` (`base` only) | §3 |
+| `cpanel/src/app/ui/components/graphql.config.yml` | Local helper scoped to `components/` (`base` only) | §3 |
+| `cpanel/src/app/ui/pages/supervisor/graphql.config.yml` | Local helper scoped to supervisor pages (`base` + `supervisor`) | §3 |
+| `cpanel/src/app/ui/components/supervisor/graphql.config.yml` | Local helper scoped to supervisor components (`base` + `supervisor`) | §3 |
+| `cpanel/src/app/ui/components/supervisor/hooks/useMe.tsx` | Shipped `me` core query + `LoadCurrentSupervisor` | §5 |
+| `cpanel/src/resources/configs/store/data-adapters.ts` | `SUPERVISOR_ME` + `SUPERVISOR_GQL` → `API.DATA_ADAPTERS.SUPERVISOR.GQL` | §5 |
 | `cpanel/lib/tsconfig.tsbuildinfo` | Type-check verification artifact | §6 |
 
 ## Related

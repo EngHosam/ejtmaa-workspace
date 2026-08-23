@@ -31,7 +31,9 @@ Read these before making or reviewing cpanel changes:
 4. `docs/platforms/cpanel/ui-foundation.md`
 5. `docs/platforms/cpanel/data-flow-and-gql.md`
 6. `docs/invariants/cpanel.md`
-7. `.cursor/rules/cpanel-platform-governance.mdc`
+7. `docs/platforms/cpanel/flow-supervisor-shell.md`
+8. `docs/platforms/cpanel/route-registry-contract.md`
+9. `.cursor/rules/cpanel-platform-governance.mdc`
 
 ### Core Working Rules
 
@@ -60,7 +62,7 @@ Do not collapse these layers back into page-local or bootstrap-local code.
 - Extend shared tokens through `src/resources/configs/theme.ts` and `src/resources/configs/utils.ts`.
 - Prefer existing `Utils` props for visual/layout behavior before reaching for `baseCssStyle` or `cssStyle`; treat raw style escapes as the fallback only when the primitive API does not already cover the need.
 - Keep product/business reusable UI out of `ui/base/`; place it in `ui/components/`.
-- For `MainLayout` responsive shell work, keep one shared shell tree and let CSS/media queries own desktop-vs-mobile presentation; reserve React state for interactive shell state like drawer open/close, not layout-wide viewport branching.
+- For `SupervisorMainLayout`, keep one shared shell tree and let CSS/media queries own desktop-vs-mobile presentation; reserve React state for interactive shell state like drawer open/close, not layout-wide viewport branching.
 - Reuse `website/` lessons at the architectural/usability level. Use the SSR web bootstrap (`MyPage` + `web-core`).
 
 ### Data Rules
@@ -69,7 +71,7 @@ Do not collapse these layers back into page-local or bootstrap-local code.
 - Treat forms/requesters as the reserved write boundary.
 - Use `useShallowAdapter` / `useShallowForm` for route-scoped state with deterministic identities.
 - Add shared `DATA_ADAPTERS` or `Forms` identifiers only for real shared boundaries.
-- Treat GQL as the reserved future read architecture when backend-backed reads are implemented.
+- Treat GQL as the reserved read architecture. Shipped: `DATA_ADAPTERS.SUPERVISOR_ME` for `Query.me`. List/detail modules use `DATA_ADAPTERS.SUPERVISOR_GQL`. Both use `API.DATA_ADAPTERS.SUPERVISOR.GQL`.
 
 ### Review Checklist
 

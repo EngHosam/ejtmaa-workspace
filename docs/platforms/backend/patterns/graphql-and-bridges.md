@@ -175,7 +175,7 @@ Data adapter controllers execute arbitrary GraphQL query strings via query param
 
 Files:
 - Website: `backend/src/app/http/controllers/website/data_adapters/GQLAdapterController.ts`
-- Cpanel: `backend/src/app/http/controllers/cpanel/data_adapters/GQLAdapterController.ts`
+- Cpanel: `backend/src/app/http/controllers/cpanel/data_adapters/supervisor/GQLAdapterController.ts`
 
 ## 11) Codegen and Type Contracts
 

@@ -8,7 +8,7 @@ Ejtmaa brand tokens are defined in `website/src/resources/configs/theme.ts`:
 - navy: `#0B2057`
 - orange: `#EC6901`
 
-When `cpanel/src/resources/configs/theme.ts` is absent from the checkout, treat `website/src/resources/configs/theme.ts` as the reference for brand colors and semantic paths.
+When `cpanel/src/resources/configs/theme.ts` is present (it is in this checkout), it is the cpanel token map. Treat `website/src/resources/configs/theme.ts` as the sibling brand reference when comparing DNA, not as a runtime import.
 
 ## UI primitives
 
@@ -28,7 +28,7 @@ Use `theme.ts` tokens — do not hardcode hex when a semantic path exists.
 
 ## Supervisor context
 
-Cpanel serves the Supervisor actor on `/cpanel`. Theme usage follows the same token map. Current layout is the MAIN admin shell plus login/error BASIC pages. Customer-management screens are not part of this bootstrap.
+Cpanel serves the Supervisor actor on `/cpanel`. Theme usage follows the same token map. Current layouts are `SUPERVISOR_MAIN` (authed workspace) plus `BASIC` for `Login`, occupancy `Home`, and `Error`. Customer-management screens are not part of this bootstrap.
 
 ## Related
 

@@ -1,0 +1,34 @@
+---
+description: Govern Ejtmaa cpanel route registry — supervisorRouter, Home occupancy, publicRoutes Login only
+globs:
+  - cpanel/src/resources/configs/routes.ts
+  - cpanel/src/app/services/router.ts
+  - docs/platforms/cpanel/route-registry-contract.md
+alwaysApply: false
+---
+
+# CPanel Route Registry Governance
+
+Applies when adding, reordering, or changing paths in `cpanel/src/resources/configs/routes.ts`, `MPagesRoutes` in the same file, or `publicRoutes` in `cpanel/src/app/services/router.ts`.
+
+Authority: `docs/platforms/cpanel/route-registry-contract.md`.
+
+## Hard rules
+
+### Path helper
+- Declare `supervisorRouter` at the top of `routes.ts`; do not duplicate `/supervisor` string literals on workspace routes.
+- `mustAuthedAs: ["SUPERVISOR"]` paths → `supervisorRouter("/…")` (`""` → `/supervisor`).
+- `Login`, `Home`, and `Error` → absolute paths, no helper.
+
+### `Home` vs `publicRoutes`
+- Keep `Home` at `/` as an empty `MyPage` so the mount root is matched.
+- Do **not** put `Home` in `publicRoutes`. Only `Login` is public.
+- Do **not** reuse the Login page as `Home.preLoadedPage`.
+
+### Section blocks
+- `routes` and `MPagesRoutes`: **public → supervisor → base**; `Error` last.
+- Fixed `/supervisor/...` before parametric `/supervisor/:id`.
+
+### Docs
+- Update `docs/platforms/cpanel/route-registry-contract.md` when paths, `publicRoutes`, or home identify change.
+- Update `flow-supervisor-shell.md` path table in the same task.

@@ -9,7 +9,7 @@ Scope:
 - control panel bootstrap differs from `website/`,
 - data/form organization follows the same adapter, form, injector, and store concepts.
 
-Shared shell UI (`MainLayout`, `Drawer`, `Footer`, `UiMockup`, translations, shell assets) lives in the layout/component layer and does not change the read/write ownership model here.
+Shared shell UI (`SupervisorMainLayout`, supervisor header/drawer/footer, translations, shell assets) lives in the layout/component layer and does not change the read/write ownership model here.
 
 ## 1) Shared mental model
 
@@ -19,7 +19,7 @@ The cpanel repository includes:
 - adapter hooks,
 - form hooks,
 - shallow injector hooks,
-- frontend endpoint mapping for `/cpanel/data_adapters/gql`,
+- frontend endpoint mapping for `/cpanel/data_adapters/supervisor/gql`,
 - frontend endpoint mapping for `/cpanel/forms/requester/:requester/:sub`.
 
 That means the intended architecture is already visible:
@@ -188,11 +188,12 @@ When a boundary is route-scoped, prefer deterministic `useShallowAdapter` / `use
 ## 7) GQL is the intended read contract
 
 Evidence:
-- `cpanel/src/resources/configs/axios/api.ts` exposes `/data_adapters/gql`
+- `cpanel/src/resources/configs/axios/api.ts` exposes `API.DATA_ADAPTERS.SUPERVISOR.GQL` (`/data_adapters/supervisor/gql`)
 - `cpanel/graphql.config.yml` already reserves base + supervisor schema inputs
 - `cpanel/src/types/gql/definitions/{base,supervisor}.graphql` — local SDL mirror
 - `cpanel/src/types/gql/gql-types/{base,supervisor}.ts` — local generated type mirror
-- `cpanel/src/app/ui/pages/graphql.config.yml` and `cpanel/src/app/ui/components/graphql.config.yml` scope local UI tooling to the mirrored schema pair
+- `cpanel/src/app/ui/pages/graphql.config.yml` and `cpanel/src/app/ui/components/graphql.config.yml` scope generic UI tooling to `base.graphql` only
+- `cpanel/src/app/ui/pages/supervisor/graphql.config.yml` and `cpanel/src/app/ui/components/supervisor/graphql.config.yml` scope supervisor-folder tooling to `base` + `supervisor`
 - the repo already depends on `graphql` and `gql`
 
 ### Rule
@@ -207,16 +208,19 @@ That means:
 
 ### GQL read surfaces
 
-Supervisor GQL-backed read flows in cpanel:
+**Shipped in the frontend:**
+
+- supervisor profile (`me { id name email }`) via `DATA_ADAPTERS.SUPERVISOR_ME` (`useMe` / `LoadCurrentSupervisor`)
+
+**Mirrored SDL only (no CPanel UI adapters yet):**
 
 - customer list and detail (`customers`, `customer`)
 - home stat KPI (`customerStats.total_count`)
 - notifications (`notifications`)
-- supervisor profile (`me`)
 
 Mirrored SDL and types live under `cpanel/src/types/gql/**` (`base` + `supervisor`).
 
-Reads use `DATA_ADAPTERS.GQL`. Writes use supervisor requester forms (`auth`, `supervisor`, `customer`, `website_settings`, `platform_settings`).
+Reads use `DATA_ADAPTERS.SUPERVISOR_GQL` for list/detail modules and `DATA_ADAPTERS.SUPERVISOR_ME` for the current supervisor (`me { id name email }`). Both hit `API.DATA_ADAPTERS.SUPERVISOR.GQL`. Writes use supervisor requester forms (`auth`, `supervisor`, `customer`, `website_settings`, `platform_settings`).
 
 ### Mirror/tooling discipline
 
@@ -272,8 +276,8 @@ This mirrors the strongest lesson from `website/`:
 Route-level evidence:
 
 - `Login` — form/requester boundary for supervisor login (`sub: "supervisorLogin"`),
-- `Home` — MAIN shell with an empty page body,
-- `UiMockup` — shared-component review route,
+- `Home` — empty `MyPage` at `/` so the mount root is not unmatched,
+- `SupervisorHome` — `SUPERVISOR_MAIN` at `/supervisor` with an empty page body,
 - `Error` — route-owned presentational fallback.
 
 Customers, Customer, HomeStatCard, and AccountSettings are not present in this checkout.

@@ -14,6 +14,7 @@ This is the live checkout inventory, not a future product catalog.
 | `src/server/index.ts`, `src/server/worker.ts` | SSR bootstrap |
 | `src/resources/configs/web-core.ts` | Runtime configuration authority |
 | `src/resources/configs/routes.ts` | Route registry |
+| `src/resources/configs/store/data-adapters.ts` | `SUPERVISOR_ME` + `SUPERVISOR_GQL` |
 | `src/resources/configs/urls.ts` | `ME_URL` / `BASE_URL` / `SOCKET_URL` (port 3095, mount `/cpanel`) |
 
 ## Services
@@ -21,7 +22,7 @@ This is the live checkout inventory, not a future product catalog.
 | Path | Role |
 |---|---|
 | `src/app/services/index.ts` | Server/client boot phases |
-| `src/app/services/auth.ts` | `SUPERVISOR` auth helpers |
+| `src/app/services/auth.ts` | `SUPERVISOR` auth helpers + `loadCurrentSupervisor` |
 | `src/app/services/router.ts` | Route guards and redirects |
 
 ## UI foundation
@@ -30,7 +31,7 @@ This is the live checkout inventory, not a future product catalog.
 |---|---|
 | `src/app/ui/base/components/Utils.tsx` | Layout/styling primitives |
 | `src/resources/configs/theme.ts` | Brand tokens |
-| `src/app/ui/base/core/MyApp.tsx` | Layout resolution (`BASIC` / `MAIN`) |
+| `src/app/ui/base/core/MyApp.tsx` | Layout resolution (`BASIC` / `SUPERVISOR_MAIN`) |
 | `src/app/ui/base/core/MyHtml.tsx` | Document shell |
 | `src/app/ui/base/core/MyPage.tsx` | Route lifecycle |
 
@@ -39,12 +40,9 @@ This is the live checkout inventory, not a future product catalog.
 | Path | Role |
 |---|---|
 | `src/app/ui/layouts/BasicLayout.tsx` | Auth/error wrapper |
-| `src/app/ui/layouts/MainLayout.tsx` | Authed shell (header, drawer, footer) |
-| `src/app/ui/layouts/main-layout/drawer.ts` | Drawer sections: dashboard + logout |
-| `src/app/ui/components/Header.tsx` | Shell header |
-| `src/app/ui/components/Drawer.tsx` | Navigation drawer |
-| `src/app/ui/components/Footer.tsx` | Shell footer |
-| `src/app/ui/components/DataTable.tsx` | List table primitive (reusable; unused by current pages except UiMockup) |
+| `src/app/ui/layouts/SupervisorMainLayout.tsx` | Authed supervisor shell |
+| `src/app/ui/components/supervisor/*` | Header, drawer, footer, sub-header, empty home screen, `hooks/useMe` |
+| `src/app/ui/components/DataTable.tsx` | List table primitive (reusable; unused by current pages) |
 | `src/app/ui/components/IdentityAvatar.tsx` | Remapped reusable avatar (from Website `components/customer/`) |
 | `src/app/ui/components/auth/*` | Login shell DNA |
 | `src/app/ui/components/form/*` | Form field DNA |
@@ -56,8 +54,8 @@ This is the live checkout inventory, not a future product catalog.
 | Path | Route |
 |---|---|
 | `src/app/ui/pages/Login.tsx` | `/login` |
-| `src/app/ui/pages/Home.tsx` | `/` (empty `Main()`) |
-| `src/app/ui/pages/UiMockup.tsx` | `/ui-mockup` |
+| `src/app/ui/pages/Home.tsx` | `/` (empty `MyPage`) |
+| `src/app/ui/pages/supervisor/SupervisorHome.tsx` | `/supervisor` (empty home screen) |
 | `src/app/ui/pages/Error.tsx` | `/:error(404\|500\|403)` |
 
 There are no `Customers.tsx`, `Customer.tsx`, `AccountSettings.tsx`, or `home/` KPI components in this checkout.

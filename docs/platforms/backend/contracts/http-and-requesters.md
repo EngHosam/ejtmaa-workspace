@@ -32,7 +32,7 @@ Website controllers:
 
 Cpanel controllers:
 - `backend/src/app/http/controllers/cpanel/forms/SupervisorRequesterController.ts` — visitor login and supervisor writes
-- `backend/src/app/http/controllers/cpanel/data_adapters/GQLAdapterController.ts` — supervisor GQL reads
+- `backend/src/app/http/controllers/cpanel/data_adapters/supervisor/GQLAdapterController.ts` — supervisor GQL reads (`GET /cpanel/data_adapters/supervisor/gql`)
 
 ## Active requesters (7)
 

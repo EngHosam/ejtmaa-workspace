@@ -65,7 +65,7 @@ Rule:
 ### 2.2 `src/resources/translations/`
 
 This folder owns user-facing copy and translation dictionaries.
-Arabic is the active locale; this remains the ownership boundary for additional locales.
+The shipped dictionary is `ar.ts` only. Arabic is the active locale; this remains the ownership boundary if additional locales are added later.
 
 Rule:
 - visible copy belongs here,
@@ -179,7 +179,7 @@ Examples:
 | `components/Toast.tsx` | Shared cpanel toast rendering surface. |
 | `components/auth/*` | Shared auth-page product UI (`AuthPageShell`, `AuthTextField`) built on the shared form primitives. `AuthPageShell` owns the split brand panel + form card (Website DNA), not a generic admin max-width card. |
 | `components/ThemeModeSwitch.tsx` | Shared theme-mode toggle for shell/layout review and future reuse. |
-| `components/Header.tsx` / `Drawer.tsx` / `Footer.tsx` | Shared shell composition components that belong to product UI, not `base/`. |
+| `components/supervisor/*` | Supervisor workspace chrome (`SupervisorHeader`, `SupervisorDrawer`, `SupervisorFooter`, `SupervisorSubHeader`, empty home screen, `hooks/useMe`). |
 | `components/Logo.tsx` | Shared light/dark logo switcher for shell branding surfaces. |
 | `components/StatusBadge.tsx` | Shared reusable compact state badge for status-like labels across modules. |
 | `components/DataTable.tsx` | Shared product table surface with toolbar/pagination review contract. |
@@ -193,7 +193,7 @@ Rule:
 - this is where future admin widgets, tables, empty states, page headers, shell controls, cards, and reusable module sections should live,
 - do not put those directly into `base/`.
 - do not fragment one module into file-per-private-helper when the helper is only used inside one section; prefer section-level extraction and keep strictly local helpers inline in the owning file.
-- local `graphql.config.yml` is allowed here only when `components/` contains GraphQL-aware UI/hooks and must point at the mirrored cpanel schema under `src/types/gql/`.
+- local `graphql.config.yml` is allowed here only when `components/` contains GraphQL-aware UI/hooks. Generic `components/graphql.config.yml` points at `base.graphql` only; `components/supervisor/graphql.config.yml` points at mirrored `base` + `supervisor` under `src/types/gql/`.
 
 ### 4.3 `src/app/ui/layouts/` ? shell layouts
 
@@ -201,8 +201,7 @@ Layouts define page shells and section-level outer composition.
 
 State:
 - `BasicLayout.tsx` exists as the minimal auth/error-like wrapper.
-- `MainLayout.tsx` ? shared shell/page layout that composes `Header`, `Drawer`, and `Footer`.
-- `layouts/main-layout/drawer.ts` ? layout-owned helper module for the `MAIN` shell navigation structure.
+- `SupervisorMainLayout.tsx` — authed supervisor shell (Website `CustomerMainLayout` DNA): header, drawer, footer, optional sub-header.
 
 Rule:
 - route pages render inside layouts selected by `MyApp`,
@@ -215,8 +214,8 @@ Rule:
 `pages/` owns page entry components bound directly to route identifiers.
 Supervisor pages:
 - `Login` — requester-backed shallow form and shared auth components.
-- `Home` — MAIN shell with an empty body.
-- `UiMockup` — visual review page on the real layout.
+- `Home` — empty `MyPage` at `/` so the mount root is not unmatched.
+- `SupervisorHome` — `SUPERVISOR_MAIN` at `/supervisor` with an empty home screen.
 - `Error` — branded fallback page.
 
 Customers, Customer, AccountSettings, and HomeStatCard are not in this checkout.
@@ -227,7 +226,7 @@ Rule:
 - if a visual section is reusable or large, extract it into `components/` rather than bloating the page file,
 - if a section is reusable only inside one route/module family, prefer one section-level component file rather than many tiny helper files,
 - pages should consume hooks/services/forms/adapters; they should not reimplement those mechanisms inline.
-- local `graphql.config.yml` is allowed here only when `pages/` contains GraphQL-aware route code and must point at the mirrored cpanel schema under `src/types/gql/`.
+- local `graphql.config.yml` is allowed here only when `pages/` contains GraphQL-aware route code. Generic `pages/graphql.config.yml` points at `base.graphql` only; `pages/supervisor/graphql.config.yml` points at mirrored `base` + `supervisor` under `src/types/gql/`.
 
 ## 5) `src/types/` ? project-owned type contracts
 
@@ -278,7 +277,7 @@ Rule:
 | Route-owned screens | `activities/` | `app/ui/pages/` |
 | Shared data layer | adapters/hooks/injectors | adapters/hooks/injectors |
 | Shared form layer | forms/hooks/injectors | forms/hooks/injectors |
-| Local GraphQL tooling scope | owner-folder `graphql.config.yml` | subtree `graphql.config.yml` in `app/ui/pages/` and `app/ui/components/` when those trees host GraphQL-aware UI |
+| Local GraphQL tooling scope | owner-folder `graphql.config.yml` | subtree `graphql.config.yml` in `app/ui/pages/` and `app/ui/components/` (`base` only) plus `pages/supervisor/` and `components/supervisor/` (`base` + `supervisor`) |
 | Translation source | `resources/translations/*` | `resources/translations/*` |
 
 ### Cpanel conventions

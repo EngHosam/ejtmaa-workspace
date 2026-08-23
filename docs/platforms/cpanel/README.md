@@ -13,10 +13,10 @@ Authoritative notes for the Ejtmaa supervisor control panel under `cpanel/`.
 | [ui-foundation.md](./ui-foundation.md) | Utils + theme.ts UI contract |
 | [data-flow-and-gql.md](./data-flow-and-gql.md) | Adapters, requesters, GQL |
 | [graphql-mirror-and-tooling.md](./graphql-mirror-and-tooling.md) | GQL mirror sync |
-| [main-layout-responsive-shell.md](./main-layout-responsive-shell.md) | `MainLayout` responsive shell |
+| [flow-supervisor-shell.md](./flow-supervisor-shell.md) | `SupervisorMainLayout` chrome |
+| [route-registry-contract.md](./route-registry-contract.md) | `supervisorRouter`, `Home` occupancy, `publicRoutes` |
 | [login-runtime-and-feedback.md](./login-runtime-and-feedback.md) | Supervisor login flow |
 | [error-route-and-guard.md](./error-route-and-guard.md) | `Error` route and guard bypass |
-| [shared-shell-and-ui-mockup.md](./shared-shell-and-ui-mockup.md) | Shared shell and UiMockup |
 | [customer-management.md](./customer-management.md) | Deferred customer module (backend contract only) |
 | [../../invariants/cpanel.md](../../invariants/cpanel.md) | Cpanel invariants |
 
@@ -25,11 +25,11 @@ Authoritative notes for the Ejtmaa supervisor control panel under `cpanel/`.
 Checked-in `cpanel/` is a sibling of `website/`, copied from that project and stripped of Website product surface.
 
 - Runtime: SSR web app with `web-core` configuration ownership.
-- Implemented routes: `Login`, empty `Home`, `UiMockup`, `Error`.
-- Layouts: `BASIC` (auth/error), `MAIN` (authed shell).
+- Implemented routes: `Login`, `Home` (empty page at `/`), empty `SupervisorHome` (`/supervisor`), `Error`.
+- Layouts: `BASIC` (auth/error), `SUPERVISOR_MAIN` (authed supervisor shell).
 - Actor: `SUPERVISOR` after login; visitor scope for `auth.supervisorLogin`.
 - GQL mirrors: `base` + `supervisor` under `src/types/gql/`.
-- Reads: `GET /cpanel/data_adapters/gql`. Writes: supervisor requester forms (foundation).
+- Reads: `GET /cpanel/data_adapters/supervisor/gql` (`SUPERVISOR_ME` for `me`; `SUPERVISOR_GQL` for later lists). Writes: supervisor requester forms (foundation).
 - Localization: Arabic-only wiring (`locales: ["ar"]`).
 - Package: `ejtmaa-cpanel`. Dev port: `3095`.
 - Quality scripts: `yarn type-check`, `yarn package`, `yarn start`. There is no lint or test script.

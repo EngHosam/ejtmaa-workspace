@@ -20,8 +20,8 @@ Requesters: supervisor `customer` read|update on the cpanel platform.
 
 When a customers UI is added later, it must:
 
-- register routes in `cpanel/src/resources/configs/routes.ts` using this repository's Website list/form DNA
-- use `DATA_ADAPTERS.GQL` for reads and `API.FORMS.SUPERVISOR.R` for writes
+- register routes in `cpanel/src/resources/configs/routes.ts` through `supervisorRouter` (see `route-registry-contract.md`)
+- use `DATA_ADAPTERS.SUPERVISOR_GQL` for reads and `API.FORMS.SUPERVISOR.R` for writes
 - keep list search history-backed
 - bind any KPI tiles to `customerStats.total_count` only (see `docs/invariants/cpanel.md` C18)
 

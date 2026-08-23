@@ -16,13 +16,14 @@ Not shipped: register, reset-password, social login, extra auth CTAs.
 | Identify | Path | Layout | Page |
 |---|---|---|---|
 | `Login` | `/login` | `BASIC` | `src/app/ui/pages/Login.tsx` |
+| `Home` | `/` | `BASIC` | `src/app/ui/pages/Home.tsx` (renders `null`) |
 
 Router (`src/app/services/router.ts`):
 
 - `publicRoutes = ["Login"]`.
-- `getMyHomeIdentify` returns `"Home"`.
-- Authed supervisor on `Login` → redirect to `Home`.
-- Unauthed visitor on any other identify → redirect to `Login`.
+- `getMyHomeIdentify` returns `"SupervisorHome"` (`/supervisor`).
+- Authed supervisor on `Login` → redirect to `SupervisorHome`.
+- Unauthed visitor on any other identify (including `Home`) → redirect to `Login`.
 - `Error` exits middleware immediately (`currentIsErrorPage`).
 
 ## 3) Page composition

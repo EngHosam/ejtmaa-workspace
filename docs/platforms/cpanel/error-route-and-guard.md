@@ -12,7 +12,7 @@ Contract outcomes when the checkout implements the error route:
 
 - `Error` renders a branded centered card on `BASIC` using `Logo`, semantic color/dimension tokens, and `Utils`.
 - Route accepts `403`, `404`, and `500` through `/:error(404|500|403)`.
-- Visual hierarchy: logo, large numeric error code, translated description, primary action button to `Home`.
+- Visual hierarchy: logo, large numeric error code, translated description, primary action button to `SupervisorHome`.
 - Arabic translations include dedicated `redirectHome` action label.
 - Router middleware exits immediately when current page identify is `Error`, preserving the fallback page.
 
@@ -34,7 +34,7 @@ Effect:
 
 - the page can render even when the normal auth/public-route checks would otherwise redirect,
 - the route is treated as a terminal fallback surface instead of another page to gate,
-- the existing `Login`/`Home` redirect rules continue to apply to non-error pages only.
+- the existing `Login`/`SupervisorHome` redirect rules continue to apply to non-error pages only.
 
 This change is operationally important because the error page is meant to communicate the failure state already resolved by routing/runtime, not trigger another redirect cycle.
 
@@ -50,7 +50,7 @@ Behavior:
 - derives solid semantic action fills (`semanticColor.primaryActionBackground`, `semanticColor.accentActionBackground`) from `theme.ts`,
 - shows the actual error code as the page title,
 - renders the translated error description below the code,
-- redirects to `Home` through `useRouter().redirect(...)` when the primary action is clicked.
+- redirects to `SupervisorHome` through `useRouter().redirect(...)` when the primary action is clicked.
 
 ### Visual composition
 

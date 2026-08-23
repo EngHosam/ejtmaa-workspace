@@ -168,7 +168,7 @@ Rationale:
 The reserved read architecture for control-panel backend data is GQL through the adapter layer.
 
 Current evidence:
-1. `/data_adapters/gql` exists in `src/resources/configs/axios/api.ts`
+1. `API.DATA_ADAPTERS.SUPERVISOR.GQL` (`/data_adapters/supervisor/gql`) exists in `src/resources/configs/axios/api.ts`
 2. `graphql.config.yml` points at `src/types/gql/definitions/{base,supervisor}.graphql`
 3. copied/generated mirrors now exist under `src/types/gql/gql-types/{base,supervisor}.ts`
 
@@ -261,7 +261,7 @@ Any task that materially changes cpanel architecture, folder ownership, UI found
 7. `docs/platforms/cpanel/supervisor-admin-modules.md`
 8. `docs/platforms/cpanel/customer-management.md`
 9. `docs/platforms/cpanel/graphql-mirror-and-tooling.md`
-10. relevant feature maintenance docs touched by the change
+10. relevant feature maintenance docs touched by the change (`flow-supervisor-shell.md`, `route-registry-contract.md`, `login-runtime-and-feedback.md`, `error-route-and-guard.md` when those surfaces move)
 11. this invariant file when the invariant itself changes
 
 Rationale:
@@ -269,8 +269,12 @@ Rationale:
 
 ## C18. Customer Stats KPI Invariant
 
-The current CPanel Home body is empty. There is no `HomeStatCard` or `CustomerStatsSection` in the checkout.
+`SupervisorHome` (`/supervisor`) has an empty page body (Helmet title only). Occupancy `Home` (`/`) renders `null`. There is no `HomeStatCard` or `CustomerStatsSection` in the checkout.
 
-When a later task adds Home KPIs or a customers-list header stat, those surfaces must bind to root `customerStats.total_count`.
+When a later task adds workspace KPIs or a customers-list header stat, those surfaces must bind to root `customerStats.total_count`.
 List pagination window counts must come from `_Customer.total_count` on the `customers` query.
 KPI surfaces must use `customerStats.total_count` only. Do not invent a second stats field.
+
+## C19. Supervisor Route Namespace Invariant
+
+Authed supervisor workspace paths go through `supervisorRouter` in `cpanel/src/resources/configs/routes.ts`. `publicRoutes` is `Login` only. `Home` at `/` is occupancy (empty `MyPage`), not a public landing and not a Login reuse. Authority: `docs/platforms/cpanel/route-registry-contract.md`.

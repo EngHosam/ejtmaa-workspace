@@ -54,7 +54,7 @@ Reusable pattern families for Ejtmaa `schemas` and `bridges`.
 
 - **Problem**: frontend read transport.
 - **Shape**: data adapter controller decodes `gql` query param and executes role schema.
-- **Refs**: `backend/src/app/http/controllers/website/data_adapters/GQLAdapterController.ts`, `backend/src/app/http/controllers/cpanel/data_adapters/GQLAdapterController.ts`
+- **Refs**: `backend/src/app/http/controllers/website/data_adapters/GQLAdapterController.ts`, `backend/src/app/http/controllers/cpanel/data_adapters/supervisor/GQLAdapterController.ts`
 
 ## Related
 
