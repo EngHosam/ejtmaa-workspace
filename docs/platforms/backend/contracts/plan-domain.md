@@ -5,16 +5,17 @@
 Current Ejtmaa plan (product catalog / الباقة) surface:
 
 - ORM persistence for platform-wide pricing SKUs (`plans` table),
-- customer GraphQL **public catalog** roots `plans` / `plan(id)`,
+- customer GraphQL **public catalog** roots `plans` / `plan(id)` (ACTIVE only),
+- supervisor GraphQL `plans` / `plan` / `planStats` (all statuses) — `supervisor-catalog-and-home.md`,
+- supervisor writes via `PlanRequester` (not GraphQL mutations),
 - localization for plan status and billing period,
-- website GraphQL mirrors for that catalog read.
+- website + cpanel GraphQL mirrors.
 
 Out of scope (not shipped):
 
-- plan write requesters / mutations / supervisor CRUD GQL,
+- GraphQL mutations for plans,
 - SKU `code` column (explicitly rejected — identity is `id` + MultiLang `name`),
-- naming the model `Package` (language-sensitive; use `Plan`),
-- cpanel mirrors exist under `cpanel/src/types/gql/**`; bootstrap UI does not consume this domain.
+- naming the model `Package` (language-sensitive; use `Plan`).
 
 Related shipped surfaces (separate contracts):
 
@@ -193,7 +194,7 @@ Existing scripts only:
 | `backend/src/app/gql/definitions/customer.graphql` | modified | §4.1–4.2 |
 | `backend/src/app/gql/gql-types/base.ts` | generated | §4 / §7 |
 | `backend/src/app/gql/gql-types/customer.ts` | generated | §4 / §7 |
-| `backend/src/app/gql/gql-types/supervisor.ts` | generated (shared base enums; no Plan queries) | §4 — no supervisor Plan surface |
+| `backend/src/app/gql/gql-types/supervisor.ts` | generated (includes supervisor Plan roots) | `supervisor-catalog-and-home.md` |
 | `backend/src/resources/trans/ar/general.ts` | modified | §3.6 |
 | `backend/src/resources/trans/en/general.ts` | modified | §3.6 |
 | `backend/.types/models.ts` | local/gitignored | §3 — `"Plan"` registry entry |

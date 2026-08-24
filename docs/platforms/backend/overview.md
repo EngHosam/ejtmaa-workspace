@@ -84,13 +84,13 @@ Provider config: `backend/src/resources/configs/gql/index.ts`
 - SDL: `backend/src/app/gql/definitions/customer.graphql`, `backend/src/app/gql/definitions/supervisor.graphql`, `backend/src/app/gql/definitions/base.graphql`
 - Customer bridges: `MeBridge`, `NotificationBridge`, `OrganizationBridge`, `MemberBridge`, `MessageChannelBridge`, `MessageTemplateBridge`, `MeetingBridge`, `MeetingParticipantBridge`, `AgendaItemBridge`, `DecisionBridge`, `VoteBridge`, `TalkRecordBridge`, `PlanBridge`, `SubscriptionBridge` under `backend/src/app/gql/bridges/customer/` (org-owned children share `CustomerOrganizationOwnedBridgeBase`; participant/agenda/decision/vote/talkRecord bridges are nested-only; `PlanBridge` is public catalog `STATIC`; `SubscriptionBridge` is customer-owned `{ me: true }` and also serves `_Me.currentSubscription` via ORM association auto-relations)
 - Customer helper roots (no Bridge): `subscriptionPaymentMethods`, `adwhatsAccounts`, `adwhatsProAccounts`, `adwhatsProApprovedTemplates` — thin `CustomerSchema` resolvers; Ad Whats types live in `customer.graphql`
-- Supervisor bridges: `MeBridge`, `NotificationBridge`, `CustomerBridge`, `CustomerStatsBridge`, `OrganizationBridge` under `backend/src/app/gql/bridges/supervisor/`
+- Supervisor bridges: `MeBridge`, `HomeBridge`, `NotificationBridge`, `CustomerBridge`, `CustomerStatsBridge`, `OrganizationBridge`, `PlanBridge`, `PlanStatsBridge`, `SubscriptionBridge`, `SubscriptionStatsBridge`, `MeetingBridge`, `MeetingStatsBridge`, `MemberBridge` under `backend/src/app/gql/bridges/supervisor/`
 
 ### Socket
 
 Config: `backend/src/resources/configs/socket/io.ts`
 - Namespaces: `/customer`, `/supervisor` (actor `auth`), `/meeting` (`meeting_auth` — member token + meeting roster)
-- Outbound events: `OnUserEvent` (supervisor broadcast), `OnCustomerEvent` (per-customer)
+- Outbound events: `OnUserEvent` (supervisor broadcast to `ALL_SUPERVISORS`), `OnSupervisorEvent` (per-supervisor `UPDATED`), `OnCustomerEvent` (per-customer)
 - Inbound events: `meeting.live.sync`, `meeting.live.update` on `/meeting` (collaborative Yjs document; rejection replies on `meeting.live.error`)
 - Contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`; state plane: `docs/platforms/backend/contracts/meeting-live-state.md`; `docs/platforms/backend/modules/runtime-integrations.md` §5
 

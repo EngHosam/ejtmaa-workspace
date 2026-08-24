@@ -1,0 +1,37 @@
+---
+description: Govern supervisor home dashboard (HomeBridge extras, aliased meetings, brand charts, locked Arabic copy)
+globs:
+  - cpanel/src/app/ui/components/supervisor/home/**
+  - cpanel/src/app/ui/pages/supervisor/SupervisorHome.tsx
+  - backend/src/app/gql/bridges/supervisor/HomeBridge.ts
+  - docs/platforms/cpanel/supervisor-home.md
+alwaysApply: false
+---
+
+# CPanel supervisor home
+
+Authority: `docs/platforms/cpanel/supervisor-home.md`. Workflow: `.cursor/skills/cpanel-supervisor-home/SKILL.md`. Backend: `docs/platforms/backend/contracts/supervisor-catalog-and-home.md`.
+
+## Payload
+
+- `Query.home` is Me-shaped (`HomeBridge`: `STATIC` + `where: { id: supervisor.id }`). Payload is **extras only**.
+- Do not add `static relations` to meetings or invent a Supervisor↔Meeting association.
+- Meeting cards: root `meetings(filter:)` with GraphQL aliases. Cap in the client (currently 5).
+- Counts on home: prefixed extras on `_Home`. Directory headers keep `*Stats` roots. Do not bind home tiles to `customerStats`.
+
+## Chart series
+
+- Subscription bars: calendar months **1–12 of the year of** `Subscription.THIS_MONTH_START()`, `created_at` buckets, zeros filled. Not status bars. Not a rolling 12 months ending at now.
+- X-axis: month **numbers**. Arabic month name belongs in the custom tooltip.
+- Fills: brand tokens (`primaryActionBackground`, `accentActionBackground`, `iconPrimary`, `textAccent`, `textBrand`). Not `stateSuccess` / `stateError` / `stateWarning`.
+- Tooltip: Utils + `semanticColor` content. Never the default Recharts tooltip.
+
+## Copy and chrome
+
+- Hero title: متابعة المنصة. Lead must exist: نظرة على أداء وإحصائيات المنصة.
+- Stats eyebrow: الإحصاءات. Do not use إشراف or الحصر.
+- Hero height follows content. Small decorative corners. No Masdaria gradients, fake sparklines, or نبض.
+
+## Adapter
+
+- Mount-private identify. Inherit `DATA_ADAPTERS.SUPERVISOR_GQL`. No new registry key. No `listable`.

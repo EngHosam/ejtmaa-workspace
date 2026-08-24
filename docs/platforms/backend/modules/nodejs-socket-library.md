@@ -306,7 +306,7 @@ env `IO_PORT` / `INSTALL_IO_PORT`, `HTTPS` toggle, `transports: ["websocket"]`).
 | Namespace | Global middlewares | `connection` controller | Room joined | Child events (bound by connection return) |
 |---|---|---|---|---|
 | `/customer` | `auth` | `ConnectionIOController` | `Rooms.CUSTOMER(customerId)` | none (`return []`) |
-| `/supervisor` | `auth` | `ConnectionIOController` | `Rooms.ALL_SUPERVISORS` | none (`return []`) |
+| `/supervisor` | `auth` | `ConnectionIOController` | `Rooms.ALL_SUPERVISORS` and `Rooms.SUPERVISOR(supervisorId)` | none (`return []`) |
 | `/meeting` | `meeting_auth` | `MeetingConnectionIOController` | `Rooms.MEETING(meetingId)` | `meeting.live.sync` → `meeting_live_sync`, `meeting.live.update` → `meeting_live_update`, `disconnect` → `meeting_disconnect` (`once`) |
 
 `/customer` and `/supervisor` connection controllers still return `[]`.

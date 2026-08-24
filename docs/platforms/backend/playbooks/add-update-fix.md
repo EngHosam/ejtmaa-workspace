@@ -43,6 +43,7 @@ Enum input rule in requesters:
 Use existing dispatch routes when possible:
 - `/website/forms/requester/:requester/:sub`
 - `/cpanel/forms/requester/:requester/:sub`
+- `/cpanel/forms/supervisor/requester/:requester/:sub`
 
 Usually no new dispatcher controller is needed; only requester registration is required.
 

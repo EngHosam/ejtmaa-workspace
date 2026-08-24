@@ -18,6 +18,7 @@ Applies to requester/input-validation work under `backend/`.
 
 3. Prefer simple Joi composition:
 - `trim().min(...).required()` for text constraints.
+- `isMultiLang(joi, minLength?, optional?)` for `{ ar, en }` objects (optional third argument collapses empty pairs to `null`).
 - use `.external(...)` only when async checks are required.
 - avoid unnecessary `.custom(...)` for cases covered by built-in Joi operators.
 

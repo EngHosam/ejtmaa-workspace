@@ -28,7 +28,7 @@ Use `theme.ts` tokens — do not hardcode hex when a semantic path exists.
 
 ## Supervisor context
 
-Cpanel serves the Supervisor actor on `/cpanel`. Theme usage follows the same token map. Current layouts are `SUPERVISOR_MAIN` (authed workspace) plus `BASIC` for `Login`, occupancy `Home`, and `Error`. Customer-management screens are not part of this bootstrap.
+Cpanel serves the Supervisor actor on `/cpanel`. Theme usage follows the same token map. Layouts: `SUPERVISOR_MAIN` (authed workspace) plus `BASIC` for `Login`, occupancy `Home`, and `Error`. Product screens: `docs/platforms/cpanel/overview.md`. Shared chips/fields: `supervisor-shared-ui.md`.
 
 ## Related
 

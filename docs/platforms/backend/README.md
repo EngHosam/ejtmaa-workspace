@@ -15,6 +15,7 @@
 | [`external-http-mount-and-myfatoorah-callbacks.md`](contracts/external-http-mount-and-myfatoorah-callbacks.md) | `/external` mount + MyFatoorah finalize callbacks |
 | [`myfatoorah-invoice-payment-domain.md`](contracts/myfatoorah-invoice-payment-domain.md) | MyFatoorahInvoice + subscription.subscribe + payment GQL reads |
 | [`supervisor-admin-read-surfaces.md`](contracts/supervisor-admin-read-surfaces.md) | Supervisor admin read surfaces |
+| [`supervisor-catalog-and-home.md`](contracts/supervisor-catalog-and-home.md) | Plans, subscriptions, meetings, `home` extras |
 | [`supervisor-customers-and-stats.md`](contracts/supervisor-customers-and-stats.md) | Customer management and stats |
 | [`organization-domain.md`](contracts/organization-domain.md) | Organization tenant ORM + GQL + seed + website `read`/`upsert` requester |
 | [`member-domain.md`](contracts/member-domain.md) | Member ORM + customer GQL reads (`_MemberFilter.search`) |

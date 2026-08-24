@@ -1,6 +1,6 @@
 ---
 description: Plan (الباقة) catalog ORM/GQL invariants — dual pricing, naming, public ACTIVE reads
-globs: backend/src/app/orm/models/Plan.ts,backend/src/app/gql/bridges/customer/PlanBridge.ts,backend/src/app/gql/definitions/customer.graphql,backend/src/app/gql/schemas/CustomerSchema.ts,docs/platforms/backend/contracts/plan-domain.md
+globs: backend/src/app/orm/models/Plan.ts,backend/src/app/gql/bridges/customer/PlanBridge.ts,backend/src/app/gql/bridges/supervisor/PlanBridge.ts,backend/src/app/gql/definitions/customer.graphql,backend/src/app/gql/definitions/supervisor.graphql,backend/src/app/gql/schemas/CustomerSchema.ts,backend/src/app/gql/schemas/SupervisorSchema.ts,docs/platforms/backend/contracts/plan-domain.md,docs/platforms/backend/contracts/supervisor-catalog-and-home.md
 alwaysApply: false
 ---
 
@@ -31,4 +31,9 @@ Authoritative contract: `docs/platforms/backend/contracts/plan-domain.md`.
 - Visibility: `status = ACTIVE` on both list and detail; order `sort_order`, then `id`.
 - MultiLang `name` / `description` → localized `String` via role `loadAttr`.
 - Expose `monthly_price` / `yearly_price` (not a single `price`).
-- No supervisor Plan surface until catalog admin CRUD is explicitly requested.
+
+## Supervisor GQL / writes
+
+- Supervisor roots `plans` / `plan` / `planStats` list **all** statuses (not ACTIVE-only). Search is MultiLang `name` ar/en.
+- Writes are `PlanRequester` (`can("PLAN")`), not GraphQL mutations. Cpanel: `Forms.SUPERVISOR_PLAN`.
+- `_Me.canDeletePlan(planId)` is a supervisor Me extra.

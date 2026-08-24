@@ -27,11 +27,15 @@ Example: `Customer.hasOne(Subscription().scope("current"), { as: "currentSubscri
 
 Declare on the parent bridge only when:
 
-- there is no association (custom getter), and/or
+- there is no association (custom getter), **and** a real ORM path still exists (custom getter on the same model), and/or
 - you need non-default options (`"lazy"`, forced-ask, etc.), and/or
 - bridge `ident` must differ from `target.modelName` (rare — prefer aligning names).
 
 Sibling pattern (qline): company MeBridge maps `activeCompanySubscription` → `companySubscription` with `"lazy"` because active subscription is a custom getter, not `hasOne`.
+
+## Do not invent parent→child graphs
+
+`HomeBridge` must stay extras-only. There is no Supervisor→Meeting Sequelize association. Do not add `static relations` / lazy Meeting includes on `_Home`. Compose lists with root queries and GraphQL aliases (`startedMeetings: meetings(filter:)`). See `docs/platforms/backend/contracts/supervisor-catalog-and-home.md`.
 
 ## Nested parent types
 

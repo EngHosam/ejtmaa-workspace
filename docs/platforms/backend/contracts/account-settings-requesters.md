@@ -75,6 +75,8 @@ When both password fields are present:
 
 After commit: `notify<OnCustomerEventRefs>("OnCustomerEvent", { type: "UPDATED", customer })`
 
+Cpanel supervisor account settings use `SupervisorRequester` `read`/`update` (not these customer subs). After commit: `notify<OnSupervisorEventRefs>("OnSupervisorEvent", { type: "UPDATED", supervisor })`.
+
 ## Website coupling
 
 - `FormAvatarField` uploads immediately through `API.ACTIONS.MULTIPART_UPLOAD`

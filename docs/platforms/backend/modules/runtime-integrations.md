@@ -64,7 +64,7 @@ Validation config:
 Notify provider config:
 - `backend/src/resources/configs/notify/index.ts`
 - broadcasters: socket.io + FCM
-- events: `OnUserEvent`, `OnCustomerEvent`
+- events: `OnUserEvent`, `OnCustomerEvent`, `OnSupervisorEvent`
 
 Mirror contract:
 - customer user-facing backend socket events must stay mirrored in `website/src/types/events.ts` and `website/src/resources/configs/socket/events.ts`
@@ -93,7 +93,7 @@ Framework reference for the underlying package (`@nodejs/socket` drivers, route 
 Both are **client → server** inbound events; the server replies on the same names plus `meeting.live.error` for a rejection. None of them are notify events, and none are mirrored into `website`/`cpanel` event registries (`socket-event-mirroring.md` does not apply). Namespace contract: `docs/platforms/backend/contracts/meeting-realtime-socket.md`. State plane (Yjs document + `live_state` BLOB): `docs/platforms/backend/contracts/meeting-live-state.md`. Website consumer (transport + linking gate): `docs/platforms/website/organization-host-routing.md` §5.1, §5.3.
 
 Room conventions are centralized in:
-- `backend/src/resources/consts/NotificationsConsts.ts` — `Namespaces.MEETING` (`/meeting`), `FCM_Namespaces.MEETING` (`-meeting`), `Rooms.MEETING(meetingId)`
+- `backend/src/resources/consts/NotificationsConsts.ts` — `Namespaces.MEETING` (`/meeting`), `FCM_Namespaces.MEETING` (`-meeting`), `Rooms.MEETING(meetingId)`, `Rooms.SUPERVISOR(supervisorId)` besides `Rooms.ALL_SUPERVISORS`
 
 Organization-host contract (website boot, HTTP start, gating, Meeting socket): `docs/platforms/website/organization-host-routing.md`.
 

@@ -91,6 +91,13 @@ Task Progress:
 2. Resolve model by context principal id.
 3. Keep one-only behavior deterministic.
 
+### Extras-only dashboard (`HomeBridge`)
+
+1. Same STATIC + principal `where` as Me. Dummy row exists so extras can load (`ignoreExtra` on many).
+2. Counts as extras with names that cannot collide with pagination `total_count`.
+3. Time series as extras returning objects (`_HomeMonthCount`), not relations.
+4. Refuse `static relations` when no Sequelize association exists. Compose sibling lists on the client query with aliases.
+
 ## Refusal Conditions
 
 Refuse finalization until clarified if:
@@ -135,7 +142,7 @@ If partially blocked:
 Current Ejtmaa GQL surfaces:
 
 - Customer: `me` (+ nested `currentSubscription`, extras `canDeleteNotifications` / `canSubscribe(planId)`), `notifications`, `organization`, `members`, `member(id)`, `messageChannels`, `messageChannel(id)`, `messageTemplates`, `messageTemplate(id)`, `meetings`, `meeting(id)` (+ nested `participants`, `agendaItems`, `decisions`, `talkRecords`), `plans`, `plan(id)`, `subscriptions`, `subscription(id)`, `subscriptionPaymentMethods(planId, billingPeriod)` (no Bridge — helper + thin resolver; `_PaymentMethod` in base), `adwhatsAccounts` / `adwhatsProAccounts` / `adwhatsProApprovedTemplates` (no Bridge — helper + thin resolver; DTO types in `customer.graphql`; three separate roots, no shared `type` discriminator). No invoice GQL roots.
-- Supervisor: `me`, `notifications`, `customers`, `customer`, `customerStats`, `organizations`, `organization`
+- Supervisor: `me`, `home` (`HomeBridge` extras = platform counts from existing ORM enums; no nested meetings — no Supervisor→Meeting association), `notifications`, `customers`, `customer`, `customerStats`, `organizations`, `organization`, `plans`, `plan`, `planStats`, `subscriptions`, `subscription`, `subscriptionStats`, `meetings`, `meeting`, `meetingStats`
 
 Reference bridges:
 
@@ -154,13 +161,22 @@ Reference bridges:
 - `backend/src/app/gql/bridges/customer/PlanBridge.ts`
 - `backend/src/app/gql/bridges/customer/SubscriptionBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/MeBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/HomeBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/NotificationBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/CustomerBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/CustomerStatsBridge.ts`
 - `backend/src/app/gql/bridges/supervisor/OrganizationBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/PlanBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/PlanStatsBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/SubscriptionBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/SubscriptionStatsBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/MeetingBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/MeetingStatsBridge.ts`
+- `backend/src/app/gql/bridges/supervisor/MemberBridge.ts`
 
 Rules:
 
+- `HomeBridge` is Me-shaped (`STATIC` + `where: { id: supervisor.id }`). Counts are extras only (prefixed so they do not collide with pagination `total_count`). `new_subscriptions_by_month` is an extra: calendar months 1–12 of the current year (`Subscription.created_at` counts, zeros filled); not a relation. Do not add `static relations` or Meeting parent types for home. Meeting rows stay on root `meetings`. Keep directory `*Stats` roots; do not route home through them.
 - `CustomerStatsBridge.loadExtra` serves `total_count` and `created_today_count`.
 - `CustomerBridge` owns supervisor list/detail filter mapping.
 - Customer `organization` root-one: `prepareOneGQLModel({ me: true })` when bridge `ident` matches `Customer.hasOne` association key; do not invent `as` / `getRootOrmParent` overrides.
@@ -172,8 +188,8 @@ Rules:
 - Customer `_Meeting.decisions: [_Decision]` (nested only; no root): `id`, `sort_order`, `subject`, `phase`, `status`, `voting_type`; no `meeting_id` scalar. ORM: `Meeting.hasMany(Decision)` (default association; no `as`). `DecisionBridge.ident = "decisions"`. Base enums: `_DecisionPhase` / `_DecisionStatus` / `_DecisionVotingType`.
 - Customer `_Decision.votes: [_Vote]` (nested only; no root): `value`, `cast_at`, `member`; no FK scalars. ORM: `Decision.hasMany(Vote)` (default; no `as`). `VoteBridge.ident = "votes"`; `MemberBridge.GetOneParent` includes `VoteModel`. Base enum: `_VoteValue`.
 - Customer `_Meeting.talkRecords: [_TalkRecord]` (nested only; no root): `id`, `sort_order`, `status`, `started_at`, `ended_at`, `member`; no FK scalars / no `decision`. ORM: `Meeting.hasMany(TalkRecord)` (default; no `as`). `TalkRecordBridge.ident = "talkRecords"`; `MemberBridge.GetOneParent` includes `TalkRecordModel`. Base enum: `_TalkRecordStatus`.
-- Customer `plans` / `plan(id)`: platform catalog (no owner FK). Parent `{ public: true }` → `STATIC`. `PlanBridge` extends `CustomerBridgeBase` (not org-owned). Root policy: `status = ACTIVE`, order `sort_order` then `id`. MultiLang `name`/`description` → localized `String`; dual prices `monthly_price` / `yearly_price` (no catalog `billing_period`). Base enum: `_PlanStatus` (`_PlanBillingPeriod` remains for subscription surfaces). `PlanBridge.GetOneParent` includes `SubscriptionModel` for `_Subscription.plan`. No supervisor Plan surface yet.
-- Customer `subscriptions` / `subscription(id)`: payer-owned (`{ me: true }` → Customer). `SubscriptionBridge` `ident = "subscription"` (matches ORM `modelName`). List order `starts_at` desc. Nested `_Subscription.plan`. `_Me.currentSubscription` is auto-wired from `Customer.hasOne(..., { as: "currentSubscription" })` via `MeBridge` `bootRelations` (association key → `SubscriptionBridge` by target `modelName`); do **not** add a second bridge class or redundant `MeBridge.static relations` when the Sequelize association exists. See `.cursor/rules/gql-association-auto-relations.mdc` and `subscription-domain.md`. `SubscriptionBridge.GetOneParent` includes `CustomerModel`. Base enum: `_SubscriptionStatus`. No supervisor Subscription surface yet.
+- Customer `plans` / `plan(id)`: platform catalog (no owner FK). Parent `{ public: true }` → `STATIC`. `PlanBridge` extends `CustomerBridgeBase` (not org-owned). Root policy: `status = ACTIVE`, order `sort_order` then `id`. MultiLang `name`/`description` → localized `String`; dual prices `monthly_price` / `yearly_price` (no catalog `billing_period`). Base enum: `_PlanStatus` (`_PlanBillingPeriod` remains for subscription surfaces). `PlanBridge.GetOneParent` includes `SubscriptionModel` for `_Subscription.plan`. Supervisor also has `plans` / `plan` / `planStats` (all statuses; writes via `PlanRequester`). `_Me.canDeletePlan(planId)` is a supervisor Me extra.
+- Customer `subscriptions` / `subscription(id)`: payer-owned (`{ me: true }` → Customer). `SubscriptionBridge` `ident = "subscription"` (matches ORM `modelName`). List order `starts_at` desc. Nested `_Subscription.plan`. `_Me.currentSubscription` is auto-wired from `Customer.hasOne(..., { as: "currentSubscription" })` via `MeBridge` `bootRelations` (association key → `SubscriptionBridge` by target `modelName`); do **not** add a second bridge class or redundant `MeBridge.static relations` when the Sequelize association exists. See `.cursor/rules/gql-association-auto-relations.mdc` and `subscription-domain.md`. `SubscriptionBridge.GetOneParent` includes `CustomerModel`. Base enum: `_SubscriptionStatus`. Supervisor also has `subscriptions` / `subscription` / `subscriptionStats` (platform-wide).
 - Customer `subscriptionPaymentMethods(planId, billingPeriod)`: read-only gateway methods — `_PaymentMethod` in `base.graphql`; thin `CustomerSchema` resolver → `getCustomerSubscriptionPaymentMethods` (ACTIVE Plan + period price → `MyFatoorah.memoGetPaymentsMethods`). **No** Bridge. Empty list when plan missing/disabled/amount invalid. Contract: `myfatoorah-invoice-payment-domain.md`.
 - Customer `adwhatsAccounts` / `adwhatsProAccounts` / `adwhatsProApprovedTemplates`: remote picker lists — types + filters in `customer.graphql` (not `base`); thin `CustomerSchema` resolvers → `CustomerAdwhatsLists`. **No** Bridge. Ready-only accounts. Pro templates require org-owned `ADWHATS_PRO` channel. Empty token / mismatch / remote failure → `[]`. Keep three roots. Contract: `message-channel-domain.md` §4.
 - Customer `_Me.canSubscribe(planId: ID!)`: MeBridge extra → `Customer.can("SUBSCRIPTION", { sub: "subscribe", plan: planId, visualMode })`. Requester `subscription.subscribe` still enforces with `throwMode`. Do **not** add `_MyFatoorahInvoice` roots/bridges unless product asks.
@@ -185,5 +201,5 @@ Rules:
 - Org-owned customer children (`Member`, `MessageTemplate`, `Meeting`, …): extend `CustomerOrganizationOwnedBridgeBase` (`me` → customer's Organization). Do not copy that `getRootOrmParent` into each entity bridge.
 - Keep resolvers thin; ORM policy lives in bridges.
 - Sync mirrors after SDL changes: `website/` (`customer`) always when present.
-- `cpanel/` (`supervisor`) mirrors live under `cpanel/src/types/gql/**`; do not invent a second mirror tree. Bootstrap UI does not yet consume supervisor list queries.
+- `cpanel/` (`supervisor`) mirrors live under `cpanel/src/types/gql/**`; command-copy after `yarn generate-types`. Do not invent a second mirror tree. Cpanel consumes `me`, `home`, customers, meetings, plans, subscriptions (not notifications or organization directory roots).
 - Organization contract detail: `docs/platforms/backend/contracts/organization-domain.md`.

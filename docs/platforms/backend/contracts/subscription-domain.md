@@ -11,6 +11,7 @@ Current Ejtmaa subscription (الاشتراك) surface:
 - `_Me.canSubscribe(planId)` ability exposure (policy on `Customer.can`),
 - hourly scheduler promotion of overdue `ACTIVE` rows to `EXPIRED`,
 - website GraphQL mirrors for those reads,
+- supervisor GraphQL `subscriptions` / `subscription` / `subscriptionStats` (platform-wide) — `supervisor-catalog-and-home.md`,
 - localization for `subscriptionStatus`.
 
 Payment session create + finalize live in `myfatoorah-invoice-payment-domain.md` (requester `subscription.subscribe` starts checkout; finalize calls `Subscription.subscribe`).
@@ -18,7 +19,7 @@ Payment session create + finalize live in `myfatoorah-invoice-payment-domain.md`
 Out of scope (not shipped):
 
 - renew-specific requester beyond `subscribe`,
-- supervisor Subscription GQL / cpanel mirrors,
+- supervisor Subscription **writes**,
 - seed rows for subscriptions,
 - statuses `PENDING` / `CANCELED` on Subscription (checkout belongs on `MyFatoorahInvoice`; no subscription row before entitlement).
 
@@ -222,7 +223,7 @@ Plan catalog seed (`seedDemoCatalogPlans` / `demoCatalogPlanEntries`) remains un
 | Platform | Status |
 |---|---|
 | `website/` | Active — copy `base` + `customer` SDL/types after backend `yarn generate-types` |
-| `cpanel/` | Deferred — no supervisor Subscription surface |
+| `cpanel/` | Active — copy `base` + `supervisor` SDL/types; directory UI in `subscription-management.md` |
 
 Mirror paths:
 
@@ -230,6 +231,8 @@ Mirror paths:
 - `website/src/types/gql/definitions/customer.graphql`
 - `website/src/types/gql/gql-types/base.ts`
 - `website/src/types/gql/gql-types/customer.ts`
+- `cpanel/src/types/gql/definitions/supervisor.graphql`
+- `cpanel/src/types/gql/gql-types/supervisor.ts`
 
 ## 8) Verification
 
@@ -252,7 +255,7 @@ Existing scripts only:
 | `backend/src/app/gql/definitions/customer.graphql` | modified | §4.1–4.2 |
 | `backend/src/app/gql/gql-types/base.ts` | generated | §4 / §8 |
 | `backend/src/app/gql/gql-types/customer.ts` | generated | §4 / §8 |
-| `backend/src/app/gql/gql-types/supervisor.ts` | generated (shared base enums; no Subscription queries) | §4.5 |
+| `backend/src/app/gql/gql-types/supervisor.ts` | generated (includes supervisor Subscription roots) | `supervisor-catalog-and-home.md` |
 | `backend/src/app/scheduler/tasks/ExpireSubscriptionsTask.ts` | added | §5 |
 | `backend/src/resources/configs/scheduler/cron.ts` | modified | §5 |
 | `backend/src/resources/trans/ar/general.ts` | modified | §3.7 |

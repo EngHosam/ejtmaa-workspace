@@ -2,7 +2,7 @@
 
 ## Current workspace status
 
-`cpanel/` is present in the workspace. Supervisor SDL is mirrored under `cpanel/src/types/gql/**`. Backend supervisor SDL remains the source of truth; refresh mirrors by command copy, not by hand-editing copied files. Shipped UI operations: `me`, list `customers` + `customerStats`, detail `customer(id)` (embedded in hooks).
+Shipped UI operations: `me`, `home`, `customers`/`customer`/`customerStats`, `meetings`/`meeting`/`meetingStats`, `plans`/`plan`/`planStats`, `subscriptions`/`subscription`/`subscriptionStats`. Unused by cpanel UI: `notifications`, `organizations`/`organization`.
 
 ## Purpose
 

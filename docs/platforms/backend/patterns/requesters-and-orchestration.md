@@ -62,7 +62,7 @@ Use facts as second authorization layer:
 ## 5) Transaction Pattern
 
 Execution context comes from `ControllerBase.exe()`:
-- `startTransaction()` creates/joins managed transaction.
+- `startTransaction()` creates/joins managed transaction. Cpanel writes in this wave use `startTransaction()` with **no** `"join_current"` argument (`SupervisorRequester`, `PlanRequester`, `CustomerRequester`, `PlatformSettingsRequester`, `WebsiteSettingsRequester`).
 - Auto-commit on success.
 - Auto-rollback on thrown error.
 
@@ -84,6 +84,7 @@ Registered requesters (decorated):
 | `CustomerRequester` | `customer` | `cpanel` / supervisor | `read`, `update` |
 | `NotificationRequester` | `notification` | `website` / customer | `deleteAll` |
 | `SupervisorRequester` | `supervisor` | `cpanel` / supervisor | `read`, `update` |
+| `PlanRequester` | `plan` | `cpanel` / supervisor | `create`, `read`, `update`, `delete` |
 | `PlatformSettingsRequester` | `platform_settings` | `cpanel` / supervisor | `read`, `update` |
 | `WebsiteSettingsRequester` | `website_settings` | `cpanel` / supervisor | `read`, `update` |
 
@@ -102,13 +103,14 @@ Requester form endpoint convention:
 |---|---|---|
 | `/website` | visitor | `POST /website/forms/requester/:requester/:sub` |
 | `/website` | customer | `POST /website/forms/customer/requester/:requester/:sub` |
-| `/cpanel` | visitor (login) or supervisor | `POST /cpanel/forms/requester/:requester/:sub` |
+| `/cpanel` | visitor | `POST /cpanel/forms/requester/:requester/:sub` |
+| `/cpanel` | supervisor | `POST /cpanel/forms/supervisor/requester/:requester/:sub` |
 
 Examples:
 - `POST /website/forms/requester/auth/login`
 - `POST /website/forms/customer/requester/customer/updateSettings`
 - `POST /cpanel/forms/requester/auth/supervisorLogin`
-- `POST /cpanel/forms/requester/supervisor/update`
+- `POST /cpanel/forms/supervisor/requester/supervisor/update`
 
 The controller should only route; business behavior belongs in requester methods.
 

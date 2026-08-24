@@ -4,9 +4,13 @@ globs:
   - cpanel/src/app/ui/components/supervisor/**
   - cpanel/src/app/ui/pages/supervisor/**
   - cpanel/src/app/ui/components/PageStateLane.tsx
+  - cpanel/src/app/ui/components/FormStateLane.tsx
+  - cpanel/src/app/ui/components/ResultLane.tsx
   - cpanel/src/app/ui/components/Stats.tsx
   - cpanel/src/resources/configs/routes.ts
   - docs/platforms/cpanel/customer-management.md
+  - docs/platforms/cpanel/supervisor-state-lanes.md
+  - docs/platforms/cpanel/supervisor-shared-ui.md
 alwaysApply: false
 ---
 
@@ -33,11 +37,16 @@ Authority: `docs/platforms/cpanel/customer-management.md`. Workflow: `.cursor/sk
 ## UI
 
 - Directories: `ResultLane` + card-shaped `renderSkeleton`. Not `DataTable`.
-- Detail loading: `Loadable` `3rem` via `PageStateLane`. Not card bones.
-- Do not add props to `Empty` / `LaneFailed` / `Loadable`. Host them: outer `Col flx_1 pt gap pb`, inner overlay `Col flx_1 relative center`. Layout content must be a flex `Col` so `flx_1` fills; detail screen `FlexContainer dir="column" flx_1`.
+- Detail loading: `Loadable` `3rem` via `PageStateLane`. Not card bones. Identity heading is **inside** success children.
+- Forms: import `FormStateLane` (alias of `PageStateLane`). Heading and submit/delete stay **outside** the lane.
+- Overlay contract: `docs/platforms/cpanel/supervisor-state-lanes.md`.
+- Do not add props to `Empty` / `LaneFailed` / `Loadable`. Detail overlay has no heading. Host: padded `Col flx_1`, lane `relative` `flx_1`. Layout content must be a flex `Col` so `flx_1` fills; detail screen `FlexContainer dir="column" flx_1`.
 - Overlay flags belong on the hook (`showEmpty` = `LOADED_WITH_ERRORS` && missing record). Screen consumes flags only.
-- KPIs: shared `Stats` bound to server extras (customers: `customerStats.total_count` + `created_today_count`). Never count loaded rows. Not on `SupervisorHome`.
-- i18n: `ar.ts` only; nested translator bind. Nested org copy: مؤسسة not منظمة.
+- Directory KPIs: shared `Stats` bound to that module’s `*Stats` extras (customers: `customerStats`; meetings: `meetingStats`; plans: `planStats`; subscriptions: `subscriptionStats`). Optional `href` / `note` on tiles. Never count loaded rows.
+- Home KPIs are a different surface (`Query.home` extras). See `.cursor/rules/cpanel-supervisor-home.mdc`. Do not bind the customers directory header to home extras, and do not bind home tiles to `customerStats`.
+- Shared `StatusChip` + visual helpers (`supervisor-shared-ui.md`). Nested org copy: مؤسسة not منظمة. Product: باقة = Plan, اشتراك = Subscription.
+- i18n: `ar.ts` only; nested translator bind.
+- Read-only directories: no new `DATA_ADAPTERS` or `Forms` keys. Plan catalog writes use `Forms.SUPERVISOR_PLAN` (exception; see `plan-management.md`).
 
 ## GQL mirrors
 

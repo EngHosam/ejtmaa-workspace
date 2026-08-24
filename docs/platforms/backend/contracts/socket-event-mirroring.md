@@ -2,7 +2,7 @@
 
 ## Scope boundary
 
-This contract covers **backend → frontend outbound** user-facing notify/socket events (`OnCustomerEvent` / `OnUserEvent`).
+This contract covers **backend → frontend outbound** user-facing notify/socket events (`OnCustomerEvent` / `OnUserEvent` / `OnSupervisorEvent`).
 
 **Out of scope:** the `/meeting` session events (`meeting.live.sync`, `meeting.live.update`, `meeting.live.error`). Their inbound side is registered only in `backend/src/resources/configs/socket/io.ts`, and their outbound side is answered to a single socket or room by the meeting controllers and consumed by the meeting hook's own listeners. Do not add any of them to frontend event registries. See `docs/platforms/backend/contracts/meeting-realtime-socket.md`.
 
@@ -27,7 +27,7 @@ Backend event: `OnCustomerEvent`
 - `cpanel/src/types/events.ts`
 - `cpanel/src/resources/configs/socket/events.ts`
 
-Backend event: `OnUserEvent`
+Backend events: `OnUserEvent` (all supervisors), `OnSupervisorEvent` (that supervisor's room)
 
 ## Workflow
 
@@ -50,8 +50,17 @@ Payload union:
 Payload union:
 
 - `NEW_CUSTOMER`
+- `NEW_VENDOR`
 
-Supervisor cpanel mirrors consume `OnUserEvent` for supervisor broadcast notifications.
+Supervisor cpanel mirrors consume `OnUserEvent` for platform-wide supervisor broadcast notifications.
+
+### `OnSupervisorEvent`
+
+Payload union:
+
+- `UPDATED`
+
+Cpanel `useMe` reloads `DATA_ADAPTERS.SUPERVISOR_ME` on `OnSupervisorEvent`. Channel is `Rooms.SUPERVISOR(supervisorId)`, not `ALL_SUPERVISORS`.
 
 ## Anti-drift rules
 

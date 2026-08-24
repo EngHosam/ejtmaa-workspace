@@ -179,16 +179,17 @@ Examples:
 | `components/Toast.tsx` | Shared cpanel toast rendering surface. |
 | `components/auth/*` | Shared auth-page product UI (`AuthPageShell`, `AuthTextField`) built on the shared form primitives. `AuthPageShell` owns the split brand panel + form card (Website DNA), not a generic admin max-width card. |
 | `components/ThemeModeSwitch.tsx` | Shared theme-mode toggle for shell/layout review and future reuse. |
-| `components/Stats.tsx` | Shared multi-item KPI grid (`customerStats` extras on the customers list). |
-| `components/PageStateLane.tsx` | Detail overlay host (`Loadable` / `Empty` / `LaneFailed`) with content padding + flex fill. |
-| `components/supervisor/*` | Supervisor workspace chrome (`SupervisorHeader`, `SupervisorDrawer`, `SupervisorFooter`, `SupervisorSubHeader`, home screen, `hooks/useMe`, `customers/*`). |
+| `components/StatusChip.tsx` | Meeting / org / subscription / notify status pills (`supervisor-shared-ui.md`). |
+| `components/PageStateLane.tsx` | Overlay host (`Loadable` / `Empty` / `LaneFailed`). Detail identity heading is success children only. Contract: `supervisor-state-lanes.md`. |
+| `components/FormStateLane.tsx` | Same as `PageStateLane`; form chrome (heading/actions) stays **outside** the lane. |
+| `components/supervisor/*` | Supervisor workspace chrome plus module folders (`home`, `customers`, `meetings`, `plans`, `subscriptions`, `settings`). |
 | `components/Logo.tsx` | Shared light/dark logo switcher for shell branding surfaces. |
 | `components/StatusBadge.tsx` | Shared reusable compact state badge for status-like labels across modules. |
 | `components/DataTable.tsx` | Shared product table surface with toolbar/pagination review contract. |
-| `components/form/*` | Shared project form primitives (`FormInputWrapper`, `FormTextField`, `FormActionButton`). |
+| `components/form/*` | Shared project form primitives (`FormInputWrapper`, `FormTextField`, `FormMultiLangField`, `FormActionButton`). |
 | `components/IdentityAvatar.tsx` | Remapped reusable identity avatar (originally under Website `components/customer/`). |
 
-There is no `components/customer/*` or home KPI folder. Customers product UI is `components/supervisor/customers/`.
+There is no `components/customer/*`. Home dashboard lives under `components/supervisor/home/`.
 
 Rule:
 - if a component is part of the **project UI language** rather than framework plumbing, it belongs here,
@@ -217,11 +218,12 @@ Rule:
 Supervisor pages:
 - `Login` — requester-backed shallow form and shared auth components.
 - `Home` — empty `MyPage` at `/` so the mount root is not unmatched.
-- `SupervisorHome` — `SUPERVISOR_MAIN` at `/supervisor` with an empty home screen.
+- `SupervisorHome` — `SUPERVISOR_MAIN` dashboard (`components/supervisor/home/`).
 - `SupervisorCustomers` / `SupervisorCustomer` — thin pages; screens under `components/supervisor/customers/`.
+- Meetings / plans / subscriptions / settings — thin pages under `pages/supervisor/`; screens under matching `components/supervisor/` folders.
 - `Error` — branded fallback page.
 
-AccountSettings and HomeStatCard are not in this checkout.
+AccountSettings identify is `SupervisorSettings`. HomeStatCard is not used; home charts are `SupervisorHomeBars`.
 
 Rule:
 - pages orchestrate route-level behavior and compose shared UI,

@@ -261,21 +261,21 @@ Any task that materially changes cpanel architecture, folder ownership, UI found
 7. `docs/platforms/cpanel/supervisor-admin-modules.md`
 8. `docs/platforms/cpanel/customer-management.md`
 9. `docs/platforms/cpanel/graphql-mirror-and-tooling.md`
-10. relevant feature maintenance docs touched by the change (`flow-supervisor-shell.md`, `route-registry-contract.md`, `login-runtime-and-feedback.md`, `error-route-and-guard.md` when those surfaces move)
+10. relevant feature maintenance docs touched by the change (`flow-supervisor-shell.md`, `route-registry-contract.md`, `login-runtime-and-feedback.md`, `error-route-and-guard.md`, `supervisor-home.md`, `plan-management.md`, `subscription-management.md`, `meeting-management.md`, `supervisor-settings.md`, `supervisor-state-lanes.md`, `supervisor-shared-ui.md`, `supervisor-workspace-change-set.md` when those surfaces move)
 11. this invariant file when the invariant itself changes
 
 Rationale:
 - Keep cpanel documentation usable as a real build foundation for later implementation, debugging, and extension work.
 
-## C18. Customer Stats KPI Invariant
+## C18. Stats KPI Invariant
 
-`SupervisorHome` (`/supervisor`) has an empty page body (Helmet title only). Occupancy `Home` (`/`) renders `null`. There is no home KPI grid.
+Occupancy `Home` (`/`) still renders `null`. Authenticated `SupervisorHome` (`/supervisor`) is a real dashboard: `Stats` tiles + charts + meeting cards from `Query.home` extras and aliased `meetings` roots (`docs/platforms/cpanel/supervisor-home.md`). Do not invent client-side counts from loaded cards.
 
-The customers **list** header uses shared `Stats` bound to root `customerStats` extras (`total_count`, `created_today_count`) from the same `customers` query (`section`). Do not invent a client-side count from loaded list rows.
+Directory **list headers** bind shared `Stats` to that query’s `*Stats` extras (`customerStats`, `meetingStats`, `planStats`, `subscriptionStats`). Never count loaded ResultLane rows. List window size remains `_X.total_count` on the listable records, not the header tiles.
 
-List pagination window counts must come from `_Customer.total_count` on the `customers` query (not the header tiles).
+`Stats` tiles may include optional `href` and `note`. Home tiles use `_Home` extras (prefixed names). Do not bind home tiles to `customerStats`. Do not bind a directory header to `_Home`.
 
-Future home or other KPI surfaces must use those same `customerStats` extras only.
+Do not invent revenue, conversion, or time-series that the ORM does not store. Subscription month bars are `created_at` counts for calendar months 1–12 of the current year (`HomeBridge`).
 
 ## C19. Supervisor Route Namespace Invariant
 

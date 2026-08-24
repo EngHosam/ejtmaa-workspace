@@ -28,13 +28,20 @@ There is no `MainLayout`, `UiMockup`, or card-style `Header` / `Drawer` / `Foote
 | `SupervisorHome` | `/supervisor` | `SUPERVISOR_MAIN` |
 | `SupervisorCustomers` | `/supervisor/customers` | `SUPERVISOR_MAIN` |
 | `SupervisorCustomer` | `/supervisor/customers/:id` | `SUPERVISOR_MAIN` |
+| `SupervisorMeetings` | `/supervisor/meetings` | `SUPERVISOR_MAIN` |
+| `SupervisorMeeting` | `/supervisor/meetings/:id` | `SUPERVISOR_MAIN` |
+| `SupervisorPlans` | `/supervisor/plans` | `SUPERVISOR_MAIN` |
+| `SupervisorPlanForm` | create `/supervisor/plans/form`; update `/supervisor/plans/form/:id` | `SUPERVISOR_MAIN` |
+| `SupervisorSubscriptions` | `/supervisor/subscriptions` | `SUPERVISOR_MAIN` |
+| `SupervisorSubscription` | `/supervisor/subscriptions/:id` | `SUPERVISOR_MAIN` |
+| `SupervisorSettings` | `/supervisor/settings` | `SUPERVISOR_MAIN` |
 | `Error` | `/:error(404\|500\|403)` | `BASIC` |
 
 `mustAuthedAs: ["SUPERVISOR"]` paths go through `supervisorRouter` in `routes.ts` (`supervisorRouter("")` → `/supervisor`). `Login`, `Home`, and `Error` stay absolute. `publicRoutes` is `Login` only.
 
 `getMyHomeIdentify` returns `SupervisorHome`. Authed supervisors on `Login` redirect there. `Home` is registered at `/` but is not in `publicRoutes`; unauthenticated visits redirect to `Login`.
 
-`SupervisorHome` is a thin `MyPage` → `SupervisorHomeScreen` (Helmet title only). No dashboard widgets.
+`SupervisorHome` is a thin `MyPage` → `SupervisorHomeScreen` (dashboard). Contract: `supervisor-home.md`.
 
 ## 3) Header
 
@@ -48,19 +55,19 @@ There is no `MainLayout`, `UiMockup`, or card-style `Header` / `Drawer` / `Foote
   - With `data.query`: `useShallowAdapter` keyed by `md5(data.query)`, inherits `SUPERVISOR_ME`.
 - `_Me` in supervisor SDL has **no** `avatar_url`. Chrome uses `IdentityAvatar` initials/icon from `name` only. Auth `start` still hydrates `auth.supervisor.permissions` only; profile identity is this GQL adapter, not the auth reducer.
 - SSR: `auth.loadCurrentSupervisor(myInstance)` in `cpanel/src/app/services/auth.ts` (no-op unless `isAuthedAs(..., ["SUPERVISOR"])`) calls `LoadCurrentSupervisor`; invoked from `boot.server` after start + permissions.
-- No page-local socket reload: mirrored `OnUserEvent` payloads (`NEW_CUSTOMER` | `NEW_VENDOR`) do not change supervisor `me`.
+- Socket: `useSocket({ registerTo: "OnSupervisorEvent", ... })` → `mLoad({reload: true})` (same pattern as website `OnCustomerEvent`). `OnUserEvent` (`NEW_CUSTOMER` | `NEW_VENDOR`) does not reload `me`.
 
 ## 4) Drawer
 
-Portaled grid (Website customer drawer DNA). Tiles: Home (`HomeMark` `tone="onPrimary"`, `alwaysAvailable`) then Customers (`FiUser`, `alwaysAvailable`, identify `SupervisorCustomers`). No Settings / org tiles. Utility: theme switch (no language switch; Arabic-only) + logout.
+Portaled grid (Website customer drawer DNA). Order: Home (`HomeMark` `tone="onPrimary"`) → Customers → Meetings → Plans → Subscriptions → Support (rendered, `available=false`, no route) → Settings. First-class tiles use `alwaysAvailable`. Utility: theme switch (no language switch; Arabic-only) + logout.
 
 ## 5) Sub-header
 
-`SupervisorSubHeader` + `useBreadcrumbs({ rootIdentify: "SupervisorHome" })`. Customers list/detail register `breadcrumb` in `routes.ts`, so the bar is visible on those identifies.
+`SupervisorSubHeader` + `useBreadcrumbs({ rootIdentify: "SupervisorHome" })`. Workspace routes register `breadcrumb` in `routes.ts`.
 
 ## 6) i18n
 
-`ui.layouts.supervisorMainLayout` and `ui.pages.supervisor` (`home`, `customers`, `customer`) in `cpanel/src/resources/translations/ar.ts`. There is no `en.ts` (Arabic-only `locales: ["ar"]`).
+`ui.layouts.supervisorMainLayout` and `ui.pages.supervisor` (home, customers, meetings, plans, subscriptions, settings) in `cpanel/src/resources/translations/ar.ts`. There is no `en.ts` (Arabic-only `locales: ["ar"]`).
 
 ## 7) Change-set inventory (cpanel sources)
 
@@ -68,15 +75,15 @@ Portaled grid (Website customer drawer DNA). Tiles: Home (`HomeMark` `tone="onPr
 |---|---|---|
 | `src/app/ui/layouts/SupervisorMainLayout.tsx` | Authed shell tree; content `Col` for flex fill | §1 |
 | `src/app/ui/components/supervisor/SupervisorHeader.tsx` | Fixed header | §3 |
-| `src/app/ui/components/supervisor/SupervisorDrawer.tsx` | Portaled drawer (Home + Customers) | §4 |
+| `src/app/ui/components/supervisor/SupervisorDrawer.tsx` | Portaled drawer (Home through Settings) | §4 |
 | `src/app/ui/components/supervisor/SupervisorFooter.tsx` | Footer + MicrobandCredit | §1 |
 | `src/app/ui/components/supervisor/SupervisorSubHeader.tsx` | Breadcrumb bar | §5 |
 | `src/app/ui/pages/supervisor/SupervisorCustomers.tsx` | Customers list page | `customer-management.md` |
 | `src/app/ui/pages/supervisor/SupervisorCustomer.tsx` | Customer detail page | `customer-management.md` |
-| `src/app/ui/components/supervisor/home/SupervisorHomeScreen.tsx` | Helmet title only | §2 |
+| `src/app/ui/components/supervisor/home/SupervisorHomeScreen.tsx` | Dashboard composition | `supervisor-home.md` |
 | `src/app/ui/components/supervisor/hooks/useMe.tsx` | GQL `me` adapter hook | §3.1 |
 | `src/app/ui/components/supervisor/graphql.config.yml` | Editor schema `base` + `supervisor` | `graphql-mirror-and-tooling.md` |
-| `src/app/ui/pages/supervisor/SupervisorHome.tsx` | Route page | §2 |
+| `src/app/ui/pages/supervisor/SupervisorHome.tsx` | Route page | `supervisor-home.md` |
 | `src/app/ui/pages/supervisor/graphql.config.yml` | Editor schema `base` + `supervisor` | `graphql-mirror-and-tooling.md` |
 | `src/app/ui/pages/Home.tsx` | `/` occupancy | `route-registry-contract.md` |
 | `src/app/ui/pages/Error.tsx` | CTA `SupervisorHome` | `error-route-and-guard.md` |

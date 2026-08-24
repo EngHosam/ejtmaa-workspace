@@ -9,6 +9,8 @@ alwaysApply: false
 
 Use the documented cpanel foundation before changing `cpanel/`:
 - `docs/platforms/cpanel/overview.md`
+- `docs/platforms/cpanel/supervisor-home.md`
+- `docs/platforms/cpanel/supervisor-state-lanes.md`
 - `docs/platforms/cpanel/repository-inventory.md`
 - `docs/platforms/cpanel/component-structure.md`
 - `docs/platforms/cpanel/ui-foundation.md`
@@ -40,8 +42,8 @@ Current cpanel constraints:
 - Backend GraphQL SDL and generated type mirrors consumed by `cpanel/` belong under `src/types/gql/**`, with backend remaining the source of truth and sync happening by command-based copy rather than hand-editing copied mirrors.
 - `supervisor` GraphQL mirrors are a cpanel concern; do not sync `supervisor` SDL/types into `website/` unless that client explicitly starts consuming supervisor role contracts.
 - Local `graphql.config.yml` helper files belong only in UI subtrees that actually host GraphQL-aware code. Generic `src/app/ui/pages/` and `src/app/ui/components/` helpers point at `base.graphql` only; `pages/supervisor/` and `components/supervisor/` helpers point at the mirrored `base` + `supervisor` pair under `src/types/gql/`.
-- Implemented supervisor routes: `Login`, `Home` (empty `MyPage` at `/`; not in `publicRoutes`), empty `SupervisorHome` at `/supervisor`, `SupervisorCustomers` / `SupervisorCustomer` (read-only ResultLane directory), `Error`. Declare `supervisorRouter` in `cpanel/src/resources/configs/routes.ts`; every `mustAuthedAs: ["SUPERVISOR"]` path goes through it (`supervisorRouter("")` → `/supervisor`). Do not hand-write `/supervisor/...` literals on workspace routes. `Login`, `Home`, and `Error` stay absolute. `publicRoutes` is `Login` only. Do not invent AccountSettings, org routes, home KPI widgets, or customer writes unless a product task asks. Further list/detail modules: `.cursor/skills/cpanel-supervisor-read-directory/SKILL.md` and `.cursor/rules/cpanel-supervisor-read-directory.mdc`. Register fixed `/supervisor/...` segments before parametric `/supervisor/:id` on the same prefix.
-- Starter shared registries (`FORM1`, `ADAPTER1`) are foundation placeholders for future features.
+- Implemented supervisor routes: `Login`, occupancy `Home` (`/` empty `MyPage`, not in `publicRoutes`), dashboard `SupervisorHome`, customers / meetings / subscriptions directories, plan list+form, settings, `Error`. Declare `supervisorRouter` in `cpanel/src/resources/configs/routes.ts`; every `mustAuthedAs: ["SUPERVISOR"]` path goes through it (`supervisorRouter("")` → `/supervisor`). Do not hand-write `/supervisor/...` literals on workspace routes. `Login`, `Home`, and `Error` stay absolute. `publicRoutes` is `Login` only. Do not invent org routes, customer writes, or `SupervisorSupport` unless a product task asks. List/detail: `.cursor/skills/cpanel-supervisor-read-directory/SKILL.md`. Home: `.cursor/skills/cpanel-supervisor-home/SKILL.md`. Lanes: `docs/platforms/cpanel/supervisor-state-lanes.md`. Register fixed `/supervisor/...` segments before parametric `:id` on the same prefix (`plans/form` before `plans/form/:id`).
+- Shared `Forms` keys in this checkout: `FORM1` (placeholder), `SUPERVISOR_PLAN`, `SUPERVISOR_SETTINGS`. `ADAPTER1` remains a placeholder; directories inherit `SUPERVISOR_GQL` with mount-private identifies.
 - Supervisor chrome identity is `DATA_ADAPTERS.SUPERVISOR_ME` (`useMe` / `LoadCurrentSupervisor` → `Query.me { id name email }` on `API.DATA_ADAPTERS.SUPERVISOR.GQL` = `/data_adapters/supervisor/gql`). Do not invent `me` from `auth.supervisor` (start hydrates permissions only). Do not select `avatar_url` on supervisor `_Me`; that field is not in supervisor SDL.
 
 Interpretation rule:

@@ -64,6 +64,7 @@ Owner helper pattern:
 Event emitters:
 - `OnUserEvent`
 - `OnCustomerEvent`
+- `OnSupervisorEvent`
 
 ## 5) System Settings Contract
 
@@ -88,8 +89,7 @@ Access methods:
 
 - Base `Model.can(...)` currently returns `"CAN"` by default.
 - `User` overrides `can("LOGIN", ...)`.
-- `Customer` and `Supervisor` define explicit `Ability` for notification deletion and override `can()`.
-- `NotificationRequester.deleteAll` calls owner-level `can()` before mutation.
+- `Customer` and `Supervisor` define explicit `Ability` maps and override `can()`. Supervisor `PLAN` (`create` / `read` / `update` / `delete`): delete throws `CANNOT_DELETE_USED` when any `Subscription` references the plan. `NotificationRequester.deleteAll` calls owner-level `can()` before mutation.
 
 ### Required Pattern (for future growth)
 
@@ -111,7 +111,8 @@ This matches the Ejtmaa three-level authorization model:
 `joi_rules.ts` provides identity-safe model extraction:
 - `Model().Opt(joi)` resolves numeric ID, select option, or model instance.
 - Facts validators can auto-load linked `user` in external validation step.
-- `isMobile`, `isMultiLang`, and actor fact validators centralize common constraints.
+- `isMobile`, `isMultiLang(joi, minLength?, optional?)`, and actor fact validators centralize common constraints. Optional MultiLang: null, both-empty strings, or filled `{ ar, en }` with `.trim().min(minLength)`; empty pair custom-maps to `null`.
+- `isPlan(joi)` resolves a Plan via `Plan().Opt`.
 
 Guideline:
 - Never trust route actor guard only.

@@ -20,7 +20,7 @@ The cpanel repository includes:
 - form hooks,
 - shallow injector hooks,
 - frontend endpoint mapping for `/cpanel/data_adapters/supervisor/gql`,
-- frontend endpoint mapping for `/cpanel/forms/requester/:requester/:sub`.
+- frontend endpoint mapping for `/cpanel/forms/requester/:requester/:sub` (visitor) and `/cpanel/forms/supervisor/requester/:requester/:sub` (supervisor).
 
 That means the intended architecture is already visible:
 
@@ -165,9 +165,9 @@ This is the correct path for future feature forms that inherit a known requester
 
 ## 6) `DATA_ADAPTERS` and `Forms` are not dumping grounds
 
-Shared store identifiers (`ADAPTER1`, `FORM1`) are starter placeholders in:
-- `cpanel/src/resources/configs/store/data-adapters.ts`
-- `cpanel/src/resources/configs/store/forms.ts`
+Shared store identifiers in this checkout:
+- `cpanel/src/resources/configs/store/data-adapters.ts` — `SUPERVISOR_ME`, `SUPERVISOR_GQL`, plus placeholder `ADAPTER1`
+- `cpanel/src/resources/configs/store/forms.ts` — `SUPERVISOR_PLAN`, `SUPERVISOR_SETTINGS`, plus placeholder `FORM1`
 
 ### Rule
 
@@ -278,11 +278,12 @@ Route-level evidence:
 
 - `Login` — form/requester boundary for supervisor login (`sub: "supervisorLogin"`),
 - `Home` — empty `MyPage` at `/` so the mount root is not unmatched,
-- `SupervisorHome` — `SUPERVISOR_MAIN` at `/supervisor` with an empty page body,
+- `SupervisorHome` — dashboard (`supervisor-home.md`),
 - `SupervisorCustomers` / `SupervisorCustomer` — read-only GQL directory (`customer-management.md`),
+- meetings / plans / subscriptions / settings — see matching feature docs,
 - `Error` — route-owned presentational fallback.
 
-AccountSettings is not present in this checkout.
+`SupervisorSupport` is not a route.
 
 ## 10) Shared usability expectations from `website/`
 
@@ -296,7 +297,7 @@ Although cpanel is a web platform, the same interaction quality should be preser
 - route-owned screens do not mutate unseen shared state accidentally,
 - one mutation refreshes only the affected read boundaries.
 
-These expectations apply to supervisor routes (ResultLane directories, optional stats bound to `customerStats` extras, settings forms). Home still has no KPI grid.
+These expectations apply to supervisor routes (ResultLane directories, stats bound to `*Stats` extras, settings/plan forms, home extras).
 
 ## 12) Final rule
 

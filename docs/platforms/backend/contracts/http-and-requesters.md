@@ -30,11 +30,11 @@ Website controllers:
 - `backend/src/app/http/controllers/website/data_adapters/GQLAdapterController.ts` — visitor GQL reads
 - `backend/src/app/http/controllers/website/data_adapters/customer/GQLAdapterController.ts` — customer GQL reads
 
-Cpanel controllers:
-- `backend/src/app/http/controllers/cpanel/forms/SupervisorRequesterController.ts` — visitor login and supervisor writes
-- `backend/src/app/http/controllers/cpanel/data_adapters/supervisor/GQLAdapterController.ts` — supervisor GQL reads (`GET /cpanel/data_adapters/supervisor/gql`)
+Cpanel form routers: `POST /cpanel/forms/requester/:requester/:sub` uses `VisitorRequesterController` (`Authed()`). `POST /cpanel/forms/supervisor/requester/:requester/:sub` uses `SupervisorRequesterController` (`Authed(true)`). Login must not share the supervisor Authed group.
 
-## Active requesters (7)
+Cpanel GQL reads: `backend/src/app/http/controllers/cpanel/data_adapters/supervisor/GQLAdapterController.ts` (`GET /cpanel/data_adapters/supervisor/gql`).
+
+## Active requesters (8)
 
 | Requester | `@requester` ident | Website subs | Cpanel subs |
 |---|---|---|---|
@@ -42,6 +42,7 @@ Cpanel controllers:
 | CustomerRequester | `customer` | customer | supervisor |
 | NotificationRequester | `notification` | customer | — |
 | SubscriptionRequester | `subscription` | customer (`subscribe`) | — |
+| PlanRequester | `plan` | — | supervisor |
 | SupervisorRequester | `supervisor` | — | supervisor |
 | WebsiteSettingsRequester | `website_settings` | — | supervisor |
 | PlatformSettingsRequester | `platform_settings` | — | supervisor |

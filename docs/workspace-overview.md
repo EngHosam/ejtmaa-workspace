@@ -22,9 +22,9 @@ Platform docs describe contracts for each repository. Checked-in trees implement
 
 `backend/` is the server-side source of truth for:
 - HTTP route mounts (`/website`, `/cpanel`)
-- requesters (6 active: auth, customer, notification, supervisor, website_settings, platform_settings)
+- requesters (8 decorated on cpanel/website maps: `auth`, `customer`, `notification`, `subscription`, `plan`, `supervisor`, `website_settings`, `platform_settings`)
 - GraphQL schemas (`customer`, `supervisor`)
-- ORM models (Customer, Supervisor, User, Token, Notification, SystemSetting)
+- ORM models (Customer, Supervisor, User, Token, Notification, SystemSetting, Organization, Member, Meeting and children, Plan, Subscription, MyFatoorahInvoice, …)
 - integration providers (socket, notify, mailer, scheduler, console)
 
 Detail:
@@ -34,8 +34,8 @@ Detail:
 
 ### CPanel
 
-`cpanel/` is the Supervisor SSR frontend contract on mount `/cpanel`.
-See `docs/platforms/cpanel/overview.md` for repository layout and the implemented bootstrap routes.
+`cpanel/` is the Supervisor SSR frontend on mount `/cpanel` (dashboard home, directories, plan writes, settings).
+See `docs/platforms/cpanel/overview.md`.
 
 Detail:
 - `docs/platforms/cpanel/README.md`
@@ -60,7 +60,8 @@ Detail:
 - Payment callbacks (target): `/external` + MyFatoorah finalize contract — `docs/platforms/backend/contracts/external-http-mount-and-myfatoorah-callbacks.md`
 - Socket namespaces: `/customer`, `/supervisor`, `/meeting`
 - Active notify events:
-  - `OnUserEvent` — supervisor broadcast; payload kind `NEW_CUSTOMER`
+  - `OnUserEvent` — supervisor broadcast; payload kinds `NEW_CUSTOMER` | `NEW_VENDOR`
+  - `OnSupervisorEvent` — per-supervisor channel; payload kind `UPDATED`
   - `OnCustomerEvent` — per-customer channel; payload kind `UPDATED`
 - Socket mirror contract: `docs/platforms/backend/contracts/socket-event-mirroring.md`
 

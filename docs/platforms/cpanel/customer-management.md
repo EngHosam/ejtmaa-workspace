@@ -1,6 +1,6 @@
 # CPanel Customer Management
 
-Read-only supervisor **customers** directory on `cpanel/` (backend mount `/cpanel`). Each card and detail shows that customer's **at most one** organization (`Organization.customer_id` unique). No DataTable. No home KPI widgets. No organizations module. No customer writes.
+Read-only supervisor **customers** directory on `cpanel/` (backend mount `/cpanel`). Each card and detail shows that customer's **at most one** organization (`Organization.customer_id` unique). No DataTable. No organizations module. No customer writes. Home KPIs are a **separate** surface (`supervisor-home.md`).
 
 Arabic UI copy uses **مؤسسة** for that nested organization (Website DNA). Do not substitute منظمة.
 
@@ -24,7 +24,7 @@ Href: `{ identify: "SupervisorCustomer", params: { id } }`. Do not type a flat `
 
 Thin pages: `cpanel/src/app/ui/pages/supervisor/SupervisorCustomers.tsx`, `SupervisorCustomer.tsx` (`MyPage` → screen).
 
-Drawer (`SupervisorDrawer`): tile after Home, `FiUser`, `alwaysAvailable`, identify `SupervisorCustomers`. Home keeps `HomeMark` `tone="onPrimary"`. No extra org/settings tiles.
+Drawer (`SupervisorDrawer`): Customers tile after Home, `FiUser`, `alwaysAvailable`. Later tiles (meetings, plans, subscriptions, settings) are documented on `flow-supervisor-shell.md`. Home keeps `HomeMark` `tone="onPrimary"`.
 
 Sub-header: `routes[identify]?.breadcrumb` already mounts `SupervisorSubHeader`.
 
@@ -61,7 +61,7 @@ Pagination window size remains adapter `maxLoadLength` (default 24). `_Customer.
 
 `SupervisorCustomersScreen`: `SectionHeading`, shared `Stats`, `SearchField`, `ResultLane`.
 
-`Stats` (`cpanel/src/app/ui/components/Stats.tsx`): `items: { id, label, value }[]`. Grid 4 / 2 / 1. Card chrome + 3px start accent rail. Values from `customerStats` extras only when they are numbers (omit the tile until then). C18: never count loaded rows.
+`Stats` (`cpanel/src/app/ui/components/Stats.tsx`): `items: { id, label, value, note?, href? }[]`. Grid 4 / 2 / 1. Card chrome + 3px start accent rail. Values from `customerStats` extras only when they are numbers (omit the tile until then). C18: never count loaded rows. Home uses the same component with `_Home` extras (`supervisor-home.md`).
 
 ResultLane: `renderCard` wraps `SupervisorCustomerCard` in `Link`; `renderSkeleton` → `SupervisorCustomerCardSkeleton` (taller org line — do not reshape shared `CardSkeleton`). Load-more via `LoadMoreButton` (no DataTable pager).
 
@@ -71,19 +71,19 @@ Null organization: empty copy (`orgEmpty`).
 
 `SupervisorCustomerScreen`: `FlexContainer` `dir="column"` `flx_1` so the lane can fill the layout `Col`. Helmet title = customer name or page title.
 
-`PageStateLane` always uses the same outer bounds as list content: `Col flx_1 pt={2} gap={1.5} pb={2}`. Overlay states wrap an inner `Col flx_1 relative center`:
+No heading while loading / empty / failed. Padding matches the list: `Col flx_1 pt={2} gap={1.5} pb={2}`. `PageStateLane` is the `relative` `flx_1` host (`minH` `13.75rem`); identity row lives only in success children:
 
 - loading: project `Loadable` `size={"3rem"}` (Website detail DNA — not card bones)
 - missing: `Empty` (unchanged component)
 - other errors: `LaneFailed` + hook `refresh`
 
-Do **not** add props to `Wrong` / `Loadable`. `Empty` / `LaneFailed` stay absolute fills of that inner relative host.
+Do **not** add props to `Wrong` / `Loadable`. `Empty` / `LaneFailed` stay absolute fills of that relative host. `FormStateLane` re-exports the same host.
 
 Overlay flags live on the hook (screen only consumes them):
 
 - `showEmpty` = `status === "LOADED_WITH_ERRORS" && !customer`
 - `showFailed` = remaining error family and not empty
-- `isInitialLoading` = `!exist || !status || LOADING || INIT`
+- `isInitialLoading` = `!exist || !status` or in-flight (`INIT` / `LOADING` / `RELOADING`) with no customer
 
 Success: identity row + two read-only cards (customer fields; org fields or `orgEmpty`). No Forms.
 
@@ -91,9 +91,9 @@ Success: identity row + two read-only cards (customer fields; org fields or `org
 
 `_CustomerStats.created_today_count: Int!` — `CustomerStatsBridge.loadExtra` → `Customer().countOfCreatedToday()` (`TODAY_START` / UTC+3 window). `total_count` remains `Customer().count()`.
 
-## 7) Out of scope (still)
+## 7) Out of scope (this module)
 
-Home KPI grid; org routes/tiles; customer writes; extra filter UI; new shared adapter/Forms identifiers; hand-edited GQL mirrors.
+Org routes/tiles; customer writes; extra filter UI; new shared adapter identifiers; hand-edited GQL mirrors. Home KPI grid is **in scope elsewhere** (`supervisor-home.md`) and must not reuse this list’s `customerStats` binding.
 
 ## 8) Verification
 
@@ -127,6 +127,8 @@ Home KPI grid; org routes/tiles; customer writes; extra filter UI; new shared ad
 ## Related
 
 - `docs/platforms/backend/contracts/supervisor-customers-and-stats.md`
+- `docs/platforms/cpanel/supervisor-state-lanes.md`
+- `docs/platforms/cpanel/supervisor-shared-ui.md`
 - `docs/platforms/cpanel/flow-supervisor-shell.md`
 - `docs/platforms/cpanel/route-registry-contract.md`
 - `docs/invariants/cpanel.md` C17 C18 C19

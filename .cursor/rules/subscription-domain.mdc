@@ -1,6 +1,6 @@
 ---
 description: Subscription (الاشتراك) customer entitlement ORM/GQL invariants — statuses, current scope, expire task
-globs: backend/src/app/orm/models/Subscription.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/gql/bridges/customer/SubscriptionBridge.ts,backend/src/app/gql/definitions/customer.graphql,backend/src/app/scheduler/tasks/ExpireSubscriptionsTask.ts,docs/platforms/backend/contracts/subscription-domain.md
+globs: backend/src/app/orm/models/Subscription.ts,backend/src/app/orm/models/Customer.ts,backend/src/app/gql/bridges/customer/SubscriptionBridge.ts,backend/src/app/gql/bridges/supervisor/SubscriptionBridge.ts,backend/src/app/gql/definitions/customer.graphql,backend/src/app/gql/definitions/supervisor.graphql,backend/src/app/scheduler/tasks/ExpireSubscriptionsTask.ts,docs/platforms/backend/contracts/subscription-domain.md,docs/platforms/backend/contracts/supervisor-catalog-and-home.md
 alwaysApply: false
 ---
 
@@ -34,4 +34,9 @@ Authoritative contract: `docs/platforms/backend/contracts/subscription-domain.md
 
 - Roots `subscriptions` / `subscription(id)` with `{ me: true }` → Customer parent.
 - Nested `_Subscription.plan`; `PlanBridge.GetOneParent` includes `SubscriptionModel`.
-- No supervisor Subscription surface until explicitly requested.
+
+## Supervisor GQL
+
+- Roots `subscriptions` / `subscription` / `subscriptionStats` are platform-wide (not `{ me: true }`).
+- Search matches customer `name` / `email` then `customer_id IN`.
+- Cpanel directory is read-only. No supervisor Subscription requester.

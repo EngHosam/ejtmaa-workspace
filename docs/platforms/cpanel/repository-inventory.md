@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Inventory of project-owned paths under `cpanel/` for the current supervisor checkout (bootstrap + read-only customers).
+Inventory of project-owned paths under `cpanel/` for the current supervisor checkout (workspace modules, not bootstrap-only).
 
 This is the live checkout inventory, not a future product catalog.
 
@@ -41,13 +41,17 @@ This is the live checkout inventory, not a future product catalog.
 |---|---|
 | `src/app/ui/layouts/BasicLayout.tsx` | Auth/error wrapper |
 | `src/app/ui/layouts/SupervisorMainLayout.tsx` | Authed supervisor shell |
-| `src/app/ui/components/supervisor/*` | Header, drawer, footer, sub-header, home screen, `hooks/useMe`, `customers/*` |
-| `src/app/ui/components/Stats.tsx` | Shared KPI tile grid |
-| `src/app/ui/components/PageStateLane.tsx` | Detail load / empty / fail host |
-| `src/app/ui/components/DataTable.tsx` | List table primitive (reusable; unused by customers — ResultLane) |
+| `src/app/ui/components/supervisor/*` | Header, drawer, footer, sub-header, home, `hooks/useMe`, customers/meetings/plans/subscriptions/settings |
+| `src/app/ui/components/Stats.tsx` | Shared KPI tile grid (`href` / `note`) |
+| `src/app/ui/components/PageStateLane.tsx` | Load / empty / fail overlay host (detail) |
+| `src/app/ui/components/FormStateLane.tsx` | Alias of `PageStateLane` (forms) |
+| `src/app/ui/components/ResultLane.tsx` | Directory card grid + empty/fail |
+| `src/app/ui/components/StatusChip.tsx` | Meeting / org / subscription status pills |
+| `src/app/ui/components/DataTable.tsx` | List table primitive (reusable; unused by directories — ResultLane) |
 | `src/app/ui/components/IdentityAvatar.tsx` | Remapped reusable avatar (from Website `components/customer/`) |
 | `src/app/ui/components/auth/*` | Login shell DNA |
-| `src/app/ui/components/form/*` | Form field DNA |
+| `src/app/ui/components/form/FormMultiLangField.tsx` | Nested ar/en form field |
+| `src/app/ui/components/form/*` | Remaining form field DNA |
 | `src/app/ui/components/modals/*` | Entity / datetime / confirm modals |
 | `src/app/ui/components/LanguageSwitch.tsx` | Locale switcher component (unmounted; Arabic-only wiring) |
 
@@ -57,12 +61,19 @@ This is the live checkout inventory, not a future product catalog.
 |---|---|
 | `src/app/ui/pages/Login.tsx` | `/login` |
 | `src/app/ui/pages/Home.tsx` | `/` (empty `MyPage`) |
-| `src/app/ui/pages/supervisor/SupervisorHome.tsx` | `/supervisor` (empty home screen) |
+| `src/app/ui/pages/supervisor/SupervisorHome.tsx` | `/supervisor` (dashboard) |
 | `src/app/ui/pages/supervisor/SupervisorCustomers.tsx` | `/supervisor/customers` |
 | `src/app/ui/pages/supervisor/SupervisorCustomer.tsx` | `/supervisor/customers/:id` |
+| `src/app/ui/pages/supervisor/SupervisorMeetings.tsx` | `/supervisor/meetings` |
+| `src/app/ui/pages/supervisor/SupervisorMeeting.tsx` | `/supervisor/meetings/:id` |
+| `src/app/ui/pages/supervisor/SupervisorPlans.tsx` | `/supervisor/plans` |
+| `src/app/ui/pages/supervisor/SupervisorPlanForm.tsx` | `/supervisor/plans/form` (+ `/:id`) |
+| `src/app/ui/pages/supervisor/SupervisorSubscriptions.tsx` | `/supervisor/subscriptions` |
+| `src/app/ui/pages/supervisor/SupervisorSubscription.tsx` | `/supervisor/subscriptions/:id` |
+| `src/app/ui/pages/supervisor/SupervisorSettings.tsx` | `/supervisor/settings` |
 | `src/app/ui/pages/Error.tsx` | `/:error(404\|500\|403)` |
 
-There is no `AccountSettings.tsx` or home KPI component. Customers UI lives under `components/supervisor/customers/`.
+Feature UI lives under `components/supervisor/<module>/`. Exhaustive path table: `supervisor-workspace-change-set.md`.
 
 ## Types and GQL mirrors
 
@@ -73,7 +84,7 @@ There is no `AccountSettings.tsx` or home KPI component. Customers UI lives unde
 | `src/types/gql/definitions/supervisor.graphql` | Mirrored supervisor SDL |
 | `src/types/gql/gql-types/base.ts` | Generated base types |
 | `src/types/gql/gql-types/supervisor.ts` | Generated supervisor types |
-| `src/types/socket/events.ts` | `OnUserEvent` / `NEW_CUSTOMER` \| `NEW_VENDOR` |
+| `src/types/events.ts` | `OnUserEvent` (`NEW_CUSTOMER` \| `NEW_VENDOR`); `OnSupervisorEvent` (`UPDATED`) |
 
 ## Identity
 

@@ -21,9 +21,16 @@ Related runtime: `cpanel/src/app/services/router.ts` (`publicRoutes`, `applyRout
 | `SupervisorHome` | `/supervisor` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
 | `SupervisorCustomers` | `/supervisor/customers` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
 | `SupervisorCustomer` | `/supervisor/customers/:id` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
+| `SupervisorMeetings` | `/supervisor/meetings` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
+| `SupervisorMeeting` | `/supervisor/meetings/:id` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
+| `SupervisorPlans` | `/supervisor/plans` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
+| `SupervisorPlanForm` | `/supervisor/plans/form` and `/supervisor/plans/form/:id` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
+| `SupervisorSubscriptions` | `/supervisor/subscriptions` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
+| `SupervisorSubscription` | `/supervisor/subscriptions/:id` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
+| `SupervisorSettings` | `/supervisor/settings` | `SUPERVISOR_MAIN` | `mustAuthedAs: ["SUPERVISOR"]` |
 | `Error` | `/:error(404\|500\|403)` | `BASIC` | middleware early-return |
 
-`MPagesRoutes` mirrors the same identifies (`SupervisorCustomer.params.id`, `Error.error: number`). Layouts shipped: `BasicLayout` (`BASIC`), `SupervisorMainLayout` (`SUPERVISOR_MAIN`). There is no `MAIN`, `LANDING`, or `UiMockup` route.
+`MPagesRoutes` mirrors the same identifies (nested `params.id` on detail/form). Layouts shipped: `BasicLayout` (`BASIC`), `SupervisorMainLayout` (`SUPERVISOR_MAIN`). There is no `MAIN`, `LANDING`, or `UiMockup` route.
 
 `publicRoutes = ["Login"]`. `getMyHomeIdentify` always returns `"SupervisorHome"`.
 
@@ -45,7 +52,7 @@ const supervisorRouter = (path: string) => `/supervisor${path}`;
 1. Every `mustAuthedAs: ["SUPERVISOR"]` route path MUST go through `supervisorRouter(...)`.
 2. `Login`, `Home`, and `Error` keep absolute paths — do **not** wrap them in the helper.
 3. Do **not** hand-write `/supervisor/...` literals on workspace routes when the helper applies.
-4. Register fixed `/supervisor/...` segments before parametric `/supervisor/:id` on the same prefix.
+4. Register fixed `/supervisor/...` segments before parametric `/supervisor/:id` on the same prefix (list before `:id`; `plans/form` before `plans/form/:id`).
 
 In-app navigation uses `nav.push({ identify, … })`. Auth logo on `AuthPageShell` links to identify `SupervisorHome`.
 
@@ -83,9 +90,16 @@ SSR boot (`cpanel/src/app/services/index.ts`): `GET /custom/start` → `setRoute
 | `cpanel/src/app/services/router.ts` | `publicRoutes`, home identify, middleware | §4–§5; `login-runtime-and-feedback.md` |
 | `cpanel/src/app/ui/pages/Home.tsx` | Empty occupancy page | §4 |
 | `cpanel/src/app/ui/pages/Login.tsx` | Login (unchanged page class this slice) | `login-runtime-and-feedback.md` |
-| `cpanel/src/app/ui/pages/supervisor/SupervisorHome.tsx` | Authed home page | `flow-supervisor-shell.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorHome.tsx` | Authed home page | `supervisor-home.md` |
 | `cpanel/src/app/ui/pages/supervisor/SupervisorCustomers.tsx` | Customers list | `customer-management.md` |
 | `cpanel/src/app/ui/pages/supervisor/SupervisorCustomer.tsx` | Customer detail | `customer-management.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorMeetings.tsx` | Meetings list | `meeting-management.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorMeeting.tsx` | Meeting detail | `meeting-management.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorPlans.tsx` | Plans list | `plan-management.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorPlanForm.tsx` | Plan form | `plan-management.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorSubscriptions.tsx` | Subscriptions list | `subscription-management.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorSubscription.tsx` | Subscription detail | `subscription-management.md` |
+| `cpanel/src/app/ui/pages/supervisor/SupervisorSettings.tsx` | Settings | `supervisor-settings.md` |
 | `cpanel/src/app/ui/pages/Error.tsx` | Error CTA → `SupervisorHome` | `error-route-and-guard.md` |
 
 ## Related

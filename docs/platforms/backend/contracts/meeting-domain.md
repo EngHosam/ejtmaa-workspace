@@ -259,7 +259,7 @@ No meeting seed in this change set.
 | Platform | Status |
 |---|---|
 | `website/` | Active — base + customer SDL/types synced |
-| `cpanel/` | Deferred — no supervisor Meeting surface |
+| `cpanel/` | Active for supervisor **directory** reads (`meetings` / `meeting` / `meetingStats`) — `supervisor-catalog-and-home.md`. Live session / Yjs remains website org-host. |
 
 Verification: `yarn generate-types`, `yarn type-check`.
 

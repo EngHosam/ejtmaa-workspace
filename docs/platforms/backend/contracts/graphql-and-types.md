@@ -87,23 +87,27 @@ Invoice / payment checkout detail: `docs/platforms/backend/contracts/myfatoorah-
 ## Supervisor schema surface
 
 Root queries (from `supervisor.graphql`):
-- `me` — current supervisor profile
+- `me` — current supervisor profile (`canDeletePlan`)
+- `home` — extras-only `_Home`
 - `notifications` — paginated notifications
-- `customers` — customer list
-- `customer(id)` — single customer
-- `customerStats` — aggregate stats
-- `organizations(filter)` — organization list
-- `organization(id)` — single organization
+- `customers` / `customer(id)` / `customerStats`
+- `organizations(filter)` / `organization(id)`
+- `plans(filter)` / `plan(id)` / `planStats`
+- `subscriptions(filter)` / `subscription(id)` / `subscriptionStats`
+- `meetings(filter)` / `meeting(id)` / `meetingStats`
 
-Nested relation:
-- `_Customer.organization: _Organization` (requires `OrganizationBridge` registered)
+Nested:
+- `_Customer.organization: _Organization`
+- `_Meeting.organization` / `_Meeting.chairperson: _Member`
+- `_Subscription.plan` / `_Subscription.customer`
 
 Bridges (`backend/src/app/gql/schemas/SupervisorSchema.ts`):
-- `MeBridge`
-- `NotificationBridge`
-- `CustomerBridge`
-- `CustomerStatsBridge`
-- `OrganizationBridge`
+- `MeBridge`, `HomeBridge`, `NotificationBridge`
+- `CustomerBridge`, `CustomerStatsBridge`, `OrganizationBridge`
+- `PlanBridge`, `PlanStatsBridge`, `SubscriptionBridge`, `SubscriptionStatsBridge`
+- `MeetingBridge`, `MeetingStatsBridge`, `MemberBridge`
+
+Detail: `docs/platforms/backend/contracts/supervisor-catalog-and-home.md`.
 
 ## Generated types
 
@@ -117,7 +121,7 @@ Codegen output under `backend/src/app/gql/gql-types/`:
 | Frontend | Mirrors | Config | Current status |
 |---|---|---|---|
 | `website/` | `base` + `customer` | `website/graphql.config.yml` | Active |
-| `cpanel/` | `base` + `supervisor` | `cpanel/graphql.config.yml` | Active — mirrors live under `cpanel/src/types/gql/**`. Bootstrap pages do not yet consume customer-list queries. |
+| `cpanel/` | `base` + `supervisor` | `cpanel/graphql.config.yml` | Active — mirrors under `cpanel/src/types/gql/**`. UI consumes `me` / `home` / directory roots. |
 
 Sync (when the target platform exists) is command-based copy from backend SDL/types. Do not hand-edit mirrored files.
 
