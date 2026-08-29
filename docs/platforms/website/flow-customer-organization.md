@@ -19,6 +19,7 @@ Out of scope:
 - Status UI (create forces `ACTIVE` server-side only).
 - `SectionHeading` back control on this page (workspace settings entry, not a list child).
 - Color hex schema invented on the backend (optional nullable strings).
+- Meeting-shell remapping of `secondary_color` (paint-only in `useOrganization` / `softenMeetingSecondary` — `organization-host-routing.md` §5.4). The form still reads and writes the raw hex.
 - DNS / subdomain provisioning.
 
 ## 2) Route + breadcrumb

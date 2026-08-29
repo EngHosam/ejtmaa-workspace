@@ -1,0 +1,35 @@
+---
+description: Meeting accent seed is paint-clamped via softenMeetingSecondary in useOrganization only — do not persist or apply to primary
+globs:
+  - website/src/app/helpers/ColorHelpers.ts
+  - website/src/app/ui/components/meeting/hooks/useOrganization.ts
+  - website/src/app/ui/components/meeting/**
+  - docs/platforms/website/organization-host-routing.md
+alwaysApply: false
+---
+
+# Meeting secondary accent soften
+
+Authority: `docs/platforms/website/organization-host-routing.md` §5.4, W62.
+
+## Law
+
+`softenMeetingSecondary(hex)` in `website/src/app/helpers/ColorHelpers.ts`:
+
+- Keep hue.
+- Clamp HSL saturation to **10–22** and lightness to **52–68** (`color` package units 0–100).
+- Input must already be a parseable hex (hook `resolveSeed` first).
+
+## Call sites
+
+- `useOrganization` accent seed after `resolveSeed(secondary_color, BrandColors.orange)`.
+- `defaultOrganizationColors()` → `softenMeetingSecondary(BrandColors.orange)`.
+- **Primary** stays `resolveSeed(primary_color, BrandColors.navy)` only.
+
+## Forbidden
+
+- Painting stored `secondary_color` / raw `BrandColors.orange` as the meeting accent seed.
+- Re-implementing the clamp in a page, chip, or broadcast file.
+- Applying the helper to primary.
+- Persisting the remapped hex on upsert / seed / `org/start`.
+- Softening the customer organization form picker (that surface shows the stored value).

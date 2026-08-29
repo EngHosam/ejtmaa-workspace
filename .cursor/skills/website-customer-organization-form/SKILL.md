@@ -29,7 +29,7 @@ description: >-
    - Header: `SectionHeading` **without** `onBack` + primary Save (`sub: "upsert"`).
    - `afterSentSuccess`: `useRouter().redirect({ identify: "CustomerHome", replace: true })` — not form re-`read`, not `nav.push`.
    - `submittingRef`; no manual success toast — `.cursor/rules/website-form-success-toast-automatic.mdc`.
-   - Fields: `FormAvatarField` `name="logo_file"`; name / description / subdomain with FormTextField `suffix` from `ORG_PUBLIC_DOMAIN` (`ejtmaa.live`); `FormColorField` with `BrandColors` fallbacks.
+   - Fields: `FormAvatarField` `name="logo_file"`; name / description / subdomain with FormTextField `suffix` from `ORG_PUBLIC_DOMAIN` (`ejtmaa.live`); `FormColorField` with `BrandColors` fallbacks. Meeting chrome remaps secondary at paint time (`softenMeetingSecondary`) — do not write that remapped hex from this form.
 6. Setup gate: `.cursor/rules/website-customer-organization-setup-gate.mdc` — incomplete `me.organization` (no id or no subdomain) forces `CustomerOrganization` via `applyRouterMiddleware`. Ensure `useMe` `coreQuery` selects gate fields (`organization { id … subdomain }`).
 7. Avatar/logo: `.cursor/rules/website-form-avatar-field.mdc`. Colors: `.cursor/rules/website-form-color-field.mdc`. Text + suffix LTR row: `.cursor/rules/website-form-text-field-direction.mdc`. Utils: W29 / website-utils-style-prop-audit.
 8. Subdomain is **required** server-side (min 4, English alpha, BadWords/reserved list, uniqueness). Surface Joi keys via automatic form errors — do not invent client-only validation frameworks.

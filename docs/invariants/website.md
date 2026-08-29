@@ -328,6 +328,14 @@ Shipped reference: `useMeetingTalkQueue` / `findQueueHead` (`talkTurn` ascending
 
 See `docs/platforms/website/organization-host-routing.md` §5.3, §5.5 and `.cursor/rules/meeting-talk-queue.mdc`.
 
+## W62. Meeting Secondary Accent Is Paint-Clamped
+
+The organization-host meeting shell must not paint the stored `secondary_color` (or `BrandColors.orange`) as the accent seed. After `resolveSeed`, the hex goes through `softenMeetingSecondary` (`website/src/app/helpers/ColorHelpers.ts`): keep hue; clamp HSL saturation to 10–22 and lightness to 52–68 (`color` package 0–100 units). `defaultOrganizationColors()` applies the same helper to the orange fallback. **Primary is not clamped.** The remap is **not** persisted — requester / `org/start` / the customer color fields keep the raw hex.
+
+Do not copy the clamp into a meeting component. Do not add a second caller until a second paint surface exists. Do not “fix” the form by writing the remapped hex back.
+
+See `docs/platforms/website/organization-host-routing.md` §5.4, §8.15 and `.cursor/rules/website-meeting-secondary-soften.mdc`.
+
 ## Related
 
 - `docs/platforms/website/overview.md`
