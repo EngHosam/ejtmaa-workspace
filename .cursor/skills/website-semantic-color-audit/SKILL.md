@@ -30,7 +30,7 @@ description: >-
 7. **No remap without evidence.** Do not remap an existing `semanticColor` entry to a different path unless the current path is provably wrong (resolves to a brand-inconsistent value or a non-existent leaf, which `type-check` already catches). Document any remap as a locked decision with `key → new path` and the reason.
 8. **Audit runtime per-tenant color maps.** Grep for modules that build a `ColorType` map at runtime instead of reading `semanticColor` directly (shipped case: `website/src/app/ui/components/meeting/hooks/useOrganization.ts`, consumed by the `MEETING` shell). For each such map, split its keys into shell/neutral and brand, then confirm:
    - every shell/neutral key is **assigned the `semanticColor.<same key>` token**, not a copied `ThemeMap` literal (a copy is invisible to `type-check` and drifts on the next `theme.ts` edit);
-   - only brand keys are computed from the tenant seeds, with `BrandColors` fallbacks for null/unparseable input; the meeting map then clamps the **secondary** seed via `softenMeetingSecondary` (W62) and leaves primary unclamped;
+   - only brand keys are computed from the tenant seeds, with `BrandColors` fallbacks for null/unparseable input; the meeting map then remaps both seeds via `softenMeetingPrimary` / `softenMeetingSecondary` (W62);
    - on-fill text is derived from seed luminance, not assumed white;
    - no key is dead — every key has a consumer, or is a declared reserve recorded in the owning doc section.
    Authority: `.cursor/rules/website-semantic-color-token-discipline.mdc` § Runtime per-tenant color maps; `docs/platforms/website/organization-host-routing.md` §5.4.

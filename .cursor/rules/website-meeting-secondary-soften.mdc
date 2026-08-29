@@ -1,5 +1,5 @@
 ---
-description: Meeting accent seed is paint-clamped via softenMeetingSecondary in useOrganization only — do not persist or apply to primary
+description: Meeting brand seeds are remapped to the association pair band in useOrganization only — do not persist
 globs:
   - website/src/app/helpers/ColorHelpers.ts
   - website/src/app/ui/components/meeting/hooks/useOrganization.ts
@@ -8,28 +8,31 @@ globs:
 alwaysApply: false
 ---
 
-# Meeting secondary accent soften
+# Meeting brand pair soften
 
 Authority: `docs/platforms/website/organization-host-routing.md` §5.4, W62.
 
+Calibration: `#2F5D50` / `#8FA99A` stay themselves.
+
 ## Law
 
-`softenMeetingSecondary(hex)` in `website/src/app/helpers/ColorHelpers.ts`:
+`website/src/app/helpers/ColorHelpers.ts`:
 
-- Keep hue.
-- Clamp HSL saturation to **10–22** and lightness to **52–68** (`color` package units 0–100).
+- Keep hue of each input.
+- `softenMeetingPrimary` pins saturation/lightness to `#2F5D50`.
+- `softenMeetingSecondary` pins saturation/lightness to `#8FA99A`.
 - Input must already be a parseable hex (hook `resolveSeed` first).
+- Do not mix toward white.
 
 ## Call sites
 
-- `useOrganization` accent seed after `resolveSeed(secondary_color, BrandColors.orange)`.
-- `defaultOrganizationColors()` → `softenMeetingSecondary(BrandColors.orange)`.
-- **Primary** stays `resolveSeed(primary_color, BrandColors.navy)` only.
+- `useOrganization` after `resolveSeed` for both `primary_color` and `secondary_color`.
+- `defaultOrganizationColors()` applies the same pair of helpers to navy / orange fallbacks.
 
 ## Forbidden
 
-- Painting stored `secondary_color` / raw `BrandColors.orange` as the meeting accent seed.
-- Re-implementing the clamp in a page, chip, or broadcast file.
-- Applying the helper to primary.
+- Painting stored `primary_color` / `secondary_color` or raw `BrandColors` as meeting seeds.
+- Re-implementing the remap in a page, chip, or broadcast file.
 - Persisting the remapped hex on upsert / seed / `org/start`.
 - Softening the customer organization form picker (that surface shows the stored value).
+- Mixing either seed toward white as the meeting law.

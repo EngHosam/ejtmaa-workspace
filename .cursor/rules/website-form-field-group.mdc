@@ -1,0 +1,36 @@
+---
+description: FormFieldGroup — titled field cluster card; do not invent a second card or hang group copy on the first field
+globs:
+  - website/src/app/ui/components/form/FormFieldGroup.tsx
+  - website/src/app/ui/components/**/*Form*.tsx
+  - website/src/app/ui/components/customer/**/*Screen.tsx
+  - docs/platforms/website/flow-form-foundation.md
+  - docs/platforms/website/flow-customer-organization.md
+alwaysApply: false
+---
+
+# Website FormFieldGroup
+
+Authority: `docs/platforms/website/flow-form-foundation.md` §3.4b.
+
+## Law
+
+Related fields that share one title/explanation use `FormFieldGroup` (`website/src/app/ui/components/form/FormFieldGroup.tsx`).
+
+- Required `title` (`cardTitle` / `textPrimary`).
+- Optional `subTitle` (`caption` / `textSecondary`).
+- Chrome: `cardBackground` + `shellBorder` + `card.radius`; `p={1.15}` `gap={1.15}`.
+- Children are the fields.
+
+## Forbidden
+
+- A one-off bordered `Col` that copies this chrome.
+- Putting the group explanation on the first field’s `subTitle`.
+- Using `SectionHeading` or `FormInputWrapper` as the cluster card.
+- Changing padding/tokens at a call site — edit the shared component.
+
+## Reference
+
+- Component: `website/src/app/ui/components/form/FormFieldGroup.tsx`
+- Consumer: `CustomerOrganizationScreen` identity colors
+- Flow: `flow-form-foundation.md` §3.4b, `flow-customer-organization.md` §4.1

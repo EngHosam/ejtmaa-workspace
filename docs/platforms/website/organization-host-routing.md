@@ -358,8 +358,8 @@ i18n under `ui.layouts.meetingLayout.linking`: `logoAria`, `pendingStatus`, `fai
 - Reads `state.organizationHost` through `useSector` and returns `null` when `id` is absent, so a consumer cannot render tenant chrome on a non-organization host.
 - Returns `{ id, name, description, logo_url, colors }`. Raw `primary_color` / `secondary_color` are **not** re-exported — a consumer must go through `colors`.
 - `colors` is an `OrganizationColors` map whose keys mirror `semanticColor` naming for the shell half, plus computed brand and scheme-pair keys. A consumer reads `colors.cardBackground` like `semanticColor.cardBackground`, and attendance tiles use dedicated `idleCardBackground` / `presentCardBackground` — never invent a local fill when contrast fails.
-- Seeds resolve with the installed `color` package: `primary_color` → brand, `secondary_color` → accent. A `null`, empty, or unparseable value falls back to `BrandColors.navy` / `BrandColors.orange`. **Primary is used as resolved.** **Secondary is then passed through `softenMeetingSecondary`** (`website/src/app/helpers/ColorHelpers.ts`) before it becomes the accent seed: hue is kept; HSL saturation is clamped to **10–22**; HSL lightness is clamped to **52–68** (`color` package units: 0–100). This is **paint-only**. `org/start`, the organization requester, and the customer color fields still store and return the raw hex. Do not re-implement the clamp in a meeting component. Do not run it on primary. The whole map is `useMemo`-ed on the six store fields. Light-scheme section tints (`sectionBrandBackground` / `sectionAccentBackground`) mix the seed toward white at **0.78** (not near-white wash) so chips and soft fills stay readable on `pageBackground`; dark-scheme section tints keep the existing soft rgba overlays. `presentCardBackground` is a stronger accent wash (**0.62** / **0.18**) so it stays distinct from type chips on `sectionAccentBackground`.
-- `defaultOrganizationColors()` builds the same map from `BrandColors.navy` plus **`softenMeetingSecondary(BrandColors.orange)`** so the pre-hydrate fallback uses the same accent law. Every consumer uses `organization?.colors ?? defaultOrganizationColors()` so the shell renders before the slice hydrates.
+- Seeds resolve with the installed `color` package: `primary_color` → brand, `secondary_color` → accent. A `null`, empty, or unparseable value falls back to `BrandColors.navy` / `BrandColors.orange` (`resolveSeed` swallows `color()` throw). **Both seeds then go through `ColorHelpers`** before they become meeting paint. Unexported `pinToCalibration` keeps the input hue and copies HSL saturation/lightness from a calibration hex via `color` (`saturationl` / `lightness` / `hex`). `softenMeetingPrimary` calibrates to `#2F5D50`. `softenMeetingSecondary` calibrates to `#8FA99A`. That pair is identity (same hex in → same hex out). The helpers have **no** try/catch — only pass `resolveSeed` output. Do not mix toward white. Do not hardcode saturation/lightness numbers beside the calibration hexes. This is **paint-only**. `org/start`, the organization requester, and the customer color fields still store and return the raw hex. The organization form pickers show the stored value; `FormFieldGroup` copy explains meeting paint (`flow-customer-organization.md` §4.1). Do not re-implement the remap in a meeting component. The whole map is `useMemo`-ed on the six store fields. Light-scheme section tints (`sectionBrandBackground` / `sectionAccentBackground`) mix the seed toward white at **0.78** (not near-white wash) so chips and soft fills stay readable on `pageBackground`; dark-scheme section tints keep the existing soft rgba overlays. `presentCardBackground` is a stronger accent wash (**0.62** / **0.18**) so it stays distinct from type chips on `sectionAccentBackground`.
+- `defaultOrganizationColors()` builds the same map from **`softenMeetingPrimary(BrandColors.navy)`** plus **`softenMeetingSecondary(BrandColors.orange)`** so the pre-hydrate fallback uses the same pair law. Every consumer uses `organization?.colors ?? defaultOrganizationColors()` so the shell renders before the slice hydrates.
 
 **Token split (non-negotiable).** Shell/neutral keys are assigned the `semanticColor.*` token itself, never a copied literal — `ColorType` accepts a `ThemeMapPath` and `getColor` resolves it per scheme, so these follow `theme.ts` automatically. Brand keys are computed from the seeds. Scheme-pair keys are explicit light/dark `ColorType` pairs for surfaces that must diverge by scheme (or must not collide with chip fills):
 
@@ -715,7 +715,7 @@ What the website side depends on:
 12. **A failed broadcast connection has no in-UI retry.** `Disconnected` or a rejected token renders the failure card and waits for a page reload; only network-level token failures retry quietly (`flow-meeting-broadcast.md` §10.3).
 13. **Attend-window clock refresh is best-effort.** The session-owned `setTimeout` / 30s ticks in `useMeetingAttendWindow` can be delayed or cleared by background-tab throttling, effect dependency changes, leaving the meeting route, or large forward clock jumps while a timeout is pending (§5.3).
 14. **`talkTurn` is allocated client-side, so a simultaneous raise can collide.** `nextTalkTurn` skips values already present in the **local** snapshot, but two clients raising within one CRDT round trip can still pick the same integer. The queue stays deterministic and identical on every client because both `useMeetingTalkQueue` and `findQueueHead` break ties on lexicographic `id`; the only visible effect is that the two colliding members share one arrival slot instead of a strict raise-time order. A server-allocated turn (or a CRDT counter) would be needed to remove the tie entirely.
-15. **Meeting accent is not the stored secondary hex.** `softenMeetingSecondary` remaps saturation/lightness at paint time (§5.4). The customer organization form, requester `read`/`upsert`, and `org/start` still carry the raw `secondary_color`. A debugger comparing the form picker to a meeting chip will see a different hex; that is intended.
+15. **Meeting brand seeds are not the stored hexes.** `softenMeetingPrimary` / `softenMeetingSecondary` pin saturation/lightness to `#2F5D50` / `#8FA99A` (§5.4). The customer organization form, requester `read`/`upsert`, and `org/start` still carry the raw colors. The calibration pair paints unchanged.
 15. **The talk queue has no durable trace.** `talkTurn` / `currentTalkMemberId` live only in the CRDT BLOB, so granting or ending the floor writes no `TalkRecord` row, no duration, and no audit entry (`../backend/contracts/talk-record-domain.md` §1). Reloading is safe (the BLOB is persisted), but reporting on who spoke and for how long is not available from this surface.
 
 ## 9) Environment
@@ -784,8 +784,8 @@ Every path that implements this contract, with the section that describes it.
 | `package.json` | `yjs` + `@syncedstore/core` + `@syncedstore/react` + `livekit-client` exact pins | §5.1; `flow-meeting-broadcast.md` §3 |
 | `src/app/ui/layouts/MeetingLayout.tsx` | `MEETING` layout — live → session → page providers, linking gate, branded shell, READY `FlexContainer` content column | §5, §5.1, §5.3, §5.4, §5.5 |
 | `src/app/ui/base/core/MyApp.tsx` | `case "MEETING"` → `MeetingLayout` | §5 |
-| `src/app/helpers/ColorHelpers.ts` | `softenMeetingSecondary` — meeting accent HSL clamp (paint only) | §5.4 |
-| `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` (incl. `pageOverlayBackground`, `idleCardBackground` / `presentCardBackground`, fixed-white `actionIconOnFill`); light `softLight` mix 0.78 for section chips; accent seed via `softenMeetingSecondary` | §5.4 |
+| `src/app/helpers/ColorHelpers.ts` | `softenMeetingPrimary` / `softenMeetingSecondary` — hue kept, sat/light pinned to `#2F5D50` / `#8FA99A` (paint only) | §5.4 |
+| `src/app/ui/components/meeting/hooks/useOrganization.ts` | org branding hook; `OrganizationColors` (incl. `pageOverlayBackground`, `idleCardBackground` / `presentCardBackground`, fixed-white `actionIconOnFill`); light `softLight` mix 0.78 for section chips; both seeds remapped via ColorHelpers | §5.4 |
 | `src/app/ui/components/meeting/MeetingHeader.tsx` | menu + org logo/name; `MeetingHeaderMe` when `me` exists; no talk control; accent rail; `fixed` mobile bar | §5.4 |
 | `src/app/ui/components/meeting/MeetingHeaderMe.tsx` | current participant avatar + name + type chip (org colors, session `me`) | §5.4 |
 | `src/app/ui/components/meeting/MeetingFooter.tsx` | platform rights line (no unjustified top margin) | §5.4 |
@@ -1441,30 +1441,44 @@ Chair irreversible end on Meeting info (`init`) only: `InitEndMeetingSection` �
 
 ## 10t) Change set inventory (meeting secondary accent soften)
 
-Paint-only HSL clamp on the meeting accent seed. Stored `secondary_color` is unchanged. Primary is unchanged.
+Earlier paint-only accent remap. **Superseded by §10u** (both seeds + organization identity-colors group). Do not follow this subsection’s “primary unchanged” wording.
 
-### `website/`
+## 10u) Change set inventory (meeting brand-pair remap + identity-colors group)
+
+Paint-only pair remap in `useOrganization`. Organization settings wrap the two color fields in `FormFieldGroup` and explain meeting paint. Stored hexes unchanged. Backend untouched.
+
+### `website/` (nested repo)
 
 | Path | State | Documented in |
 |---|---|---|
-| `src/app/helpers/ColorHelpers.ts` | **added** — `softenMeetingSecondary` | §5.4 |
-| `src/app/ui/components/meeting/hooks/useOrganization.ts` | modified — accent seed + `defaultOrganizationColors` call the helper | §5.4 |
-| `src/resources/configs/web-core.ts` | modified — `version` `0.5` → `0.6` | **unrelated** to this delivery; not narrated |
+| `src/app/helpers/ColorHelpers.ts` | `pinToCalibration` + `softenMeetingPrimary` / `softenMeetingSecondary` | §5.4 |
+| `src/app/ui/components/meeting/hooks/useOrganization.ts` | both seeds + `defaultOrganizationColors` remapped | §5.4 |
+| `src/app/ui/components/form/FormFieldGroup.tsx` | **added** — titled field cluster card | `flow-form-foundation.md` §3.4b |
+| `src/app/ui/components/customer/organization/CustomerOrganizationScreen.tsx` | `FormFieldGroup` around both color fields | `flow-customer-organization.md` §4.1 |
+| `src/resources/translations/ar.ts` | `colorsTitle` / `colorsSubtitle` (locked Arabic) | `flow-customer-organization.md` §6 |
+| `src/resources/translations/en.ts` | `colorsTitle` / `colorsSubtitle` | `flow-customer-organization.md` §6 |
+| `lib/tsconfig.tsbuildinfo` | generated `tsc` cache | **excluded** |
 
 ### Workspace root (`docs/` / `.cursor/`)
 
 | Path | State | Documented in |
 |---|---|---|
-| `docs/platforms/website/organization-host-routing.md` | this §10t + §5.4 + §8.15 | — |
-| `docs/platforms/website/ui-foundation.md` | runtime map accent clamp | ui-foundation |
-| `docs/platforms/website/repository-inventory.md` | `ColorHelpers.ts` row | inventory |
-| `docs/platforms/website/flow-customer-organization.md` | persist vs meeting paint | customer org |
+| `docs/platforms/website/organization-host-routing.md` | this §10u + §5.4 + §8.15 | — |
+| `docs/platforms/website/flow-form-foundation.md` | §3.4b `FormFieldGroup` | form foundation |
+| `docs/platforms/website/flow-customer-organization.md` | identity-colors group + copy | customer org |
+| `docs/platforms/website/ui-foundation.md` | runtime map pair remap | ui-foundation |
+| `docs/platforms/website/repository-inventory.md` | `ColorHelpers` + `FormFieldGroup` | inventory |
 | `docs/invariants/website.md` | W62 | invariant |
-| `.cursor/rules/website-meeting-secondary-soften.mdc` | **added** | governance |
-| `.cursor/rules/website-meeting-shell.mdc` | accent soften pointer | governance |
-| `.cursor/rules/website-semantic-color-token-discipline.mdc` | secondary clamp after fallback | governance |
-| `.cursor/skills/website-meeting-shell/SKILL.md` | helper + hook-only | skill |
+| `.cursor/rules/website-meeting-secondary-soften.mdc` | pair law | governance |
+| `.cursor/rules/website-meeting-shell.mdc` | both seeds remapped | governance |
+| `.cursor/rules/website-semantic-color-token-discipline.mdc` | both seeds after fallback | governance |
+| `.cursor/rules/website-form-field-group.mdc` | **added** | governance |
+| `.cursor/rules/website-form-color-field.mdc` | pair copy not on one field | governance |
+| `.cursor/skills/website-meeting-shell/SKILL.md` | pair helpers, hook only | skill |
 | `.cursor/skills/website-semantic-color-audit/SKILL.md` | audit step 8 | skill |
+| `.cursor/skills/website-customer-organization-form/SKILL.md` | `FormFieldGroup` + paint-only | skill |
+| `.cursor/skills/website-form-field-group/SKILL.md` | **added** | skill |
+| `website` (gitlink) | dirty nested repo | see website table |
 
 ## 11) Verification
 
@@ -1514,5 +1528,7 @@ Paint-only HSL clamp on the meeting accent seed. Stored `secondary_color` is unc
 - `.cursor/skills/website-meeting-broadcast/SKILL.md`
 - `.cursor/skills/website-meeting-decisions-vote/SKILL.md`
 - `.cursor/rules/website-meeting-secondary-soften.mdc`
+- `.cursor/rules/website-form-field-group.mdc`
+- `.cursor/skills/website-form-field-group/SKILL.md`
 
-Change-set inventories: §10a–§10t (latest meeting accent soften = §10t; viewport shell + floating broadcast chrome = §10q; decisions + voting = §10p; live map + durable enums = §10n → `meeting-live-state.md` §9; LiveKit broadcast = §10m).
+Change-set inventories: §10a–§10u (latest brand-pair remap + identity-colors group = §10u; §10t superseded; viewport shell + floating broadcast chrome = §10q; decisions + voting = §10p; live map + durable enums = §10n → `meeting-live-state.md` §9; LiveKit broadcast = §10m).

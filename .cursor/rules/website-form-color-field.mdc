@@ -25,6 +25,7 @@ Applies when adding or changing the shared color form field. Authority: `docs/pl
 - Putting `padding`, `cursor`, or pseudo styles in `baseCssStyle`.
 - Parallel color widgets outside `form/FormColorField.tsx` for the same job.
 - Manual success toasts after color save (W11).
+- Putting a pair/group explanation on one color field’s `subTitle` — use `FormFieldGroup` (`.cursor/rules/website-form-field-group.mdc`).
 
 ## Reference
 

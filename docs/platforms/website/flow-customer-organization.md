@@ -19,7 +19,7 @@ Out of scope:
 - Status UI (create forces `ACTIVE` server-side only).
 - `SectionHeading` back control on this page (workspace settings entry, not a list child).
 - Color hex schema invented on the backend (optional nullable strings).
-- Meeting-shell remapping of `secondary_color` (paint-only in `useOrganization` / `softenMeetingSecondary` — `organization-host-routing.md` §5.4). The form still reads and writes the raw hex.
+- Meeting-shell remapping of `primary_color` / `secondary_color` (paint-only in `useOrganization` / ColorHelpers — `organization-host-routing.md` §5.4). The form still reads and writes the raw hex.
 - DNS / subdomain provisioning.
 
 ## 2) Route + breadcrumb
@@ -66,9 +66,20 @@ File: `website/src/app/ui/components/customer/organization/CustomerOrganizationS
 - Fields column `maxW={32}`:
   - `FormAvatarField` `name="logo_file"` (+ logo i18n labels),
   - `FormTextField` name / description / subdomain (subdomain has English-letters subtitle + suffix `.${ORG_PUBLIC_DOMAIN}` from `urls.ts` → `.ejtmaa.live`),
-  - `FormColorField` primary / secondary with `fallback={BrandColors.navy|orange}`.
+  - `FormFieldGroup` (`colorsTitle` / `colorsSubtitle`) wrapping `FormColorField` primary / secondary with `fallback={BrandColors.navy|orange}` — §4.1.
 - No placeholders unless product asks.
 - No status chips / custom domain fields.
+
+### 4.1) Identity-colors group
+
+Both color fields sit in `FormFieldGroup`. The pickers show and write the **stored** hex. Meeting paint remaps later (`organization-host-routing.md` §5.4). Do not put `colorsSubtitle` on `FormColorField.subTitle`.
+
+Locked copy (`ui.pages.customer.organization`):
+
+| Key | ar | en |
+|---|---|---|
+| `colorsTitle` | ألوان الهوية | Identity colors |
+| `colorsSubtitle` | في صفحة الاجتماع نقوم بضبط سطوع الألوان وتشبعها فقط، مع الإبقاء على درجتها، حتى تبقى الواجهة مريحة وواضحة. | On the meeting page we only adjust the colors’ brightness and saturation, keeping their hue, so the interface stays comfortable and clear. |
 
 ## 5) Shared field contracts (touched this slice)
 
@@ -76,6 +87,7 @@ File: `website/src/app/ui/components/customer/organization/CustomerOrganizationS
 |---|---|
 | `FormAvatarField` | Optional `name` (default `"avatar_file"`); org uses `logo_file`. Image fills circle via absolute + `cover`. Rule: `.cursor/rules/website-form-avatar-field.mdc` |
 | `FormColorField` | Native `type="color"` swatch + hex text; `FormInputWrapper`; W29 (`inputReset` in `baseCssStyle` only). Rule: `.cursor/rules/website-form-color-field.mdc` |
+| `FormFieldGroup` | Titled field cluster card. Foundation: `flow-form-foundation.md` §3.4b. |
 | `FormTextField` | Inherit page direction; subdomain uses `subTitle` + suffix `.ejtmaa.live` via `ORG_PUBLIC_DOMAIN` in `urls.ts`. |
 | `IdentityAvatar` | Same absolute + `cover` fill as avatar field (header/drawer/member cards). |
 
@@ -83,7 +95,7 @@ File: `website/src/app/ui/components/customer/organization/CustomerOrganizationS
 
 | Key path | Purpose |
 |---|---|
-| `ui.pages.customer.organization.*` | title, subtitle, `setupRequiredAlert`, logo labels, field labels, subdomain subtitle, save |
+| `ui.pages.customer.organization.*` | title, subtitle, `setupRequiredAlert`, logo labels, field labels, subdomain subtitle, identity-colors card (`colorsTitle` / `colorsSubtitle`), save |
 | `ui.layouts.customerMainLayout.drawer.itemOrganization` | Drawer tile label (pre-existing) |
 | `ui.layouts.customerMainLayout.drawer.workspaceFallback` | Drawer workspace chip when no org name (**منصة اجتماع**) — see `flow-customer-shell.md` §5.2 |
 
@@ -116,6 +128,7 @@ Form write path does not use a GQL data adapter; it uses customer form requester
 | `website/src/app/ui/components/form/FormTextField.tsx` | optional `suffix` (LTR row) | §5; `flow-form-foundation.md` §3.1 |
 | `website/src/app/ui/components/form/FormAvatarField.tsx` | `name` + fill | §5 |
 | `website/src/app/ui/components/form/FormColorField.tsx` | Color field | §5 |
+| `website/src/app/ui/components/form/FormFieldGroup.tsx` | Identity-colors cluster | §4 / §5 |
 | `website/src/app/ui/components/customer/IdentityAvatar.tsx` | Avatar fill parity | §5 |
 | `website/src/resources/translations/ar.ts` / `en.ts` | i18n | §6 |
 | `website/src/app/ui/components/customer/CustomerDrawer.tsx` | Workspace chip + tiles | `flow-customer-shell.md` §5.2–§5.3 |
@@ -143,3 +156,6 @@ Form write path does not use a GQL data adapter; it uses customer form requester
 - `docs/platforms/website/route-registry-contract.md`
 - `docs/platforms/backend/contracts/organization-domain.md`
 - `.cursor/skills/website-customer-organization-form/SKILL.md`
+- `.cursor/rules/website-form-field-group.mdc`
+- `.cursor/skills/website-form-field-group/SKILL.md`
+- `docs/platforms/website/organization-host-routing.md` §5.4 / W62

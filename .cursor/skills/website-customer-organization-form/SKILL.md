@@ -3,7 +3,7 @@ name: website-customer-organization-form
 description: >-
   Ships or extends the website CustomerOrganization settings form
   (Forms.CUSTOMER_ORGANIZATION, read+upsert, FormAvatarField logo_file,
-  FormColorField, setup gate, post-save redirect home). Use when changing
+  FormFieldGroup + FormColorField, setup gate, post-save redirect home). Use when changing
   organization write UI, branding fields, or org onboarding gate on the
   customer portal.
 ---
@@ -14,7 +14,7 @@ description: >-
 
 - Adding or changing fields/actions on `/customer/organization`.
 - Wiring organization requester subs (`read` | `upsert`) to the form.
-- Reusing `FormAvatarField` / `FormColorField` for org branding.
+- Reusing `FormAvatarField` / `FormColorField` / `FormFieldGroup` for org branding.
 - Changing incomplete-org setup gate or post-save navigation.
 
 ## Instructions
@@ -29,11 +29,11 @@ description: >-
    - Header: `SectionHeading` **without** `onBack` + primary Save (`sub: "upsert"`).
    - `afterSentSuccess`: `useRouter().redirect({ identify: "CustomerHome", replace: true })` — not form re-`read`, not `nav.push`.
    - `submittingRef`; no manual success toast — `.cursor/rules/website-form-success-toast-automatic.mdc`.
-   - Fields: `FormAvatarField` `name="logo_file"`; name / description / subdomain with FormTextField `suffix` from `ORG_PUBLIC_DOMAIN` (`ejtmaa.live`); `FormColorField` with `BrandColors` fallbacks. Meeting chrome remaps secondary at paint time (`softenMeetingSecondary`) — do not write that remapped hex from this form.
+   - Fields: `FormAvatarField` `name="logo_file"`; name / description / subdomain with FormTextField `suffix` from `ORG_PUBLIC_DOMAIN` (`ejtmaa.live`); `FormFieldGroup` (`colorsTitle` / `colorsSubtitle`) wrapping both `FormColorField`s with `BrandColors` fallbacks. Do not put `colorsSubtitle` on the primary field. Meeting chrome remaps primary and secondary at paint time (`softenMeetingPrimary` / `softenMeetingSecondary`) — do not write those remapped hexes from this form. Locked copy: `flow-customer-organization.md` §4.1.
 6. Setup gate: `.cursor/rules/website-customer-organization-setup-gate.mdc` — incomplete `me.organization` (no id or no subdomain) forces `CustomerOrganization` via `applyRouterMiddleware`. Ensure `useMe` `coreQuery` selects gate fields (`organization { id … subdomain }`).
-7. Avatar/logo: `.cursor/rules/website-form-avatar-field.mdc`. Colors: `.cursor/rules/website-form-color-field.mdc`. Text + suffix LTR row: `.cursor/rules/website-form-text-field-direction.mdc`. Utils: W29 / website-utils-style-prop-audit.
+7. Avatar/logo: `.cursor/rules/website-form-avatar-field.mdc`. Colors: `.cursor/rules/website-form-color-field.mdc`. Field group: `.cursor/rules/website-form-field-group.mdc`. Text + suffix LTR row: `.cursor/rules/website-form-text-field-direction.mdc`. Utils: W29 / website-utils-style-prop-audit.
 8. Subdomain is **required** server-side (min 4, English alpha, BadWords/reserved list, uniqueness). Surface Joi keys via automatic form errors — do not invent client-only validation frameworks.
-9. i18n ar/en under `ui.pages.customer.organization.*` (include `setupRequiredAlert`). Update `flow-customer-organization.md`, `flow-auth.md` §2.1, `flow-form-foundation.md`, and `route-registry-contract.md` in the same task when contracts change.
+9. i18n ar/en under `ui.pages.customer.organization.*` (include `setupRequiredAlert`, `colorsTitle`, `colorsSubtitle`). Update `flow-customer-organization.md`, `flow-auth.md` §2.1, `flow-form-foundation.md`, and `route-registry-contract.md` in the same task when contracts change.
 10. Verify: `yarn type-check` in `website/` (and `backend/` if requester/ability/GQL changed).
 
 ## Canonical reference
@@ -44,3 +44,4 @@ description: >-
 - Flow: `docs/platforms/website/flow-customer-organization.md`
 - Backend: `docs/platforms/backend/contracts/organization-domain.md` §5 / §9
 - Sibling form skill: `.cursor/skills/website-customer-member-form/SKILL.md`
+- Field group: `.cursor/skills/website-form-field-group/SKILL.md`

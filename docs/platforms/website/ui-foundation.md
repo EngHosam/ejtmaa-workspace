@@ -1,4 +1,4 @@
-﻿# Website UI Foundation (Ejtmaa)
+# Website UI Foundation (Ejtmaa)
 
 ## Source of truth
 
@@ -44,7 +44,7 @@ Full audit procedure and the 56-key → `theme.ts` line map: `.cursor/skills/web
 
 `semanticColor` holds fixed `ThemeMap` paths, so it cannot carry a value that varies per tenant. A data-themed surface builds a runtime `ColorType` map instead. The only shipped case is the organization-branded `MEETING` shell (`organization-host-routing.md` §5.3).
 
-Such a map keeps the same `semanticColor` key names and splits its entries: shell/neutral keys are **assigned the `semanticColor.<same key>` token**, and only brand keys are computed from the tenant seeds. After the secondary seed is resolved (or falls back to `BrandColors.orange`), `softenMeetingSecondary` clamps HSL saturation to 10–22 and lightness to 52–68; hue is kept. Primary is not clamped. The remap is paint-only (`organization-host-routing.md` §5.4). This works because `ColorType` includes `ThemeMapPath` and `getColor` resolves a path against the active scheme, so a token entry and a computed `"#light #dark"` entry are interchangeable at the consumer.
+Such a map keeps the same `semanticColor` key names and splits its entries: shell/neutral keys are **assigned the `semanticColor.<same key>` token**, and only brand keys are computed from the tenant seeds. After each seed is resolved (or falls back to `BrandColors.navy` / `BrandColors.orange`), `softenMeetingPrimary` / `softenMeetingSecondary` keep hue and pin saturation/lightness to `#2F5D50` / `#8FA99A`. The remap is paint-only (`organization-host-routing.md` §5.4). This works because `ColorType` includes `ThemeMapPath` and `getColor` resolves a path against the active scheme, so a token entry and a computed `"#light #dark"` entry are interchangeable at the consumer.
 
 Copying a `ThemeMap` leaf value into such a map is forbidden: guarantee 1 above validates a token *path*, but nothing detects a stale copied hex, so the copy drifts on the next `theme.ts` edit. Authority: `docs/invariants/website.md` W43. Enforcement: `.cursor/rules/website-semantic-color-token-discipline.mdc` § Runtime per-tenant color maps.
 

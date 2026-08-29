@@ -66,7 +66,7 @@ Exclusive scroll owners (Init, Live waiting, and any future exclusive page under
 - Before the open window (`!attendWindow.windowOpen`): remaining-duration `attendAvailableIn` + `attendRequiresForRoom`. If the window is already open but `can.attend` is still false, show `attendRequiresForRoom` only — never a past “available in” duration. No disabled fake attend button.
 - Attended: confirmation strip + first-person relative `attendedAt` + quieter `roomUnlockedHint` (`textTertiary`). Left: `leftTitle`.
 - End meeting UI: colocated `InitEndMeetingSection` in the same file. `can.endMeeting` → `MeetingPrimaryButton` → `await confirm(..., "danger")` → `actions.endMeeting()` (no direct emit / `batch`). Do not put an end-meeting CTA on broadcast or Meeting room waiting UI.
-- Colors only from `OrganizationColors` / `defaultOrganizationColors()`. Accent seed is `softenMeetingSecondary` after secondary resolve (W62 / `.cursor/rules/website-meeting-secondary-soften.mdc`) — not the stored hex.
+- Colors only from `OrganizationColors` / `defaultOrganizationColors()`. Both seeds are remapped after resolve (W62 / `.cursor/rules/website-meeting-secondary-soften.mdc`) — not the stored hex.
 - Drawer `DrawerGridItem` optional accessible override prop is named `ariaLabel` (repo convention — not `a11yLabel`).
 
 ## Placement (shared vs page-local)

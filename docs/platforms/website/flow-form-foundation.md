@@ -47,7 +47,7 @@ Web-native requester form foundation for `website/`: the typed requester route m
   - account settings: `/customer/settings` — planned (`Forms.CUSTOMER_SETTINGS` not registered yet); see `flow-settings.md`,
   - notification delete-all — see `flow-notifications.md`.
 - **Shared form field surfaces** under `src/app/ui/components/form/`:
-  - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, `FormInputWrapper`, `FormProvider`,
+  - `FormTextField`, `FormActionButton`, `FormAvatarField`, `FormColorField`, `FormFieldGroup`, `FormChoiceField`, `FormEntityPickerField`, `FormDateTimeField`, `FormInputWrapper`, `FormProvider`,
   - template helpers: `FormTemplateVariableInsert`, `FormMessageTemplateVariablesField` (see §3.2c; consumer `flow-customer-message-templates.md`),
   - Compose from `Utils` + semantic theme tokens.
   - Modals: `ENTITY_PICKER` (`openEntityPicker`), `DATETIME_PICKER` (`openDateTimePicker`), `CONFIRM` (`confirm`), plus registered meeting form modals (`MEETING_BASICS`, `MEETING_PARTICIPANT_ADD`, `MEETING_SUBJECT`, `MEETING_TEMPLATES`) via `ModalBase` / `ModalsManager` — registry `resources/configs/store/modals.ts`.
@@ -108,6 +108,24 @@ List these under shared form surfaces in §1 when adding more template helpers.
 - Optional `fallback` hex for the picker when the form value is empty/invalid (org form uses `BrandColors.navy` / `BrandColors.orange`).
 - W29: `baseCssStyle` holds only `...ElementStyles.inputReset`; behavior/pseudo styles in `cssStyle`; padding via `p={0}` shorthand on the swatch.
 - Rule: `.cursor/rules/website-form-color-field.mdc`.
+
+### 3.4b `FormFieldGroup`
+
+**File:** `website/src/app/ui/components/form/FormFieldGroup.tsx`
+
+A titled cluster of related fields inside one card. Use when two or more fields share one explanation.
+
+| Concern | Contract |
+|---|---|
+| Chrome | `Col` `gap={1.15}` `p={1.15}` `w={"100%"}` — `cardBackground` + `shellBorder` + `card.radius` |
+| Title | required `title` — `cardTitle` / `textPrimary` |
+| Subtitle | optional `subTitle` — `caption` / `textSecondary`; omit the node when absent |
+| Body | `children` (the fields). Same outer `gap` as the header block |
+| Memo | `withMemo` |
+
+Not `FormInputWrapper` (one field). Not `SectionHeading` (page chrome). Not a one-off `Col` card. Do not attach a group explanation as `subTitle` on the first field only.
+
+Rule: `.cursor/rules/website-form-field-group.mdc`. Canonical consumer: organization identity colors (`flow-customer-organization.md` §4.1).
 
 ### 3.5 `FormChoiceField`
 
@@ -309,6 +327,7 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 | `website/src/resources/configs/customer/messageTemplatePlaceholders.ts` | placeholder keys + normalize |
 | `website/src/app/ui/components/form/FormAvatarField.tsx` | avatar / logo field |
 | `website/src/app/ui/components/form/FormColorField.tsx` | color field |
+| `website/src/app/ui/components/form/FormFieldGroup.tsx` | titled field cluster card (§3.4b) |
 | `website/src/app/ui/components/form/FormChoiceField.tsx` | discrete form choice tiles |
 | `website/src/app/ui/components/form/FormEntityPickerField.tsx` | entity picker field → modal |
 | `website/src/app/ui/components/modals/EntityPickerModal.tsx` | `ENTITY_PICKER` shell (search + customScroll + loadMore) |
@@ -352,7 +371,7 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 - `docs/platforms/website/flow-settings.md`
 - `docs/platforms/website/flow-notifications.md`
 - `docs/platforms/website/data-flow-and-gql.md`
-- `docs/invariants/website.md` (W11, W18)
+- `docs/invariants/website.md` (W11, W18, W62)
 - `.cursor/rules/website-multi-path-form-routes.mdc`
 - `.cursor/rules/website-confirm-modal.mdc`
 - `.cursor/rules/requester-read-no-entity-id-echo.mdc`
@@ -363,6 +382,8 @@ Automatic via `ResMainMessageMiddleware` — do not re-toast in `afterSentSucces
 - `.cursor/rules/website-shallow-form-submit-and-cleanup.mdc`
 - `.cursor/rules/website-form-avatar-field.mdc`
 - `.cursor/rules/website-form-color-field.mdc`
+- `.cursor/rules/website-form-field-group.mdc`
+- `.cursor/skills/website-form-field-group/SKILL.md`
 - `.cursor/rules/website-third-party-widget-emotion-theme.mdc`
 - `.cursor/rules/website-custom-scroll-contract.mdc`
 - `.cursor/rules/website-customer-form-modal-placement.mdc`
